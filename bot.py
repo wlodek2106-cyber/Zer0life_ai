@@ -1,8 +1,3 @@
-## `bot.py` — Part 1 of 4
-
-Copy this as the beginning of `bot.py`. This part ends immediately before `create_zrl_invoice()`.
-
-```python
 """Zer0Life Commerce AI Telegram bot.
 
 The bot receives a product photo and generates an English/Polish marketplace
@@ -757,7 +752,6 @@ def is_user_paid(telegram_user_id: int) -> bool:
         return False
 
     if not row[3]:
-        # Legacy Pro users without an expiry remain active.
         return True
 
     try:
@@ -1054,13 +1048,24 @@ def grant_pro_access(
                 telegram_user_id,
             ),
         )
-```
 
-## `bot.py` — Part 2 continuation
 
-Continue directly after the previous code block, beginning inside `notify_admin_about_zrl_claim()`:
+async def notify_admin_about_zrl_claim(
+    bot: Bot,
+    user: types.User,
+    invoice_token: str,
+    tx_signature: str,
+    required_zrl: str,
+    reason: str,
+) -> bool:
+    """Notify the administrator about a ZRL claim requiring manual review."""
 
-```python
+    admin_id_str = os.getenv("ADMIN_TELEGRAM_ID", "").strip()
+    if not admin_id_str:
+        return False
+
+    try:
+        admin_id = int(admin_id_str)
     except ValueError:
         LOGGER.error("ADMIN_TELEGRAM_ID must be a numeric Telegram user ID")
         return False
@@ -2195,13 +2200,49 @@ async def background_style_handler(
             "soft diffused light, gentle shadows, and uncluttered composition"
         ),
     }
-```
 
-## `bot.py` — Part 3 completion
+    style_description = styles.get(style, styles["studio"])
+    
+    pending_photo = await asyncio.to_thread(
+        get_pending_photo,
+        photo_token,
+        callback.from_user.id,
+    )
 
-Append this directly after the previous part, beginning where the `approve_pro_handler()` function had been cut off:
+    if pending_photo is None:
+        await callback.answer("Фото не найдено.", show_alert=True)
+        return
 
-```python
+    telegram_file_id, _ = pending_photo
+    await callback.answer()
+
+    await process_image_edit(
+        callback.message,
+        bot,
+        openai_client,
+        callback.from_user.id,
+        telegram_file_id,
+        prompt=(
+            f"Place the exact product from the supplied photo into {style_description}. "
+            "Preserve the product's shape, color, texture, labels, and proportions completely. "
+            "Seamlessly integrate it with matching realistic contact shadows and lighting."
+        ),
+        output_caption=f"🌄 Фон изменён ({style}).",
+    )
+
+
+@ROUTER.callback_query(F.data.startswith("approve_pro_"))
+async def approve_pro_handler(callback: types.CallbackQuery) -> None:
+    """Handle administrator approval for Pro access requests."""
+
+    admin_id_str = os.getenv("ADMIN_TELEGRAM_ID", "").strip()
+    if not admin_id_str:
+        await callback.answer("ADMIN_TELEGRAM_ID не настроен.", show_alert=True)
+        return
+
+    try:
+        admin_id = int(admin_id_str)
+    except ValueError:
         LOGGER.error("ADMIN_TELEGRAM_ID must be a numeric Telegram user ID")
         await callback.answer(
             "ADMIN_TELEGRAM_ID настроен неверно.",
@@ -2537,254 +2578,4 @@ if __name__ == "__main__":
 
     except (KeyboardInterrupt, SystemExit):
         LOGGER.info("Bot stopped.")
-```
 
-This completes the end of `bot.py`, including the polling entrypoint.
-
-## `bot.py` — Part 4 of 4
-
-This is the final section of the actual file, starting at approximately line 3601 and ending with the application entrypoint:
-
-```python
-        LOGGER.error("ADMIN_TELEGRAM_ID must be a numeric Telegram user ID")
-        await callback.answer("ADMIN_TELEGRAM_ID настроен неверно.", show_alert=True)
-        return
-
-    if callback.from_user.id != admin_id:
-        LOGGER.warning(
-            "Unauthorized Pro approval attempt by Telegram user %s",
-            callback.from_user.id,
-        )
-        await callback.answer("Недостаточно прав.", show_alert=True)
-        return
-
-    callback_data = callback.data or ""
-    raw_user_id = callback_data.removeprefix("approve_pro_")
-    try:
-        user_id = int(raw_user_id)
-    except ValueError:
-        await callback.answer("Некорректный ID пользователя.", show_alert=True)
-        return
-
-    await asyncio.to_thread(grant_pro_access, user_id)
-    LOGGER.info(
-        "Admin %s granted Pro access to Telegram user %s",
-        admin_id,
-        user_id,
-    )
-    await callback.answer("Pro-доступ выдан.")
-
-    if callback.message is not None:
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            LOGGER.warning("Could not remove the Pro approval button")
-
-    try:
-        await callback.bot.send_message(
-            admin_id,
-            f"Pro-доступ успешно выдан для ID: {user_id}",
-            parse_mode=None,
-        )
-    except Exception:
-        LOGGER.exception(
-            "Pro access was granted, but admin %s could not be notified",
-            user_id,
-        )
-
-    try:
-        await callback.bot.send_message(
-            user_id,
-            "🎉 Ваш Pro-доступ успешно активирован! "
-            "Теперь у вас неограниченный доступ.",
-            parse_mode=None,
-        )
-    except Exception:
-        LOGGER.exception(
-            "Pro access was granted, but user %s could not be notified",
-            user_id,
-        )
-
-
-@ROUTER.message(F.text)
-async def zrl_signature_handler(message: types.Message) -> None:
-    """Verify a submitted Solana signature for the user's pending ZRL invoice."""
-
-    submitted_parts = (message.text or "").strip().split()
-    invoice_token_hint: str | None = None
-    if (
-        len(submitted_parts) == 2
-        and len(submitted_parts[0]) == 16
-        and all(character in "0123456789abcdef" for character in submitted_parts[0])
-    ):
-        invoice_token_hint, tx_signature = submitted_parts
-    elif len(submitted_parts) == 1:
-        tx_signature = submitted_parts[0]
-    else:
-        tx_signature = ""
-
-    base58_alphabet = set(
-        "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-    )
-    if not (
-        80 <= len(tx_signature) <= 100
-        and all(character in base58_alphabet for character in tx_signature)
-    ):
-        await message.answer(
-            "❌ Это не похоже на Solana Transaction Signature. "
-            "Скопируйте полную подпись транзакции и отправьте её одним сообщением.",
-            parse_mode=None,
-        )
-        return
-
-    invoice = await asyncio.to_thread(
-        get_zrl_invoice_for_submission,
-        message.from_user.id,
-        invoice_token_hint,
-    )
-    if invoice is None:
-        await message.answer(
-            "⚠️ Подходящий ZRL-счёт не найден. Создайте новый счёт или "
-            "отправьте данные в формате: <номер_счёта> <TxHash>.",
-            parse_mode=None,
-        )
-        return
-
-    (
-        invoice_token,
-        required_zrl,
-        required_raw_amount,
-        _,
-        created_at_epoch,
-        expires_at_epoch,
-    ) = invoice
-    claim_result = await asyncio.to_thread(
-        claim_zrl_signature,
-        invoice_token,
-        message.from_user.id,
-        tx_signature,
-    )
-    if claim_result == "duplicate":
-        await message.answer(
-            "❌ Эта транзакция уже использовалась для другого счёта.",
-            parse_mode=None,
-        )
-        return
-    if claim_result != "claimed":
-        await message.answer(
-            "⚠️ Этот счёт уже обрабатывается. Создайте новый счёт при необходимости.",
-            parse_mode=None,
-        )
-        return
-
-    status_message = await message.answer(
-        "⏳ Проверяю ZRL-транзакцию в сети Solana..."
-    )
-    try:
-        received_raw = await verify_zrl_transaction(
-            tx_signature,
-            required_raw_amount,
-            created_at_epoch,
-            expires_at_epoch,
-        )
-        user_id = await asyncio.to_thread(
-            complete_zrl_payment,
-            invoice_token,
-        )
-        if user_id is None:
-            raise RuntimeError("Invoice was already processed.")
-        LOGGER.info(
-            "Verified ZRL payment: invoice=%s user=%s received_raw=%s",
-            invoice_token,
-            message.from_user.id,
-            received_raw,
-        )
-        await status_message.edit_text(
-            "🎉 ZRL-платёж подтверждён в сети Solana! "
-            "Ваш Pro-доступ автоматически активирован.",
-            parse_mode=None,
-        )
-    except Exception as exc:
-        reason = str(exc)
-        LOGGER.exception(
-            "Automatic ZRL verification failed for invoice %s",
-            invoice_token,
-        )
-        await asyncio.to_thread(
-            mark_zrl_manual_review,
-            invoice_token,
-            reason,
-        )
-        alert_sent = await notify_admin_about_zrl_claim(
-            message.bot,
-            message.from_user,
-            invoice_token,
-            tx_signature,
-            required_zrl,
-            reason,
-        )
-        if alert_sent:
-            await status_message.edit_text(
-                "⏳ Автоматическая проверка не завершилась. Транзакция "
-                "отправлена администратору для ручной проверки.",
-                parse_mode=None,
-            )
-        else:
-            await status_message.edit_text(
-                "⚠️ Автоматическая проверка не завершилась, и уведомление "
-                "администратору не отправилось. Обратитесь в поддержку.",
-                parse_mode=None,
-            )
-
-
-@ROUTER.message()
-async def unsupported_message_handler(message: types.Message) -> None:
-    await message.answer(
-        "Пожалуйста, отправь фото товара. Для начала работы используй /start."
-    )
-
-
-async def main() -> None:
-    logging.basicConfig(
-        level=os.getenv("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
-
-    bot, openai_client = build_clients()
-    init_usage_db()
-    dispatcher = Dispatcher()
-    dispatcher.include_router(ROUTER)
-
-    LOGGER.info("Zer0Life Commerce AI is starting with model %s", OPENAI_MODEL)
-    await resume_pending_invoice_monitors(bot)
-    await resume_pending_zrl_verifications(bot)
-    start_subscription_auto_renew_checker(bot)
-    try:
-        await dispatcher.start_polling(bot, openai_client=openai_client)
-    finally:
-        pending_tasks = list(INVOICE_MONITOR_TASKS)
-        for task in pending_tasks:
-            task.cancel()
-        if pending_tasks:
-            await asyncio.gather(*pending_tasks, return_exceptions=True)
-
-        background_tasks = list(BACKGROUND_TASKS)
-        for task in background_tasks:
-            task.cancel()
-        if background_tasks:
-            await asyncio.gather(*background_tasks, return_exceptions=True)
-
-        await openai_client.close()
-        await bot.session.close()
-
-
-if __name__ == "__main__":
-    try:
-        keep_alive()
-        asyncio.run(main())
-    except RuntimeError as exc:
-        print(f"Configuration error: {exc}")
-        raise SystemExit(1) from exc
-    except (KeyboardInterrupt, SystemExit):
-        LOGGER.info("Bot stopped.")
-```
