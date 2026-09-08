@@ -1,5 +1,5 @@
-aiogram>=3.13,<4
-aiohttp>=3.9,<4
-flask>=3.0,<4
-openai>=1.40,<2
-requests
+aiogram==3.13.1
+openai>=1.40.0
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+requests>=2.31.0
