@@ -769,13 +769,19 @@ async def main() -> None:
 
     LOGGER.info("Zer0Life Commerce AI is starting...")
     
-    await bot.delete_webhook(drop_pending_updates=True)
-
-    try:
-        await dispatcher.start_polling(bot, openai_client=openai_client)
+        try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        await asyncio.sleep(1)
+        await dispatcher.start_polling(
+            bot, 
+            openai_client=openai_client, 
+            handle_signals=True,
+            close_bot_session=True
+        )
     finally:
         await openai_client.close()
         await bot.session.close()
+
 
 
 if __name__ == "__main__":
