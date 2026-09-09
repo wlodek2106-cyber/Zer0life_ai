@@ -769,11 +769,11 @@ async def main() -> None:
 
     LOGGER.info("Zer0Life Commerce AI is starting...")
     
-    # Жестко сбрасываем старые зависшие сессии Telegram перед стартом
+    # Принудительно сбрасываем любые зависшие сессии Telegram перед стартом пуллинга
     await bot.delete_webhook(drop_pending_updates=True)
     await dispatcher.start_polling(bot, openai_client=openai_client)
 
-        
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
@@ -782,5 +782,3 @@ if __name__ == "__main__":
         raise SystemExit(1) from exc
     except (KeyboardInterrupt, SystemExit):
         LOGGER.info("Bot stopped.")
-
-
