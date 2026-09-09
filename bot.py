@@ -771,7 +771,7 @@ async def main() -> None:
     await bot.delete_webhook(drop_pending_updates=True)
     await dispatcher.start_polling(bot, openai_client=openai_client)
         
-    if __name__ == "__main__":
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except RuntimeError as exc:
@@ -779,3 +779,4 @@ async def main() -> None:
         raise SystemExit(1) from exc
     except (KeyboardInterrupt, SystemExit):
         LOGGER.info("Bot stopped.")
+
