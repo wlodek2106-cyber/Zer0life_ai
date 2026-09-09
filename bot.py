@@ -1,7 +1,7 @@
 """Zer0Life Commerce AI Telegram bot.
 
 The bot receives a product photo and generates an English/Polish marketplace
-listing with OpenAI's vision-capable model.
+listing and image transformations with OpenAI's vision-capable model.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
+from aiogram.types import BufferedInputFile
 from openai import AsyncOpenAI
 
 
@@ -706,25 +707,25 @@ async def photo_action_handler(
     telegram_file_id, caption = pending_photo
     await callback.answer()
 
-    if action == "seo":
-        has_unlimited = is_user_paid(callback.from_user.id)
-        source = "unlimited" if has_unlimited else reserve_free_generation(callback.from_user.id)
-        
-        if not source:
-            await callback.message.answer(
-                "⛔ Бесплатный лимит исчерпан. Выберите способ оплаты:",
-                reply_markup=subscription_keyboard(),
-            )
-            return
+    has_unlimited = is_user_paid(callback.from_user.id)
+    source = "unlimited" if has_unlimited else reserve_free_generation(callback.from_user.id)
+    
+    if not source:
+        await callback.message.answer(
+            "⛔ Бесплатный лимит исчерпан. Выберите способ оплаты:",
+            reply_markup=subscription_keyboard(),
+        )
+        return
 
+    openai_client = AsyncOpenAI(api_key=get_required_env("OPENAI_API_KEY"))
+
+    if action == "seo":
         status_msg = await callback.message.answer("⏳ Генерирую SEO-карточку...")
         try:
             file_info = await bot.get_file(telegram_file_id)
             img_stream = io.BytesIO()
             await bot.download_file(file_info.file_path, destination=img_stream)
             b64_img = base64.b64encode(img_stream.getvalue()).decode("ascii")
-
-            openai_client = AsyncOpenAI(api_key=get_required_env("OPENAI_API_KEY"))
 
             response = await openai_client.chat.completions.create(
                 model=OPENAI_MODEL,
@@ -745,6 +746,52 @@ async def photo_action_handler(
             if source in {"standard", "bonus"}:
                 refund_free_generation(callback.from_user.id, source)
             await status_msg.edit_text("⚠️ Ошибка генерации. Попробуйте еще раз.")
+        return
+
+    elif action in {"remove", "background", "model"}:
+        action_names = {
+            "remove": "удаление фона",
+            "background": "замену фона",
+            "model": "примерку на модель"
+        }
+        status_msg = await callback.message.answer(f"⏳ Выполняю {action_names[action]}...")
+        try:
+            file_info = await bot.get_file(telegram_file_id)
+            img_stream = io.BytesIO()
+            await bot.download_file(file_info.file_path, destination=img_stream)
+            
+            prompt_text = (
+                "Isolate the product on a clean solid white background with studio lighting" if action == "remove" else
+                "Place this exact product into a professional commercial e-commerce studio background with soft lighting" if action == "background" else
+                "Show this clothing item worn naturally by a professional fashion model in a stylish studio setting"
+            )
+
+            img_bytes = img_stream.getvalue()
+            response = await openai_client.images.edit(
+                image=img_bytes,
+                prompt=prompt_text,
+                n=1,
+                size="1024x1024"
+            )
+            
+            image_url = response.data[0].url
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
+                    if resp.status == 200:
+                        img_data = await resp.read()
+                        await status_msg.delete()
+                        await callback.message.answer_photo(
+                            photo=BufferedInputFile(img_data, filename=f"{action}.png"),
+                            caption=f"✅ Готово! ({action_names[action]})"
+                        )
+                        return
+
+            raise RuntimeError("Не удалось скачать обработанное изображение.")
+        except Exception as e:
+            LOGGER.error(f"Image Edit Error ({action}): {e}")
+            if source in {"standard", "bonus"}:
+                refund_free_generation(callback.from_user.id, source)
+            await status_msg.edit_text("⚠️ Ошибка обработки изображения. Попробуйте еще раз.")
         return
 
 
