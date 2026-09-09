@@ -767,7 +767,7 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Commerce AI is     
+    LOGGER.info("Zer0Life Commerce AI is starting...")     
     await bot.delete_webhook(drop_pending_updates=True)
     await dispatcher.start_polling(bot, openai_client=openai_client)
         
