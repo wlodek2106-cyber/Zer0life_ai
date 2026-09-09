@@ -757,7 +757,7 @@ async def main() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
 
-    telegram_token = get_required_env("TELEGRAM_BOT_TOKEN")
+        telegram_token = "8820567588:AAHmA_oj9AyKVqjAFWEoo-ecjHOvhYi6fHg"
     openai_api_key = get_required_env("OPENAI_API_KEY")
 
     bot = Bot(token=telegram_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -767,9 +767,12 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Commerce AI is starting...")     
+    LOGGER.info("Zer0Life Commerce AI is starting...")
+    
+    # Жестко сбрасываем старые зависшие сессии Telegram перед стартом
     await bot.delete_webhook(drop_pending_updates=True)
     await dispatcher.start_polling(bot, openai_client=openai_client)
+
         
 if __name__ == "__main__":
     try:
