@@ -1,8 +1,3 @@
-Добавил полноценную реферальную систему (с генерацией реферальной ссылки, начислением бонусов пригласившему и фиксированием того, кто пригласил) в общий код бота.
-Что добавлено по реферальной системе:
- * Команда /start <user_id>: Если пользователь переходит по реферальной ссылке вида [https://t.me/your_bot?start=123456789](https://t.me/your_bot?start=123456789), бот автоматически проверяет, существует ли он уже в базе. Если это новый пользователь и он не пытается пригласить сам себя, в базу записывается поле referred_by, а пригласившему начисляется бонус (например, +2 бесплатные генерации) и отправляется уведомление.
- * Раздел «👥 Реферальная система»: В меню добавлен обработчик, который показывает пользователю его персональную реферальную ссылку, количество приглашенных друзей и заработанные бонусы.
-Полный код бота (с OpenAI, базой данных, платежными методами и реферальной системой):
 import asyncio
 import base64
 import logging
@@ -13,7 +8,6 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.deep_linking import create_start_link
 from openai import AsyncOpenAI
 
 # Настройка логирования
@@ -63,7 +57,6 @@ async def cmd_start(message: types.Message, command: CommandObject):
             if args and args.isdigit():
                 ref_id = int(args)
                 if ref_id != user_id:  # Защита от самореферала
-                    # Проверяем, существует ли тот, кто пригласил
                     cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (ref_id,))
                     if cursor.fetchone():
                         referred_by = ref_id
@@ -90,7 +83,7 @@ async def cmd_start(message: types.Message, command: CommandObject):
     ])
     
     await message.answer(
-        "👋 Привет! Я **Zer0Life Commerce AI Bot**.\n\n"
+        "👋 Привет! Я Zer0Life Commerce AI Bot.\n\n"
         "Я помогу создать продающие SEO-описания и теги для Etsy, Shopify и Allegro на основе фото вашего товара.",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -102,7 +95,6 @@ async def referral_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     bot_info = await bot.get_me()
     
-    # Считаем количество приглашенных пользователей
     with sqlite3.connect("usage.sqlite3") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users WHERE referred_by = ?", (user_id,))
@@ -261,4 +253,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
