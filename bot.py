@@ -724,7 +724,7 @@ async def photo_action_handler(
         }
         status_msg = await callback.message.answer(f"⏳ Выполняю {action_names[action]}...")
         try:
-            # Используем DALL-E 3 для генерации профессионального фото товара по описанию
+            # Используем DALL-E 2 (стабильная модель, доступная на всех аккаунтах)
             prompt_text = (
                 "Professional e-commerce product photography of this item isolated on a clean solid pure white background, studio lighting, highly detailed" if action == "remove" else
                 "A professional commercial e-commerce studio background setting showcasing this product with soft atmospheric lighting, high-end catalog style" if action == "background" else
@@ -732,11 +732,10 @@ async def photo_action_handler(
             )
 
             response = await openai_client.images.generate(
-                model="dall-e-3",
+                model="dall-e-2",
                 prompt=prompt_text,
                 n=1,
-                size="1024x1024",
-                quality="standard"
+                size="1024x1024"
             )
             
             image_url = response.data[0].url
