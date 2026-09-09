@@ -682,7 +682,6 @@ async def photo_upload_handler(message: types.Message) -> None:
 async def photo_action_handler(
     callback: types.CallbackQuery,
     bot: Bot,
-    openai_client: AsyncOpenAI,
 ) -> None:
     parts = (callback.data or "").split(":", maxsplit=2)
     if len(parts) != 3:
@@ -725,6 +724,8 @@ async def photo_action_handler(
             await bot.download_file(file_info.file_path, destination=img_stream)
             b64_img = base64.b64encode(img_stream.getvalue()).decode("ascii")
 
+            openai_client = AsyncOpenAI(api_key=get_required_env("OPENAI_API_KEY"))
+
             response = await openai_client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{
@@ -739,7 +740,8 @@ async def photo_action_handler(
             result_text = response.choices[0].message.content
             await status_msg.delete()
             await callback.message.answer(result_text, parse_mode=None)
-        except Exception:
+        except Exception as e:
+            LOGGER.error(f"OpenAI error: {e}")
             if source in {"standard", "bonus"}:
                 refund_free_generation(callback.from_user.id, source)
             await status_msg.edit_text("⚠️ Ошибка генерации. Попробуйте еще раз.")
@@ -758,10 +760,9 @@ async def main() -> None:
     )
 
     telegram_token = "8820567588:AAHmA_oj9AyKVqjAFWEoo-ecjHOvhYi6fHg"
-    openai_api_key = get_required_env("OPENAI_API_KEY")
+    get_required_env("OPENAI_API_KEY")
 
     bot = Bot(token=telegram_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    openai_client = AsyncOpenAI(api_key=openai_api_key)
 
     init_usage_db()
     dispatcher = Dispatcher()
@@ -769,9 +770,8 @@ async def main() -> None:
 
     LOGGER.info("Zer0Life Commerce AI is starting...")
     
-    # Принудительно сбрасываем любые зависшие сессии Telegram перед стартом пуллинга
     await bot.delete_webhook(drop_pending_updates=True)
-    await dispatcher.start_polling(bot, openai_client=openai_client)
+    await dispatcher.start_polling(bot)
 
 
 if __name__ == "__main__":
