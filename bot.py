@@ -757,7 +757,7 @@ async def main() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
 
-        telegram_token = "8820567588:AAHmA_oj9AyKVqjAFWEoo-ecjHOvhYi6fHg"
+    telegram_token = "8820567588:AAHmA_oj9AyKVqjAFWEoo-ecjHOvhYi6fHg"
     openai_api_key = get_required_env("OPENAI_API_KEY")
 
     bot = Bot(token=telegram_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
