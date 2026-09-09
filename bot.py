@@ -1,255 +1,820 @@
+"""Zer0Life Commerce AI Telegram bot.
+
+The bot receives a product photo and generates an English/Polish marketplace
+listing with OpenAI's vision-capable model.
+"""
+
+from __future__ import annotations
+
 import asyncio
 import base64
+from datetime import datetime, timedelta, timezone
+import io
+import json
 import logging
-import sqlite3
 import os
-from aiogram import Bot, Dispatcher, F, types
-from aiogram.filters import Command, CommandObject
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import secrets
+import sqlite3
+import time
+from decimal import Decimal, InvalidOperation, ROUND_UP
+from pathlib import Path
+from typing import Final
+
+import aiohttp
+from aiogram import Bot, Dispatcher, F, Router, types
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import Command
 from openai import AsyncOpenAI
+from keep_alive import keep_alive
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LOGGER = logging.getLogger(__name__)
+ROUTER = Router()
+INVOICE_MONITOR_TASKS: set[asyncio.Task[None]] = set()
+BACKGROUND_TASKS: set[asyncio.Task[None]] = set()
 
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-# Инициализация базы данных SQLite
-def init_db():
-    with sqlite3.connect("usage.sqlite3") as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                generations_left INTEGER DEFAULT 3,
-                is_pro INTEGER DEFAULT 0,
-                referred_by INTEGER,
-                zrl_balance REAL DEFAULT 0.0
+def utc_now() -> datetime:
+    """Return a naive UTC datetime for the existing SQLite ISO format."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+MAX_TELEGRAM_MESSAGE_LENGTH: Final[int] = 4096
+FREE_GENERATIONS_PER_USER: Final[int] = 3
+PRO_SUBSCRIPTION_DAYS: Final[int] = 30
+ZRL_RENEWAL_COST: Final[float] = 100_000.0
+BOT_USERNAME: Final[str] = "ZEROLIFEAiCOMMERCE_bot"
+USAGE_DB_PATH: Final[str] = os.getenv(
+    "USAGE_DB_PATH",
+    str(Path(__file__).resolve().parent / "usage.sqlite3"),
+)
+OPENAI_MODEL: Final[str] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_IMAGE_MODEL: Final[str] = os.getenv(
+    "OPENAI_IMAGE_MODEL",
+    "gpt-image-1",
+)
+OPENAI_VISION_TIMEOUT_SECONDS: Final[int] = 60
+OPENAI_IMAGE_TIMEOUT_SECONDS: Final[int] = 120
+CRYPTOBOT_API_BASE: Final[str] = "https://pay.crypt.bot/api/"
+CRYPTO_INVOICE_AMOUNT: Final[str] = "10"
+CRYPTO_DONATION_AMOUNT: Final[str] = "10"
+CRYPTO_INVOICE_TTL_SECONDS: Final[int] = 3600
+CRYPTO_POLL_INTERVAL_SECONDS: Final[int] = 10
+DEPOSIT_SOLANA_WALLET: Final[str] = os.getenv(
+    "DEPOSIT_SOLANA_WALLET",
+    "BEUYL2iHN1PPsMvE94pMT3aKbJAVsF4HqBgzwYSu2Wn7",
+)
+ZRL_MINT_ADDRESS: Final[str] = os.getenv(
+    "ZRL_MINT_ADDRESS",
+    "AyfWjjJ9FPYfsgKCUaZ7PwMpoHi8ujf4m3pYxy7MmDiq",
+)
+PRO_SUBSCRIPTION_USD_PRICE: Final[Decimal] = Decimal(
+    os.getenv("PRO_SUBSCRIPTION_USD_PRICE", "10.0")
+)
+JUPITER_PRICE_V2_URL: Final[str] = "https://api.jup.ag/price/v2"
+JUPITER_PRICE_V3_URL: Final[str] = "https://api.jup.ag/price/v3"
+SOLANA_RPC_URL: Final[str] = os.getenv(
+    "SOLANA_RPC_URL",
+    "https://api.mainnet-beta.solana.com",
+)
+SOLANA_EXPLORER_URL: Final[str] = "https://solscan.io/tx/"
+ZRL_API_TIMEOUT_SECONDS: Final[int] = 20
+ZRL_INVOICE_TTL_SECONDS: Final[int] = 15 * 60
+ZRL_UNIQUE_AMOUNT_VARIANTS: Final[int] = 100_000
+REVOLUT_PAYMENT_URL: Final[str] = "https://revolut.me/vpalamarchuk91"
+PAYPAL_PAYMENT_URL: Final[str] = "https://www.paypal.me/Volodymyr222/10usd"
+
+PAYMENT_METHODS: Final[dict[str, str]] = {
+    "card": "💳 Bank Card / BLIK",
+    "crypto": "🪙 CryptoBot (USDT)",
+    "zrl": "💎 Оплатить токеном ZRL (Solana)",
+    "paypal": "🅿️ PayPal / International",
+}
+
+LISTING_PROMPT: Final[str] = """
+You are an e-commerce copywriter specializing in Etsy, Shopify, and Allegro.
+Analyze the product photo carefully. Do not invent brand names, materials,
+measurements, certifications, or features that cannot be reasonably inferred
+from the image. If an important detail is uncertain, use neutral wording.
+
+Create a complete marketplace listing in English and Polish.
+
+Use exactly this structure:
+
+📦 PRODUCT LISTING
+
+📌 Title (EN): [SEO-friendly title, maximum 140 characters]
+📌 Title (PL): [Natural Polish title]
+
+📝 Description (EN):
+[Clear, persuasive description. Mention only visible or safely inferable details.]
+
+📝 Description (PL):
+[Natural Polish translation/adaptation of the description.]
+
+🏷️ SEO Tags (13):
+[Exactly 13 unique, relevant tags. Every tag must be 20 characters or
+fewer, including spaces. Do not use # symbols. Use short searchable phrases.]
+
+📋 Copy-paste tags:
+[The same 13 tags on one line, formatted exactly as:
+tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, tag11, tag12, tag13]
+""".strip()
+
+
+def get_required_env(name: str) -> str:
+    """Read a required environment variable with a useful startup error."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            "Add it to environment variables before starting the bot."
+        )
+    return value
+
+
+def init_usage_db() -> None:
+    """Create local usage and payment tables if they do not exist yet."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_usage (
+                telegram_user_id INTEGER PRIMARY KEY,
+                generations_used INTEGER NOT NULL DEFAULT 0
+                    CHECK (generations_used >= 0),
+                subscription_status TEXT NOT NULL DEFAULT 'free',
+                subscription_plan TEXT NOT NULL DEFAULT 'free',
+                is_pro INTEGER NOT NULL DEFAULT 0,
+                paid_at TEXT,
+                crypto_invoice_id INTEGER,
+                referrer_id INTEGER,
+                referral_count INTEGER NOT NULL DEFAULT 0,
+                bonus_generations INTEGER NOT NULL DEFAULT 0,
+                subscription_expiry TEXT,
+                auto_renew INTEGER NOT NULL DEFAULT 1,
+                notified_expiry INTEGER NOT NULL DEFAULT 0,
+                zrl_balance REAL NOT NULL DEFAULT 0.0,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
-        """)
-        conn.commit()
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS crypto_invoices (
+                invoice_id INTEGER PRIMARY KEY,
+                telegram_user_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'active',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                paid_at TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pending_photos (
+                photo_token TEXT PRIMARY KEY,
+                telegram_user_id INTEGER NOT NULL,
+                telegram_file_id TEXT NOT NULL,
+                caption TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
 
-init_db()
 
-# Состояния FSM
-class ListingStates(StatesGroup):
-    waiting_for_photo = State()
-
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message, command: CommandObject):
-    user_id = message.from_user.id
-    args = command.args  # Реферальный аргумент (если перешли по ссылке ?start=ID)
-
-    with sqlite3.connect("usage.sqlite3") as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, referred_by FROM users WHERE user_id = ?", (user_id,))
-        user_row = cursor.fetchone()
-
-        if not user_row:
-            # Новый пользователь
-            referred_by = None
-            if args and args.isdigit():
-                ref_id = int(args)
-                if ref_id != user_id:  # Защита от самореферала
-                    cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (ref_id,))
-                    if cursor.fetchone():
-                        referred_by = ref_id
-
-            cursor.execute("INSERT INTO users (user_id, referred_by) VALUES (?, ?)", (user_id, referred_by))
-            conn.commit()
-
-            # Если пользователь пришел по реферальной ссылке — начисляем бонус пригласившему
-            if referred_by:
-                cursor.execute("UPDATE users SET generations_left = generations_left + 2 WHERE user_id = ?", (referred_by,))
-                conn.commit()
-                try:
-                    await bot.send_message(
-                        referred_by, 
-                        "🎉 По вашей реферальной ссылке зарегистрировался новый пользователь! Вам начислено +2 бесплатные генерации."
-                    )
-                except Exception:
-                    pass
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Создать листинг (SEO)", callback_data="start_listing")],
-        [InlineKeyboardButton(text="💎 Купить PRO подписку", callback_data="buy_pro")],
-        [InlineKeyboardButton(text="👥 Реферальная система", callback_data="referral")]
-    ])
-    
-    await message.answer(
-        "👋 Привет! Я Zer0Life Commerce AI Bot.\n\n"
-        "Я помогу создать продающие SEO-описания и теги для Etsy, Shopify и Allegro на основе фото вашего товара.",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
+def register_user(
+    telegram_user_id: int,
+    referrer_id: int | None = None,
+) -> bool:
+    """Create a user and atomically reward a valid first-time referral."""
+    connection = sqlite3.connect(
+        USAGE_DB_PATH,
+        timeout=30,
+        isolation_level="IMMEDIATE",
     )
+    try:
+        existing_user = connection.execute(
+            """
+            SELECT 1
+            FROM user_usage
+            WHERE telegram_user_id = ?
+            """,
+            (telegram_user_id,),
+        ).fetchone()
 
-# Меню реферальной системы
-@dp.callback_query(F.data == "referral")
-async def referral_menu(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    bot_info = await bot.get_me()
-    
-    with sqlite3.connect("usage.sqlite3") as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users WHERE referred_by = ?", (user_id,))
-        ref_count = cursor.fetchone()[0]
+        if existing_user is not None:
+            connection.commit()
+            return False
 
-    ref_link = f"https://t.me/{bot_info.username}?start={user_id}"
+        valid_referrer_id = (
+            referrer_id
+            if referrer_id is not None
+            and referrer_id > 0
+            and referrer_id != telegram_user_id
+            else None
+        )
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
-    ])
+        connection.execute(
+            """
+            INSERT INTO user_usage
+                (telegram_user_id, generations_used, referrer_id)
+            VALUES (?, 0, ?)
+            """,
+            (telegram_user_id, valid_referrer_id),
+        )
 
-    text = (
-        "👥 **Реферальная система**\n\n"
-        "Приглашайте друзей и получайте **+2 бесплатные генерации** за каждого приглашенного!\n\n"
-        f"🔗 Ваша реферальная ссылка:\n`{ref_link}`\n\n"
-        f"📊 Приглашено друзей: **{ref_count}**"
+        if valid_referrer_id is None:
+            connection.commit()
+            return False
+
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO user_usage
+                (telegram_user_id, generations_used)
+            VALUES (?, 0)
+            """,
+            (valid_referrer_id,),
+        )
+
+        connection.execute(
+            """
+            UPDATE user_usage
+            SET referral_count = referral_count + 1,
+                bonus_generations = bonus_generations + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_user_id = ?
+            """,
+            (valid_referrer_id,),
+        )
+
+        connection.commit()
+        return True
+
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def get_referral_stats(
+    telegram_user_id: int,
+) -> tuple[int, int]:
+    """Return invited-user count and available bonus generations."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO user_usage
+                (telegram_user_id, generations_used)
+            VALUES (?, 0)
+            """,
+            (telegram_user_id,),
+        )
+
+        row = connection.execute(
+            """
+            SELECT referral_count, bonus_generations
+            FROM user_usage
+            WHERE telegram_user_id = ?
+            """,
+            (telegram_user_id,),
+        ).fetchone()
+
+    return int(row[0]), int(row[1])
+
+
+def save_pending_photo(
+    telegram_user_id: int,
+    telegram_file_id: str,
+    caption: str | None,
+) -> str:
+    """Store a Telegram photo reference for subsequent actions."""
+    photo_token = secrets.token_hex(8)
+
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO pending_photos
+                (photo_token, telegram_user_id, telegram_file_id, caption)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                photo_token,
+                telegram_user_id,
+                telegram_file_id,
+                caption[:2000] if caption else None,
+            ),
+        )
+
+    return photo_token
+
+
+def get_pending_photo(
+    photo_token: str,
+    telegram_user_id: int,
+) -> tuple[str, str | None] | None:
+    """Load a saved photo only for its owner."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT telegram_file_id, caption
+            FROM pending_photos
+            WHERE photo_token = ?
+              AND telegram_user_id = ?
+            """,
+            (photo_token, telegram_user_id),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return (str(row[0]), str(row[1]) if row[1] is not None else None)
+
+
+def reserve_free_generation(
+    telegram_user_id: int,
+) -> str | None:
+    """Atomically consume a standard or bonus generation."""
+    connection = sqlite3.connect(
+        USAGE_DB_PATH,
+        timeout=30,
+        isolation_level="IMMEDIATE",
     )
-    
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
-    await callback.answer()
+    try:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO user_usage
+                (telegram_user_id, generations_used)
+            VALUES (?, 0)
+            """,
+            (telegram_user_id,),
+        )
 
-# Меню выбора метода оплаты PRO
-@dp.callback_query(F.data == "buy_pro")
-async def buy_pro_menu(callback: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Revolut / Банковская карта", callback_data="pay_revolut")],
-        [InlineKeyboardButton(text="🌐 PayPal", callback_data="pay_paypal")],
-        [InlineKeyboardButton(text="🪙 Crypto (CryptoBot / USDT)", callback_data="pay_crypto")],
-        [InlineKeyboardButton(text="💎 Оплатить токенами ZRL", callback_data="pay_zrl")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
-    ])
-    await callback.message.edit_text(
-        "💎 **Покупка PRO-статуса**\n\nВыберите удобный способ оплаты:",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
+        updated = connection.execute(
+            """
+            UPDATE user_usage
+            SET generations_used = generations_used + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_user_id = ?
+              AND generations_used < ?
+            """,
+            (telegram_user_id, FREE_GENERATIONS_PER_USER),
+        )
+
+        if updated.rowcount == 1:
+            connection.commit()
+            return "standard"
+
+        updated = connection.execute(
+            """
+            UPDATE user_usage
+            SET bonus_generations = bonus_generations - 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_user_id = ?
+              AND bonus_generations > 0
+            """,
+            (telegram_user_id,),
+        )
+
+        connection.commit()
+        return "bonus" if updated.rowcount == 1 else None
+
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def refund_free_generation(
+    telegram_user_id: int,
+    source: str,
+) -> None:
+    """Return a reserved generation when processing fails."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        if source == "bonus":
+            connection.execute(
+                """
+                UPDATE user_usage
+                SET bonus_generations = bonus_generations + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE telegram_user_id = ?
+                """,
+                (telegram_user_id,),
+            )
+        elif source == "standard":
+            connection.execute(
+                """
+                UPDATE user_usage
+                SET generations_used = CASE
+                        WHEN generations_used > 0
+                        THEN generations_used - 1
+                        ELSE 0
+                    END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE telegram_user_id = ?
+                """,
+                (telegram_user_id,),
+            )
+
+
+def get_remaining_generations(
+    telegram_user_id: int,
+) -> int:
+    """Return remaining free and bonus generations."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT generations_used, bonus_generations
+            FROM user_usage
+            WHERE telegram_user_id = ?
+            """,
+            (telegram_user_id,),
+        ).fetchone()
+
+    if row is None:
+        return FREE_GENERATIONS_PER_USER
+
+    standard_remaining = max(
+        0,
+        FREE_GENERATIONS_PER_USER - int(row[0]),
     )
-    await callback.answer()
+    return standard_remaining + int(row[1])
 
-# Хендлеры платежных систем
-@dp.callback_query(F.data == "pay_revolut")
-async def pay_revolut(callback: types.CallbackQuery):
-    await callback.message.answer("🔗 Ссылка на оплату через **Revolut**: [Нажмите для оплаты](https://revolut.me/yourlink)", parse_mode="Markdown")
-    await callback.answer()
 
-@dp.callback_query(F.data == "pay_paypal")
-async def pay_paypal(callback: types.CallbackQuery):
-    await callback.message.answer("🌐 Ссылка на оплату через **PayPal**: [Нажмите для оплаты](https://paypal.me/yourlink)", parse_mode="Markdown")
-    await callback.answer()
+def is_user_paid(telegram_user_id: int) -> bool:
+    """Return whether the user has active unlimited access."""
+    with sqlite3.connect(USAGE_DB_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT subscription_status,
+                   subscription_plan,
+                   is_pro,
+                   subscription_expiry
+            FROM user_usage
+            WHERE telegram_user_id = ?
+            """,
+            (telegram_user_id,),
+        ).fetchone()
 
-@dp.callback_query(F.data == "pay_crypto")
-async def pay_crypto(callback: types.CallbackQuery):
-    await callback.message.answer("🪙 Ссылка на оплату через **CryptoBot**: [Создать инвойс в крипте](https://t.me/CryptoBot)", parse_mode="Markdown")
-    await callback.answer()
-
-@dp.callback_query(F.data == "pay_zrl")
-async def pay_zrl(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    with sqlite3.connect("usage.sqlite3") as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT zrl_balance FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        zrl_balance = row[0] if row else 0.0
-
-    if zrl_balance >= 10.0:
-        with sqlite3.connect("usage.sqlite3") as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE users SET zrl_balance = zrl_balance - 10.0, is_pro = 1 WHERE user_id = ?", (user_id,))
-            conn.commit()
-        await callback.message.answer("✅ Успешно! Вы активировали PRO-статус за токены ZRL.")
-    else:
-        await callback.message.answer(f"❌ Недостаточно токенов ZRL. Ваш баланс: {zrl_balance} ZRL. Требуется: 10 ZRL.")
-    await callback.answer()
-
-@dp.callback_query(F.data == "back_to_main")
-async def back_to_main(callback: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Создать листинг (SEO)", callback_data="start_listing")],
-        [InlineKeyboardButton(text="💎 Купить PRO подписку", callback_data="buy_pro")],
-        [InlineKeyboardButton(text="👥 Реферальная система", callback_data="referral")]
-    ])
-    await callback.message.edit_text(
-        "👋 Главное меню:\n\nЯ помогу создать продающие SEO-описания и теги для Etsy, Shopify и Allegro.",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
-    await callback.answer()
-
-@dp.callback_query(F.data == "start_listing")
-async def start_listing(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer("📸 Пожалуйста, отправьте фотографию вашего товара:")
-    await state.set_state(ListingStates.waiting_for_photo)
-    await callback.answer()
-
-@dp.message(ListingStates.waiting_for_photo, F.photo)
-async def process_photo(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    
-    with sqlite3.connect("usage.sqlite3") as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT generations_left, is_pro FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        
     if not row:
-        generations_left, is_pro = 3, 0
-    else:
-        generations_left, is_pro = row[0], row[1]
-    
-    if generations_left <= 0 and not is_pro:
-        await message.answer("❌ У вас закончились бесплатные генерации. Пригласите друзей по реферальной ссылке или оформите PRO подписку.")
-        await state.clear()
-        return
+        return False
 
-    await message.answer("⏳ Анализирую товар и генерирую SEO-листинг (EN / PL)...")
+    if not (row[0] == "paid" or row[1] == "unlimited" or bool(row[2])):
+        return False
+
+    if not row[3]:
+        return True
+
+    try:
+        return datetime.fromisoformat(str(row[3])) > utc_now()
+    except ValueError:
+        return False
+
+
+# Клавиатуры интерфейса
+def main_menu_keyboard() -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="💎 Купить Pro / Безлимит",
+                    callback_data="sub:menu",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="🤝 Партнёрская программа",
+                    callback_data="referral:menu",
+                )
+            ],
+        ]
+    )
+
+
+def photo_action_keyboard(photo_token: str) -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="📦 SEO-карточка (EN/PL)",
+                    callback_data=f"photo:seo:{photo_token}",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="✂️ Удалить фон",
+                    callback_data=f"photo:remove:{photo_token}",
+                ),
+                types.InlineKeyboardButton(
+                    text="🌄 Заменить фон",
+                    callback_data=f"photo:background:{photo_token}",
+                ),
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="🧍 Примерка на модель",
+                    callback_data=f"photo:model:{photo_token}",
+                )
+            ],
+        ]
+    )
+
+
+def subscription_keyboard() -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text=PAYMENT_METHODS["crypto"],
+                    callback_data="pay:crypto",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text=PAYMENT_METHODS["card"],
+                    callback_data="pay:card",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text=PAYMENT_METHODS["paypal"],
+                    callback_data="pay:paypal",
+                )
+            ],
+        ]
+    )
+
+
+@ROUTER.message(Command("start"))
+async def start_handler(message: types.Message) -> None:
+    telegram_user_id = message.from_user.id
+    referrer_id: int | None = None
+
+    command_parts = (message.text or "").split(maxsplit=1)
+    if len(command_parts) == 2 and command_parts[1].startswith("ref_"):
+        try:
+            referrer_id = int(command_parts[1].removeprefix("ref_"))
+        except ValueError:
+            pass
+
+    referral_rewarded = await asyncio.to_thread(
+        register_user,
+        telegram_user_id,
+        referrer_id,
+    )
+
+    if referral_rewarded and referrer_id is not None:
+        try:
+            await message.bot.send_message(
+                referrer_id,
+                "🎉 Новый реферал зарегистрировался! Вам начислена 1 бесплатная генерация.",
+                parse_mode=None,
+            )
+        except Exception:
+            pass
+
+    await message.answer(
+        "👋 Я <b>Zer0Life Commerce AI</b>.\n\n"
+        "📸 Отправь фото товара, и я создам:\n"
+        "• SEO-заголовок и описание на EN и PL\n"
+        "• 13 SEO-тегов\n"
+        "• Удаление/замену фона и примерку на модель\n\n"
+        "Команда /help покажет подсказку.",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+@ROUTER.message(Command("ref"))
+async def referral_command_handler(message: types.Message) -> None:
+    await send_referral_menu(message, message.from_user.id)
+
+
+async def send_referral_menu(
+    message: types.Message,
+    telegram_user_id: int,
+) -> None:
+    referral_count, bonus_generations = await asyncio.to_thread(
+        get_referral_stats,
+        telegram_user_id,
+    )
+    referral_link = f"https://t.me/{BOT_USERNAME}?start=ref_{telegram_user_id}"
+
+    await message.answer(
+        "🤝 Партнёрская программа\n\n"
+        f"Ваша уникальная ссылка:\n{referral_link}\n\n"
+        f"👥 Приглашено пользователей: {referral_count}\n"
+        f"🎁 Доступно бонусных генераций: {bonus_generations}",
+        parse_mode=None,
+    )
+
+
+@ROUTER.callback_query(F.data == "referral:menu")
+async def referral_menu_handler(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message is not None:
+        await send_referral_menu(callback.message, callback.from_user.id)
+
+
+@ROUTER.callback_query(F.data == "sub:menu")
+async def sub_menu_handler(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message is not None:
+        await callback.message.answer(
+            "💎 <b>Pro-доступ (30 дней)</b> — 10 USD\n\n"
+            "Выберите удобный способ оплаты:",
+            reply_markup=subscription_keyboard(),
+        )
+
+
+@ROUTER.callback_query(F.data == "pay:card")
+async def pay_card_handler(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message is not None:
+        await callback.message.answer(
+            f"💳 Оплата картой / BLIK:\n\nПерейдите по ссылке для оплаты: {REVOLUT_PAYMENT_URL}\n\n"
+            "После оплаты отправьте квитанцию или напишите администратору.",
+            parse_mode=None,
+        )
+
+
+@ROUTER.callback_query(F.data == "pay:paypal")
+async def pay_paypal_handler(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message is not None:
+        await callback.message.answer(
+            f"🅿️ Оплата через PayPal:\n\nСсылка: {PAYPAL_PAYMENT_URL}\n\n"
+            "После оплаты сообщите администратору для активации Pro.",
+            parse_mode=None,
+        )
+
+
+@ROUTER.callback_query(F.data == "pay:crypto")
+async def pay_crypto_handler(callback: types.CallbackQuery, bot: Bot) -> None:
+    await callback.answer()
+    api_token = os.getenv("CRYPTOBOT_API_TOKEN", "").strip()
+    if not api_token:
+        await callback.message.answer(
+            "⚠️ Криптоплатежи временно недоступны (не настроен токен)."
+        )
+        return
     
     try:
-        photo = message.photo[-1]
-        file_info = await bot.get_file(photo.file_id)
-        file_bytes = await bot.download_file(file_info.file_path)
-        encoded_image = base64.b64encode(file_bytes.read()).decode("utf-8")
+        # Упрощенный шаблон для криптоинвойса через CryptoBot API
+        async with aiohttp.ClientSession(
+            base_url=CRYPTOBOT_API_BASE,
+            headers={"Crypto-Pay-API-Token": api_token}
+        ) as session:
+            async with session.post("createInvoice", json={
+                "asset": "USDT",
+                "amount": "10",
+                "description": "Zer0Life Commerce AI Pro 30 days",
+                "payload": f"zerolife:{callback.from_user.id}",
+                "expires_in": 3600
+            }) as resp:
+                data = await resp.json()
+                if data.get("ok"):
+                    url = data["result"].get("bot_invoice_url") or data["result"].get("pay_url")
+                    await callback.message.answer(
+                        f"🪙 Счёт создан через CryptoBot:\n\nОплатите по ссылке: {url}",
+                        parse_mode=None
+                    )
+                else:
+                    await callback.message.answer("⚠️ Не удалось создать криптосчёт.")
+    except Exception:
+        await callback.message.answer("⚠️ Ошибка связи с платежным шлюзом.")
+
+
+@ROUTER.message(Command("help"))
+async def help_handler(message: types.Message) -> None:
+    await message.answer(
+        "Отправь фото товара одним сообщением и выбери действие: создание SEO-карточки, удаление или замена фона, примерка на модель."
+    )
+
+
+@ROUTER.message(F.photo)
+async def photo_upload_handler(message: types.Message) -> None:
+    photo_token = await asyncio.to_thread(
+        save_pending_photo,
+        message.from_user.id,
+        message.photo[-1].file_id,
+        message.caption,
+    )
+    await message.answer(
+        "Выберите, что сделать с фотографией:",
+        reply_markup=photo_action_keyboard(photo_token),
+    )
+
+
+@ROUTER.callback_query(F.data.startswith("photo:"))
+async def photo_action_handler(
+    callback: types.CallbackQuery,
+    bot: Bot,
+    openai_client: AsyncOpenAI,
+) -> None:
+    parts = (callback.data or "").split(":", maxsplit=2)
+    if len(parts) != 3:
+        await callback.answer("Некорректное действие.", show_alert=True)
+        return
+
+    _, action, photo_token = parts
+    pending_photo = await asyncio.to_thread(
+        get_pending_photo,
+        photo_token,
+        callback.from_user.id,
+    )
+
+    if pending_photo is None:
+        await callback.answer("Фото не найдено. Отправьте снова.", show_alert=True)
+        return
+
+    if callback.message is None:
+        await callback.answer()
+        return
+
+    telegram_file_id, caption = pending_photo
+    await callback.answer()
+
+    if action == "seo":
+        # Проверка лимитов и генерация SEO листинга
+        has_unlimited = is_user_paid(callback.from_user.id)
+        source = "unlimited" if has_unlimited else reserve_free_generation(callback.from_user.id)
         
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert e-commerce copywriter. Analyze the product and generate an SEO-optimized listing title, description, and 13 tags in both English and Polish for Etsy/Allegro."
-                },
-                {
+        if not source:
+            await callback.message.answer(
+                "⛔ Бесплатный лимит исчерпан. Выберите способ оплаты:",
+                reply_markup=subscription_keyboard(),
+            )
+            return
+
+        status_msg = await callback.message.answer("⏳ Генерирую SEO-карточку...")
+        try:
+            file_info = await bot.get_file(telegram_file_id)
+            img_stream = io.BytesIO()
+            await bot.download_file(file_info.file_path, destination=img_stream)
+            b64_img = base64.b64encode(img_stream.getvalue()).decode("ascii")
+
+            response = await openai_client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Generate a complete e-commerce listing based on this photo."},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                        {"type": "text", "text": LISTING_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}}
                     ]
-                }
-            ],
-            max_tokens=1500
-        )
-        result_text = response.choices[0].message.content
-        
-        if not is_pro:
-            with sqlite3.connect("usage.sqlite3") as conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE users SET generations_left = generations_left - 1 WHERE user_id = ?", (user_id,))
-                conn.commit()
-            
-        await message.answer(result_text, parse_mode="Markdown")
-        
-    except Exception as e:
-        logging.error(f"Error generating listing: {e}")
-        await message.answer("⚠️ Произошла ошибка при обращении к AI. Попробуйте позже.")
-    finally:
-        await state.clear()
+                }],
+                max_tokens=1200
+            )
+            result_text = response.choices[0].message.content
+            await status_msg.delete()
+            await callback.message.answer(result_text, parse_mode=None)
+        except Exception:
+            if source in {"standard", "bonus"}:
+                refund_free_generation(callback.from_user.id, source)
+            await status_msg.edit_text("⚠️ Ошибка генерации. Попробуйте еще раз.")
+        return
 
-async def main():
-    await dp.start_polling(bot)
+
+@ROUTER.message()
+async def unsupported_message_handler(message: types.Message) -> None:
+    await message.answer("Пожалуйста, отправь фото товара. Для начала работы используй /start.")
+
+
+async def main() -> None:
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+    telegram_token = get_required_env("TELEGRAM_BOT_TOKEN")
+    openai_api_key = get_required_env("OPENAI_API_KEY")
+
+    bot = Bot(token=telegram_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    openai_client = AsyncOpenAI(api_key=openai_api_key)
+
+    init_usage_db()
+    dispatcher = Dispatcher()
+    dispatcher.include_router(ROUTER)
+
+    LOGGER.info("Zer0Life Commerce AI is starting...")
+    
+    # Сброс зависших сессий во избежание TelegramConflictError
+    await bot.delete_webhook(drop_pending_updates=True)
+
+    try:
+        await dispatcher.start_polling(bot, openai_client=openai_client)
+    finally:
+        await openai_client.close()
+        await bot.session.close()
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        keep_alive()
+        asyncio.run(main())
+    except RuntimeError as exc:
+        print(f"Configuration error: {exc}")
+        raise SystemExit(1) from exc
+    except (KeyboardInterrupt, SystemExit):
+        LOGGER.info("Bot stopped.")
