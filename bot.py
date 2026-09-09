@@ -8,15 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import io
-import json
 import logging
 import os
 import secrets
 import sqlite3
-import time
-from decimal import Decimal, InvalidOperation, ROUND_UP
+from decimal import Decimal
 from pathlib import Path
 from typing import Final
 
@@ -26,7 +24,6 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from openai import AsyncOpenAI
-from keep_alive import keep_alive
 
 
 LOGGER = logging.getLogger(__name__)
@@ -419,30 +416,6 @@ def refund_free_generation(
             )
 
 
-def get_remaining_generations(
-    telegram_user_id: int,
-) -> int:
-    """Return remaining free and bonus generations."""
-    with sqlite3.connect(USAGE_DB_PATH) as connection:
-        row = connection.execute(
-            """
-            SELECT generations_used, bonus_generations
-            FROM user_usage
-            WHERE telegram_user_id = ?
-            """,
-            (telegram_user_id,),
-        ).fetchone()
-
-    if row is None:
-        return FREE_GENERATIONS_PER_USER
-
-    standard_remaining = max(
-        0,
-        FREE_GENERATIONS_PER_USER - int(row[0]),
-    )
-    return standard_remaining + int(row[1])
-
-
 def is_user_paid(telegram_user_id: int) -> bool:
     """Return whether the user has active unlimited access."""
     with sqlite3.connect(USAGE_DB_PATH) as connection:
@@ -473,7 +446,6 @@ def is_user_paid(telegram_user_id: int) -> bool:
         return False
 
 
-# Клавиатуры интерфейса
 def main_menu_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -661,7 +633,6 @@ async def pay_crypto_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         return
     
     try:
-        # Упрощенный шаблон для криптоинвойса через CryptoBot API
         async with aiohttp.ClientSession(
             base_url=CRYPTOBOT_API_BASE,
             headers={"Crypto-Pay-API-Token": api_token}
@@ -737,7 +708,6 @@ async def photo_action_handler(
     await callback.answer()
 
     if action == "seo":
-        # Проверка лимитов и генерация SEO листинга
         has_unlimited = is_user_paid(callback.from_user.id)
         source = "unlimited" if has_unlimited else reserve_free_generation(callback.from_user.id)
         
@@ -799,7 +769,6 @@ async def main() -> None:
 
     LOGGER.info("Zer0Life Commerce AI is starting...")
     
-    # Сброс зависших сессий во избежание TelegramConflictError
     await bot.delete_webhook(drop_pending_updates=True)
 
     try:
@@ -811,7 +780,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     try:
-        keep_alive()
         asyncio.run(main())
     except RuntimeError as exc:
         print(f"Configuration error: {exc}")
