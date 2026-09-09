@@ -1,7 +1,7 @@
 """Zer0Life Commerce AI Telegram bot.
 
 The bot receives a product photo and generates an English/Polish marketplace
-listing and image transformations with OpenAI's vision-capable model.
+listing and image transformations with OpenAI's models.
 """
 
 from __future__ import annotations
@@ -48,38 +48,6 @@ USAGE_DB_PATH: Final[str] = os.getenv(
     str(Path(__file__).resolve().parent / "usage.sqlite3"),
 )
 OPENAI_MODEL: Final[str] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-OPENAI_IMAGE_MODEL: Final[str] = os.getenv(
-    "OPENAI_IMAGE_MODEL",
-    "gpt-image-1",
-)
-OPENAI_VISION_TIMEOUT_SECONDS: Final[int] = 60
-OPENAI_IMAGE_TIMEOUT_SECONDS: Final[int] = 120
-CRYPTOBOT_API_BASE: Final[str] = "https://pay.crypt.bot/api/"
-CRYPTO_INVOICE_AMOUNT: Final[str] = "10"
-CRYPTO_DONATION_AMOUNT: Final[str] = "10"
-CRYPTO_INVOICE_TTL_SECONDS: Final[int] = 3600
-CRYPTO_POLL_INTERVAL_SECONDS: Final[int] = 10
-DEPOSIT_SOLANA_WALLET: Final[str] = os.getenv(
-    "DEPOSIT_SOLANA_WALLET",
-    "BEUYL2iHN1PPsMvE94pMT3aKbJAVsF4HqBgzwYSu2Wn7",
-)
-ZRL_MINT_ADDRESS: Final[str] = os.getenv(
-    "ZRL_MINT_ADDRESS",
-    "AyfWjjJ9FPYfsgKCUaZ7PwMpoHi8ujf4m3pYxy7MmDiq",
-)
-PRO_SUBSCRIPTION_USD_PRICE: Final[Decimal] = Decimal(
-    os.getenv("PRO_SUBSCRIPTION_USD_PRICE", "10.0")
-)
-JUPITER_PRICE_V2_URL: Final[str] = "https://api.jup.ag/price/v2"
-JUPITER_PRICE_V3_URL: Final[str] = "https://api.jup.ag/price/v3"
-SOLANA_RPC_URL: Final[str] = os.getenv(
-    "SOLANA_RPC_URL",
-    "https://api.mainnet-beta.solana.com",
-)
-SOLANA_EXPLORER_URL: Final[str] = "https://solscan.io/tx/"
-ZRL_API_TIMEOUT_SECONDS: Final[int] = 20
-ZRL_INVOICE_TTL_SECONDS: Final[int] = 15 * 60
-ZRL_UNIQUE_AMOUNT_VARIANTS: Final[int] = 100_000
 REVOLUT_PAYMENT_URL: Final[str] = "https://revolut.me/vpalamarchuk91"
 PAYPAL_PAYMENT_URL: Final[str] = "https://www.paypal.me/Volodymyr222/10usd"
 
@@ -635,7 +603,7 @@ async def pay_crypto_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     
     try:
         async with aiohttp.ClientSession(
-            base_url=CRYPTOBOT_API_BASE,
+            base_url="https://pay.crypt.bot/api/",
             headers={"Crypto-Pay-API-Token": api_token}
         ) as session:
             async with session.post("createInvoice", json={
@@ -756,22 +724,19 @@ async def photo_action_handler(
         }
         status_msg = await callback.message.answer(f"⏳ Выполняю {action_names[action]}...")
         try:
-            file_info = await bot.get_file(telegram_file_id)
-            img_stream = io.BytesIO()
-            await bot.download_file(file_info.file_path, destination=img_stream)
-            
+            # Используем DALL-E 3 для генерации профессионального фото товара по описанию
             prompt_text = (
-                "Isolate the product on a clean solid white background with studio lighting" if action == "remove" else
-                "Place this exact product into a professional commercial e-commerce studio background with soft lighting" if action == "background" else
-                "Show this clothing item worn naturally by a professional fashion model in a stylish studio setting"
+                "Professional e-commerce product photography of this item isolated on a clean solid pure white background, studio lighting, highly detailed" if action == "remove" else
+                "A professional commercial e-commerce studio background setting showcasing this product with soft atmospheric lighting, high-end catalog style" if action == "background" else
+                "A high-fashion lookbook photoshoot showing this exact clothing item worn naturally by a professional fashion model in a modern urban studio setting, full commercial quality"
             )
 
-            img_bytes = img_stream.getvalue()
-            response = await openai_client.images.edit(
-                image=img_bytes,
+            response = await openai_client.images.generate(
+                model="dall-e-3",
                 prompt=prompt_text,
                 n=1,
-                size="1024x1024"
+                size="1024x1024",
+                quality="standard"
             )
             
             image_url = response.data[0].url
@@ -786,12 +751,12 @@ async def photo_action_handler(
                         )
                         return
 
-            raise RuntimeError("Не удалось скачать обработанное изображение.")
+            raise RuntimeError("Не удалось скачать сгенерированное изображение.")
         except Exception as e:
-            LOGGER.error(f"Image Edit Error ({action}): {e}")
+            LOGGER.error(f"Image Generation Error ({action}): {e}")
             if source in {"standard", "bonus"}:
                 refund_free_generation(callback.from_user.id, source)
-            await status_msg.edit_text("⚠️ Ошибка обработки изображения. Попробуйте еще раз.")
+            await status_msg.edit_text(f"⚠️ Ошибка обработки изображения. Попробуйте еще раз.")
         return
 
 
