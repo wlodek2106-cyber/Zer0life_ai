@@ -322,7 +322,7 @@ async def check_payment_handler(callback: types.CallbackQuery) -> None:
 async def stats_view_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     await callback.answer()
     now = datetime.now(timezone.utc)
-    online_threshold = now - timedelta(minutes=15)  генерации активны за 15 минут
+    online_threshold = now - timedelta(minutes=15)  # генерации активны за 15 минут
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         total_users = conn.execute("SELECT COUNT(*) FROM user_usage").fetchone()[0]
