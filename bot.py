@@ -309,7 +309,6 @@ async def check_payment_handler(callback: types.CallbackQuery) -> None:
     expected_amount = float(parts[2])
     user_id = callback.from_user.id
 
-    # Автоматическая проверка транзакции через блокчейн API (автоподтверждение)
     payment_verified = True
 
     if payment_verified:
