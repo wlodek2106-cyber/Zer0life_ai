@@ -517,22 +517,86 @@ async def p2p_list_orders(callback: types.CallbackQuery) -> None:
     await callback.answer()
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         orders = conn.execute(
-            "SELECT order_id, pair, order_type, amount, price FROM p2p_orders WHERE status = 'active' ORDER BY order_id DESC LIMIT 10"
+            "SELECT order_id, seller_id, pair, order_type, amount, price FROM p2p_orders WHERE status = 'active' ORDER BY order_id DESC LIMIT 10"
         ).fetchall()
 
     if not orders:
         text = "📋 В данный момент активных ордеров на P2P рынке нет."
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в P2P меню", callback_data="p2p:menu")]]
+        )
     else:
-        text = "📋 **Активные ордера ZRL:**\n\n"
+        text = "📋 **Активные ордера ZRL (нажмите, чтобы исполнить):**\n\n"
+        keyboard_buttons = []
         for o in orders:
-            o_id, pair, o_type, amount, price = o
+            o_id, seller_id, pair, o_type, amount, price = o
             emoji = "🟢 КУПИТЬ" if o_type == "BUY" else "🔴 ПРОДАТЬ"
-            text += f"#{o_id} | {pair} | {emoji} | Кол-во: {amount} | Цена: {price}\n"
+            total_sum = amount * price
+            currency_symbol = pair.split("/")[1]
+            
+            text += f"#{o_id} | **{pair}** | {emoji}\n🔹 Кол-во: `{amount:,.0f} ZRL`\n🔹 Цена: `{price} {currency_symbol}` (Итого: `{total_sum:,.4f} {currency_symbol}`)\n\n"
+            
+            keyboard_buttons.append([
+                types.InlineKeyboardButton(
+                    text=f"🤝 Исполнить ордер #{o_id} ({o_type})",
+                    callback_data=f"p2p:deal:{o_id}"
+                )
+            ])
+        
+        keyboard_buttons.append([types.InlineKeyboardButton(text="⬅️ Назад в P2P меню", callback_data="p2p:menu")])
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
-    keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в P2P меню", callback_data="p2p:menu")]]
-    )
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@ROUTER.callback_query(F.data.startswith("p2p:deal:"))
+async def p2p_execute_deal(callback: types.CallbackQuery) -> None:
+    order_id = int(callback.data.split(":")[2])
+    buyer_id = callback.from_user.id
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        order = conn.execute(
+            "SELECT seller_id, pair, order_type, amount, price, status FROM p2p_orders WHERE order_id = ?",
+            (order_id,),
+        ).fetchone()
+
+        if not order:
+            await callback.answer("❌ Ордер не найден или уже удален.", show_alert=True)
+            return
+
+        seller_id, pair, o_type, amount, price, status = order
+
+        if status != "active":
+            await callback.answer("⚠️ Этот ордер уже выполнен или отменен.", show_alert=True)
+            return
+
+        if seller_id == buyer_id:
+            await callback.answer("❌ Вы не можете исполнить свой собственный ордер.", show_alert=True)
+            return
+
+        conn.execute(
+            "UPDATE p2p_orders SET status = 'completed' WHERE order_id = ?",
+            (order_id,),
+        )
+
+    total_sum = amount * price
+    currency_symbol = pair.split("/")[1]
+
+    await callback.answer("✅ Сделка успешно подтверждена!", show_alert=True)
+    
+    await callback.message.edit_text(
+        f"🎉 **Сделка по ордеру #{order_id} заключена!**\n\n"
+        f"• Пара: `{pair}`\n"
+        f"• Направление: `{o_type}`\n"
+        f"• Объем: `{amount:,.0f} ZRL`\n"
+        f"• Цена за 1 ZRL: `{price} {currency_symbol}`\n"
+        f"• Общая сумма: `{total_sum:,.4f} {currency_symbol}`\n\n"
+        "Ожидайте автоматического проведения расчетов в сети Solana.",
+        parse_mode="Markdown",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ В P2P меню", callback_data="p2p:menu")]]
+        ),
+    )
 
 
 @ROUTER.callback_query(F.data == "p2p:create_order")
@@ -602,7 +666,7 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
         if price <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("⚠️ Неверный формат цены. Введите число:")
+        await message.answer("⚠️ Неверный формат цены. Введите число больше 0:")
         return
 
     data = await state.get_data()
@@ -618,9 +682,16 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
         )
 
     await state.clear()
+    total_sum = amount * price
+    currency_symbol = pair.split("/")[1]
+
     await message.answer(
-        "✅ **Ордер успешно опубликован в P2P стакане!**\n\n"
-        f"Пара: {pair}\nТип: {order_type}\nКоличество: {amount} ZRL\nЦена: {price}",
+        "✅ **Ордер успешно создан и опубликован в стакане!**\n\n"
+        f"• Пара: `{pair}`\n"
+        f"• Тип: `{order_type}`\n"
+        f"• Количество: `{amount:,.0f} ZRL`\n"
+        f"• Цена: `{price} {currency_symbol}`\n"
+        f"• Сумма сделки: `{total_sum:,.4f} {currency_symbol}`",
         parse_mode="Markdown",
         reply_markup=p2p_menu_keyboard(),
     )
