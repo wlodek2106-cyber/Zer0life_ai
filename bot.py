@@ -31,6 +31,9 @@ USDC_MINT: Final[str] = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 SOLANA_TREASURY_WALLET: Final[str] = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 BSC_TREASURY_WALLET: Final[str] = "0x7901D7566766379f9ffc11326762883D6161183f"
 
+# Общий фиксированный пул Airdrop
+TOTAL_AIRDROP_POOL: Final[float] = 100_000_000.0
+
 # ID администратора для получения уведомлений об Airdrop (укажи свой Telegram ID)
 ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
 
@@ -315,15 +318,33 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
             (user_id,),
         ).fetchone()
 
+        # Считаем статистику распределения пула
+        res = conn.execute("SELECT SUM(reward_amount), COUNT(*) FROM airdrop_claims").fetchone()
+        claimed_pool = res[0] if res and res[0] else 0.0
+        participants_count = res[1] if res and res[1] else 0
+
+    remaining_pool = max(0.0, TOTAL_AIRDROP_POOL - claimed_pool)
+
     if existing:
         reward, addr, status = existing
         text = (
             "🎁 **ZRL Token Airdrop — Статус**\n\n"
-            f"Вы уже участвовали в раздаче!\n"
+            "⚠️ Вы уже участвовали в раздаче с этого аккаунта!\n\n"
             f"• Выпало наград: `{reward:,.0f} ZRL`\n"
             f"• Ваш Solana адрес: `{addr}`\n"
             f"• Статус выплаты: **{status.upper()}**\n\n"
-            "Следите за новостями экосистемы!"
+            f"📊 **Статистика пула:**\n"
+            f"• Уже забрали: `{claimed_pool:,.0f} / 100,000,000 ZRL`\n"
+            f"• Осталось в пуле: `{remaining_pool:,.0f} ZRL`\n"
+            f"• Участников: `{participants_count}`"
+        )
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")]]
+        )
+    elif remaining_pool <= 0:
+        text = (
+            "🎁 **Бесплатный Airdrop токена ZRL**\n\n"
+            "❌ К сожалению, весь пул в **100 000 000 ZRL** полностью распределен между участниками!"
         )
         keyboard = types.InlineKeyboardMarkup(
             inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")]]
@@ -331,8 +352,13 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
     else:
         text = (
             "🎁 **Бесплатный Airdrop токена ZRL**\n\n"
-            "Испытайте удачу! Нажмите кнопку ниже, чтобы запустить генератор случайного числа от **100 до 100 000 ZRL**.\n"
-            "После выпадения награды вы сможете указать свой Solana-кошелек для получения токенов."
+            f"📊 **Статистика пула:**\n"
+            f"• Общий пул: `100,000,000 ZRL`\n"
+            f"• Уже забрали: `{claimed_pool:,.0f} ZRL`\n"
+            f"• Осталось в пуле: **{remaining_pool:,.0f} ZRL**\n"
+            f"• Всего участников: `{participants_count}`\n\n"
+            "🛡 **Защита от абуза:** 1 аккаунт Telegram = 1 уникальный кошелек Solana (мультиаккаунты блокируются).\n\n"
+            "Испытайте удачу! Нажмите кнопку ниже для генерации случайной награды от **100 до 100,000 ZRL**:"
         )
         keyboard = types.InlineKeyboardMarkup(
             inline_keyboard=[
@@ -353,7 +379,13 @@ async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         existing = conn.execute("SELECT user_id FROM airdrop_claims WHERE user_id = ?", (user_id,)).fetchone()
         if existing:
-            await callback.answer("⚠️ Вы уже получали свой airdrop ранее!", show_alert=True)
+            await callback.answer("⚠️ Вы уже получали свой airdrop с этого аккаунта!", show_alert=True)
+            return
+
+        res = conn.execute("SELECT SUM(reward_amount) FROM airdrop_claims").fetchone()
+        claimed_pool = res[0] if res and res[0] else 0.0
+        if claimed_pool >= TOTAL_AIRDROP_POOL:
+            await callback.answer("❌ Пул Airdrop полностью исчерпан!", show_alert=True)
             return
 
     # Генерация случайного числа от 100 до 100 000
@@ -364,7 +396,8 @@ async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext
     text = (
         "🎉 **Поздравляем! Генератор определил вашу награду:**\n\n"
         f"🏆 Вы выиграли: **{reward_amount:,.0f} ZRL**\n\n"
-        "👇 Теперь в ответным сообщением введите ваш **Solana-адрес** (например, Phantom, Solflare), на который мы начислим токены:"
+        "👇 В ответным сообщением введите ваш **уникальный Solana-адрес** (например, Phantom, Solflare), на который мы начислим токены:\n\n"
+        "⚠️ *Внимание: один кошелек можно использовать строго 1 раз! Попытка указать занятый кошелек будет отклонена.*"
     )
 
     keyboard = types.InlineKeyboardMarkup(
@@ -382,13 +415,27 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         await message.answer("⚠️ Некорректный адрес Solana. Пожалуйста, проверьте и введите правильный адрес кошелька:")
         return
 
-    data = await state.get_data()
-    reward_amount = data.get("airdrop_reward", 1000.0)
     user_id = message.from_user.id
-    username = message.from_user.username or "без username"
-    full_name = message.from_user.full_name or "Без имени"
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
+        # Жесткая проверка от мультиаккаунтов и повторного использования кошельков
+        already_claimed = conn.execute("SELECT user_id FROM airdrop_claims WHERE user_id = ?", (user_id,)).fetchone()
+        if already_claimed:
+            await state.clear()
+            await message.answer("⚠️ Вы уже забирали airdrop с этого аккаунта!")
+            return
+
+        address_used = conn.execute("SELECT user_id FROM airdrop_claims WHERE solana_address = ?", (sol_address,)).fetchone()
+        if address_used:
+            await message.answer(
+                "⚠️ **Этот Solana-адрес уже зарегистрирован в системе другим участником!**\n\n"
+                "Система безопасности запрещает использовать один кошелек повторно. Введите другой личный Solana-адрес:"
+            )
+            return
+
+        data = await state.get_data()
+        reward_amount = data.get("airdrop_reward", 1000.0)
+
         conn.execute(
             """
             INSERT INTO airdrop_claims (user_id, reward_amount, solana_address, status)
@@ -398,26 +445,28 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         )
 
     await state.clear()
+    username = message.from_user.username or "без username"
+    full_name = message.from_user.full_name or "Без имени"
 
     await message.answer(
-        "✅ **Адрес успешно сохранен!**\n\n"
+        "✅ **Адрес успешно сохранен и верифицирован!**\n\n"
         f"• Награда: `{reward_amount:,.0f} ZRL`\n"
         f"• Адрес: `{sol_address}`\n\n"
-        "Ваша заявка отправлена на ручную/автоматическую проверку. Тоскены поступят на ваш кошелек в ближайшее время!",
+        "Ваша заявка принята. Токены поступят на ваш кошелек в порядке очереди!",
         parse_mode="Markdown",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[[types.InlineKeyboardButton(text="🏠 В главное меню", callback_data="p2p:back_home")]]
         ),
     )
 
-    # Отправка СМС (уведомления) администратору в личку
+    # Отправка уведомления администратору в личку
     if ADMIN_TELEGRAM_ID > 0:
         try:
             admin_text = (
-                "🔔 **Новая заявка на Airdrop ZRL!**\n\n"
+                "🔔 **Новая верифицированная заявка на Airdrop ZRL!**\n\n"
                 f"👤 Пользователь: {full_name} (@{username}) [ID: `{user_id}`]\n"
                 f"🎁 Сумма: `{reward_amount:,.0f} ZRL`\n"
-                f"👛 Solana Кошелек:\n`{sol_address}`"
+                f"👛 Уникальный Solana Кошелек:\n`{sol_address}`"
             )
             await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="Markdown")
         except Exception as e:
@@ -717,7 +766,7 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
             "ℹ️ **О проекте Zer0Life Labs AI & ZRL Token**\n\n"
             "• **AI Ассистент:** Решает задачи, анализирует изображения и помогает в работе.\n"
             "• **Авто-трейдинг:** Торговый бот с проверкой ликвидности и объемов в Solana.\n"
-            "• **Airdrop:** Мини-игра с рандомной раздачей ZRL токенов от 100 до 100,000.\n"
+            "• **Airdrop:** Мини-игра с рандомной раздачей ZRL токенов (пул 100 млн) и защитой от мультов.\n"
             "• **Подписка:** Первые 5 запросов бесплатны, далее Pro-доступ за $10 (оплата в SOL, BNB, ZRL).\n"
             "• **ZRL Token:** Нативный актив экосистемы для P2P-торговли в сети Solana.\n\n"
             "Отправьте изображение в чат для теста AI.",
