@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+import base64
+from datetime import datetime, timezone
 import logging
 import os
 import random
@@ -22,19 +23,15 @@ from openai import AsyncOpenAI
 LOGGER = logging.getLogger(__name__)
 ROUTER = Router()
 
-# ==================== КОНФИГУРАЦИЯ ====================
+# ==================== CONFIGURATION ====================
 ZRL_MINT_ADDRESS: Final[str] = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 SOL_MINT: Final[str] = "So11111111111111111111111111111111111111112"
 USDC_MINT: Final[str] = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
-# Раздельные кошельки для приема оплаты по сетям
 SOLANA_TREASURY_WALLET: Final[str] = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 BSC_TREASURY_WALLET: Final[str] = "0x7901D7566766379f9ffc11326762883D6161183f"
 
-# Общий фиксированный пул Airdrop
 TOTAL_AIRDROP_POOL: Final[float] = 100_000_000.0
-
-# ID администратора для получения уведомлений об Airdrop (укажи свой Telegram ID)
 ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
 
 USAGE_DB_PATH: Final[str] = os.getenv(
@@ -44,6 +41,64 @@ USAGE_DB_PATH: Final[str] = os.getenv(
 OPENAI_MODEL: Final[str] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 FREE_LIMIT: Final[int] = 5
 SUBSCRIPTION_PRICE_USD: Final[float] = 10.0
+
+
+# ==================== LOCALIZATION DICTIONARY ====================
+TRANSLATIONS = {
+    "en": {
+        "welcome": (
+            "✨ **Welcome to Zer0Life Labs AI Ecosystem!**\n\n"
+            "🎁 You have **{limit} free AI requests** available.\n"
+            "🤖 Launch the **ZRL Airdrop** mini-game, Auto-Trading, or P2P market on Solana.\n\n"
+            "Select a section from the menu below:"
+        ),
+        "choose_lang": "🌐 Please select your preferred language:",
+        "btn_airdrop": "🎁 Join ZRL Airdrop",
+        "btn_autotrade": "🤖 Auto-Trading Bot",
+        "btn_p2p": "💱 P2P Marketplace (ZRL / SOL / USDC)",
+        "btn_sub": "💎 Buy Pro Subscription ($10)",
+        "btn_stats": "📊 Ecosystem Stats",
+        "btn_share": "📤 Share Bot",
+        "btn_about": "ℹ️ About Zer0Life Labs AI",
+        "btn_lang": "🌐 Language: English",
+        "back_home": "🏠 Main Menu",
+        "lang_updated": "✅ Language successfully changed to English!"
+    },
+    "ru": {
+        "welcome": (
+            "✨ **Добро пожаловать в экосистему Zer0Life Labs AI!**\n\n"
+            "🎁 Вам доступно **{limit} бесплатных запросов** к AI-ассистенту.\n"
+            "🤖 Запустите мини-игру **Airdrop ZRL**, Авто-трейдинг или P2P-рынок в сети Solana.\n\n"
+            "Выберите нужный раздел в меню ниже:"
+        ),
+        "choose_lang": "🌐 Пожалуйста, выберите язык / Please select your language:",
+        "btn_airdrop": "🎁 Участвовать в Airdrop ZRL",
+        "btn_autotrade": "🤖 Авто-трейдинг бот",
+        "btn_p2p": "💱 P2P Биржа (ZRL / SOL / USDC)",
+        "btn_sub": "💎 Купить Pro-подписку ($10)",
+        "btn_stats": "📊 Статистика экосистемы",
+        "btn_share": "📤 Поделиться ботом",
+        "btn_about": "ℹ️ О проекте Zer0Life Labs AI",
+        "btn_lang": "🌐 Язык: Русский",
+        "back_home": "🏠 Главное меню",
+        "lang_updated": "✅ Язык успешно изменен на русский!"
+    }
+}
+
+
+def get_text(user_id: int, key: str, **kwargs) -> str:
+    """Helper function to fetch localized text for a specific user."""
+    lang = "en"
+    try:
+        with sqlite3.connect(USAGE_DB_PATH) as conn:
+            row = conn.execute("SELECT language FROM user_usage WHERE telegram_user_id = ?", (user_id,)).fetchone()
+            if row and row[0]:
+                lang = row[0]
+    except Exception:
+        pass
+    
+    text_template = TRANSLATIONS.get(lang, TRANSLATIONS["en"]).get(key, TRANSLATIONS["en"].get(key, key))
+    return text_template.format(**kwargs)
 
 
 class P2POrderState(StatesGroup):
@@ -80,6 +135,7 @@ def init_db() -> None:
                 is_pro INTEGER NOT NULL DEFAULT 0,
                 last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 shared_count INTEGER NOT NULL DEFAULT 0,
+                language TEXT NOT NULL DEFAULT 'en',
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -157,49 +213,55 @@ async def get_crypto_prices() -> dict[str, float]:
     return prices
 
 
-# ==================== КЛАВИАТУРЫ ====================
+# ==================== KEYBOARDS ====================
 
-def main_menu_keyboard(bot_username: str) -> types.InlineKeyboardMarkup:
+def main_menu_keyboard(bot_username: str, user_id: int) -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="🎁 Участвовать в Airdrop ZRL",
+                    text=get_text(user_id, "btn_airdrop"),
                     callback_data="airdrop:menu",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="🤖 Авто-трейдинг бот",
+                    text=get_text(user_id, "btn_autotrade"),
                     callback_data="autotrade:menu",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="💱 P2P Биржа (ZRL / SOL / USDC)",
+                    text=get_text(user_id, "btn_p2p"),
                     callback_data="p2p:menu",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="💎 Купить Pro-подписку ($10)",
+                    text=get_text(user_id, "btn_sub"),
                     callback_data="sub:choose_currency",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="📊 Статистика экосистемы",
+                    text=get_text(user_id, "btn_stats"),
                     callback_data="stats:view",
                 ),
                 types.InlineKeyboardButton(
-                    text="📤 Поделиться ботом",
-                    url=f"https://t.me/share/url?url=https://t.me/{bot_username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20авто-трейдинга%20и%20P2P!",
+                    text=get_text(user_id, "btn_share"),
+                    url=f"https://t.me/share/url?url=https://t.me/{bot_username}&text=🚀%20Use%20Zer0Life%20Labs%20AI%20for%20auto-trading%20and%20P2P!",
                 ),
             ],
             [
                 types.InlineKeyboardButton(
-                    text="ℹ️ О проекте Zer0Life Labs AI",
+                    text=get_text(user_id, "btn_about"),
                     callback_data="info:about",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text=get_text(user_id, "btn_lang"),
+                    callback_data="lang:choose",
                 )
             ],
         ]
@@ -211,29 +273,29 @@ def p2p_menu_keyboard() -> types.InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="📋 Активные ордера (Стакан)",
+                    text="📋 Active Orders (Orderbook)",
                     callback_data="p2p:list_orders",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="➕ Создать ордер",
+                    text="➕ Create Order",
                     callback_data="p2p:create_order",
                 ),
                 types.InlineKeyboardButton(
-                    text="📦 Мои ордера",
+                    text="📦 My Orders",
                     callback_data="p2p:my_orders",
                 ),
             ],
             [
                 types.InlineKeyboardButton(
-                    text="🔄 Обновить курсы DEX",
+                    text="🔄 Refresh DEX Rates",
                     callback_data="p2p:refresh",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="⬅️ Главное меню",
+                    text="⬅️ Main Menu",
                     callback_data="p2p:back_home",
                 )
             ],
@@ -246,19 +308,19 @@ def autotrade_menu_keyboard() -> types.InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="⚙️ Настроить / Запустить авто-трейдинг",
+                    text="⚙️ Configure / Launch Auto-Trading",
                     callback_data="autotrade:configure",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="📊 Статус авто-торговли",
+                    text="📊 Auto-Trading Status",
                     callback_data="autotrade:status",
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="⬅️ Главное меню",
+                    text="⬅️ Main Menu",
                     callback_data="p2p:back_home",
                 )
             ],
@@ -266,23 +328,29 @@ def autotrade_menu_keyboard() -> types.InlineKeyboardMarkup:
     )
 
 
-# ==================== ОБРАБОТЧИКИ ====================
+# ==================== HANDLERS ====================
 
 @ROUTER.message(Command("start"))
 async def start_handler(message: types.Message, bot: Bot, command: CommandObject) -> None:
     user_id = message.from_user.id
     now_str = datetime.now(timezone.utc).isoformat()
+    
+    tg_lang = message.from_user.language_code
+    default_lang = "ru" if tg_lang and tg_lang.startswith("ru") else "en"
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
-        conn.execute(
-            """
-            INSERT INTO user_usage (telegram_user_id, last_seen) 
-            VALUES (?, ?)
-            ON CONFLICT(telegram_user_id) 
-            DO UPDATE SET last_seen = ?
-            """,
-            (user_id, now_str, now_str),
-        )
+        existing = conn.execute("SELECT language FROM user_usage WHERE telegram_user_id = ?", (user_id,)).fetchone()
+        
+        if not existing:
+            conn.execute(
+                """
+                INSERT INTO user_usage (telegram_user_id, language, last_seen) 
+                VALUES (?, ?, ?)
+                """,
+                (user_id, default_lang, now_str),
+            )
+        else:
+            conn.execute("UPDATE user_usage SET last_seen = ? WHERE telegram_user_id = ?", (now_str, user_id))
         
         if command.args and command.args.startswith("share_"):
             try:
@@ -297,15 +365,57 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
 
     me = await bot.get_me()
     await message.answer(
-        "✨ **Добро пожаловать в экосистему Zer0Life Labs AI!**\n\n"
-        f"🎁 Вам доступно **{FREE_LIMIT} бесплатных запросов** к AI-ассистенту.\n"
-        "🤖 Запустите мини-игру **Airdrop ZRL**, Авто-трейдинг или P2P-рынок в сети Solana.\n\n"
-        "Выберите нужный раздел в меню ниже:",
-        reply_markup=main_menu_keyboard(me.username),
+        get_text(user_id, "welcome", limit=FREE_LIMIT),
+        reply_markup=main_menu_keyboard(me.username, user_id),
+        parse_mode="Markdown",
     )
 
 
-# --- AIRDROP ZRL МИНИ-ИГРА ---
+# --- LANGUAGE SWITCHER HANDLER ---
+
+@ROUTER.callback_query(F.data.startswith("lang:"))
+async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
+    user_id = callback.from_user.id
+    action = callback.data.split(":")[1]
+    
+    if action == "choose":
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🇬🇧 English", callback_data="lang:set_en"),
+                    types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang:set_ru"),
+                ],
+                [types.InlineKeyboardButton(text="🏠 Back to Menu", callback_data="lang:back_home")]
+            ]
+        )
+        await callback.message.edit_text("🌐 Please select your preferred language / Выберите язык:", reply_markup=keyboard)
+        return
+
+    if action.startswith("set_"):
+        new_lang = action.split("_")[1]
+        with sqlite3.connect(USAGE_DB_PATH) as conn:
+            conn.execute("UPDATE user_usage SET language = ? WHERE telegram_user_id = ?", (new_lang, user_id))
+        
+        await callback.answer(get_text(user_id, "lang_updated"))
+        me = await bot.get_me()
+        
+        await callback.message.edit_text(
+            get_text(user_id, "welcome", limit=FREE_LIMIT),
+            reply_markup=main_menu_keyboard(me.username, user_id),
+            parse_mode="Markdown",
+        )
+        return
+
+    if action == "back_home":
+        me = await bot.get_me()
+        await callback.message.edit_text(
+            get_text(user_id, "welcome", limit=FREE_LIMIT),
+            reply_markup=main_menu_keyboard(me.username, user_id),
+            parse_mode="Markdown",
+        )
+
+
+# --- AIRDROP ZRL MINI-GAME ---
 
 @ROUTER.callback_query(F.data == "airdrop:menu")
 async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
@@ -318,7 +428,6 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
             (user_id,),
         ).fetchone()
 
-        # Считаем статистику распределения пула
         res = conn.execute("SELECT SUM(reward_amount), COUNT(*) FROM airdrop_claims").fetchone()
         claimed_pool = res[0] if res and res[0] else 0.0
         participants_count = res[1] if res and res[1] else 0
@@ -328,42 +437,42 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
     if existing:
         reward, addr, status = existing
         text = (
-            "🎁 **ZRL Token Airdrop — Статус**\n\n"
-            "⚠️ Вы уже участвовали в раздаче с этого аккаунта!\n\n"
-            f"• Выпало наград: `{reward:,.0f} ZRL`\n"
-            f"• Ваш Solana адрес: `{addr}`\n"
-            f"• Статус выплаты: **{status.upper()}**\n\n"
-            f"📊 **Статистика пула:**\n"
-            f"• Уже забрали: `{claimed_pool:,.0f} / 100,000,000 ZRL`\n"
-            f"• Осталось в пуле: `{remaining_pool:,.0f} ZRL`\n"
-            f"• Участников: `{participants_count}`"
+            "🎁 **ZRL Token Airdrop — Status**\n\n"
+            "⚠️ You have already participated from this account!\n\n"
+            f"• Reward Won: `{reward:,.0f} ZRL`\n"
+            f"• Your Solana Address: `{addr}`\n"
+            f"• Payout Status: **{status.upper()}**\n\n"
+            f"📊 **Pool Statistics:**\n"
+            f"• Claimed: `{claimed_pool:,.0f} / 100,000,000 ZRL`\n"
+            f"• Remaining: `{remaining_pool:,.0f} ZRL`\n"
+            f"• Total Participants: `{participants_count}`"
         )
         keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")]]
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Main Menu", callback_data="p2p:back_home")]]
         )
     elif remaining_pool <= 0:
         text = (
-            "🎁 **Бесплатный Airdrop токена ZRL**\n\n"
-            "❌ К сожалению, весь пул в **100 000 000 ZRL** полностью распределен между участниками!"
+            "🎁 **ZRL Token Free Airdrop**\n\n"
+            "❌ Unfortunately, the entire pool of **100,000,000 ZRL** has been fully distributed!"
         )
         keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")]]
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Main Menu", callback_data="p2p:back_home")]]
         )
     else:
         text = (
-            "🎁 **Бесплатный Airdrop токена ZRL**\n\n"
-            f"📊 **Статистика пула:**\n"
-            f"• Общий пул: `100,000,000 ZRL`\n"
-            f"• Уже забрали: `{claimed_pool:,.0f} ZRL`\n"
-            f"• Осталось в пуле: **{remaining_pool:,.0f} ZRL**\n"
-            f"• Всего участников: `{participants_count}`\n\n"
-            "🛡 **Защита от абуза:** 1 аккаунт Telegram = 1 уникальный кошелек Solana (мультиаккаунты блокируются).\n\n"
-            "Испытайте удачу! Нажмите кнопку ниже для генерации случайной награды от **100 до 100,000 ZRL**:"
+            "🎁 **ZRL Token Free Airdrop**\n\n"
+            f"📊 **Pool Statistics:**\n"
+            f"• Total Pool: `100,000,000 ZRL`\n"
+            f"• Claimed: `{claimed_pool:,.0f} ZRL`\n"
+            f"• Remaining: **{remaining_pool:,.0f} ZRL**\n"
+            f"• Total Participants: `{participants_count}`\n\n"
+            "🛡 **Anti-Abuse Protection:** 1 Telegram account = 1 unique Solana wallet (multi-accounts banned).\n\n"
+            "Test your luck! Click the button below to generate a random reward from **100 to 100,000 ZRL**:"
         )
         keyboard = types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="🎲 Крутить генератор и получить Airdrop", callback_data="airdrop:roll")],
-                [types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")],
+                [types.InlineKeyboardButton(text="🎲 Spin Generator & Claim Airdrop", callback_data="airdrop:roll")],
+                [types.InlineKeyboardButton(text="⬅️ Main Menu", callback_data="p2p:back_home")],
             ]
         )
 
@@ -373,35 +482,34 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
 
 @ROUTER.callback_query(F.data == "airdrop:roll")
 async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext) -> None:
-    await callback.answer("🎰 Крутим барабан генерации Airdrop...")
+    await callback.answer("🎰 Spinning airdrop generation drum...")
     user_id = callback.from_user.id
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         existing = conn.execute("SELECT user_id FROM airdrop_claims WHERE user_id = ?", (user_id,)).fetchone()
         if existing:
-            await callback.answer("⚠️ Вы уже получали свой airdrop с этого аккаунта!", show_alert=True)
+            await callback.answer("⚠️ You have already claimed your airdrop from this account!", show_alert=True)
             return
 
         res = conn.execute("SELECT SUM(reward_amount) FROM airdrop_claims").fetchone()
         claimed_pool = res[0] if res and res[0] else 0.0
         if claimed_pool >= TOTAL_AIRDROP_POOL:
-            await callback.answer("❌ Пул Airdrop полностью исчерпан!", show_alert=True)
+            await callback.answer("❌ Airdrop pool is fully exhausted!", show_alert=True)
             return
 
-    # Генерация случайного числа от 100 до 100 000
     reward_amount = float(random.randint(100, 100000))
     await state.update_data(airdrop_reward=reward_amount)
     await state.set_state(AirdropClaimState.waiting_for_solana_address)
 
     text = (
-        "🎉 **Поздравляем! Генератор определил вашу награду:**\n\n"
-        f"🏆 Вы выиграли: **{reward_amount:,.0f} ZRL**\n\n"
-        "👇 В ответным сообщением введите ваш **уникальный Solana-адрес** (например, Phantom, Solflare), на который мы начислим токены:\n\n"
-        "⚠️ *Внимание: один кошелек можно использовать строго 1 раз! Попытка указать занятый кошелек будет отклонена.*"
+        "🎉 **Congratulations! The generator determined your reward:**\n\n"
+        f"🏆 You Won: **{reward_amount:,.0f} ZRL**\n\n"
+        "👇 Reply to this message with your **unique Solana address** (e.g., Phantom, Solflare) where we will credit your tokens:\n\n"
+        "⚠️ *Note: Each wallet can only be used once! Duplicate or reused addresses will be rejected.*"
     )
 
     keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[[types.InlineKeyboardButton(text="❌ Отмена", callback_data="airdrop:menu")]]
+        inline_keyboard=[[types.InlineKeyboardButton(text="❌ Cancel", callback_data="airdrop:menu")]]
     )
 
     if callback.message is not None:
@@ -412,24 +520,23 @@ async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext
 async def airdrop_save_address(message: types.Message, state: FSMContext, bot: Bot) -> None:
     sol_address = message.text.strip()
     if len(sol_address) < 32 or len(sol_address) > 44:
-        await message.answer("⚠️ Некорректный адрес Solana. Пожалуйста, проверьте и введите правильный адрес кошелька:")
+        await message.answer("⚠️ Invalid Solana address format. Please check and enter a valid wallet address:")
         return
 
     user_id = message.from_user.id
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
-        # Жесткая проверка от мультиаккаунтов и повторного использования кошельков
         already_claimed = conn.execute("SELECT user_id FROM airdrop_claims WHERE user_id = ?", (user_id,)).fetchone()
         if already_claimed:
             await state.clear()
-            await message.answer("⚠️ Вы уже забирали airdrop с этого аккаунта!")
+            await message.answer("⚠️ You have already claimed an airdrop from this account!")
             return
 
         address_used = conn.execute("SELECT user_id FROM airdrop_claims WHERE solana_address = ?", (sol_address,)).fetchone()
         if address_used:
             await message.answer(
-                "⚠️ **Этот Solana-адрес уже зарегистрирован в системе другим участником!**\n\n"
-                "Система безопасности запрещает использовать один кошелек повторно. Введите другой личный Solana-адрес:"
+                "⚠️ **This Solana address is already registered by another participant!**\n\n"
+                "Security rules prohibit reusing wallet addresses. Please enter a different personal Solana address:"
             )
             return
 
@@ -445,45 +552,44 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         )
 
     await state.clear()
-    username = message.from_user.username or "без username"
-    full_name = message.from_user.full_name or "Без имени"
+    username = message.from_user.username or "no username"
+    full_name = message.from_user.full_name or "No Name"
 
     await message.answer(
-        "✅ **Адрес успешно сохранен и верифицирован!**\n\n"
-        f"• Награда: `{reward_amount:,.0f} ZRL`\n"
-        f"• Адрес: `{sol_address}`\n\n"
-        "Ваша заявка принята. Токены поступят на ваш кошелек в порядке очереди!",
+        "✅ **Address successfully saved and verified!**\n\n"
+        f"• Reward: `{reward_amount:,.0f} ZRL`\n"
+        f"• Address: `{sol_address}`\n\n"
+        "Your request has been accepted. Tokens will be sent to your wallet in a queue order!",
         parse_mode="Markdown",
         reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="🏠 В главное меню", callback_data="p2p:back_home")]]
+            inline_keyboard=[[types.InlineKeyboardButton(text="🏠 Main Menu", callback_data="p2p:back_home")]]
         ),
     )
 
-    # Отправка уведомления администратору в личку
     if ADMIN_TELEGRAM_ID > 0:
         try:
             admin_text = (
-                "🔔 **Новая верифицированная заявка на Airdrop ZRL!**\n\n"
-                f"👤 Пользователь: {full_name} (@{username}) [ID: `{user_id}`]\n"
-                f"🎁 Сумма: `{reward_amount:,.0f} ZRL`\n"
-                f"👛 Уникальный Solana Кошелек:\n`{sol_address}`"
+                "🔔 **New Verified ZRL Airdrop Request!**\n\n"
+                f"👤 User: {full_name} (@{username}) [ID: `{user_id}`]\n"
+                f"🎁 Amount: `{reward_amount:,.0f} ZRL`\n"
+                f"👛 Unique Solana Wallet:\n`{sol_address}`"
             )
             await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="Markdown")
         except Exception as e:
             LOGGER.error(f"Failed to send airdrop notification to admin: {e}")
 
 
-# --- АВТО-ТРЕЙДИНГ РАЗДЕЛ ---
+# --- AUTO-TRADING SECTION ---
 
 @ROUTER.callback_query(F.data == "autotrade:menu")
 async def autotrade_menu_callback(callback: types.CallbackQuery) -> None:
     await callback.answer()
     if callback.message is not None:
         await callback.message.edit_text(
-            "🤖 **Авто-трейдинг бот (Solana / Jupiter DEX)**\n\n"
-            "Бот автоматически отслеживает ликвидность, объем торгов и совершает сделки по заданным параметрам.\n"
-            "В период тестирования функция **бесплатна** (в будущем планируется Pro-подписка).\n\n"
-            "Выберите действие:",
+            "🤖 **Auto-Trading Bot (Solana / Jupiter DEX)**\n\n"
+            "The bot automatically monitors liquidity, trading volumes, and executes trades based on set parameters.\n"
+            "During testing, this feature is **free** (Pro subscription required later).\n\n"
+            "Select an action:",
             parse_mode="Markdown",
             reply_markup=autotrade_menu_keyboard(),
         )
@@ -501,12 +607,12 @@ async def autotrade_configure(callback: types.CallbackQuery, state: FSMContext) 
             [
                 types.InlineKeyboardButton(text="ZRL Token (ZRL)", callback_data="at_pair:ZRL"),
             ],
-            [types.InlineKeyboardButton(text="❌ Отмена", callback_data="autotrade:menu")],
+            [types.InlineKeyboardButton(text="❌ Cancel", callback_data="autotrade:menu")],
         ]
     )
     await state.set_state(AutoTradeSettingsState.waiting_for_pair)
     if callback.message is not None:
-        await callback.message.edit_text("⚙️ Выберите основную монету/токен для авто-торговли:", reply_markup=keyboard)
+        await callback.message.edit_text("⚙️ Select base asset/token for auto-trading:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(AutoTradeSettingsState.waiting_for_pair, F.data.startswith("at_pair:"))
@@ -517,8 +623,8 @@ async def autotrade_set_pair(callback: types.CallbackQuery, state: FSMContext) -
     await state.set_state(AutoTradeSettingsState.waiting_for_amount)
     if callback.message is not None:
         await callback.message.edit_text(
-            f"Вы выбрали актив: **{pair}**.\n\n"
-            "Введите минимальный размер депозита для сделки в USD (например, `50` или `100`):",
+            f"Selected asset: **{pair}**.\n\n"
+            "Enter minimum deposit size per trade in USD (e.g., `50` or `100`):",
             parse_mode="Markdown",
         )
 
@@ -530,12 +636,12 @@ async def autotrade_set_amount(message: types.Message, state: FSMContext) -> Non
         if amount <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("⚠️ Неверный формат. Введите число больше 0:")
+        await message.answer("⚠️ Invalid format. Enter a number greater than 0:")
         return
 
     await state.update_data(amount=amount)
     await state.set_state(AutoTradeSettingsState.waiting_for_target)
-    await message.answer("Введите целевой процент прибыли для закрытия сделки (например, `20` для 20%):")
+    await message.answer("Enter target profit percentage to close the trade (e.g., `20` for 20%):")
 
 
 @ROUTER.message(AutoTradeSettingsState.waiting_for_target)
@@ -545,7 +651,7 @@ async def autotrade_set_target(message: types.Message, state: FSMContext) -> Non
         if target <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("⚠️ Неверный формат. Введите число больше 0:")
+        await message.answer("⚠️ Invalid format. Enter a number greater than 0:")
         return
 
     data = await state.get_data()
@@ -566,11 +672,11 @@ async def autotrade_set_target(message: types.Message, state: FSMContext) -> Non
 
     await state.clear()
     await message.answer(
-        "✅ **Авто-трейдинг успешно настроен и активирован!**\n\n"
-        f"• Актив: `{pair}`\n"
-        f"• Мин. депозит: `${amount}`\n"
-        f"• Целевой профит: `+{target}%`\n\n"
-        "Бот начал мониторинг ликвидности в пулах и объема торгов через Jupiter DEX.",
+        "✅ **Auto-Trading successfully configured and activated!**\n\n"
+        f"• Asset: `{pair}`\n"
+        f"• Min Deposit: `${amount}`\n"
+        f"• Target Profit: `+{target}%`\n\n"
+        "The bot has started monitoring pool liquidity and trading volumes via Jupiter DEX.",
         parse_mode="Markdown",
         reply_markup=autotrade_menu_keyboard(),
     )
@@ -588,20 +694,20 @@ async def autotrade_status(callback: types.CallbackQuery) -> None:
         ).fetchone()
 
     if not row or row[3] == 'inactive':
-        text = "📊 У вас пока нет активных сессий авто-трейдинга."
+        text = "📊 You don't have any active auto-trading sessions."
     else:
         pair, amount, target, status = row
         text = (
-            "📊 **Статус вашего авто-трейдинг бота:**\n\n"
-            f"• Состояние: **{status.upper()}**\n"
-            f"• Торговый актив: `{pair}`\n"
-            f"• Депозит на сделку: `${amount}`\n"
-            f"• Цель по профиту: `+{target}%`\n\n"
-            "Бот успешно проверяет ликвидность и объемы в сети Solana."
+            "📊 **Your Auto-Trading Bot Status:**\n\n"
+            f"• State: **{status.upper()}**\n"
+            f"• Trading Asset: `{pair}`\n"
+            f"• Deposit per trade: `${amount}`\n"
+            f"• Profit Target: `+{target}%`\n\n"
+            "Bot is actively checking liquidity and volumes on Solana."
         )
 
     keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в меню бота", callback_data="autotrade:menu")]]
+        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Back to Bot Menu", callback_data="autotrade:menu")]]
     )
     if callback.message is not None:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
@@ -609,7 +715,7 @@ async def autotrade_status(callback: types.CallbackQuery) -> None:
 
 @ROUTER.callback_query(F.data == "sub:choose_currency")
 async def sub_choose_currency(callback: types.CallbackQuery) -> None:
-    await callback.answer("⏳ Расчет актуальных курсов криптовалют...")
+    await callback.answer("⏳ Calculating actual crypto exchange rates...")
     prices = await get_crypto_prices()
 
     sol_amount = SUBSCRIPTION_PRICE_USD / prices["SOL"]
@@ -626,16 +732,16 @@ async def sub_choose_currency(callback: types.CallbackQuery) -> None:
                 types.InlineKeyboardButton(text=f"🟢 ZRL (~{zrl_amount:,.0f})", callback_data="pay:ZRL"),
             ],
             [
-                types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="p2p:back_home"),
+                types.InlineKeyboardButton(text="⬅️ Back to Menu", callback_data="p2p:back_home"),
             ],
         ]
     )
 
     if callback.message is not None:
         await callback.message.edit_text(
-            "💎 **Покупка Pro-подписки за криптовалюту**\n\n"
-            f"Стоимость подписки: **${SUBSCRIPTION_PRICE_USD}**\n"
-            "Выберите удобную криптовалюту для оплаты:",
+            "💎 **Purchase Pro Subscription with Cryptocurrency**\n\n"
+            f"Subscription Price: **${SUBSCRIPTION_PRICE_USD}**\n"
+            "Select your preferred cryptocurrency for payment:",
             parse_mode="Markdown",
             reply_markup=keyboard,
         )
@@ -661,17 +767,17 @@ async def pay_crypto_handler(callback: types.CallbackQuery) -> None:
         treasury = SOLANA_TREASURY_WALLET
 
     text = (
-        f"💎 **Оплата Pro-подписки ({currency})**\n\n"
-        f"Сумма к оплате: `{amount:.4f} {currency}`\n"
-        f"Сеть: **{network}**\n\n"
-        f"📌 **Адрес для перевода:**\n`{treasury}`\n\n"
-        "После перевода средств нажмите кнопку ниже для автоматической проверки транзакции в блокчейне."
+        f"💎 **Pro Subscription Payment ({currency})**\n\n"
+        f"Amount due: `{amount:.4f} {currency}`\n"
+        f"Network: **{network}**\n\n"
+        f"📌 **Deposit Address:**\n`{treasury}`\n\n"
+        "After making the transfer, click the button below to automatically verify the transaction on the blockchain."
     )
 
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[
-            [types.InlineKeyboardButton(text="🔄 Проверить платеж автоматически", callback_data=f"check_pay:{currency}:{amount:.4f}")],
-            [types.InlineKeyboardButton(text="⬅️ Выбрать другую валюту", callback_data="sub:choose_currency")],
+            [types.InlineKeyboardButton(text="🔄 Verify Payment Automatically", callback_data=f"check_pay:{currency}:{amount:.4f}")],
+            [types.InlineKeyboardButton(text="⬅️ Choose Another Currency", callback_data="sub:choose_currency")],
         ]
     )
     if callback.message is not None:
@@ -680,7 +786,7 @@ async def pay_crypto_handler(callback: types.CallbackQuery) -> None:
 
 @ROUTER.callback_query(F.data.startswith("check_pay:"))
 async def check_payment_handler(callback: types.CallbackQuery) -> None:
-    await callback.answer("🔍 Сканируем блокчейн на наличие перевода...", show_alert=False)
+    await callback.answer("🔍 Scanning blockchain for transfer...", show_alert=False)
     
     parts = callback.data.split(":")
     currency = parts[1]
@@ -695,17 +801,17 @@ async def check_payment_handler(callback: types.CallbackQuery) -> None:
 
         if callback.message is not None:
             await callback.message.edit_text(
-                "✅ **Оплата успешно найдена и подтверждена в блокчейне!**\n\n"
-                f"Получено: `{expected_amount} {currency}`\n"
-                "Ваша Pro-подписка активирована автоматически. Приятного использования ✨",
+                "✅ **Payment successfully found and confirmed on the blockchain!**\n\n"
+                f"Received: `{expected_amount} {currency}`\n"
+                "Your Pro subscription has been activated automatically. Enjoy ✨",
                 parse_mode="Markdown",
                 reply_markup=types.InlineKeyboardMarkup(
-                    inline_keyboard=[[types.InlineKeyboardButton(text="🏠 В главное меню", callback_data="p2p:back_home")]]
+                    inline_keyboard=[[types.InlineKeyboardButton(text="🏠 Main Menu", callback_data="p2p:back_home")]]
                 ),
             )
     else:
         await callback.answer(
-            "⚠️ Транзакция еще не найдена в сети. Убедитесь, что перевод отправлен, и попробуйте снова через минуту.",
+            "⚠️ Transaction not found yet. Make sure the transfer was sent and try again in a minute.",
             show_alert=True,
         )
 
@@ -736,22 +842,22 @@ async def stats_view_handler(callback: types.CallbackQuery, bot: Bot) -> None:
 
     me = await bot.get_me()
     text = (
-        "📊 **Статистика экосистемы Zer0Life Labs AI**\n\n"
-        f"👥 Всего запустили бота: **{total_users}**\n"
-        f"🟢 Пользователей в онлайне: **{online_count}**\n"
-        f"⚪ Пользователей в офлайне: **{offline_count}**\n"
-        f"📤 Всего поделились ботом: **{total_shares}**\n"
+        "📊 **Zer0Life Labs AI Ecosystem Statistics**\n\n"
+        f"👥 Total Bot Users: **{total_users}**\n"
+        f"🟢 Online Users: **{online_count}**\n"
+        f"⚪ Offline Users: **{offline_count}**\n"
+        f"📤 Total Shares: **{total_shares}**\n"
     )
 
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="📤 Поделиться ботом",
-                    url=f"https://t.me/share/url?url=https://t.me/{me.username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20авто-трейдинга%20и%20P2P!",
+                    text="📤 Share Bot",
+                    url=f"https://t.me/share/url?url=https://t.me/{me.username}&text=🚀%20Use%20Zer0Life%20Labs%20AI%20for%20auto-trading%20and%20P2P!",
                 )
             ],
-            [types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="p2p:back_home")],
+            [types.InlineKeyboardButton(text="⬅️ Back to Menu", callback_data="p2p:back_home")],
         ]
     )
     if callback.message is not None:
@@ -763,16 +869,16 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     await callback.answer()
     if callback.message is not None:
         await callback.message.edit_text(
-            "ℹ️ **О проекте Zer0Life Labs AI & ZRL Token**\n\n"
-            "• **AI Ассистент:** Решает задачи, анализирует изображения и помогает в работе.\n"
-            "• **Авто-трейдинг:** Торговый бот с проверкой ликвидности и объемов в Solana.\n"
-            "• **Airdrop:** Мини-игра с рандомной раздачей ZRL токенов (пул 100 млн) и защитой от мультов.\n"
-            "• **Подписка:** Первые 5 запросов бесплатны, далее Pro-доступ за $10 (оплата в SOL, BNB, ZRL).\n"
-            "• **ZRL Token:** Нативный актив экосистемы для P2P-торговли в сети Solana.\n\n"
-            "Отправьте изображение в чат для теста AI.",
+            "ℹ️ **About Zer0Life Labs AI & ZRL Token**\n\n"
+            "• **AI Assistant:** Solves tasks, analyzes images, and assists in work.\n"
+            "• **Auto-Trading:** Trading bot with liquidity and volume verification on Solana.\n"
+            "• **Airdrop:** Mini-game featuring random ZRL token distributions (100M pool) and anti-sybil protection.\n"
+            "• **Subscription:** First 5 requests free, then Pro access for $10 (SOL, BNB, ZRL payments accepted).\n"
+            "• **ZRL Token:** Native ecosystem asset for P2P trading on Solana.\n\n"
+            "Send an image in the chat to test AI image analysis.",
             parse_mode="Markdown",
             reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="p2p:back_home")]]
+                inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Back to Menu", callback_data="p2p:back_home")]]
             ),
         )
 
@@ -801,16 +907,16 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
 
     if generations_used >= FREE_LIMIT and not is_pro:
         await message.answer(
-            f"⚠️ **Лимит бесплатных запросов исчерпан ({FREE_LIMIT}/{FREE_LIMIT}).**\n\n"
-            "Чтобы продолжить пользоваться AI-ассистентом, оформите Pro-подписку за **$10** (доступна оплата в SOL, BNB, ZRL).",
+            f"⚠️ **Free request limit reached ({FREE_LIMIT}/{FREE_LIMIT}).**\n\n"
+            "To continue using the AI assistant, get a Pro subscription for **$10** (SOL, BNB, ZRL accepted).",
             parse_mode="Markdown",
             reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[[types.InlineKeyboardButton(text="💎 Купить Pro-подписку", callback_data="sub:choose_currency")]]
+                inline_keyboard=[[types.InlineKeyboardButton(text="💎 Buy Pro Subscription", callback_data="sub:choose_currency")]]
             ),
         )
         return
 
-    status_msg = await message.answer("🤖 Zer0Life AI анализирует изображение...")
+    status_msg = await message.answer("🤖 Zer0Life AI is analyzing the image...")
     
     try:
         photo = message.photo[-1]
@@ -818,7 +924,6 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
         photo_bytes = await bot.download_file(file_info.file_path)
         
         client = AsyncOpenAI(api_key=get_required_env("OPENAI_API_KEY"))
-        import base64
         base64_image = base64.b64encode(photo_bytes.read()).decode('utf-8')
 
         response = await client.chat.completions.create(
@@ -827,7 +932,7 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Дай подробный и полезный анализ этого изображения на русском языке."},
+                        {"type": "text", "text": "Provide a detailed and useful analysis of this image in English."},
                         {
                             "type": "image_url",
                             "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
@@ -847,30 +952,30 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
             )
             
         remaining = max(0, FREE_LIMIT - (generations_used + 1))
-        footer = f"\n\n_Бесплатных запросов осталось: {remaining}/{FREE_LIMIT}_" if not is_pro else "\n\n_Pro-доступ активен ✨_"
+        footer = f"\n\n_Free requests remaining: {remaining}/{FREE_LIMIT}_" if not is_pro else "\n\n_Pro Access Active ✨_"
         
-        await status_msg.edit_text(f"✨ **Ответ AI-Ассистента:**\n\n{result_text}{footer}", parse_mode="Markdown")
+        await status_msg.edit_text(f"✨ **AI Assistant Response:**\n\n{result_text}{footer}", parse_mode="Markdown")
 
     except Exception as e:
         LOGGER.error(f"Error processing photo: {e}")
-        await status_msg.edit_text("❌ Произошла ошибка при обработке изображения.")
+        await status_msg.edit_text("❌ An error occurred while processing the image.")
 
 
-# P2P РАЗДЕЛ БИРЖИ
+# --- P2P MARKETPLACE SECTION ---
 
 @ROUTER.callback_query(F.data.in_({"p2p:menu", "p2p:refresh"}))
 async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
-    await callback.answer("⏳ Синхронизация курсов с Jupiter DEX...")
+    await callback.answer("⏳ Synchronizing rates with Jupiter DEX...")
     if callback.message is None:
         return
 
     rates = await get_crypto_prices()
     text = (
         "💱 **Zer0Life Labs AI — P2P Marketplace (Solana)**\n\n"
-        "Актуальные курсы токена **ZRL**:\n"
+        "Current **ZRL** token rates:\n"
         f"🔹 **ZRL / SOL:** `{rates['ZRL'] / rates['SOL']:.6f}` SOL\n"
         f"🔹 **ZRL / USDC:** `${rates['ZRL']:.4f}` USDC\n\n"
-        "Управляйте ордерами в стакане:"
+        "Manage order book positions:"
     )
 
     try:
@@ -882,13 +987,13 @@ async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
 @ROUTER.callback_query(F.data == "p2p:back_home")
 async def p2p_back_home(callback: types.CallbackQuery, bot: Bot) -> None:
     await callback.answer()
+    user_id = callback.from_user.id
     me = await bot.get_me()
     if callback.message is not None:
         await callback.message.edit_text(
-            "✨ **Zer0Life Labs AI Ecosystem**\n\n"
-            "Выберите нужный раздел:",
+            get_text(user_id, "welcome", limit=FREE_LIMIT),
             parse_mode="Markdown",
-            reply_markup=main_menu_keyboard(me.username),
+            reply_markup=main_menu_keyboard(me.username, user_id),
         )
 
 
@@ -901,29 +1006,29 @@ async def p2p_list_orders(callback: types.CallbackQuery) -> None:
         ).fetchall()
 
     if not orders:
-        text = "📋 В данный момент активных ордеров на P2P рынке нет."
+        text = "📋 There are currently no active orders on the P2P market."
         keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в P2P меню", callback_data="p2p:menu")]]
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Back to P2P Menu", callback_data="p2p:menu")]]
         )
     else:
-        text = "📋 **Активные ордера ZRL (нажмите, чтобы исполнить):**\n\n"
+        text = "📋 **Active ZRL Orders (click to execute):**\n\n"
         keyboard_buttons = []
         for o in orders:
             o_id, seller_id, pair, o_type, amount, price = o
-            emoji = "🟢 КУПИТЬ" if o_type == "BUY" else "🔴 ПРОДАТЬ"
+            emoji = "🟢 BUY" if o_type == "BUY" else "🔴 SELL"
             total_sum = amount * price
             currency_symbol = pair.split("/")[1]
             
-            text += f"#{o_id} | **{pair}** | {emoji}\n🔹 Кол-во: `{amount:,.0f} ZRL`\n🔹 Цена: `{price} {currency_symbol}` (Итого: `{total_sum:,.4f} {currency_symbol}`)\n\n"
+            text += f"#{o_id} | **{pair}** | {emoji}\n🔹 Amount: `{amount:,.0f} ZRL`\n🔹 Price: `{price} {currency_symbol}` (Total: `{total_sum:,.4f} {currency_symbol}`)\n\n"
             
             keyboard_buttons.append([
                 types.InlineKeyboardButton(
-                    text=f"🤝 Исполнить ордер #{o_id} ({o_type})",
+                    text=f"🤝 Execute Order #{o_id} ({o_type})",
                     callback_data=f"p2p:deal:{o_id}"
                 )
             ])
         
-        keyboard_buttons.append([types.InlineKeyboardButton(text="⬅️ Назад в P2P меню", callback_data="p2p:menu")])
+        keyboard_buttons.append([types.InlineKeyboardButton(text="⬅️ Back to P2P Menu", callback_data="p2p:menu")])
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
@@ -941,17 +1046,17 @@ async def p2p_execute_deal(callback: types.CallbackQuery) -> None:
         ).fetchone()
 
         if not order:
-            await callback.answer("❌ Ордер не найден или уже удален.", show_alert=True)
+            await callback.answer("❌ Order not found or already deleted.", show_alert=True)
             return
 
         seller_id, pair, o_type, amount, price, status = order
 
         if status != "active":
-            await callback.answer("⚠️ Этот ордер уже выполнен или отменен.", show_alert=True)
+            await callback.answer("⚠️ This order has already been completed or canceled.", show_alert=True)
             return
 
         if seller_id == buyer_id:
-            await callback.answer("❌ Вы не можете исполнить свой собственный ордер.", show_alert=True)
+            await callback.answer("❌ You cannot execute your own order.", show_alert=True)
             return
 
         conn.execute(
@@ -962,19 +1067,19 @@ async def p2p_execute_deal(callback: types.CallbackQuery) -> None:
     total_sum = amount * price
     currency_symbol = pair.split("/")[1]
 
-    await callback.answer("✅ Сделка успешно подтверждена!", show_alert=True)
+    await callback.answer("✅ Deal successfully confirmed!", show_alert=True)
     
     await callback.message.edit_text(
-        f"🎉 **Сделка по ордеру #{order_id} заключена!**\n\n"
-        f"• Пара: `{pair}`\n"
-        f"• Направление: `{o_type}`\n"
-        f"• Объем: `{amount:,.0f} ZRL`\n"
-        f"• Цена за 1 ZRL: `{price} {currency_symbol}`\n"
-        f"• Общая сумма: `{total_sum:,.4f} {currency_symbol}`\n\n"
-        "Ожидайте автоматического проведения расчетов в сети Solana.",
+        f"🎉 **Deal for Order #{order_id} concluded!**\n\n"
+        f"• Pair: `{pair}`\n"
+        f"• Type: `{o_type}`\n"
+        f"• Volume: `{amount:,.0f} ZRL`\n"
+        f"• Price per 1 ZRL: `{price} {currency_symbol}`\n"
+        f"• Total Amount: `{total_sum:,.4f} {currency_symbol}`\n\n"
+        "Please wait for automated execution on the Solana network.",
         parse_mode="Markdown",
         reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ В P2P меню", callback_data="p2p:menu")]]
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ To P2P Menu", callback_data="p2p:menu")]]
         ),
     )
 
@@ -988,11 +1093,11 @@ async def p2p_create_start(callback: types.CallbackQuery, state: FSMContext) -> 
                 types.InlineKeyboardButton(text="ZRL / SOL", callback_data="pair:ZRL/SOL"),
                 types.InlineKeyboardButton(text="ZRL / USDC", callback_data="pair:ZRL/USDC"),
             ],
-            [types.InlineKeyboardButton(text="❌ Отмена", callback_data="p2p:menu")],
+            [types.InlineKeyboardButton(text="❌ Cancel", callback_data="p2p:menu")],
         ]
     )
     await state.set_state(P2POrderState.waiting_for_pair)
-    await callback.message.edit_text("💱 Выберите торговую пару для создания ордера:", reply_markup=keyboard)
+    await callback.message.edit_text("💱 Select trading pair to create an order:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_pair, F.data.startswith("pair:"))
@@ -1004,14 +1109,14 @@ async def p2p_choose_pair(callback: types.CallbackQuery, state: FSMContext) -> N
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🟢 Купить ZRL", callback_data="type:BUY"),
-                types.InlineKeyboardButton(text="🔴 Продать ZRL", callback_data="type:SELL"),
+                types.InlineKeyboardButton(text="🟢 Buy ZRL", callback_data="type:BUY"),
+                types.InlineKeyboardButton(text="🔴 Sell ZRL", callback_data="type:SELL"),
             ],
-            [types.InlineKeyboardButton(text="❌ Отмена", callback_data="p2p:menu")],
+            [types.InlineKeyboardButton(text="❌ Cancel", callback_data="p2p:menu")],
         ]
     )
     await state.set_state(P2POrderState.waiting_for_type)
-    await callback.message.edit_text(f"Вы выбрали пару **{pair}**.\nВыберите направление сделки:", parse_mode="Markdown", reply_markup=keyboard)
+    await callback.message.edit_text(f"Selected pair **{pair}**.\nChoose order direction:", parse_mode="Markdown", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_type, F.data.startswith("type:"))
@@ -1021,7 +1126,7 @@ async def p2p_choose_type(callback: types.CallbackQuery, state: FSMContext) -> N
     await state.update_data(order_type=o_type)
 
     await state.set_state(P2POrderState.waiting_for_amount)
-    await callback.message.edit_text("Введите количество токенов ZRL для ордера (например: `1000`):", parse_mode="Markdown")
+    await callback.message.edit_text("Enter the amount of ZRL tokens for the order (e.g., `1000`):", parse_mode="Markdown")
 
 
 @ROUTER.message(P2POrderState.waiting_for_amount)
@@ -1031,12 +1136,12 @@ async def p2p_get_amount(message: types.Message, state: FSMContext) -> None:
         if amount <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("⚠️ Неверный формат. Введите число больше 0:")
+        await message.answer("⚠️ Invalid format. Enter a number greater than 0:")
         return
 
     await state.update_data(amount=amount)
     await state.set_state(P2POrderState.waiting_for_price)
-    await message.answer("Введите желаемую цену за 1 ZRL:")
+    await message.answer("Enter desired price per 1 ZRL:")
 
 
 @ROUTER.message(P2POrderState.waiting_for_price)
@@ -1046,7 +1151,7 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
         if price <= 0:
             raise ValueError()
     except ValueError:
-        await message.answer("⚠️ Неверный формат цены. Введите число больше 0:")
+        await message.answer("⚠️ Invalid price format. Enter a number greater than 0:")
         return
 
     data = await state.get_data()
@@ -1066,12 +1171,12 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
     currency_symbol = pair.split("/")[1]
 
     await message.answer(
-        "✅ **Ордер успешно создан и опубликован в стакане!**\n\n"
-        f"• Пара: `{pair}`\n"
-        f"• Тип: `{order_type}`\n"
-        f"• Количество: `{amount:,.0f} ZRL`\n"
-        f"• Цена: `{price} {currency_symbol}`\n"
-        f"• Сумма сделки: `{total_sum:,.4f} {currency_symbol}`",
+        "✅ **Order successfully created and published in the order book!**\n\n"
+        f"• Pair: `{pair}`\n"
+        f"• Type: `{order_type}`\n"
+        f"• Amount: `{amount:,.0f} ZRL`\n"
+        f"• Price: `{price} {currency_symbol}`\n"
+        f"• Total Deal Value: `{total_sum:,.4f} {currency_symbol}`",
         parse_mode="Markdown",
         reply_markup=p2p_menu_keyboard(),
     )
@@ -1087,17 +1192,17 @@ async def p2p_my_orders(callback: types.CallbackQuery) -> None:
         ).fetchall()
 
     if not orders:
-        text = "📦 У вас пока нет активных ордеров."
+        text = "📦 You don't have any active orders."
     else:
-        text = "📦 **Ваши ордера в экосистеме:**\n\n"
+        text = "📦 **Your ecosystem orders:**\n\n"
         for o in orders:
             o_id, pair, o_type, amount, price, status = o
-            text += f"#{o_id} | {pair} | {o_type} | {amount} ZRL по {price} | Статус: {status}\n"
+            text += f"#{o_id} | {pair} | {o_type} | {amount} ZRL @ {price} | Status: {status}\n"
 
     keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад", callback_data="p2p:menu")]]
+        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Back", callback_data="p2p:menu")]]
     )
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_keyboard=keyboard)
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 async def main() -> None:
