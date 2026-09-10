@@ -1,4 +1,4 @@
-"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions & Analytics with Auto-Trading."""
+"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions, Auto-Trading & ZRL Airdrop Mini-Game."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 import os
+import random
 import sqlite3
 from typing import Final
 
@@ -30,6 +31,9 @@ USDC_MINT: Final[str] = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 SOLANA_TREASURY_WALLET: Final[str] = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 BSC_TREASURY_WALLET: Final[str] = "0x7901D7566766379f9ffc11326762883D6161183f"
 
+# ID администратора для получения уведомлений об Airdrop (укажи свой Telegram ID)
+ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
+
 USAGE_DB_PATH: Final[str] = os.getenv(
     "USAGE_DB_PATH",
     str(os.path.join(os.path.dirname(__file__), "usage.sqlite3")),
@@ -50,6 +54,10 @@ class AutoTradeSettingsState(StatesGroup):
     waiting_for_pair = State()
     waiting_for_amount = State()
     waiting_for_target = State()
+
+
+class AirdropClaimState(StatesGroup):
+    waiting_for_solana_address = State()
 
 
 def get_required_env(name: str) -> str:
@@ -98,6 +106,17 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS airdrop_claims (
+                user_id INTEGER PRIMARY KEY,
+                reward_amount REAL NOT NULL,
+                solana_address TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
 
 
 async def get_crypto_prices() -> dict[str, float]:
@@ -140,6 +159,12 @@ async def get_crypto_prices() -> dict[str, float]:
 def main_menu_keyboard(bot_username: str) -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="🎁 Участвовать в Airdrop ZRL",
+                    callback_data="airdrop:menu",
+                )
+            ],
             [
                 types.InlineKeyboardButton(
                     text="🤖 Авто-трейдинг бот",
@@ -271,10 +296,132 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
     await message.answer(
         "✨ **Добро пожаловать в экосистему Zer0Life Labs AI!**\n\n"
         f"🎁 Вам доступно **{FREE_LIMIT} бесплатных запросов** к AI-ассистенту.\n"
-        "🤖 Доступен Авто-трейдинг и децентрализованный P2P-рынок в сети Solana.\n\n"
+        "🤖 Запустите мини-игру **Airdrop ZRL**, Авто-трейдинг или P2P-рынок в сети Solana.\n\n"
         "Выберите нужный раздел в меню ниже:",
         reply_markup=main_menu_keyboard(me.username),
     )
+
+
+# --- AIRDROP ZRL МИНИ-ИГРА ---
+
+@ROUTER.callback_query(F.data == "airdrop:menu")
+async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    user_id = callback.from_user.id
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        existing = conn.execute(
+            "SELECT reward_amount, solana_address, status FROM airdrop_claims WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+
+    if existing:
+        reward, addr, status = existing
+        text = (
+            "🎁 **ZRL Token Airdrop — Статус**\n\n"
+            f"Вы уже участвовали в раздаче!\n"
+            f"• Выпало наград: `{reward:,.0f} ZRL`\n"
+            f"• Ваш Solana адрес: `{addr}`\n"
+            f"• Статус выплаты: **{status.upper()}**\n\n"
+            "Следите за новостями экосистемы!"
+        )
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")]]
+        )
+    else:
+        text = (
+            "🎁 **Бесплатный Airdrop токена ZRL**\n\n"
+            "Испытайте удачу! Нажмите кнопку ниже, чтобы запустить генератор случайного числа от **100 до 100 000 ZRL**.\n"
+            "После выпадения награды вы сможете указать свой Solana-кошелек для получения токенов."
+        )
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🎲 Крутить генератор и получить Airdrop", callback_data="airdrop:roll")],
+                [types.InlineKeyboardButton(text="⬅️ Главное меню", callback_data="p2p:back_home")],
+            ]
+        )
+
+    if callback.message is not None:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@ROUTER.callback_query(F.data == "airdrop:roll")
+async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext) -> None:
+    await callback.answer("🎰 Крутим барабан генерации Airdrop...")
+    user_id = callback.from_user.id
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        existing = conn.execute("SELECT user_id FROM airdrop_claims WHERE user_id = ?", (user_id,)).fetchone()
+        if existing:
+            await callback.answer("⚠️ Вы уже получали свой airdrop ранее!", show_alert=True)
+            return
+
+    # Генерация случайного числа от 100 до 100 000
+    reward_amount = float(random.randint(100, 100000))
+    await state.update_data(airdrop_reward=reward_amount)
+    await state.set_state(AirdropClaimState.waiting_for_solana_address)
+
+    text = (
+        "🎉 **Поздравляем! Генератор определил вашу награду:**\n\n"
+        f"🏆 Вы выиграли: **{reward_amount:,.0f} ZRL**\n\n"
+        "👇 Теперь в ответным сообщением введите ваш **Solana-адрес** (например, Phantom, Solflare), на который мы начислим токены:"
+    )
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[[types.InlineKeyboardButton(text="❌ Отмена", callback_data="airdrop:menu")]]
+    )
+
+    if callback.message is not None:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@ROUTER.message(AirdropClaimState.waiting_for_solana_address)
+async def airdrop_save_address(message: types.Message, state: FSMContext, bot: Bot) -> None:
+    sol_address = message.text.strip()
+    if len(sol_address) < 32 or len(sol_address) > 44:
+        await message.answer("⚠️ Некорректный адрес Solana. Пожалуйста, проверьте и введите правильный адрес кошелька:")
+        return
+
+    data = await state.get_data()
+    reward_amount = data.get("airdrop_reward", 1000.0)
+    user_id = message.from_user.id
+    username = message.from_user.username or "без username"
+    full_name = message.from_user.full_name or "Без имени"
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT INTO airdrop_claims (user_id, reward_amount, solana_address, status)
+            VALUES (?, ?, ?, 'pending')
+            """,
+            (user_id, reward_amount, sol_address),
+        )
+
+    await state.clear()
+
+    await message.answer(
+        "✅ **Адрес успешно сохранен!**\n\n"
+        f"• Награда: `{reward_amount:,.0f} ZRL`\n"
+        f"• Адрес: `{sol_address}`\n\n"
+        "Ваша заявка отправлена на ручную/автоматическую проверку. Тоскены поступят на ваш кошелек в ближайшее время!",
+        parse_mode="Markdown",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="🏠 В главное меню", callback_data="p2p:back_home")]]
+        ),
+    )
+
+    # Отправка СМС (уведомления) администратору в личку
+    if ADMIN_TELEGRAM_ID > 0:
+        try:
+            admin_text = (
+                "🔔 **Новая заявка на Airdrop ZRL!**\n\n"
+                f"👤 Пользователь: {full_name} (@{username}) [ID: `{user_id}`]\n"
+                f"🎁 Сумма: `{reward_amount:,.0f} ZRL`\n"
+                f"👛 Solana Кошелек:\n`{sol_address}`"
+            )
+            await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="Markdown")
+        except Exception as e:
+            LOGGER.error(f"Failed to send airdrop notification to admin: {e}")
 
 
 # --- АВТО-ТРЕЙДИНГ РАЗДЕЛ ---
@@ -570,6 +717,7 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
             "ℹ️ **О проекте Zer0Life Labs AI & ZRL Token**\n\n"
             "• **AI Ассистент:** Решает задачи, анализирует изображения и помогает в работе.\n"
             "• **Авто-трейдинг:** Торговый бот с проверкой ликвидности и объемов в Solana.\n"
+            "• **Airdrop:** Мини-игра с рандомной раздачей ZRL токенов от 100 до 100,000.\n"
             "• **Подписка:** Первые 5 запросов бесплатны, далее Pro-доступ за $10 (оплата в SOL, BNB, ZRL).\n"
             "• **ZRL Token:** Нативный актив экосистемы для P2P-торговли в сети Solana.\n\n"
             "Отправьте изображение в чат для теста AI.",
@@ -900,7 +1048,7 @@ async def p2p_my_orders(callback: types.CallbackQuery) -> None:
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад", callback_data="p2p:menu")]]
     )
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_keyboard=keyboard)
 
 
 async def main() -> None:
@@ -912,7 +1060,7 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Labs AI Bot with Autonomous Crypto Payments, Auto-Trading & Analytics is running...")
+    LOGGER.info("Zer0Life Labs AI Bot with Autonomous Crypto Payments, Auto-Trading, P2P & Airdrop Mini-Game is running...")
     await bot.get_updates(offset=-1)
     await dispatcher.start_polling(bot)
 
