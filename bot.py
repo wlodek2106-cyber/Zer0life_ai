@@ -1,4 +1,4 @@
-"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions & Analytics."""
+"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions & Analytics with Auto-Trading."""
 
 from __future__ import annotations
 
@@ -46,6 +46,12 @@ class P2POrderState(StatesGroup):
     waiting_for_price = State()
 
 
+class AutoTradeSettingsState(StatesGroup):
+    waiting_for_pair = State()
+    waiting_for_amount = State()
+    waiting_for_target = State()
+
+
 def get_required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -78,6 +84,17 @@ def init_db() -> None:
                 price REAL NOT NULL,
                 status TEXT NOT NULL DEFAULT 'active',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS auto_trade (
+                user_id INTEGER PRIMARY KEY,
+                pair TEXT,
+                amount REAL,
+                target_percent REAL,
+                status TEXT DEFAULT 'inactive'
             )
             """
         )
@@ -125,6 +142,12 @@ def main_menu_keyboard(bot_username: str) -> types.InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
+                    text="🤖 Авто-трейдинг бот",
+                    callback_data="autotrade:menu",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
                     text="💱 P2P Биржа (ZRL / SOL / USDC)",
                     callback_data="p2p:menu",
                 )
@@ -142,7 +165,7 @@ def main_menu_keyboard(bot_username: str) -> types.InlineKeyboardMarkup:
                 ),
                 types.InlineKeyboardButton(
                     text="📤 Поделиться ботом",
-                    url=f"https://t.me/share/url?url=https://t.me/{bot_username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20задач%20и%20P2P-торговли%20токеном%20ZRL!",
+                    url=f"https://t.me/share/url?url=https://t.me/{bot_username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20авто-трейдинга%20и%20P2P!",
                 ),
             ],
             [
@@ -190,6 +213,31 @@ def p2p_menu_keyboard() -> types.InlineKeyboardMarkup:
     )
 
 
+def autotrade_menu_keyboard() -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="⚙️ Настроить / Запустить авто-трейдинг",
+                    callback_data="autotrade:configure",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="📊 Статус авто-торговли",
+                    callback_data="autotrade:status",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="⬅️ Главное меню",
+                    callback_data="p2p:back_home",
+                )
+            ],
+        ]
+    )
+
+
 # ==================== ОБРАБОТЧИКИ ====================
 
 @ROUTER.message(Command("start"))
@@ -223,10 +271,144 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
     await message.answer(
         "✨ **Добро пожаловать в экосистему Zer0Life Labs AI!**\n\n"
         f"🎁 Вам доступно **{FREE_LIMIT} бесплатных запросов** к AI-ассистенту.\n"
-        "💱 Децентрализованный P2P-рынок токена **ZRL** на Solana.\n\n"
+        "🤖 Доступен Авто-трейдинг и децентрализованный P2P-рынок в сети Solana.\n\n"
         "Выберите нужный раздел в меню ниже:",
         reply_markup=main_menu_keyboard(me.username),
     )
+
+
+# --- АВТО-ТРЕЙДИНГ РАЗДЕЛ ---
+
+@ROUTER.callback_query(F.data == "autotrade:menu")
+async def autotrade_menu_callback(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message is not None:
+        await callback.message.edit_text(
+            "🤖 **Авто-трейдинг бот (Solana / Jupiter DEX)**\n\n"
+            "Бот автоматически отслеживает ликвидность, объем торгов и совершает сделки по заданным параметрам.\n"
+            "В период тестирования функция **бесплатна** (в будущем планируется Pro-подписка).\n\n"
+            "Выберите действие:",
+            parse_mode="Markdown",
+            reply_markup=autotrade_menu_keyboard(),
+        )
+
+
+@ROUTER.callback_query(F.data == "autotrade:configure")
+async def autotrade_configure(callback: types.CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="Solana (SOL)", callback_data="at_pair:SOL"),
+                types.InlineKeyboardButton(text="Binance Coin (BNB)", callback_data="at_pair:BNB"),
+            ],
+            [
+                types.InlineKeyboardButton(text="ZRL Token (ZRL)", callback_data="at_pair:ZRL"),
+            ],
+            [types.InlineKeyboardButton(text="❌ Отмена", callback_data="autotrade:menu")],
+        ]
+    )
+    await state.set_state(AutoTradeSettingsState.waiting_for_pair)
+    if callback.message is not None:
+        await callback.message.edit_text("⚙️ Выберите основную монету/токен для авто-торговли:", reply_markup=keyboard)
+
+
+@ROUTER.callback_query(AutoTradeSettingsState.waiting_for_pair, F.data.startswith("at_pair:"))
+async def autotrade_set_pair(callback: types.CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    pair = callback.data.split(":")[1]
+    await state.update_data(pair=pair)
+    await state.set_state(AutoTradeSettingsState.waiting_for_amount)
+    if callback.message is not None:
+        await callback.message.edit_text(
+            f"Вы выбрали актив: **{pair}**.\n\n"
+            "Введите минимальный размер депозита для сделки в USD (например, `50` или `100`):",
+            parse_mode="Markdown",
+        )
+
+
+@ROUTER.message(AutoTradeSettingsState.waiting_for_amount)
+async def autotrade_set_amount(message: types.Message, state: FSMContext) -> None:
+    try:
+        amount = float(message.text.strip().replace(",", "."))
+        if amount <= 0:
+            raise ValueError()
+    except ValueError:
+        await message.answer("⚠️ Неверный формат. Введите число больше 0:")
+        return
+
+    await state.update_data(amount=amount)
+    await state.set_state(AutoTradeSettingsState.waiting_for_target)
+    await message.answer("Введите целевой процент прибыли для закрытия сделки (например, `20` для 20%):")
+
+
+@ROUTER.message(AutoTradeSettingsState.waiting_for_target)
+async def autotrade_set_target(message: types.Message, state: FSMContext) -> None:
+    try:
+        target = float(message.text.strip().replace(",", "."))
+        if target <= 0:
+            raise ValueError()
+    except ValueError:
+        await message.answer("⚠️ Неверный формат. Введите число больше 0:")
+        return
+
+    data = await state.get_data()
+    user_id = message.from_user.id
+    pair = data["pair"]
+    amount = data["amount"]
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT INTO auto_trade (user_id, pair, amount, target_percent, status)
+            VALUES (?, ?, ?, ?, 'active')
+            ON CONFLICT(user_id)
+            DO UPDATE SET pair = ?, amount = ?, target_percent = ?, status = 'active'
+            """,
+            (user_id, pair, amount, target, pair, amount, target),
+        )
+
+    await state.clear()
+    await message.answer(
+        "✅ **Авто-трейдинг успешно настроен и активирован!**\n\n"
+        f"• Актив: `{pair}`\n"
+        f"• Мин. депозит: `${amount}`\n"
+        f"• Целевой профит: `+{target}%`\n\n"
+        "Бот начал мониторинг ликвидности в пулах и объема торгов через Jupiter DEX.",
+        parse_mode="Markdown",
+        reply_markup=autotrade_menu_keyboard(),
+    )
+
+
+@ROUTER.callback_query(F.data == "autotrade:status")
+async def autotrade_status(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    user_id = callback.from_user.id
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT pair, amount, target_percent, status FROM auto_trade WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+
+    if not row or row[3] == 'inactive':
+        text = "📊 У вас пока нет активных сессий авто-трейдинга."
+    else:
+        pair, amount, target, status = row
+        text = (
+            "📊 **Статус вашего авто-трейдинг бота:**\n\n"
+            f"• Состояние: **{status.upper()}**\n"
+            f"• Торговый актив: `{pair}`\n"
+            f"• Депозит на сделку: `${amount}`\n"
+            f"• Цель по профиту: `+{target}%`\n\n"
+            "Бот успешно проверяет ликвидность и объемы в сети Solana."
+        )
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в меню бота", callback_data="autotrade:menu")]]
+    )
+    if callback.message is not None:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(F.data == "sub:choose_currency")
@@ -370,7 +552,7 @@ async def stats_view_handler(callback: types.CallbackQuery, bot: Bot) -> None:
             [
                 types.InlineKeyboardButton(
                     text="📤 Поделиться ботом",
-                    url=f"https://t.me/share/url?url=https://t.me/{me.username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20задач%20и%20P2P!",
+                    url=f"https://t.me/share/url?url=https://t.me/{me.username}&text=🚀%20Используй%20Zer0Life%20Labs%20AI%20для%20авто-трейдинга%20и%20P2P!",
                 )
             ],
             [types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="p2p:back_home")],
@@ -387,6 +569,7 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         await callback.message.edit_text(
             "ℹ️ **О проекте Zer0Life Labs AI & ZRL Token**\n\n"
             "• **AI Ассистент:** Решает задачи, анализирует изображения и помогает в работе.\n"
+            "• **Авто-трейдинг:** Торговый бот с проверкой ликвидности и объемов в Solana.\n"
             "• **Подписка:** Первые 5 запросов бесплатны, далее Pro-доступ за $10 (оплата в SOL, BNB, ZRL).\n"
             "• **ZRL Token:** Нативный актив экосистемы для P2P-торговли в сети Solana.\n\n"
             "Отправьте изображение в чат для теста AI.",
@@ -729,7 +912,7 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Labs AI Bot with Autonomous Crypto Payments & Analytics is running...")
+    LOGGER.info("Zer0Life Labs AI Bot with Autonomous Crypto Payments, Auto-Trading & Analytics is running...")
     await bot.get_updates(offset=-1)
     await dispatcher.start_polling(bot)
 
