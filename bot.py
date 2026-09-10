@@ -1,7 +1,7 @@
 """Zer0Life Commerce AI Telegram bot.
 
 The bot receives a product photo and generates an English/Polish marketplace
-listing and image transformations with OpenAI's models.
+listing and image transformations using OpenAI's models.
 """
 
 from __future__ import annotations
@@ -724,7 +724,6 @@ async def photo_action_handler(
         }
         status_msg = await callback.message.answer(f"⏳ Выполняю {action_names[action]}...")
         try:
-            # Используем DALL-E 2 (стабильная модель, доступная на всех аккаунтах)
             prompt_text = (
                 "Professional e-commerce product photography of this item isolated on a clean solid pure white background, studio lighting, highly detailed" if action == "remove" else
                 "A professional commercial e-commerce studio background setting showcasing this product with soft atmospheric lighting, high-end catalog style" if action == "background" else
@@ -732,7 +731,7 @@ async def photo_action_handler(
             )
 
             response = await openai_client.images.generate(
-                model="dall-e-2",
+                model="dall-e-3",
                 prompt=prompt_text,
                 n=1,
                 size="1024x1024"
@@ -770,7 +769,7 @@ async def main() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
 
-    telegram_token = "8820567588:AAHmA_oj9AyKVqjAFWEoo-ecjHOvhYi6fHg"
+    telegram_token = get_required_env("TELEGRAM_BOT_TOKEN")
     get_required_env("OPENAI_API_KEY")
 
     bot = Bot(token=telegram_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
