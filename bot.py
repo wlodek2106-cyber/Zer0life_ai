@@ -1,6 +1,6 @@
 """
 Zer0Life Labs AI Telegram Bot: AI Assistant, P2P Escrow Marketplace, 
-Crypto Subscriptions, Auto-Trading, Merch & ZRL Airdrop Mini-Game.
+Crypto Subscriptions, Auto-Trading, Merch, ZRL Airdrop Mini-Game & Enterprise Wallet.
 """
 
 from __future__ import annotations
@@ -22,6 +22,9 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from openai import AsyncOpenAI
+
+# Импортируем созданный модуль кошелька
+from zer0life_wallet import wallet_router, init_wallet_db
 
 LOGGER = logging.getLogger(__name__)
 ROUTER = Router()
@@ -62,6 +65,7 @@ TRANSLATIONS = {
             "Select a section from the menu below:"
         ),
         "choose_lang": "🌐 Please select your preferred language:",
+        "btn_wallet": "💼 My Wallet",
         "btn_airdrop": "🎁 Join ZRL Airdrop",
         "btn_autotrade": "🤖 Auto-Trading Bot",
         "btn_p2p": "💱 P2P Marketplace (Escrow)",
@@ -89,6 +93,7 @@ TRANSLATIONS = {
             "Выберите нужный раздел в меню ниже:"
         ),
         "choose_lang": "🌐 Пожалуйста, выберите язык / Please select your language:",
+        "btn_wallet": "💼 Мой Кошелек",
         "btn_airdrop": "🎁 Участвовать в Airdrop ZRL",
         "btn_autotrade": "🤖 Авто-трейдинг бот",
         "btn_p2p": "💱 P2P Биржа (Эскроу)",
@@ -275,6 +280,12 @@ async def verify_solana_tx(tx_hash: str) -> bool:
 def main_menu_keyboard(bot_username: str, user_id: int) -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text=get_text(user_id, "btn_wallet"),
+                    callback_data="zrl_w:main",
+                )
+            ],
             [
                 types.InlineKeyboardButton(
                     text=get_text(user_id, "btn_airdrop"),
@@ -965,6 +976,7 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         await callback.message.edit_text(
             "ℹ️ **About Zer0Life Labs AI & ZRL Token**\n\n"
             "• **AI Assistant:** Solves tasks, analyzes images, and assists in work.\n"
+            "• **Enterprise Wallet:** Multi-currency wallet with instant transfers and AML risk protection.\n"
             "• **Auto-Trading:** Trading bot with liquidity and volume verification on Solana.\n"
             "• **Airdrop:** Mini-game featuring random ZRL token distributions (100M pool) and anti-sybil protection.\n"
             "• **Subscription:** First 5 requests free, then Pro access for $10 (SOL, BNB, ZRL payments accepted).\n"
@@ -1419,14 +1431,20 @@ async def p2p_my_orders(callback: types.CallbackQuery) -> None:
 # ==================== MAIN LAUNCHER ====================
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    
+    # Инициализация основной БД и БД кошелька
     init_db()
+    init_wallet_db()
 
     token = get_required_env("TELEGRAM_BOT_TOKEN")
     bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dispatcher = Dispatcher()
-    dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Labs AI Bot with Full Escrow P2P, Auto-Trading & Airdrop is running...")
+    # Подключение основной логики и модуля кошелька
+    dispatcher.include_router(ROUTER)
+    dispatcher.include_router(wallet_router)
+
+    LOGGER.info("Zer0Life Labs AI Bot with Enterprise Wallet, Escrow P2P, Auto-Trading & Airdrop is running...")
     await bot.get_updates(offset=-1)
     await dispatcher.start_polling(bot)
 
