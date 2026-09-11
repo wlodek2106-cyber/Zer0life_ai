@@ -1,4 +1,7 @@
-"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions, Auto-Trading, Merch & ZRL Airdrop Mini-Game."""
+"""
+Zer0Life Labs AI Telegram Bot: AI Assistant, P2P Escrow Marketplace, 
+Crypto Subscriptions, Auto-Trading, Merch & ZRL Airdrop Mini-Game.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +12,7 @@ import logging
 import os
 import random
 import sqlite3
-from typing import Final
+from typing import Final, Optional
 
 import aiohttp
 from aiogram import Bot, Dispatcher, F, Router, types
@@ -33,6 +36,7 @@ BSC_TREASURY_WALLET: Final[str] = "0x7901D7566766379f9ffc11326762883D6161183f"
 
 TOTAL_AIRDROP_POOL: Final[float] = 100_000_000.0
 ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
+SOLANA_RPC_URL = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 
 # Ссылки на ваши маркетплейсы
 ETSY_URL: Final[str] = os.getenv("ETSY_URL", "https://www.etsy.com")
@@ -54,13 +58,13 @@ TRANSLATIONS = {
         "welcome": (
             "✨ **Welcome to Zer0Life Labs AI Ecosystem!**\n\n"
             "🎁 You have **{limit} free AI requests** available.\n"
-            "🤖 Launch the **ZRL Airdrop** mini-game, Auto-Trading, or P2P market on Solana.\n\n"
+            "🤖 Launch the **ZRL Airdrop** mini-game, Auto-Trading, or P2P escrow market on Solana.\n\n"
             "Select a section from the menu below:"
         ),
         "choose_lang": "🌐 Please select your preferred language:",
         "btn_airdrop": "🎁 Join ZRL Airdrop",
         "btn_autotrade": "🤖 Auto-Trading Bot",
-        "btn_p2p": "💱 P2P Marketplace (ZRL / SOL / USDC)",
+        "btn_p2p": "💱 P2P Marketplace (Escrow)",
         "btn_merch": "🛍 Official Merch Store",
         "btn_sub": "💎 Buy Pro Subscription ($10)",
         "btn_stats": "📊 Ecosystem Stats",
@@ -81,13 +85,13 @@ TRANSLATIONS = {
         "welcome": (
             "✨ **Добро пожаловать в экосистему Zer0Life Labs AI!**\n\n"
             "🎁 Вам доступно **{limit} бесплатных запросов** к AI-ассистенту.\n"
-            "🤖 Запустите мини-игру **Airdrop ZRL**, Авто-трейдинг или P2P-рынок в сети Solana.\n\n"
+            "🤖 Запустите мини-игру **Airdrop ZRL**, Авто-трейдинг или P2P-эскроу рынок в сети Solana.\n\n"
             "Выберите нужный раздел в меню ниже:"
         ),
         "choose_lang": "🌐 Пожалуйста, выберите язык / Please select your language:",
         "btn_airdrop": "🎁 Участвовать в Airdrop ZRL",
         "btn_autotrade": "🤖 Авто-трейдинг бот",
-        "btn_p2p": "💱 P2P Биржа (ZRL / SOL / USDC)",
+        "btn_p2p": "💱 P2P Биржа (Эскроу)",
         "btn_merch": "🛍 Наш Мерч (Магазины)",
         "btn_sub": "💎 Купить Pro-подписку ($10)",
         "btn_stats": "📊 Статистика экосистемы",
@@ -122,11 +126,17 @@ def get_text(user_id: int, key: str, **kwargs) -> str:
     return text_template.format(**kwargs)
 
 
+# ==================== FSM STATES ====================
 class P2POrderState(StatesGroup):
     waiting_for_pair = State()
     waiting_for_type = State()
     waiting_for_amount = State()
     waiting_for_price = State()
+    waiting_for_wallet = State()
+
+
+class P2PProofState(StatesGroup):
+    waiting_for_proof = State()
 
 
 class AutoTradeSettingsState(StatesGroup):
@@ -146,6 +156,7 @@ def get_required_env(name: str) -> str:
     return value
 
 
+# ==================== DATABASE INITIALIZATION ====================
 def init_db() -> None:
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         conn.execute(
@@ -166,10 +177,13 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS p2p_orders (
                 order_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 seller_id INTEGER NOT NULL,
+                buyer_id INTEGER DEFAULT NULL,
                 pair TEXT NOT NULL,
                 order_type TEXT NOT NULL,
                 amount REAL NOT NULL,
                 price REAL NOT NULL,
+                seller_wallet TEXT NOT NULL DEFAULT '',
+                proof_data TEXT DEFAULT NULL,
                 status TEXT NOT NULL DEFAULT 'active',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -199,6 +213,7 @@ def init_db() -> None:
         )
 
 
+# ==================== BLOCKCHAIN & PRICE UTILS ====================
 async def get_crypto_prices() -> dict[str, float]:
     prices = {"SOL": 150.0, "BNB": 600.0, "ZRL": 0.05}
     
@@ -234,8 +249,29 @@ async def get_crypto_prices() -> dict[str, float]:
     return prices
 
 
-# ==================== KEYBOARDS ====================
+async def verify_solana_tx(tx_hash: str) -> bool:
+    """Verifies transaction signature via Solana RPC JSON-API."""
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getSignatureStatuses",
+        "params": [[tx_hash], {"searchTransactionHistory": True}]
+    }
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.post(SOLANA_RPC_URL, json=payload) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    statuses = data.get("result", {}).get("value", [])
+                    if statuses and statuses[0]:
+                        status = statuses[0].get("confirmationStatus")
+                        return status in ["confirmed", "finalized"]
+        except Exception as e:
+            LOGGER.error(f"Solana RPC error: {e}")
+    return False
 
+
+# ==================== KEYBOARDS ====================
 def main_menu_keyboard(bot_username: str, user_id: int) -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -306,7 +342,7 @@ def p2p_menu_keyboard() -> types.InlineKeyboardMarkup:
             ],
             [
                 types.InlineKeyboardButton(
-                    text="➕ Create Order",
+                    text="➕ Create Escrow Order",
                     callback_data="p2p:create_order",
                 ),
                 types.InlineKeyboardButton(
@@ -439,7 +475,8 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
                 [types.InlineKeyboardButton(text="🏠 Back to Menu", callback_data="lang:back_home")]
             ]
         )
-        await callback.message.edit_text("🌐 Please select your preferred language / Выберите язык:", reply_markup=keyboard)
+        if callback.message:
+            await callback.message.edit_text("🌐 Please select your preferred language / Выберите язык:", reply_markup=keyboard)
         return
 
     if action.startswith("set_"):
@@ -450,20 +487,22 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
         await callback.answer(get_text(user_id, "lang_updated"))
         me = await bot.get_me()
         
-        await callback.message.edit_text(
-            get_text(user_id, "welcome", limit=FREE_LIMIT),
-            reply_markup=main_menu_keyboard(me.username, user_id),
-            parse_mode="Markdown",
-        )
+        if callback.message:
+            await callback.message.edit_text(
+                get_text(user_id, "welcome", limit=FREE_LIMIT),
+                reply_markup=main_menu_keyboard(me.username, user_id),
+                parse_mode="Markdown",
+            )
         return
 
     if action == "back_home":
         me = await bot.get_me()
-        await callback.message.edit_text(
-            get_text(user_id, "welcome", limit=FREE_LIMIT),
-            reply_markup=main_menu_keyboard(me.username, user_id),
-            parse_mode="Markdown",
-        )
+        if callback.message:
+            await callback.message.edit_text(
+                get_text(user_id, "welcome", limit=FREE_LIMIT),
+                reply_markup=main_menu_keyboard(me.username, user_id),
+                parse_mode="Markdown",
+            )
 
 
 # --- AIRDROP ZRL MINI-GAME ---
@@ -617,7 +656,6 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         ),
     )
 
-    # --- УВЕДОМЛЕНИЕ АДМИНИСТРАТОРУ (HTML С КЛИКАБЕЛЬНЫМ КОШЕЛЬКОМ) ---
     if ADMIN_TELEGRAM_ID > 0:
         try:
             admin_text = (
@@ -625,7 +663,7 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
                 f"👤 <b>Пользователь:</b> {full_name} (@{username})\n"
                 f"🆔 <b>ID:</b> <code>{user_id}</code>\n"
                 f"🎁 <b>Сумма:</b> <code>{reward_amount:,.0f} ZRL</code>\n\n"
-                f"👛 <b>Кошелек Solana (нажмите для копирования):</b>\n"
+                f"👛 <b>Кошелек Solana:</b>\n"
                 f"<code>{sol_address}</code>"
             )
             await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="HTML")
@@ -766,6 +804,8 @@ async def autotrade_status(callback: types.CallbackQuery) -> None:
     if callback.message is not None:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
+
+# --- PRO SUBSCRIPTIONS ---
 
 @ROUTER.callback_query(F.data == "sub:choose_currency")
 async def sub_choose_currency(callback: types.CallbackQuery) -> None:
@@ -937,6 +977,8 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         )
 
 
+# --- AI VISION & IMAGE PROCESSING ---
+
 @ROUTER.message(F.photo)
 async def photo_handler(message: types.Message, bot: Bot) -> None:
     user_id = message.from_user.id
@@ -1015,7 +1057,7 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
         await status_msg.edit_text("❌ An error occurred while processing the image.")
 
 
-# --- P2P MARKETPLACE SECTION ---
+# --- P2P ESCROW MARKETPLACE SECTION ---
 
 @ROUTER.callback_query(F.data.in_({"p2p:menu", "p2p:refresh"}))
 async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
@@ -1025,7 +1067,7 @@ async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
 
     rates = await get_crypto_prices()
     text = (
-        "💱 **Zer0Life Labs AI — P2P Marketplace (Solana)**\n\n"
+        "💱 **Zer0Life Labs AI — P2P Escrow Marketplace (Solana)**\n\n"
         "Current **ZRL** token rates:\n"
         f"🔹 **ZRL / SOL:** `{rates['ZRL'] / rates['SOL']:.6f}` SOL\n"
         f"🔹 **ZRL / USDC:** `${rates['ZRL']:.4f}` USDC\n\n"
@@ -1077,65 +1119,154 @@ async def p2p_list_orders(callback: types.CallbackQuery) -> None:
             
             keyboard_buttons.append([
                 types.InlineKeyboardButton(
-                    text=f"🤝 Execute Order #{o_id} ({o_type})",
-                    callback_data=f"p2p:deal:{o_id}"
+                    text=f"🤝 Accept Order #{o_id} ({o_type})",
+                    callback_data=f"p2p:accept:{o_id}"
                 )
             ])
         
         keyboard_buttons.append([types.InlineKeyboardButton(text="⬅️ Back to P2P Menu", callback_data="p2p:menu")])
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    if callback.message:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
-@ROUTER.callback_query(F.data.startswith("p2p:deal:"))
-async def p2p_execute_deal(callback: types.CallbackQuery) -> None:
+@ROUTER.callback_query(F.data.startswith("p2p:accept:"))
+async def p2p_accept_deal(callback: types.CallbackQuery, state: FSMContext) -> None:
     order_id = int(callback.data.split(":")[2])
     buyer_id = callback.from_user.id
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         order = conn.execute(
-            "SELECT seller_id, pair, order_type, amount, price, status FROM p2p_orders WHERE order_id = ?",
+            "SELECT seller_id, pair, order_type, amount, price, seller_wallet, status FROM p2p_orders WHERE order_id = ?",
             (order_id,),
         ).fetchone()
 
-        if not order:
-            await callback.answer("❌ Order not found or already deleted.", show_alert=True)
+        if not order or order[6] != "active":
+            await callback.answer("⚠️ Order not available or already taken.", show_alert=True)
             return
 
-        seller_id, pair, o_type, amount, price, status = order
-
-        if status != "active":
-            await callback.answer("⚠️ This order has already been completed or canceled.", show_alert=True)
-            return
+        seller_id, pair, o_type, amount, price, seller_wallet, status = order
 
         if seller_id == buyer_id:
             await callback.answer("❌ You cannot execute your own order.", show_alert=True)
             return
 
         conn.execute(
-            "UPDATE p2p_orders SET status = 'completed' WHERE order_id = ?",
-            (order_id,),
+            "UPDATE p2p_orders SET buyer_id = ?, status = 'pending_payment' WHERE order_id = ?",
+            (buyer_id, order_id),
         )
 
     total_sum = amount * price
     currency_symbol = pair.split("/")[1]
 
-    await callback.answer("✅ Deal successfully confirmed!", show_alert=True)
-    
-    await callback.message.edit_text(
-        f"🎉 **Deal for Order #{order_id} concluded!**\n\n"
+    await state.update_data(current_order_id=order_id)
+    await state.set_state(P2PProofState.waiting_for_proof)
+
+    text = (
+        f"🤝 **Deal for Order #{order_id} Initiated!**\n\n"
         f"• Pair: `{pair}`\n"
-        f"• Type: `{o_type}`\n"
         f"• Volume: `{amount:,.0f} ZRL`\n"
-        f"• Price per 1 ZRL: `{price} {currency_symbol}`\n"
-        f"• Total Amount: `{total_sum:,.4f} {currency_symbol}`\n\n"
-        "Please wait for automated execution on the Solana network.",
-        parse_mode="Markdown",
-        reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ To P2P Menu", callback_data="p2p:menu")]]
-        ),
+        f"• Total Amount to Pay: `{total_sum:,.4f} {currency_symbol}`\n\n"
+        f"📌 **Seller Solana Address:**\n`{seller_wallet}`\n\n"
+        "👇 **Action Required:** Please make the transfer and upload a **screenshot receipt** or enter the **Solana TX Hash/Signature** directly in this chat:"
     )
+
+    if callback.message:
+        await callback.message.edit_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[[types.InlineKeyboardButton(text="❌ Cancel Deal", callback_data="p2p:menu")]]
+            )
+        )
+
+
+@ROUTER.message(P2PProofState.waiting_for_proof)
+async def p2p_receive_proof(message: types.Message, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    order_id = data.get("current_order_id")
+    proof = ""
+
+    if message.photo:
+        proof = f"photo:{message.photo[-1].file_id}"
+    elif message.text:
+        proof = f"tx:{message.text.strip()}"
+    else:
+        await message.answer("⚠️ Invalid format. Please upload a screenshot or send a TX Hash string:")
+        return
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        conn.execute(
+            "UPDATE p2p_orders SET proof_data = ?, status = 'proof_submitted' WHERE order_id = ?",
+            (proof, order_id),
+        )
+        order = conn.execute("SELECT seller_id, pair, amount FROM p2p_orders WHERE order_id = ?", (order_id,)).fetchone()
+
+    seller_id = order[0]
+    await state.clear()
+    await message.answer(
+        "✅ **Payment proof uploaded successfully!**\n\n"
+        "The seller has been notified to verify and confirm receipt of funds.",
+        reply_markup=p2p_menu_keyboard(),
+    )
+
+    confirm_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[[
+            types.InlineKeyboardButton(text="✅ Confirm Funds Received", callback_data=f"p2p:confirm:{order_id}")
+        ]]
+    )
+
+    try:
+        if proof.startswith("photo:"):
+            photo_id = proof.split("photo:")[1]
+            await bot.send_photo(
+                seller_id,
+                photo_id,
+                caption=f"🔔 **Payment Proof Received for Order #{order_id}!**\n\nPlease check your Solana wallet and confirm transaction:",
+                reply_markup=confirm_kb,
+            )
+        else:
+            tx_hash = proof.split("tx:")[1]
+            is_valid = await verify_solana_tx(tx_hash)
+            verified_txt = "🟢 **RPC Verification:** Transaction confirmed on Solana Blockchain!" if is_valid else "🟡 **RPC Verification:** Pending or Unconfirmed"
+            await bot.send_message(
+                seller_id,
+                f"🔔 **TX Signature Submitted for Order #{order_id}!**\n\n`{tx_hash}`\n\n{verified_txt}\n\nPlease verify in your wallet and click below:",
+                parse_mode="Markdown",
+                reply_markup=confirm_kb,
+            )
+    except Exception as e:
+        LOGGER.error(f"Failed to notify seller: {e}")
+
+
+@ROUTER.callback_query(F.data.startswith("p2p:confirm:"))
+async def p2p_seller_confirm(callback: types.CallbackQuery, bot: Bot) -> None:
+    order_id = int(callback.data.split(":")[2])
+    seller_id = callback.from_user.id
+
+    with sqlite3.connect(USAGE_DB_PATH) as conn:
+        order = conn.execute("SELECT buyer_id, seller_id, status FROM p2p_orders WHERE order_id = ?", (order_id,)).fetchone()
+        if not order or order[1] != seller_id:
+            await callback.answer("❌ Permission denied.", show_alert=True)
+            return
+
+        buyer_id = order[0]
+        conn.execute("UPDATE p2p_orders SET status = 'completed' WHERE order_id = ?", (order_id,))
+
+    await callback.answer("✅ Transaction successfully completed!")
+    if callback.message:
+        await callback.message.edit_text(f"🎉 **Order #{order_id} closed! Deal marked as completed.**")
+
+    try:
+        if buyer_id:
+            await bot.send_message(
+                buyer_id,
+                f"🎉 **Seller confirmed payment for Order #{order_id}!** Deal is finalized.",
+                reply_markup=p2p_menu_keyboard(),
+            )
+    except Exception:
+        pass
 
 
 @ROUTER.callback_query(F.data == "p2p:create_order")
@@ -1151,7 +1282,8 @@ async def p2p_create_start(callback: types.CallbackQuery, state: FSMContext) -> 
         ]
     )
     await state.set_state(P2POrderState.waiting_for_pair)
-    await callback.message.edit_text("💱 Select trading pair to create an order:", reply_markup=keyboard)
+    if callback.message:
+        await callback.message.edit_text("💱 Select trading pair to create an order:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_pair, F.data.startswith("pair:"))
@@ -1170,7 +1302,8 @@ async def p2p_choose_pair(callback: types.CallbackQuery, state: FSMContext) -> N
         ]
     )
     await state.set_state(P2POrderState.waiting_for_type)
-    await callback.message.edit_text(f"Selected pair **{pair}**.\nChoose order direction:", parse_mode="Markdown", reply_markup=keyboard)
+    if callback.message:
+        await callback.message.edit_text(f"Selected pair **{pair}**.\nChoose order direction:", parse_mode="Markdown", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_type, F.data.startswith("type:"))
@@ -1180,13 +1313,14 @@ async def p2p_choose_type(callback: types.CallbackQuery, state: FSMContext) -> N
     await state.update_data(order_type=o_type)
 
     await state.set_state(P2POrderState.waiting_for_amount)
-    await callback.message.edit_text("Enter the amount of ZRL tokens for the order (e.g., `1000`):", parse_mode="Markdown")
+    if callback.message:
+        await callback.message.edit_text("Enter the amount of ZRL tokens for the order (e.g., `1000`):", parse_mode="Markdown")
 
 
 @ROUTER.message(P2POrderState.waiting_for_amount)
 async def p2p_get_amount(message: types.Message, state: FSMContext) -> None:
     try:
-        amount = float(message.text.strip())
+        amount = float(message.text.strip().replace(",", "."))
         if amount <= 0:
             raise ValueError()
     except ValueError:
@@ -1208,16 +1342,32 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
         await message.answer("⚠️ Invalid price format. Enter a number greater than 0:")
         return
 
+    await state.update_data(price=price)
+    await state.set_state(P2POrderState.waiting_for_wallet)
+    await message.answer("👛 Enter your Solana Wallet Address where funds/tokens will be settled:")
+
+
+@ROUTER.message(P2POrderState.waiting_for_wallet)
+async def p2p_get_wallet(message: types.Message, state: FSMContext) -> None:
+    wallet = message.text.strip()
+    if len(wallet) < 32 or len(wallet) > 44:
+        await message.answer("⚠️ Invalid Solana address format. Please check and enter a valid address:")
+        return
+
     data = await state.get_data()
     user_id = message.from_user.id
     pair = data["pair"]
     order_type = data["order_type"]
     amount = data["amount"]
+    price = data["price"]
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         conn.execute(
-            "INSERT INTO p2p_orders (seller_id, pair, order_type, amount, price) VALUES (?, ?, ?, ?, ?)",
-            (user_id, pair, order_type, amount, price),
+            """
+            INSERT INTO p2p_orders (seller_id, pair, order_type, amount, price, seller_wallet)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, pair, order_type, amount, price, wallet),
         )
 
     await state.clear()
@@ -1230,7 +1380,8 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
         f"• Type: `{order_type}`\n"
         f"• Amount: `{amount:,.0f} ZRL`\n"
         f"• Price: `{price} {currency_symbol}`\n"
-        f"• Total Deal Value: `{total_sum:,.4f} {currency_symbol}`",
+        f"• Total Deal Value: `{total_sum:,.4f} {currency_symbol}`\n"
+        f"• Registered Wallet: `{wallet}`",
         parse_mode="Markdown",
         reply_markup=p2p_menu_keyboard(),
     )
@@ -1241,24 +1392,31 @@ async def p2p_my_orders(callback: types.CallbackQuery) -> None:
     await callback.answer()
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         orders = conn.execute(
-            "SELECT order_id, pair, order_type, amount, price, status FROM p2p_orders WHERE seller_id = ? ORDER BY order_id DESC",
-            (callback.from_user.id,),
+            """
+            SELECT order_id, pair, order_type, amount, price, status 
+            FROM p2p_orders 
+            WHERE seller_id = ? OR buyer_id = ? 
+            ORDER BY order_id DESC
+            """,
+            (callback.from_user.id, callback.from_user.id),
         ).fetchall()
 
     if not orders:
-        text = "📦 You don't have any active orders."
+        text = "📦 You don't have any orders."
     else:
         text = "📦 **Your ecosystem orders:**\n\n"
         for o in orders:
             o_id, pair, o_type, amount, price, status = o
-            text += f"#{o_id} | {pair} | {o_type} | {amount} ZRL @ {price} | Status: {status}\n"
+            text += f"#{o_id} | {pair} | {o_type} | {amount} ZRL @ {price} | Status: **{status}**\n"
 
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Back", callback_data="p2p:menu")]]
     )
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    if callback.message:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
+# ==================== MAIN LAUNCHER ====================
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     init_db()
@@ -1268,7 +1426,7 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_router(ROUTER)
 
-    LOGGER.info("Zer0Life Labs AI Bot with Autonomous Crypto Payments, Auto-Trading, P2P & Airdrop Mini-Game is running...")
+    LOGGER.info("Zer0Life Labs AI Bot with Full Escrow P2P, Auto-Trading & Airdrop is running...")
     await bot.get_updates(offset=-1)
     await dispatcher.start_polling(bot)
 
