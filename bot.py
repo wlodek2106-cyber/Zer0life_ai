@@ -1,10 +1,10 @@
-"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions, Auto-Trading & ZRL Airdrop Mini-Game."""
+"""Zer0Life Labs AI Telegram Bot: AI Assistant, P2P, Crypto Subscriptions, Auto-Trading, Merch & ZRL Airdrop Mini-Game."""
 
 from __future__ import annotations
 
 import asyncio
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 import os
 import random
@@ -34,6 +34,11 @@ BSC_TREASURY_WALLET: Final[str] = "0x7901D7566766379f9ffc11326762883D6161183f"
 TOTAL_AIRDROP_POOL: Final[float] = 100_000_000.0
 ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
 
+# Ссылки на ваши маркетплейсы
+ETSY_URL: Final[str] = os.getenv("ETSY_URL", "https://www.etsy.com")
+ALLEGRO_URL: Final[str] = os.getenv("ALLEGRO_URL", "https://allegro.pl")
+AMAZON_URL: Final[str] = os.getenv("AMAZON_URL", "https://www.amazon.com")
+
 USAGE_DB_PATH: Final[str] = os.getenv(
     "USAGE_DB_PATH",
     str(os.path.join(os.path.dirname(__file__), "usage.sqlite3")),
@@ -56,13 +61,21 @@ TRANSLATIONS = {
         "btn_airdrop": "🎁 Join ZRL Airdrop",
         "btn_autotrade": "🤖 Auto-Trading Bot",
         "btn_p2p": "💱 P2P Marketplace (ZRL / SOL / USDC)",
+        "btn_merch": "🛍 Official Merch Store",
         "btn_sub": "💎 Buy Pro Subscription ($10)",
         "btn_stats": "📊 Ecosystem Stats",
         "btn_share": "📤 Share Bot",
         "btn_about": "ℹ️ About Zer0Life Labs AI",
         "btn_lang": "🌐 Language: English",
         "back_home": "🏠 Main Menu",
-        "lang_updated": "✅ Language successfully changed to English!"
+        "lang_updated": "✅ Language successfully changed to English!",
+        "merch_title": (
+            "🛍 **Zer0Life Labs Official Merchandise**\n\n"
+            "Choose your preferred marketplace to check out our products:"
+        ),
+        "btn_etsy": "🛒 Etsy Shop",
+        "btn_allegro": "📦 Allegro Store",
+        "btn_amazon": "📦 Amazon Store",
     },
     "ru": {
         "welcome": (
@@ -75,13 +88,21 @@ TRANSLATIONS = {
         "btn_airdrop": "🎁 Участвовать в Airdrop ZRL",
         "btn_autotrade": "🤖 Авто-трейдинг бот",
         "btn_p2p": "💱 P2P Биржа (ZRL / SOL / USDC)",
+        "btn_merch": "🛍 Наш Мерч (Магазины)",
         "btn_sub": "💎 Купить Pro-подписку ($10)",
         "btn_stats": "📊 Статистика экосистемы",
         "btn_share": "📤 Поделиться ботом",
         "btn_about": "ℹ️ О проекте Zer0Life Labs AI",
         "btn_lang": "🌐 Язык: Русский",
         "back_home": "🏠 Главное меню",
-        "lang_updated": "✅ Язык успешно изменен на русский!"
+        "lang_updated": "✅ Язык успешно изменен на русский!",
+        "merch_title": (
+            "🛍 **Официальный Мерч Zer0Life Labs**\n\n"
+            "Выберите удобную платформу для просмотра и покупки наших товаров:"
+        ),
+        "btn_etsy": "🛒 Магазин Etsy",
+        "btn_allegro": "📦 Магазин Allegro",
+        "btn_amazon": "📦 Магазин Amazon",
     }
 }
 
@@ -238,6 +259,12 @@ def main_menu_keyboard(bot_username: str, user_id: int) -> types.InlineKeyboardM
             ],
             [
                 types.InlineKeyboardButton(
+                    text=get_text(user_id, "btn_merch"),
+                    callback_data="merch:menu",
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
                     text=get_text(user_id, "btn_sub"),
                     callback_data="sub:choose_currency",
                 )
@@ -369,6 +396,30 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
         reply_markup=main_menu_keyboard(me.username, user_id),
         parse_mode="Markdown",
     )
+
+
+# --- MERCH STORE HANDLER ---
+
+@ROUTER.callback_query(F.data == "merch:menu")
+async def merch_menu_handler(callback: types.CallbackQuery) -> None:
+    await callback.answer()
+    user_id = callback.from_user.id
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton(text=get_text(user_id, "btn_etsy"), url=ETSY_URL)],
+            [types.InlineKeyboardButton(text=get_text(user_id, "btn_allegro"), url=ALLEGRO_URL)],
+            [types.InlineKeyboardButton(text=get_text(user_id, "btn_amazon"), url=AMAZON_URL)],
+            [types.InlineKeyboardButton(text=get_text(user_id, "back_home"), callback_data="p2p:back_home")],
+        ]
+    )
+
+    if callback.message is not None:
+        await callback.message.edit_text(
+            get_text(user_id, "merch_title"),
+            parse_mode="Markdown",
+            reply_markup=keyboard,
+        )
 
 
 # --- LANGUAGE SWITCHER HANDLER ---
@@ -552,7 +603,7 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         )
 
     await state.clear()
-    username = message.from_user.username or "no username"
+    username = message.from_user.username or "no_username"
     full_name = message.from_user.full_name or "No Name"
 
     await message.answer(
@@ -566,15 +617,18 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         ),
     )
 
+    # --- УВЕДОМЛЕНИЕ АДМИНИСТРАТОРУ (HTML С КЛИКАБЕЛЬНЫМ КОШЕЛЬКОМ) ---
     if ADMIN_TELEGRAM_ID > 0:
         try:
             admin_text = (
-                "🔔 **New Verified ZRL Airdrop Request!**\n\n"
-                f"👤 User: {full_name} (@{username}) [ID: `{user_id}`]\n"
-                f"🎁 Amount: `{reward_amount:,.0f} ZRL`\n"
-                f"👛 Unique Solana Wallet:\n`{sol_address}`"
+                "🚨 <b>Новая заявка на Airdrop ZRL!</b>\n\n"
+                f"👤 <b>Пользователь:</b> {full_name} (@{username})\n"
+                f"🆔 <b>ID:</b> <code>{user_id}</code>\n"
+                f"🎁 <b>Сумма:</b> <code>{reward_amount:,.0f} ZRL</code>\n\n"
+                f"👛 <b>Кошелек Solana (нажмите для копирования):</b>\n"
+                f"<code>{sol_address}</code>"
             )
-            await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="Markdown")
+            await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="HTML")
         except Exception as e:
             LOGGER.error(f"Failed to send airdrop notification to admin: {e}")
 
