@@ -1,29 +1,3 @@
-Код принят. В представленной версии есть один критический конфликт на уровне Aiogram и пара моментов, которые стоит скорректировать для стабильной работы.
-1. Критическая ошибка: Конфликт Роутеров и Callback-хэндлеров
-В представленном файле импортируется wallet_router из zer0life_wallet.py:
-from zer0life_wallet import wallet_router, init_wallet_db
-
-А затем в основной ROUTER регистрируются обработчики для тех же callback_data (app_wallet:view, app_wallet:deposit, app_wallet:withdraw):
-@ROUTER.callback_query(F.data == "app_wallet:view")
-@ROUTER.callback_query(F.data == "app_wallet:deposit")
-@ROUTER.callback_query(F.data == "app_wallet:withdraw")
-
-Так как основной ROUTER подключается раньше wallet_router:
-dispatcher.include_router(ROUTER)
-dispatcher.include_router(wallet_router)
-
-Обработчики из модуля zer0life_wallet.py никогда не выполнятся, потому что ROUTER перехватывает все нажатия кнопок кошелька первым.
-Как исправить:
-Либо удалите упрощенные заглушки app_wallet:* из файла bot.py (чтобы работал модуль zer0life_wallet.py), либо поменяйте порядок подключения роутеров.
-2. Замечания по безопасности и оптимизации
- * ParseMode.HTML по умолчанию:
-   Вы указали DefaultBotProperties(parse_mode=ParseMode.HTML) при создании Bot. При этом в некоторых местах код повторно передаёт parse_mode="HTML". Это не вызывает ошибку, но является избыточным.
- * Бесконечный перехват состояний в P2P:
-   Хэндлер P2PProofState.waiting_for_proof перехватывает любое текстовое сообщение или фото пользователя, пока включено состояние. Если пользователь решит выйти из сделки или нажмет /start, бот может продолжить ожидать подтверждение. Рекомендуется добавить проверку на команды или кнопку отмены.
- * Парсинг JSON от Jupiter API:
-   В методе get_crypto_prices() запрос отправляется к Jupiter v3 API ([https://api.jup.ag/price/v3](https://api.jup.ag/price/v3)?...). Структура ответа API может меняться или возвращать ошибку 429/500 — блок try...except присутствует, но fallback-значения по умолчанию гарантируют, что бот не упадёт.
-Полная исправленная версия bot.py
-Дублирующие заглушки кошелька удалены из основного файла (управление передано wallet_router), а обработка ParseMode и ошибок оптимизирована:
 """
 Zer0Life Labs AI Telegram Bot: AI Assistant, P2P Escrow Marketplace, 
 Crypto Subscriptions, Auto-Trading, Merch, ZRL Airdrop Mini-Game & Enterprise Wallet.
@@ -44,13 +18,14 @@ import aiohttp
 from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.html import quote
 from openai import AsyncOpenAI
 
-# Импортируем созданный модуль кошелька
+# Import external wallet module
 from zer0life_wallet import wallet_router, init_wallet_db
 
 LOGGER = logging.getLogger(__name__)
@@ -68,7 +43,6 @@ TOTAL_AIRDROP_POOL: Final[float] = 100_000_000.0
 ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
 SOLANA_RPC_URL = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 
-# Ссылки на маркетплейсы
 ETSY_URL: Final[str] = os.getenv("ETSY_URL", "https://www.etsy.com")
 ALLEGRO_URL: Final[str] = os.getenv("ALLEGRO_URL", "https://allegro.pl")
 AMAZON_URL: Final[str] = os.getenv("AMAZON_URL", "https://www.amazon.com")
@@ -144,7 +118,6 @@ TRANSLATIONS = {
 
 
 def get_text(user_id: int, key: str, **kwargs) -> str:
-    """Helper function to fetch localized text for a specific user."""
     lang = "en"
     try:
         with sqlite3.connect(USAGE_DB_PATH) as conn:
@@ -254,22 +227,31 @@ async def get_crypto_prices() -> dict[str, float]:
         ids += f",{ZRL_MINT_ADDRESS}"
 
     url = f"https://api.jup.ag/price/v3?ids={ids}"
+    
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(url) as response:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
                 if response.status == 200:
                     data = await response.json()
                     res = data.get("data", {})
-                    sol_p = float(res.get(SOL_MINT, {}).get("price", 0))
-                    if sol_p > 0:
-                        prices["SOL"] = sol_p
+                    
+                    sol_data = res.get(SOL_MINT, {})
+                    if isinstance(sol_data, dict):
+                        sol_p = float(sol_data.get("price", 0))
+                        if sol_p > 0:
+                            prices["SOL"] = sol_p
                     
                     if ZRL_MINT_ADDRESS:
-                        zrl_p = float(res.get(ZRL_MINT_ADDRESS, {}).get("price", 0))
-                        if zrl_p > 0:
-                            prices["ZRL"] = zrl_p
+                        zrl_data = res.get(ZRL_MINT_ADDRESS, {})
+                        if isinstance(zrl_data, dict):
+                            zrl_p = float(zrl_data.get("price", 0))
+                            if zrl_p > 0:
+                                prices["ZRL"] = zrl_p
 
-            async with session.get("https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd") as resp:
+            async with session.get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd",
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as resp:
                 if resp.status == 200:
                     bg_data = await resp.json()
                     bnb_p = float(bg_data.get("binancecoin", {}).get("usd", 0))
@@ -290,7 +272,7 @@ async def verify_solana_tx(tx_hash: str) -> bool:
     }
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.post(SOLANA_RPC_URL, json=payload) as resp:
+            async with session.post(SOLANA_RPC_URL, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     statuses = data.get("result", {}).get("value", [])
@@ -431,7 +413,8 @@ def autotrade_menu_keyboard() -> types.InlineKeyboardMarkup:
 # ==================== HANDLERS ====================
 
 @ROUTER.message(Command("start"))
-async def start_handler(message: types.Message, bot: Bot, command: CommandObject) -> None:
+async def start_handler(message: types.Message, bot: Bot, command: CommandObject, state: FSMContext) -> None:
+    await state.clear()
     user_id = message.from_user.id
     now_str = datetime.now(timezone.utc).isoformat()
     
@@ -470,8 +453,6 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
     )
 
 
-# --- MERCH STORE HANDLER ---
-
 @ROUTER.callback_query(F.data == "merch:menu")
 async def merch_menu_handler(callback: types.CallbackQuery) -> None:
     await callback.answer()
@@ -492,8 +473,6 @@ async def merch_menu_handler(callback: types.CallbackQuery) -> None:
             reply_markup=keyboard,
         )
 
-
-# --- LANGUAGE SWITCHER HANDLER ---
 
 @ROUTER.callback_query(F.data.startswith("lang:"))
 async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
@@ -537,8 +516,6 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
                 reply_markup=main_menu_keyboard(me.username, user_id),
             )
 
-
-# --- AIRDROP ZRL MINI-GAME ---
 
 @ROUTER.callback_query(F.data == "airdrop:menu")
 async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
@@ -702,8 +679,6 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
             LOGGER.error(f"Failed to send airdrop notification to admin: {e}")
 
 
-# --- AUTO-TRADING SECTION ---
-
 @ROUTER.callback_query(F.data == "autotrade:menu")
 async def autotrade_menu_callback(callback: types.CallbackQuery) -> None:
     await callback.answer()
@@ -830,8 +805,6 @@ async def autotrade_status(callback: types.CallbackQuery) -> None:
     if callback.message is not None:
         await callback.message.edit_text(text, reply_markup=keyboard)
 
-
-# --- PRO SUBSCRIPTIONS ---
 
 @ROUTER.callback_query(F.data == "sub:choose_currency")
 async def sub_choose_currency(callback: types.CallbackQuery) -> None:
@@ -1000,8 +973,6 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         )
 
 
-# --- AI VISION & IMAGE PROCESSING ---
-
 @ROUTER.message(F.photo)
 async def photo_handler(message: types.Message, bot: Bot) -> None:
     user_id = message.from_user.id
@@ -1078,8 +1049,6 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
         LOGGER.error(f"Error processing photo: {e}")
         await status_msg.edit_text("❌ Произошла ошибка при обработке изображения.")
 
-
-# --- P2P ESCROW MARKETPLACE SECTION ---
 
 @ROUTER.callback_query(F.data.in_({"p2p:menu", "p2p:refresh"}))
 async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
@@ -1446,9 +1415,9 @@ async def main() -> None:
 
     token = get_required_env("TELEGRAM_BOT_TOKEN")
     bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dispatcher = Dispatcher()
+    dispatcher = Dispatcher(storage=MemoryStorage())
 
-    # Сначала подключаем сторонние модули/роутеры, чтобы их хэндлеры работали корректно
+    # Include external wallet router FIRST to prevent callback interception
     dispatcher.include_router(wallet_router)
     dispatcher.include_router(ROUTER)
 
@@ -1459,4 +1428,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
