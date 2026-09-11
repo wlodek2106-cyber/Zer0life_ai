@@ -1,13 +1,29 @@
-Вот полностью готовый и обновленный файл bot.py.
-Что было сделано:
- * Переведено всё на безопасный HTML:
-   * Полностью убраны проблемы с вылетом бота из-за капризного Markdown (can't parse entities). Теперь parse_mode="HTML" используется везде по умолчанию.
-   * Экранированы тексты и системные данные через функцию quote().
- * Переработан раздел My Wallet:
-   * Подключена красивая карточка кошелька с отображением балансов ZRL, Solana (SOL), BNB и USDC.
-   * Добавлены функциональные интерактивные кнопки: 📥 Пополнить, 📤 Вывести и 🔄 Обновить.
-   * Внутри Пополнения и Вывода реализована полная логика меню, навигации назад и инструкций.
-Полный код bot.py для замены:
+Код принят. В представленной версии есть один критический конфликт на уровне Aiogram и пара моментов, которые стоит скорректировать для стабильной работы.
+1. Критическая ошибка: Конфликт Роутеров и Callback-хэндлеров
+В представленном файле импортируется wallet_router из zer0life_wallet.py:
+from zer0life_wallet import wallet_router, init_wallet_db
+
+А затем в основной ROUTER регистрируются обработчики для тех же callback_data (app_wallet:view, app_wallet:deposit, app_wallet:withdraw):
+@ROUTER.callback_query(F.data == "app_wallet:view")
+@ROUTER.callback_query(F.data == "app_wallet:deposit")
+@ROUTER.callback_query(F.data == "app_wallet:withdraw")
+
+Так как основной ROUTER подключается раньше wallet_router:
+dispatcher.include_router(ROUTER)
+dispatcher.include_router(wallet_router)
+
+Обработчики из модуля zer0life_wallet.py никогда не выполнятся, потому что ROUTER перехватывает все нажатия кнопок кошелька первым.
+Как исправить:
+Либо удалите упрощенные заглушки app_wallet:* из файла bot.py (чтобы работал модуль zer0life_wallet.py), либо поменяйте порядок подключения роутеров.
+2. Замечания по безопасности и оптимизации
+ * ParseMode.HTML по умолчанию:
+   Вы указали DefaultBotProperties(parse_mode=ParseMode.HTML) при создании Bot. При этом в некоторых местах код повторно передаёт parse_mode="HTML". Это не вызывает ошибку, но является избыточным.
+ * Бесконечный перехват состояний в P2P:
+   Хэндлер P2PProofState.waiting_for_proof перехватывает любое текстовое сообщение или фото пользователя, пока включено состояние. Если пользователь решит выйти из сделки или нажмет /start, бот может продолжить ожидать подтверждение. Рекомендуется добавить проверку на команды или кнопку отмены.
+ * Парсинг JSON от Jupiter API:
+   В методе get_crypto_prices() запрос отправляется к Jupiter v3 API ([https://api.jup.ag/price/v3](https://api.jup.ag/price/v3)?...). Структура ответа API может меняться или возвращать ошибку 429/500 — блок try...except присутствует, но fallback-значения по умолчанию гарантируют, что бот не упадёт.
+Полная исправленная версия bot.py
+Дублирующие заглушки кошелька удалены из основного файла (управление передано wallet_router), а обработка ParseMode и ошибок оптимизирована:
 """
 Zer0Life Labs AI Telegram Bot: AI Assistant, P2P Escrow Marketplace, 
 Crypto Subscriptions, Auto-Trading, Merch, ZRL Airdrop Mini-Game & Enterprise Wallet.
@@ -227,18 +243,6 @@ def init_db() -> None:
             )
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user_wallets (
-                user_id INTEGER PRIMARY KEY,
-                sol_balance REAL DEFAULT 0.0,
-                zrl_balance REAL DEFAULT 0.0,
-                bnb_balance REAL DEFAULT 0.0,
-                usdc_balance REAL DEFAULT 0.0,
-                wallet_address TEXT
-            )
-            """
-        )
 
 
 # ==================== BLOCKCHAIN & PRICE UTILS ====================
@@ -296,36 +300,6 @@ async def verify_solana_tx(tx_hash: str) -> bool:
         except Exception as e:
             LOGGER.error(f"Solana RPC error: {e}")
     return False
-
-
-def get_user_wallet_data(user_id: int) -> dict:
-    with sqlite3.connect(USAGE_DB_PATH) as conn:
-        row = conn.execute(
-            "SELECT sol_balance, zrl_balance, bnb_balance, usdc_balance, wallet_address FROM user_wallets WHERE user_id = ?",
-            (user_id,)
-        ).fetchone()
-        
-        if not row:
-            default_address = f"0x{user_id:010x}ZRL...sol"
-            conn.execute(
-                "INSERT INTO user_wallets (user_id, sol_balance, zrl_balance, bnb_balance, usdc_balance, wallet_address) VALUES (?, 0.0, 0.0, 0.0, 0.0, ?)",
-                (user_id, default_address)
-            )
-            return {
-                "SOL": 0.0,
-                "ZRL": 0.0,
-                "BNB": 0.0,
-                "USDC": 0.0,
-                "address": default_address
-            }
-        
-        return {
-            "SOL": row[0],
-            "ZRL": row[1],
-            "BNB": row[2],
-            "USDC": row[3],
-            "address": row[4]
-        }
 
 
 # ==================== KEYBOARDS ====================
@@ -493,96 +467,7 @@ async def start_handler(message: types.Message, bot: Bot, command: CommandObject
     await message.answer(
         get_text(user_id, "welcome", limit=FREE_LIMIT),
         reply_markup=main_menu_keyboard(me.username, user_id),
-        parse_mode="HTML",
     )
-
-
-# --- MY WALLET HANDLER ---
-
-@ROUTER.callback_query(F.data == "app_wallet:view")
-async def wallet_view_handler(callback: types.CallbackQuery) -> None:
-    await callback.answer()
-    user_id = callback.from_user.id
-    data = get_user_wallet_data(user_id)
-
-    text = (
-        "💳 <b>Мой Кошелек (Zer0Life Wallet)</b>\n\n"
-        f"📍 <b>Адрес:</b> <code>{quote(data['address'])}</code>\n\n"
-        "💰 <b>Баланс токенов:</b>\n"
-        f"▫️ <b>ZRL:</b> {data['ZRL']:,.2f} ZRL\n"
-        f"▫️ <b>Solana (SOL):</b> {data['SOL']:.4f} SOL\n"
-        f"▫️ <b>BNB:</b> {data['BNB']:.4f} BNB\n"
-        f"▫️ <b>USDC:</b> ${data['USDC']:.2f}\n\n"
-        "Выберите нужное действие ниже:"
-    )
-
-    keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="📥 Пополнить", callback_data="app_wallet:deposit"),
-                types.InlineKeyboardButton(text="📤 Вывести", callback_data="app_wallet:withdraw")
-            ],
-            [
-                types.InlineKeyboardButton(text="🔄 Обновить баланс", callback_data="app_wallet:view")
-            ],
-            [
-                types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="p2p:back_home")
-            ]
-        ]
-    )
-
-    if callback.message:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
-
-
-@ROUTER.callback_query(F.data == "app_wallet:deposit")
-async def wallet_deposit_handler(callback: types.CallbackQuery) -> None:
-    await callback.answer()
-    user_id = callback.from_user.id
-    data = get_user_wallet_data(user_id)
-
-    text = (
-        "📥 <b>Пополнение кошелька</b>\n\n"
-        "Для пополнения баланса переведите криптовалюту (<b>ZRL, SOL, BNB, USDC</b>) "
-        "на ваш персональный адрес:\n\n"
-        f"<code>{quote(data['address'])}</code>\n\n"
-        "⚠️ <i>Средства зачисляются автоматически после подтверждения транзакции в сети.</i>"
-    )
-
-    keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [types.InlineKeyboardButton(text="⬅️ Назад в кошелек", callback_data="app_wallet:view")]
-        ]
-    )
-
-    if callback.message:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
-
-
-@ROUTER.callback_query(F.data == "app_wallet:withdraw")
-async def wallet_withdraw_handler(callback: types.CallbackQuery) -> None:
-    await callback.answer()
-    user_id = callback.from_user.id
-    data = get_user_wallet_data(user_id)
-
-    text = (
-        "📤 <b>Вывод средств</b>\n\n"
-        "Доступные средства для вывода:\n"
-        f"• ZRL: <b>{data['ZRL']:,.2f}</b>\n"
-        f"• SOL: <b>{data['SOL']:.4f}</b>\n"
-        f"• BNB: <b>{data['BNB']:.4f}</b>\n"
-        f"• USDC: <b>${data['USDC']:.2f}</b>\n\n"
-        "Для проведения вывода средств обратитесь к администратору или введите адрес получателя."
-    )
-
-    keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [types.InlineKeyboardButton(text="⬅️ Назад в кошелек", callback_data="app_wallet:view")]
-        ]
-    )
-
-    if callback.message:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 # --- MERCH STORE HANDLER ---
@@ -604,7 +489,6 @@ async def merch_menu_handler(callback: types.CallbackQuery) -> None:
     if callback.message is not None:
         await callback.message.edit_text(
             get_text(user_id, "merch_title"),
-            parse_mode="HTML",
             reply_markup=keyboard,
         )
 
@@ -627,7 +511,7 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
             ]
         )
         if callback.message:
-            await callback.message.edit_text("🌐 Please select your preferred language / Выберите язык:", parse_mode="HTML", reply_markup=keyboard)
+            await callback.message.edit_text("🌐 Please select your preferred language / Выберите язык:", reply_markup=keyboard)
         return
 
     if action.startswith("set_"):
@@ -642,7 +526,6 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
             await callback.message.edit_text(
                 get_text(user_id, "welcome", limit=FREE_LIMIT),
                 reply_markup=main_menu_keyboard(me.username, user_id),
-                parse_mode="HTML",
             )
         return
 
@@ -652,7 +535,6 @@ async def language_callback(callback: types.CallbackQuery, bot: Bot) -> None:
             await callback.message.edit_text(
                 get_text(user_id, "welcome", limit=FREE_LIMIT),
                 reply_markup=main_menu_keyboard(me.username, user_id),
-                parse_mode="HTML",
             )
 
 
@@ -718,7 +600,7 @@ async def airdrop_menu_callback(callback: types.CallbackQuery) -> None:
         )
 
     if callback.message is not None:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @ROUTER.callback_query(F.data == "airdrop:roll")
@@ -753,7 +635,7 @@ async def airdrop_roll_callback(callback: types.CallbackQuery, state: FSMContext
     )
 
     if callback.message is not None:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @ROUTER.message(AirdropClaimState.waiting_for_solana_address)
@@ -800,7 +682,6 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
         f"• Награда: <code>{reward_amount:,.0f} ZRL</code>\n"
         f"• Адрес: <code>{quote(sol_address)}</code>\n\n"
         "Токены будут отправлены на ваш кошелек в порядке очереди!",
-        parse_mode="HTML",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[[types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="p2p:back_home")]]
         ),
@@ -816,7 +697,7 @@ async def airdrop_save_address(message: types.Message, state: FSMContext, bot: B
                 f"👛 <b>Кошелек Solana:</b>\n"
                 f"<code>{quote(sol_address)}</code>"
             )
-            await bot.send_message(ADMIN_TELEGRAM_ID, admin_text, parse_mode="HTML")
+            await bot.send_message(ADMIN_TELEGRAM_ID, admin_text)
         except Exception as e:
             LOGGER.error(f"Failed to send airdrop notification to admin: {e}")
 
@@ -831,7 +712,6 @@ async def autotrade_menu_callback(callback: types.CallbackQuery) -> None:
             "🤖 <b>Auto-Trading Bot (Solana / Jupiter DEX)</b>\n\n"
             "Бот автоматически отслеживает ликвидность, торговые объемы и исполняет сделки по заданным параметрам.\n\n"
             "Выберите действие:",
-            parse_mode="HTML",
             reply_markup=autotrade_menu_keyboard(),
         )
 
@@ -853,7 +733,7 @@ async def autotrade_configure(callback: types.CallbackQuery, state: FSMContext) 
     )
     await state.set_state(AutoTradeSettingsState.waiting_for_pair)
     if callback.message is not None:
-        await callback.message.edit_text("⚙️ Выберите актив для авто-трейдинга:", reply_markup=keyboard, parse_mode="HTML")
+        await callback.message.edit_text("⚙️ Выберите актив для авто-трейдинга:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(AutoTradeSettingsState.waiting_for_pair, F.data.startswith("at_pair:"))
@@ -865,8 +745,7 @@ async def autotrade_set_pair(callback: types.CallbackQuery, state: FSMContext) -
     if callback.message is not None:
         await callback.message.edit_text(
             f"Выбран актив: <b>{quote(pair)}</b>.\n\n"
-            "Введите минимальный размер депозита на сделку в USD (например, <code>50</code> или <code>100</code>):",
-            parse_mode="HTML",
+            "Введите минимальный размер депозита на сделку в USD (например, <code>50</code> или <code>100</code>):"
         )
 
 
@@ -882,7 +761,7 @@ async def autotrade_set_amount(message: types.Message, state: FSMContext) -> Non
 
     await state.update_data(amount=amount)
     await state.set_state(AutoTradeSettingsState.waiting_for_target)
-    await message.answer("Введите процент целевой прибыли для закрытия сделки (например, <code>20</code> для 20%):", parse_mode="HTML")
+    await message.answer("Введите процент целевой прибыли для закрытия сделки (например, <code>20</code> для 20%):")
 
 
 @ROUTER.message(AutoTradeSettingsState.waiting_for_target)
@@ -918,7 +797,6 @@ async def autotrade_set_target(message: types.Message, state: FSMContext) -> Non
         f"• Мин. депозит: <code>${amount}</code>\n"
         f"• Цель по прибыли: <code>+{target}%</code>\n\n"
         "Бот начал отслеживание пулов ликвидности через Jupiter DEX.",
-        parse_mode="HTML",
         reply_markup=autotrade_menu_keyboard(),
     )
 
@@ -950,7 +828,7 @@ async def autotrade_status(callback: types.CallbackQuery) -> None:
         inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в меню бота", callback_data="autotrade:menu")]]
     )
     if callback.message is not None:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 # --- PRO SUBSCRIPTIONS ---
@@ -984,7 +862,6 @@ async def sub_choose_currency(callback: types.CallbackQuery) -> None:
             "💎 <b>Покупка Pro Подписки</b>\n\n"
             f"Стоимость подписки: <b>${SUBSCRIPTION_PRICE_USD}</b>\n"
             "Выберите криптовалюту для оплаты:",
-            parse_mode="HTML",
             reply_markup=keyboard,
         )
 
@@ -1023,7 +900,7 @@ async def pay_crypto_handler(callback: types.CallbackQuery) -> None:
         ]
     )
     if callback.message is not None:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @ROUTER.callback_query(F.data.startswith("check_pay:"))
@@ -1046,7 +923,6 @@ async def check_payment_handler(callback: types.CallbackQuery) -> None:
                 "✅ <b>Оплата успешно найдена и подтверждена!</b>\n\n"
                 f"Получено: <code>{expected_amount} {quote(currency)}</code>\n"
                 "Ваша Pro подписка активирована. Приятного пользования ✨",
-                parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(
                     inline_keyboard=[[types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="p2p:back_home")]]
                 ),
@@ -1103,7 +979,7 @@ async def stats_view_handler(callback: types.CallbackQuery, bot: Bot) -> None:
         ]
     )
     if callback.message is not None:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @ROUTER.callback_query(F.data == "info:about")
@@ -1118,7 +994,6 @@ async def info_about_handler(callback: types.CallbackQuery, bot: Bot) -> None:
             "• <b>Airdrop:</b> Мини-игра с раздачей ZRL токенов (пул 100M).\n"
             "• <b>ZRL Token:</b> Нативный токен экосистемы.\n\n"
             "Отправьте фото в чат, чтобы протестировать анализ изображений.",
-            parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="p2p:back_home")]]
             ),
@@ -1153,7 +1028,6 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
         await message.answer(
             f"⚠️ <b>Лимит бесплатных запросов исчерпан ({FREE_LIMIT}/{FREE_LIMIT}).</b>\n\n"
             "Для продолжения оформите Pro подписку за <b>$10</b>.",
-            parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[[types.InlineKeyboardButton(text="💎 Купить Pro Подписку", callback_data="sub:choose_currency")]]
             ),
@@ -1198,7 +1072,7 @@ async def photo_handler(message: types.Message, bot: Bot) -> None:
         remaining = max(0, FREE_LIMIT - (generations_used + 1))
         footer = f"\n\n<i>Осталось бесплатных запросов: {remaining}/{FREE_LIMIT}</i>" if not is_pro else "\n\n<i>Pro Аккаунт Активен ✨</i>"
         
-        await status_msg.edit_text(f"✨ <b>Ответ AI-Ассистента:</b>\n\n{quote(result_text)}{footer}", parse_mode="HTML")
+        await status_msg.edit_text(f"✨ <b>Ответ AI-Ассистента:</b>\n\n{quote(result_text)}{footer}")
 
     except Exception as e:
         LOGGER.error(f"Error processing photo: {e}")
@@ -1223,9 +1097,9 @@ async def p2p_menu_handler(callback: types.CallbackQuery) -> None:
     )
 
     try:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=p2p_menu_keyboard())
+        await callback.message.edit_text(text, reply_markup=p2p_menu_keyboard())
     except Exception:
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=p2p_menu_keyboard())
+        await callback.message.answer(text, reply_markup=p2p_menu_keyboard())
 
 
 @ROUTER.callback_query(F.data == "p2p:back_home")
@@ -1236,7 +1110,6 @@ async def p2p_back_home(callback: types.CallbackQuery, bot: Bot) -> None:
     if callback.message is not None:
         await callback.message.edit_text(
             get_text(user_id, "welcome", limit=FREE_LIMIT),
-            parse_mode="HTML",
             reply_markup=main_menu_keyboard(me.username, user_id),
         )
 
@@ -1280,7 +1153,7 @@ async def p2p_list_orders(callback: types.CallbackQuery) -> None:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
     if callback.message:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 @ROUTER.callback_query(F.data.startswith("p2p:accept:"))
@@ -1327,7 +1200,6 @@ async def p2p_accept_deal(callback: types.CallbackQuery, state: FSMContext) -> N
     if callback.message:
         await callback.message.edit_text(
             text,
-            parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[[types.InlineKeyboardButton(text="❌ Отменить сделку", callback_data="p2p:menu")]]
             )
@@ -1359,7 +1231,6 @@ async def p2p_receive_proof(message: types.Message, state: FSMContext, bot: Bot)
     await state.clear()
     await message.answer(
         "✅ <b>Подтверждение оплаты загружено!</b>\n\nПродавец уведомлен для проверки получения средств.",
-        parse_mode="HTML",
         reply_markup=p2p_menu_keyboard(),
     )
 
@@ -1376,7 +1247,6 @@ async def p2p_receive_proof(message: types.Message, state: FSMContext, bot: Bot)
                 seller_id,
                 photo_id,
                 caption=f"🔔 <b>Получена оплата по ордеру #{order_id}!</b>\n\nПроверьте кошелек и подтвердите сделки:",
-                parse_mode="HTML",
                 reply_markup=confirm_kb,
             )
         else:
@@ -1386,7 +1256,6 @@ async def p2p_receive_proof(message: types.Message, state: FSMContext, bot: Bot)
             await bot.send_message(
                 seller_id,
                 f"🔔 <b>Отправлен TX Hash по ордеру #{order_id}!</b>\n\n<code>{quote(tx_hash)}</code>\n\n{verified_txt}\n\nПодтвердите получение ниже:",
-                parse_mode="HTML",
                 reply_markup=confirm_kb,
             )
     except Exception as e:
@@ -1409,14 +1278,13 @@ async def p2p_seller_confirm(callback: types.CallbackQuery, bot: Bot) -> None:
 
     await callback.answer("✅ Сделка успешно завершена!")
     if callback.message:
-        await callback.message.edit_text(f"🎉 <b>Ордер #{order_id} успешно закрыт!</b>", parse_mode="HTML")
+        await callback.message.edit_text(f"🎉 <b>Ордер #{order_id} успешно закрыт!</b>")
 
     try:
         if buyer_id:
             await bot.send_message(
                 buyer_id,
                 f"🎉 <b>Продавец подтвердил оплату по ордеру #{order_id}!</b> Сделка завершена.",
-                parse_mode="HTML",
                 reply_markup=p2p_menu_keyboard(),
             )
     except Exception:
@@ -1437,7 +1305,7 @@ async def p2p_create_start(callback: types.CallbackQuery, state: FSMContext) -> 
     )
     await state.set_state(P2POrderState.waiting_for_pair)
     if callback.message:
-        await callback.message.edit_text("💱 Выберите торговую пару для создания ордера:", reply_markup=keyboard, parse_mode="HTML")
+        await callback.message.edit_text("💱 Выберите торговую пару для создания ордера:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_pair, F.data.startswith("pair:"))
@@ -1457,7 +1325,7 @@ async def p2p_choose_pair(callback: types.CallbackQuery, state: FSMContext) -> N
     )
     await state.set_state(P2POrderState.waiting_for_type)
     if callback.message:
-        await callback.message.edit_text(f"Выбрана пара <b>{quote(pair)}</b>.\nВыберите направление ордера:", parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(f"Выбрана пара <b>{quote(pair)}</b>.\nВыберите направление ордера:", reply_markup=keyboard)
 
 
 @ROUTER.callback_query(P2POrderState.waiting_for_type, F.data.startswith("type:"))
@@ -1468,7 +1336,7 @@ async def p2p_choose_type(callback: types.CallbackQuery, state: FSMContext) -> N
 
     await state.set_state(P2POrderState.waiting_for_amount)
     if callback.message:
-        await callback.message.edit_text("Введите количество токенов ZRL (например, <code>1000</code>):", parse_mode="HTML")
+        await callback.message.edit_text("Введите количество токенов ZRL (например, <code>1000</code>):")
 
 
 @ROUTER.message(P2POrderState.waiting_for_amount)
@@ -1483,7 +1351,7 @@ async def p2p_get_amount(message: types.Message, state: FSMContext) -> None:
 
     await state.update_data(amount=amount)
     await state.set_state(P2POrderState.waiting_for_price)
-    await message.answer("Введите желаемую цену за 1 ZRL:", parse_mode="HTML")
+    await message.answer("Введите желаемую цену за 1 ZRL:")
 
 
 @ROUTER.message(P2POrderState.waiting_for_price)
@@ -1498,7 +1366,7 @@ async def p2p_get_price(message: types.Message, state: FSMContext) -> None:
 
     await state.update_data(price=price)
     await state.set_state(P2POrderState.waiting_for_wallet)
-    await message.answer("👛 Введите ваш Solana адрес кошелька для расчетов:", parse_mode="HTML")
+    await message.answer("👛 Введите ваш Solana адрес кошелька для расчетов:")
 
 
 @ROUTER.message(P2POrderState.waiting_for_wallet)
@@ -1536,7 +1404,6 @@ async def p2p_get_wallet(message: types.Message, state: FSMContext) -> None:
         f"• Цена: <code>{price} {quote(currency_symbol)}</code>\n"
         f"• Общая сумма: <code>{total_sum:,.4f} {quote(currency_symbol)}</code>\n"
         f"• Ваш кошелек: <code>{quote(wallet)}</code>",
-        parse_mode="HTML",
         reply_markup=p2p_menu_keyboard(),
     )
 
@@ -1567,7 +1434,7 @@ async def p2p_my_orders(callback: types.CallbackQuery) -> None:
         inline_keyboard=[[types.InlineKeyboardButton(text="⬅️ Назад", callback_data="p2p:menu")]]
     )
     if callback.message:
-        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+        await callback.message.edit_text(text, reply_markup=keyboard)
 
 
 # ==================== MAIN LAUNCHER ====================
@@ -1581,8 +1448,9 @@ async def main() -> None:
     bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dispatcher = Dispatcher()
 
-    dispatcher.include_router(ROUTER)
+    # Сначала подключаем сторонние модули/роутеры, чтобы их хэндлеры работали корректно
     dispatcher.include_router(wallet_router)
+    dispatcher.include_router(ROUTER)
 
     LOGGER.info("Zer0Life Labs AI Bot starting...")
     await bot.get_updates(offset=-1)
