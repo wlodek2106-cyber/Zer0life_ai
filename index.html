@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0life Run</title>
+    <title>Zer0life Run v3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
@@ -68,11 +68,11 @@
             text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
         }
 
-        /* Блок карточки в стиле скриншота (Zerolife Gear) */
-        .runner-box {
+        /* Абсолютно новый блок экипировки без старых названий */
+        .gear-card-new {
             width: 100%;
             max-width: 380px;
-            height: 85px;
+            height: 82px;
             background: linear-gradient(135deg, #12121c, #08080c);
             border: 2px dashed rgba(0, 255, 102, 0.4);
             border-radius: 18px;
@@ -86,7 +86,7 @@
             box-shadow: inset 0 0 15px rgba(0, 255, 102, 0.1);
         }
 
-        .runner-box::before {
+        .gear-card-new::before {
             content: 'ZER0LIFE';
             position: absolute;
             right: -5px;
@@ -98,15 +98,15 @@
             pointer-events: none;
         }
 
-        .runner-meta h4 {
-            font-size: 12px;
+        .gear-info h4 {
+            font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--accent-green);
         }
 
-        .runner-meta p {
+        .gear-info p {
             font-size: 9px;
             color: var(--text-secondary);
             margin-top: 2px;
@@ -114,15 +114,15 @@
             letter-spacing: 0.5px;
         }
 
-        .gear-visual {
+        .gear-visual-box {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .character-stage {
-            width: 50px;
-            height: 60px;
+        .character-box {
+            width: 45px;
+            height: 55px;
             position: relative;
             display: flex;
             align-items: center;
@@ -130,25 +130,25 @@
         }
 
         .runner-svg {
-            width: 45px;
-            height: 60px;
+            width: 42px;
+            height: 55px;
             transform-origin: bottom center;
         }
 
         /* Анимация бега */
-        .running-anim .body-group {
+        .running-active .body-group {
             animation: bodyRun 0.35s infinite alternate ease-in-out;
         }
-        .running-anim .leg-left {
+        .running-active .leg-left {
             animation: legLeftRun 0.35s infinite ease-in-out;
         }
-        .running-anim .leg-right {
+        .running-active .leg-right {
             animation: legRightRun 0.35s infinite ease-in-out;
         }
-        .running-anim .arm-left {
+        .running-active .arm-left {
             animation: armLeftRun 0.35s infinite ease-in-out;
         }
-        .running-anim .arm-right {
+        .running-active .arm-right {
             animation: armRightRun 0.35s infinite ease-in-out;
         }
 
@@ -157,20 +157,20 @@
             100% { transform: translateY(-4px) rotate(3deg); }
         }
         @keyframes legLeftRun {
-            0% { transform: rotate(-35deg); transform-origin: 28px 45px; }
-            100% { transform: rotate(35deg); transform-origin: 28px 45px; }
+            0% { transform: rotate(-35deg); transform-origin: 28px 40px; }
+            100% { transform: rotate(35deg); transform-origin: 28px 40px; }
         }
         @keyframes legRightRun {
-            0% { transform: rotate(35deg); transform-origin: 28px 45px; }
-            100% { transform: rotate(-35deg); transform-origin: 28px 45px; }
+            0% { transform: rotate(35deg); transform-origin: 28px 40px; }
+            100% { transform: rotate(-35deg); transform-origin: 28px 40px; }
         }
         @keyframes armLeftRun {
-            0% { transform: rotate(30deg); transform-origin: 32px 25px; }
-            100% { transform: rotate(-30deg); transform-origin: 32px 25px; }
+            0% { transform: rotate(30deg); transform-origin: 32px 22px; }
+            100% { transform: rotate(-30deg); transform-origin: 32px 22px; }
         }
         @keyframes armRightRun {
-            0% { transform: rotate(-30deg); transform-origin: 32px 25px; }
-            100% { transform: rotate(30deg); transform-origin: 32px 25px; }
+            0% { transform: rotate(-30deg); transform-origin: 32px 22px; }
+            100% { transform: rotate(30deg); transform-origin: 32px 22px; }
         }
 
         .main-card {
@@ -288,7 +288,7 @@
             color: #030305;
             border: none;
             border-radius: 14px;
-            padding: 14px;
+            padding: 13px;
             font-size: 13px;
             font-weight: 900;
             cursor: pointer;
@@ -313,6 +313,14 @@
             background: var(--danger-red);
             box-shadow: 0 4px 25px rgba(255, 0, 85, 0.5);
             color: #ffffff;
+        }
+
+        .btn-test {
+            background: rgba(0, 255, 102, 0.08);
+            border: 1px dashed var(--accent-green);
+            color: var(--accent-green);
+            font-size: 11px;
+            padding: 10px;
         }
 
         /* Модальное окно */
@@ -367,39 +375,39 @@
         <h1>Zer0life Run</h1>
     </div>
 
-    <!-- Карточка с текстом Zerolife Gear и вернувшимся бегущим человечком -->
-    <div class="runner-box">
-        <div class="runner-meta">
-            <h4>Zerolife Gear</h4>
-            <p id="runnerStateText">Move to Earn • ZRL Token</p>
+    <!-- Чистый блок экипировки без упоминания старого текста -->
+    <div class="gear-card-new">
+        <div class="gear-info">
+            <h4>ZEROLIFE GEAR</h4>
+            <p>MOVE TO EARN • ZRL TOKEN</p>
         </div>
-        <div class="gear-visual">
-            <div class="character-stage">
-                <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 80">
+        <div class="gear-visual-box">
+            <div class="character-box">
+                <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 75">
                     <g class="body-group">
-                        <rect x="22" y="24" width="16" height="22" rx="4" fill="#15151a" stroke="#00ff66" stroke-width="1.5"/>
-                        <circle cx="30" cy="32" r="2.5" fill="#00ff66"/>
-                        <circle cx="30" cy="14" r="6" fill="#fcd0a1"/>
-                        <path d="M22 12 C22 8, 38 8, 38 12 Z" fill="#030305"/>
-                        <path d="M34 11 L43 12.5 L34 14 Z" fill="#00ff66"/>
+                        <rect x="22" y="22" width="16" height="20" rx="4" fill="#15151a" stroke="#00ff66" stroke-width="1.5"/>
+                        <circle cx="30" cy="28" r="2.5" fill="#00ff66"/>
+                        <circle cx="30" cy="12" r="6" fill="#fcd0a1"/>
+                        <path d="M22 10 C22 6, 38 6, 38 10 Z" fill="#030305"/>
+                        <path d="M34 9 L43 10.5 L34 12 Z" fill="#00ff66"/>
                         <g class="arm-left">
-                            <line x1="22" y1="26" x2="12" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                            <circle cx="12" cy="39" r="2.5" fill="#fcd0a1"/>
+                            <line x1="22" y1="24" x2="12" y2="35" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                            <circle cx="12" cy="36" r="2.5" fill="#fcd0a1"/>
                         </g>
                         <g class="arm-right">
-                            <line x1="38" y1="26" x2="48" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                            <circle cx="48" cy="39" r="2.5" fill="#fcd0a1"/>
+                            <line x1="38" y1="24" x2="48" y2="35" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                            <circle cx="48" cy="36" r="2.5" fill="#fcd0a1"/>
                         </g>
                     </g>
                     <g class="leg-left">
-                        <rect x="25" y="44" width="6" height="12" fill="#00ff66"/>
-                        <line x1="28" y1="56" x2="24" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                        <path d="M21 68 L28 68 L29 72 L20 72 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
+                        <rect x="25" y="40" width="6" height="12" fill="#00ff66"/>
+                        <line x1="28" y1="52" x2="24" y2="62" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M21 62 L28 62 L29 66 L20 66 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
                     </g>
                     <g class="leg-right">
-                        <rect x="29" y="44" width="6" height="12" fill="#00ff66"/>
-                        <line x1="32" y1="56" x2="36" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                        <path d="M33 68 L40 68 L41 72 L32 72 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
+                        <rect x="29" y="40" width="6" height="12" fill="#00ff66"/>
+                        <line x1="32" y1="52" x2="36" y2="62" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M33 62 L40 62 L41 66 L32 66 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
                     </g>
                 </svg>
             </div>
@@ -431,6 +439,7 @@
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
+        <button class="btn btn-test" onclick="addTestKm()">⚡ [ТЕСТ] Добавить 0.5 км</button>
         <button class="btn btn-secondary" onclick="openWithdrawModal()">Вывод на Phantom (Solana)</button>
     </div>
 
@@ -462,7 +471,7 @@
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Радиус Земли в км
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = 
@@ -478,7 +487,6 @@
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
             const avatarSvg = document.getElementById('runnerAvatar');
-            const stateText = document.getElementById('runnerStateText');
 
             if (!isRunning) {
                 if (!navigator.geolocation) {
@@ -490,8 +498,7 @@
                 sessionDistance = 0;
                 lastPosition = null;
 
-                avatarSvg.classList.add('running-anim');
-                stateText.innerText = "Тренировка активна...";
+                avatarSvg.classList.add('running-active');
 
                 btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
@@ -501,20 +508,17 @@
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude, accuracy } = position.coords;
-                        
                         text.innerText = `GPS активен (точность: ${Math.round(accuracy)}м)`;
 
                         if (accuracy > 70) return;
 
                         if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            
                             if (dist > 0.003) { 
                                 sessionDistance += dist;
                                 updateSessionUI();
                             }
                         }
-
                         lastPosition = { lat: latitude, lon: longitude };
                     },
                     (error) => {
@@ -530,8 +534,7 @@
                 }
                 isRunning = false;
 
-                avatarSvg.classList.remove('running-anim');
-                stateText.innerText = "Move to Earn • ZRL Token";
+                avatarSvg.classList.remove('running-active');
 
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
@@ -553,14 +556,18 @@
             }
         }
 
+        function addTestKm() {
+            sessionDistance += 0.5;
+            updateSessionUI();
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+        }
+
         function updateSessionUI() {
             document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " км";
             const earnedZrl = Math.floor(sessionDistance * 500);
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
-            
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
         }
 
         function openWithdrawModal() {
