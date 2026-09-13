@@ -2,113 +2,203 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zer0Life Run</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #0b0b0e;
-            --card-bg: #141419;
-            --accent: #00ff66;
-            --text-main: #ffffff;
-            --text-muted: #8c8c9e;
+            --bg-base: #060608;
+            --card-surface: #101015;
+            --border-color: #22222f;
+            --accent-green: #00ff66;
+            --accent-glow: rgba(0, 255, 102, 0.15);
+            --text-primary: #f3f3f6;
+            --text-secondary: #7e7e93;
         }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            justify-content: space-between;
+            padding: 24px 20px;
         }
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background: var(--card-bg);
-            border: 1px solid #22222d;
-            border-radius: 20px;
-            padding: 24px;
-            box-sizing: border-box;
+
+        .header {
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-top: 10px;
         }
-        h1 {
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            color: var(--text-main);
-        }
-        .subtitle {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 24px;
-        }
-        .metric-box {
-            background: #1c1c24;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 14px;
-            border: 1px solid #2a2a38;
-        }
-        .metric-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-        .metric-value {
-            font-size: 28px;
+
+        .brand-badge {
+            display: inline-block;
+            background: rgba(0, 255, 102, 0.1);
+            color: var(--accent-green);
+            font-size: 11px;
             font-weight: 700;
-            color: var(--accent);
+            letter-spacing: 2px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0, 255, 102, 0.2);
         }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .main-card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--card-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 28px 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+        }
+
+        .metric-group {
+            margin-bottom: 20px;
+        }
+
+        .metric-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent-green);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 16px;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-secondary);
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .pulse-dot.active {
+            background-color: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .actions {
+            width: 100%;
+            max-width: 380px;
+            margin-bottom: 10px;
+        }
+
         .btn {
             width: 100%;
-            background: var(--accent);
-            color: #000000;
+            background: var(--accent-green);
+            color: #060608;
             border: none;
-            border-radius: 12px;
-            padding: 14px;
+            border-radius: 16px;
+            padding: 16px;
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             text-transform: uppercase;
-            margin-top: 10px;
-            transition: opacity 0.2s;
+            letter-spacing: 1px;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 20px rgba(0, 255, 102, 0.3);
         }
+
         .btn:active {
-            opacity: 0.8;
+            transform: scale(0.98);
+            opacity: 0.9;
         }
-        .btn-secondary {
-            background: transparent;
-            color: var(--text-muted);
-            border: 1px solid #2a2a38;
+
+        .btn-danger {
+            background: #ff334b;
+            box-shadow: 0 4px 20px rgba(255, 51, 75, 0.3);
+            color: #ffffff;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Zer0Life Run ⚡️</h1>
-        <div class="subtitle">Уличный трекер тренировок</div>
+    <div class="header">
+        <div class="brand-badge">Zer0Life Labs</div>
+        <h1>Run Tracker</h1>
+    </div>
 
-        <div class="metric-box">
-            <div class="metric-label">Пройдено дистанции</div>
-            <div class="metric-value" id="distance">0.00 км</div>
+    <div class="main-card">
+        <div class="metric-group">
+            <div class="metric-label">Дистанция</div>
+            <div class="metric-value" id="distance">0.00 <span style="font-size: 18px; font-weight: 500;">км</span></div>
         </div>
 
-        <div class="metric-box">
-            <div class="metric-label">Заработано ZRL</div>
-            <div class="metric-value" id="reward">0 ZRL</div>
+        <div style="height: 1px; background: var(--border-color); margin: 20px 0;"></div>
+
+        <div class="metric-group">
+            <div class="metric-label">Награда ZRL</div>
+            <div class="metric-value" id="reward">0 <span style="font-size: 18px; font-weight: 500;">ZRL</span></div>
         </div>
 
-        <button class="btn" id="startBtn" onclick="toggleRun()">Начать пробежку</button>
-        <button class="btn btn-secondary" id="finishBtn" style="display:none;" onclick="finishRun()">Завершить и забрать</button>
+        <div class="status-indicator">
+            <div class="pulse-dot" id="statusDot"></div>
+            <span id="statusText">Ожидание старта</span>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
     </div>
 
     <script>
@@ -117,11 +207,11 @@
 
         let isRunning = false;
         let watchId = null;
-        let totalDistance = 0; // в км
+        let totalDistance = 0;
         let lastPosition = null;
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Радиус Земли в км
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = 
@@ -133,27 +223,31 @@
         }
 
         function toggleRun() {
+            const btn = document.getElementById('actionBtn');
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+
             if (!isRunning) {
-                // Старт
                 if (!navigator.geolocation) {
                     alert("Геолокация не поддерживается вашим устройством");
                     return;
                 }
-                
+
                 isRunning = true;
                 totalDistance = 0;
                 lastPosition = null;
-                
-                document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('finishBtn').style.display = 'block';
+
+                btn.innerText = "Завершить и забрать";
+                btn.className = "btn btn-danger";
+                dot.classList.add('active');
+                text.innerText = "Трекинг активен...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude } = position.coords;
                         if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            // Игнорируем погрешность GPS меньше 3 метров за обновление
-                            if (dist > 0.003) {
+                            if (dist > 0.003) { // Фильтр погрешности GPS
                                 totalDistance += dist;
                                 updateUI();
                             }
@@ -162,33 +256,35 @@
                     },
                     (error) => {
                         console.error(error);
-                        alert("Ошибка получения GPS: включите геолокацию.");
+                        alert("Включите GPS-модуль для отслеживания пробежки.");
                     },
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
                 );
+            } else {
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
+                isRunning = false;
+
+                const finalData = {
+                    distance: parseFloat(totalDistance.toFixed(2)),
+                    reward: Math.floor(totalDistance * 500)
+                };
+
+                tg.sendData(JSON.stringify(finalData));
+                tg.close();
             }
         }
 
         function updateUI() {
-            document.getElementById('distance').innerText = totalDistance.toFixed(2) + " км";
+            document.getElementById('distance').innerHTML = totalDistance.toFixed(2) + ' <span style="font-size: 18px; font-weight: 500;">км</span>';
             const earnedZrl = Math.floor(totalDistance * 500);
-            document.getElementById('reward').innerText = earnedZrl + " ZRL";
-        }
-
-        function finishRun() {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
+            document.getElementById('reward').innerHTML = earnedZrl + ' <span style="font-size: 18px; font-weight: 500;">ZRL</span>';
+            
+            // Динамический виброотклик при обновлении данных (если поддерживается Телеграмом)
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
             }
-            isRunning = false;
-
-            const finalData = {
-                distance: parseFloat(totalDistance.toFixed(2)),
-                reward: Math.floor(totalDistance * 500)
-            };
-
-            // Отправляем данные боту в Telegram
-            tg.sendData(JSON.stringify(finalData));
-            tg.close();
         }
     </script>
 </body>
