@@ -54,13 +54,13 @@
             padding: 6px 16px;
             border-radius: 20px;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             border: 1px solid var(--border-neon);
             box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
         }
 
         h1 {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 900;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -68,11 +68,11 @@
             text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
         }
 
-        /* Брендовый арт-баннер */
-        .brand-art-banner {
+        /* Блок анимации персонажа (Jordan fit + Zer0life cap) */
+        .runner-art-container {
             width: 100%;
             max-width: 380px;
-            height: 85px;
+            height: 100px;
             background: linear-gradient(135deg, #12121c, #08080c);
             border: 2px dashed rgba(0, 255, 102, 0.4);
             border-radius: 18px;
@@ -80,43 +80,53 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            margin: 10px 0;
+            margin: 8px 0;
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 0 15px rgba(0, 255, 102, 0.1);
         }
 
-        .brand-art-banner::before {
-            content: 'ZER0LIFE';
+        .runner-art-container::before {
+            content: 'JORDAN x ZRL';
             position: absolute;
-            right: -10px;
-            bottom: -15px;
-            font-size: 45px;
+            right: -5px;
+            bottom: -10px;
+            font-size: 38px;
             font-weight: 900;
             color: rgba(255, 255, 255, 0.03);
             font-style: italic;
             pointer-events: none;
         }
 
-        .art-icon {
-            font-size: 34px;
-            filter: drop-shadow(0 0 10px var(--accent-green));
+        .runner-avatar {
+            font-size: 44px;
+            transition: transform 0.2s;
         }
 
-        .art-info h4 {
+        /* Анимация бега персонажа */
+        .runner-avatar.running {
+            animation: runBounce 0.4s infinite alternate ease-in-out;
+        }
+
+        @keyframes runBounce {
+            0% { transform: translateY(0px) rotate(-5deg) scaleX(1); }
+            100% { transform: translateY(-8px) rotate(5deg) scaleX(1.05); }
+        }
+
+        .runner-info h4 {
             font-size: 13px;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             color: var(--accent-green);
         }
 
-        .art-info p {
+        .runner-info p {
             font-size: 10px;
             color: var(--text-secondary);
             margin-top: 2px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .main-card {
@@ -125,7 +135,7 @@
             background: var(--card-surface);
             border: 1px solid rgba(0, 255, 102, 0.3);
             border-radius: 24px;
-            padding: 22px 18px;
+            padding: 20px 18px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
             position: relative;
         }
@@ -141,8 +151,8 @@
 
         .balance-section {
             text-align: center;
-            margin-bottom: 16px;
-            padding-bottom: 14px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
@@ -155,7 +165,7 @@
         }
 
         .balance-value {
-            font-size: 42px;
+            font-size: 40px;
             font-weight: 900;
             color: var(--accent-green);
             text-shadow: 0 0 30px var(--accent-glow);
@@ -194,7 +204,7 @@
             gap: 8px;
             font-size: 11px;
             color: var(--text-secondary);
-            margin-top: 14px;
+            margin-top: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 800;
@@ -313,13 +323,13 @@
         <h1>Zer0life Run</h1>
     </div>
 
-    <!-- Брендовый арт-баннер -->
-    <div class="brand-art-banner">
-        <div class="art-info">
-            <h4>Zer0Life Gear</h4>
-            <p>Move to Earn • ZRL Token</p>
+    <!-- Анимированный персонаж в прикиде Jordan + Кепка Zer0life -->
+    <div class="runner-art-container">
+        <div class="runner-info">
+            <h4>Jordan Fit • ZRL Cap</h4>
+            <p id="runnerStatusTitle">Стоит на месте</p>
         </div>
-        <div class="art-icon">👟⚡</div>
+        <div class="runner-avatar" id="runnerAvatar">🧢👟🏃‍♂️</div>
     </div>
 
     <div class="main-card">
@@ -394,6 +404,8 @@
             const btn = document.getElementById('actionBtn');
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
+            const avatar = document.getElementById('runnerAvatar');
+            const runnerTitle = document.getElementById('runnerStatusTitle');
 
             if (!isRunning) {
                 if (!navigator.geolocation) {
@@ -405,6 +417,10 @@
                 sessionDistance = 0;
                 lastPosition = null;
                 lastTime = null;
+
+                // Запуск анимации бега персонажа
+                avatar.classList.add('running');
+                runnerTitle.innerText = "Динамический бег...";
 
                 btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
@@ -454,6 +470,10 @@
                     navigator.geolocation.clearWatch(watchId);
                 }
                 isRunning = false;
+
+                // Остановка анимации бега персонажа
+                avatar.classList.remove('running');
+                runnerTitle.innerText = "Стоит на месте";
 
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
