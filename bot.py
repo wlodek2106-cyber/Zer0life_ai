@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
-# Токен вашего бота
+# Токен вашого бота
 TOKEN = "8820567588:AAFj2qP9tmUxKDWHzuFyllNAGEU8pZA78fw"
 
 dp = Dispatcher()
