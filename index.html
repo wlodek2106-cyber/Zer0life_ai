@@ -68,11 +68,11 @@
             text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
         }
 
-        /* Зона анимированного персонажа */
+        /* Блок карточки в стиле скриншота (Zerolife Gear) */
         .runner-box {
             width: 100%;
             max-width: 380px;
-            height: 100px;
+            height: 85px;
             background: linear-gradient(135deg, #12121c, #08080c);
             border: 2px dashed rgba(0, 255, 102, 0.4);
             border-radius: 18px;
@@ -87,7 +87,7 @@
         }
 
         .runner-box::before {
-            content: 'JORDAN x ZRL';
+            content: 'ZER0LIFE';
             position: absolute;
             right: -5px;
             bottom: -8px;
@@ -111,11 +111,18 @@
             color: var(--text-secondary);
             margin-top: 2px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .gear-visual {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .character-stage {
-            width: 70px;
-            height: 85px;
+            width: 50px;
+            height: 60px;
             position: relative;
             display: flex;
             align-items: center;
@@ -123,8 +130,8 @@
         }
 
         .runner-svg {
-            width: 60px;
-            height: 80px;
+            width: 45px;
+            height: 60px;
             transform-origin: bottom center;
         }
 
@@ -308,14 +315,6 @@
             color: #ffffff;
         }
 
-        .btn-test {
-            background: #2a2a3d;
-            color: #00ff66;
-            border: 1px dashed #00ff66;
-            font-size: 11px;
-            padding: 8px;
-        }
-
         /* Модальное окно */
         .modal {
             display: none;
@@ -368,40 +367,43 @@
         <h1>Zer0life Run</h1>
     </div>
 
-    <!-- Анимированный персонаж в прикиде Jordan + Кепка Zer0life -->
+    <!-- Карточка с текстом Zerolife Gear и вернувшимся бегущим человечком -->
     <div class="runner-box">
         <div class="runner-meta">
-            <h4>Fit: Jordan x ZRL</h4>
-            <p id="runnerStateText">Стоит на месте</p>
+            <h4>Zerolife Gear</h4>
+            <p id="runnerStateText">Move to Earn • ZRL Token</p>
         </div>
-        <div class="character-stage">
-            <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 80">
-                <g class="body-group">
-                    <rect x="22" y="24" width="16" height="22" rx="4" fill="#15151a" stroke="#ff2233" stroke-width="1.5"/>
-                    <circle cx="30" cy="32" r="2.5" fill="#ff2233"/>
-                    <circle cx="30" cy="14" r="6" fill="#fcd0a1"/>
-                    <path d="M22 12 C22 8, 38 8, 38 12 Z" fill="#030305"/>
-                    <path d="M34 11 L43 12.5 L34 14 Z" fill="#00ff66"/>
-                    <g class="arm-left">
-                        <line x1="22" y1="26" x2="12" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                        <circle cx="12" cy="39" r="2.5" fill="#fcd0a1"/>
+        <div class="gear-visual">
+            <div class="character-stage">
+                <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 80">
+                    <g class="body-group">
+                        <rect x="22" y="24" width="16" height="22" rx="4" fill="#15151a" stroke="#00ff66" stroke-width="1.5"/>
+                        <circle cx="30" cy="32" r="2.5" fill="#00ff66"/>
+                        <circle cx="30" cy="14" r="6" fill="#fcd0a1"/>
+                        <path d="M22 12 C22 8, 38 8, 38 12 Z" fill="#030305"/>
+                        <path d="M34 11 L43 12.5 L34 14 Z" fill="#00ff66"/>
+                        <g class="arm-left">
+                            <line x1="22" y1="26" x2="12" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                            <circle cx="12" cy="39" r="2.5" fill="#fcd0a1"/>
+                        </g>
+                        <g class="arm-right">
+                            <line x1="38" y1="26" x2="48" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                            <circle cx="48" cy="39" r="2.5" fill="#fcd0a1"/>
+                        </g>
                     </g>
-                    <g class="arm-right">
-                        <line x1="38" y1="26" x2="48" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                        <circle cx="48" cy="39" r="2.5" fill="#fcd0a1"/>
+                    <g class="leg-left">
+                        <rect x="25" y="44" width="6" height="12" fill="#00ff66"/>
+                        <line x1="28" y1="56" x2="24" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M21 68 L28 68 L29 72 L20 72 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
                     </g>
-                </g>
-                <g class="leg-left">
-                    <rect x="25" y="44" width="6" height="12" fill="#ff2233"/>
-                    <line x1="28" y1="56" x2="24" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                    <path d="M21 68 L28 68 L29 72 L20 72 Z" fill="#ffffff" stroke="#ff2233" stroke-width="1"/>
-                </g>
-                <g class="leg-right">
-                    <rect x="29" y="44" width="6" height="12" fill="#ff2233"/>
-                    <line x1="32" y1="56" x2="36" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                    <path d="M33 68 L40 68 L41 72 L32 72 Z" fill="#ffffff" stroke="#ff2233" stroke-width="1"/>
-                </g>
-            </svg>
+                    <g class="leg-right">
+                        <rect x="29" y="44" width="6" height="12" fill="#00ff66"/>
+                        <line x1="32" y1="56" x2="36" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M33 68 L40 68 L41 72 L32 72 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
+                    </g>
+                </svg>
+            </div>
+            <span style="font-size: 18px;">⚡</span>
         </div>
     </div>
 
@@ -423,14 +425,12 @@
 
         <div class="status-indicator">
             <div class="pulse-dot" id="statusDot"></div>
-            <span id="statusText">Готов к старта</span>
+            <span id="statusText">Готов к старту</span>
         </div>
     </div>
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
-        <!-- Оставили запасную кнопку теста на случай если телефон в кармане заблокирует GPS -->
-        <button class="btn btn-test" onclick="simulateRunStep()">⚡ [Тест] Добавить 0.5 км</button>
         <button class="btn btn-secondary" onclick="openWithdrawModal()">Вывод на Phantom (Solana)</button>
     </div>
 
@@ -491,27 +491,24 @@
                 lastPosition = null;
 
                 avatarSvg.classList.add('running-anim');
-                stateText.innerText = "Бежит в прикиде Jordan!";
+                stateText.innerText = "Тренировка активна...";
 
                 btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
                 text.innerText = "Поиск спутников GPS...";
 
-                // Запрос реального GPS трекинга
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude, accuracy } = position.coords;
                         
                         text.innerText = `GPS активен (точность: ${Math.round(accuracy)}м)`;
 
-                        // Если точность хуже 70 метров, пропускаем точку, чтобы не было ложных рывков
                         if (accuracy > 70) return;
 
                         if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
                             
-                            // Если смещение больше 3 метров (чтобы исключить дрожание на месте)
                             if (dist > 0.003) { 
                                 sessionDistance += dist;
                                 updateSessionUI();
@@ -534,7 +531,7 @@
                 isRunning = false;
 
                 avatarSvg.classList.remove('running-anim');
-                stateText.innerText = "Стоит на месте";
+                stateText.innerText = "Move to Earn • ZRL Token";
 
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
@@ -553,15 +550,6 @@
                 alert(`Успех! На ваш баланс зачислено ${earnedZrl} ZRL.`);
                 sessionDistance = 0;
                 updateSessionUI();
-            }
-        }
-
-        // Тестовая кнопка на случай блокировки экрана
-        function simulateRunStep() {
-            sessionDistance += 0.5;
-            updateSessionUI();
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
             }
         }
 
