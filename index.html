@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Zer0Life Run</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #111; color: #fff; padding-top: 50px; }
+        button { background: #fff; color: #000; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Zer0Life Run 🏃‍♂️</h1>
+    <p>Пройдено дистанции: <span id="distance">0.0</span> км</p>
+    <p>Награда: <span id="reward">0</span> ZRL</p>
+    <button id="runBtn">Начать пробежку</button>
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        let distance = 0;
+        let timer = null;
+        let isRunning = false;
+
+        const btn = document.getElementById('runBtn');
+        const distSpan = document.getElementById('distance');
+        const rewardSpan = document.getElementById('reward');
+
+        btn.onclick = () => {
+            if (!isRunning) {
+                isRunning = true;
+                btn.innerText = "Завершить и забрать ZRL";
+                timer = setInterval(() => {
+                    distance += 0.1; // Симуляция шагов/км (можно заменить на реальный геолокационный трекинг)
+                    distSpan.innerText = distance.toFixed(1);
+                    rewardSpan.innerText = Math.floor(distance * 500);
+                }, 1000);
+            } else {
+                clearInterval(timer);
+                isRunning = false;
+                let finalReward = Math.floor(distance * 500);
+                
+                // Передача данных обратно в Telegram-бот
+                tg.sendData(JSON.stringify({
+                    distance: distance.toFixed(1),
+                    reward: finalReward
+                }));
+                tg.close();
+            }
+        };
+    </script>
+</body>
+</html>
