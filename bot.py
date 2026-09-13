@@ -6,7 +6,7 @@ from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 @dp.message(commands=["run"])
 async def cmd_run(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="ВАШ_ХОСТ_С_HTML/index.html"))]
+        [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
     ])
     await message.answer("Откройте мини-приложение, чтобы начать пробежку и заработать по 500 ZRL за километр:", reply_markup=keyboard)
 
