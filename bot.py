@@ -10,16 +10,16 @@ TOKEN = "8820567588:AAFj2qP9tmUxKDWHzuFyllNAGEU8pZA78fw"
 
 dp = Dispatcher()
 
-# Функция для установки кнопки меню (чтобы приложение было всегда под рукой)
+# Функция для установки кнопки меню
 async def set_main_menu(bot: Bot):
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
             text="🏃 Zer0Life Run",
-            web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0Life_ai/")
+            web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
         )
     )
 
-# Команда /start — приветствие и кнопка запуска
+# Команда /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -33,7 +33,7 @@ async def cmd_start(message: types.Message):
         parse_mode="HTML"
     )
 
-# Команда /run — альтернативный вызов мини-приложения
+# Команда /run
 @dp.message(Command("run"))
 async def cmd_run(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -49,10 +49,6 @@ async def handle_web_app_data(message: types.Message):
         distance = data.get("distance", 0)
         reward = data.get("reward", 0)
         
-        user_id = message.from_user.id
-        
-        # Здесь будет логика сохранения баланса ZRL в базу данных
-        
         await message.answer(
             f"Отличная тренировка! 🏁\n"
             f"Пройдено: {distance} км\n"
@@ -64,7 +60,6 @@ async def handle_web_app_data(message: types.Message):
 
 async def main():
     bot = Bot(token=TOKEN)
-    # Устанавливаем кнопку меню при запуске
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
