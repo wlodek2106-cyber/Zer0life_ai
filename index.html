@@ -240,14 +240,22 @@
                 btn.innerText = "Завершить и забрать";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "Трекинг активен...";
+                text.innerText = "Трекинг активен (на улице)...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
-                        const { latitude, longitude } = position.coords;
+                        const { latitude, longitude, accuracy } = position.coords;
+                        
+                        // Игнорируем плохой сигнал в помещении (если точность хуже 20 метров)
+                        if (accuracy > 20) {
+                            return;
+                        }
+
                         if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            if (dist > 0.003) { // Фильтр погрешности GPS
+                            
+                            // Учитываем реальное движение только если прошли больше 10 метров за такт
+                            if (dist > 0.01) { 
                                 totalDistance += dist;
                                 updateUI();
                             }
@@ -281,7 +289,6 @@
             const earnedZrl = Math.floor(totalDistance * 500);
             document.getElementById('reward').innerHTML = earnedZrl + ' <span style="font-size: 18px; font-weight: 500;">ZRL</span>';
             
-            // Динамический виброотклик при обновлении данных (если поддерживается Телеграмом)
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
