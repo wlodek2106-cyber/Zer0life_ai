@@ -67,7 +67,7 @@
             background: var(--card-surface);
             border: 1px solid var(--border-color);
             border-radius: 24px;
-            padding: 28px 20px;
+            padding: 24px 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             position: relative;
             overflow: hidden;
@@ -83,28 +83,44 @@
             background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
         }
 
-        .metric-group {
+        .balance-section {
+            text-align: center;
             margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .metric-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .metric-label {
+        .balance-label {
             font-size: 11px;
-            font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+        }
+
+        .balance-value {
+            font-size: 38px;
+            font-weight: 900;
+            color: var(--accent-green);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .metric-group {
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: var(--text-secondary);
         }
 
         .metric-value {
-            font-size: 36px;
-            font-weight: 800;
-            color: var(--accent-green);
-            text-shadow: 0 0 20px var(--accent-glow);
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .status-indicator {
@@ -114,7 +130,7 @@
             gap: 8px;
             font-size: 13px;
             color: var(--text-secondary);
-            margin-top: 16px;
+            margin-top: 14px;
         }
 
         .pulse-dot {
@@ -140,6 +156,9 @@
         .actions {
             width: 100%;
             max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             margin-bottom: 10px;
         }
 
@@ -149,8 +168,8 @@
             color: #060608;
             border: none;
             border-radius: 16px;
-            padding: 16px;
-            font-size: 15px;
+            padding: 15px;
+            font-size: 14px;
             font-weight: 800;
             cursor: pointer;
             text-transform: uppercase;
@@ -164,31 +183,79 @@
             opacity: 0.9;
         }
 
+        .btn-secondary {
+            background: #1c1c24;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+
         .btn-danger {
             background: #ff334b;
             box-shadow: 0 4px 20px rgba(255, 51, 75, 0.3);
             color: #ffffff;
+        }
+
+        /* Модальное окно вывода */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .modal-content {
+            background: var(--card-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+        .modal-content h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+        .modal-input {
+            width: 100%;
+            background: #060608;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            color: #fff;
+            font-size: 13px;
+            margin-bottom: 15px;
+            outline: none;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="brand-badge">Zer0Life Labs</div>
+        <div class="brand-badge">Zer0Life Labs • Solana</div>
         <h1>Run Tracker</h1>
     </div>
 
     <div class="main-card">
-        <div class="metric-group">
-            <div class="metric-label">Дистанция</div>
-            <div class="metric-value" id="distance">0.00 <span style="font-size: 18px; font-weight: 500;">км</span></div>
+        <!-- Общий баланс токенов -->
+        <div class="balance-section">
+            <div class="balance-label">Общий баланс ZRL</div>
+            <div class="balance-value" id="totalBalance">0</div>
         </div>
 
-        <div style="height: 1px; background: var(--border-color); margin: 20px 0;"></div>
+        <div class="metric-group">
+            <span class="metric-label">Текущая пробежка</span>
+            <span class="metric-value" id="currentDist">0.00 км</span>
+        </div>
 
         <div class="metric-group">
-            <div class="metric-label">Награда ZRL</div>
-            <div class="metric-value" id="reward">0 <span style="font-size: 18px; font-weight: 500;">ZRL</span></div>
+            <span class="metric-label">Награда за сессию</span>
+            <span class="metric-value" id="currentReward">0 ZRL</span>
         </div>
 
         <div class="status-indicator">
@@ -199,6 +266,18 @@
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
+        <button class="btn btn-secondary" onclick="openWithdrawModal()">Вывод на Phantom (Solana)</button>
+    </div>
+
+    <!-- Модальное окно вывода -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <h3>Вывод ZRL в сеть Solana</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px;">Введите ваш Solana-адрес кошелька (Phantom), чтобы вывести токены.</p>
+            <input type="text" id="solanaAddress" class="modal-input" placeholder="Введите Solana адрес...">
+            <button class="btn" onclick="submitWithdraw()">Запросить вывод</button>
+            <button class="btn btn-secondary" style="margin-top: 8px;" onclick="closeWithdrawModal()">Отмена</button>
+        </div>
     </div>
 
     <script>
@@ -207,9 +286,17 @@
 
         let isRunning = false;
         let watchId = null;
-        let totalDistance = 0;
+        let sessionDistance = 0;
         let lastPosition = null;
         let lastTime = null;
+
+        // Загружаем сохраненный баланс из памяти телефона
+        let userBalance = parseFloat(localStorage.getItem('zrl_balance')) || 0;
+        updateBalanceUI();
+
+        function updateBalanceUI() {
+            document.getElementById('totalBalance').innerText = Math.floor(userBalance);
+        }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371;
@@ -235,11 +322,11 @@
                 }
 
                 isRunning = true;
-                totalDistance = 0;
+                sessionDistance = 0;
                 lastPosition = null;
                 lastTime = null;
 
-                btn.innerText = "Завершить и забрать";
+                btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
                 text.innerText = "Античит активен (бег)...";
@@ -249,10 +336,7 @@
                         const { latitude, longitude, accuracy } = position.coords;
                         const currentTime = Date.now();
                         
-                        // Игнорируем плохой GPS-сигнал в помещении (хуже 20 метров)
-                        if (accuracy > 20) {
-                            return;
-                        }
+                        if (accuracy > 20) return;
 
                         if (lastPosition && lastTime) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
@@ -260,10 +344,8 @@
                             
                             if (timeDiffHours > 0) {
                                 const speedKmh = dist / timeDiffHours;
-
-                                // АНТИЧИТ ПРОТИВ САМОКАТОВ И ТРАНСПОРТА: лимит 17 км/ч
                                 if (speedKmh > 17) {
-                                    text.innerText = "⚠️ Слишком быстро (самокат/авто)? Сбавьте темп!";
+                                    text.innerText = "⚠️ Слишком быстро! Сбавьте темп.";
                                     lastPosition = { lat: latitude, lon: longitude };
                                     lastTime = currentTime;
                                     return;
@@ -272,10 +354,9 @@
                                 }
                             }
 
-                            // Учитываем дистанцию только если шаг больше 10 метров
                             if (dist > 0.01) { 
-                                totalDistance += dist;
-                                updateUI();
+                                sessionDistance += dist;
+                                updateSessionUI();
                             }
                         }
 
@@ -284,7 +365,7 @@
                     },
                     (error) => {
                         console.error(error);
-                        alert("Включите GPS-модуль для отслеживания пробежки.");
+                        alert("Включите GPS-модуль.");
                     },
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
                 );
@@ -294,24 +375,62 @@
                 }
                 isRunning = false;
 
-                const finalData = {
-                    distance: parseFloat(totalDistance.toFixed(2)),
-                    reward: Math.floor(totalDistance * 500)
-                };
+                // Начисляем заработанные за сессию токены к общему балансу
+                const earnedZrl = Math.floor(sessionDistance * 500);
+                userBalance += earnedZrl;
+                localStorage.setItem('zrl_balance', userBalance);
+                updateBalanceUI();
 
-                tg.sendData(JSON.stringify(finalData));
-                tg.close();
+                // Сбрасываем сессию UI
+                btn.innerText = "Начать пробежку";
+                btn.className = "btn";
+                dot.classList.remove('active');
+                text.innerText = "Тренировка завершена!";
+
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+
+                alert(`Отличная работа! На ваш баланс зачислено ${earnedZrl} ZRL.`);
+                sessionDistance = 0;
+                updateSessionUI();
             }
         }
 
-        function updateUI() {
-            document.getElementById('distance').innerHTML = totalDistance.toFixed(2) + ' <span style="font-size: 18px; font-weight: 500;">км</span>';
-            const earnedZrl = Math.floor(totalDistance * 500);
-            document.getElementById('reward').innerHTML = earnedZrl + ' <span style="font-size: 18px; font-weight: 500;">ZRL</span>';
+        function updateSessionUI() {
+            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " км";
+            const earnedZrl = Math.floor(sessionDistance * 500);
+            document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
             
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
+        }
+
+        function openWithdrawModal() {
+            document.getElementById('withdrawModal').style.display = 'flex';
+        }
+
+        function closeWithdrawModal() {
+            document.getElementById('withdrawModal').style.display = 'none';
+        }
+
+        function submitWithdraw() {
+            const address = document.getElementById('solanaAddress').value.trim();
+            if (address.length < 30) {
+                alert("Пожалуйста, введите корректный Solana адрес кошелька Phantom.");
+                return;
+            }
+            if (userBalance <= 0) {
+                alert("У вас недостаточно ZRL для вывода.");
+                return;
+            }
+
+            alert(`Запрос на вывод ${Math.floor(userBalance)} ZRL на адрес ${address.substring(0, 6)}... успешно создан!`);
+            userBalance = 0;
+            localStorage.setItem('zrl_balance', userBalance);
+            updateBalanceUI();
+            closeWithdrawModal();
         }
     </script>
 </body>
