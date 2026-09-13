@@ -3,32 +3,55 @@ import logging
 import sys
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 
-# Токен вашого бота
+# Токен вашего бота
 TOKEN = "8820567588:AAFj2qP9tmUxKDWHzuFyllNAGEU8pZA78fw"
 
 dp = Dispatcher()
 
-# Команда для вызова мини-приложения
+# Функция для установки кнопки меню (чтобы приложение было всегда под рукой)
+async def set_main_menu(bot: Bot):
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🏃 Zer0Life Run",
+            web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0Life_ai/")
+        )
+    )
+
+# Команда /start — приветствие и кнопка запуска
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+    ])
+    await message.answer(
+        "Йоу! Добро пожаловать в <b>Zer0Life</b> ⚡️\n\n"
+        "Бегай, тренируйся и зарабатывай <b>500 ZRL за каждый километр</b>!\n"
+        "Нажми кнопку ниже или открой приложение в меню, чтобы начать:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+# Команда /run — альтернативный вызов мини-приложения
 @dp.message(Command("run"))
 async def cmd_run(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
     ])
-    await message.answer("Откройте мини-приложение, чтобы начать пробежку и заработать по 500 ZRL за километр:", reply_markup=keyboard)
+    await message.answer("Откройте мини-приложение для пробежки:", reply_markup=keyboard)
 
-# Автоматический прием данных по завершении тренировки в aiogram 3.x
+# Автоматический прием данных по завершении тренировки
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
-        distance = data.get("distance")
-        reward = data.get("reward")
+        distance = data.get("distance", 0)
+        reward = data.get("reward", 0)
         
         user_id = message.from_user.id
         
-        # Здесь пишется логика записи `reward` на баланс пользователя в базе данных
+        # Здесь будет логика сохранения баланса ZRL в базу данных
         
         await message.answer(
             f"Отличная тренировка! 🏁\n"
@@ -41,6 +64,8 @@ async def handle_web_app_data(message: types.Message):
 
 async def main():
     bot = Bot(token=TOKEN)
+    # Устанавливаем кнопку меню при запуске
+    await set_main_menu(bot)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
