@@ -10,7 +10,7 @@ TOKEN = "8820567588:AAFj2qP9tmUxKDWHzuFyllNAGEU8pZA78fw"
 
 dp = Dispatcher()
 
-# Функция для установки кнопки меню
+# Установка кнопки меню
 async def set_main_menu(bot: Bot):
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
@@ -41,7 +41,7 @@ async def cmd_run(message: types.Message):
     ])
     await message.answer("Откройте мини-приложение для пробежки:", reply_markup=keyboard)
 
-# Автоматический прием данных по завершении тренировки
+# Прием данных от мини-приложения
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
     try:
