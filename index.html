@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0Life Run</title>
+    <title>Zer0Life Run / Cyber-Sneaker Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-base: #060608;
-            --card-surface: #101015;
-            --border-color: #22222f;
+            --bg-base: #050507;
+            --card-surface: #0d0d12;
+            --border-neon: rgba(0, 255, 102, 0.3);
             --accent-green: #00ff66;
-            --accent-glow: rgba(0, 255, 102, 0.15);
-            --text-primary: #f3f3f6;
-            --text-secondary: #7e7e93;
+            --accent-glow: rgba(0, 255, 102, 0.25);
+            --text-primary: #ffffff;
+            --text-secondary: #707085;
         }
 
         * {
@@ -32,43 +32,48 @@
             align-items: center;
             justify-content: space-between;
             padding: 24px 20px;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 255, 102, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 10% 90%, rgba(255, 51, 75, 0.05) 0%, transparent 40%);
         }
 
         .header {
             text-align: center;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         .brand-badge {
             display: inline-block;
-            background: rgba(0, 255, 102, 0.1);
+            background: linear-gradient(135deg, rgba(0, 255, 102, 0.15), rgba(0, 0, 0, 0.4));
             color: var(--accent-green);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            padding: 6px 12px;
-            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            padding: 6px 14px;
+            border-radius: 30px;
             text-transform: uppercase;
-            margin-bottom: 12px;
-            border: 1px solid rgba(0, 255, 102, 0.2);
+            margin-bottom: 10px;
+            border: 1px solid var(--border-neon);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.1);
         }
 
         h1 {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 900;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             text-transform: uppercase;
             color: var(--text-primary);
+            font-style: italic;
         }
 
         .main-card {
             width: 100%;
             max-width: 380px;
             background: var(--card-surface);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-neon);
             border-radius: 24px;
             padding: 24px 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 255, 102, 0.03);
             position: relative;
             overflow: hidden;
         }
@@ -79,47 +84,56 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+            height: 3px;
+            background: linear-gradient(90deg, #ff334b, var(--accent-green));
         }
 
         .balance-section {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .balance-label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            font-weight: 700;
         }
 
         .balance-value {
-            font-size: 38px;
+            font-size: 40px;
             font-weight: 900;
             color: var(--accent-green);
-            text-shadow: 0 0 20px var(--accent-glow);
+            text-shadow: 0 0 25px var(--accent-glow);
+            font-style: italic;
         }
 
         .metric-group {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
         }
 
         .metric-label {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .metric-value {
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             color: var(--text-primary);
         }
 
@@ -128,9 +142,12 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
             margin-top: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
         }
 
         .pulse-dot {
@@ -143,13 +160,13 @@
 
         .pulse-dot.active {
             background-color: var(--accent-green);
-            box-shadow: 0 0 10px var(--accent-green);
-            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 12px var(--accent-green);
+            animation: pulse 1.2s infinite;
         }
 
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.4); opacity: 0.5; }
+            50% { transform: scale(1.5); opacity: 0.4; }
             100% { transform: scale(1); opacity: 1; }
         }
 
@@ -165,43 +182,44 @@
         .btn {
             width: 100%;
             background: var(--accent-green);
-            color: #060608;
+            color: #050507;
             border: none;
-            border-radius: 16px;
-            padding: 15px;
+            border-radius: 14px;
+            padding: 16px;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 900;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 4px 20px rgba(0, 255, 102, 0.3);
+            box-shadow: 0 4px 25px rgba(0, 255, 102, 0.35);
         }
 
         .btn:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
             opacity: 0.9;
         }
 
         .btn-secondary {
-            background: #1c1c24;
+            background: #111118;
             color: var(--text-primary);
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: none;
         }
 
         .btn-danger {
             background: #ff334b;
-            box-shadow: 0 4px 20px rgba(255, 51, 75, 0.3);
+            box-shadow: 0 4px 25px rgba(255, 51, 75, 0.4);
             color: #ffffff;
         }
 
-        /* Модальное окно вывода */
+        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(5, 5, 7, 0.85);
+            backdrop-filter: blur(10px);
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -209,36 +227,42 @@
         }
         .modal-content {
             background: var(--card-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border: 1px solid var(--border-neon);
+            border-radius: 22px;
             padding: 24px;
             width: 100%;
             max-width: 360px;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
         }
         .modal-content h3 {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             font-size: 18px;
             text-transform: uppercase;
+            font-weight: 900;
+            font-style: italic;
         }
         .modal-input {
             width: 100%;
-            background: #060608;
-            border: 1px solid var(--border-color);
+            background: #050507;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            padding: 12px;
+            padding: 14px;
             color: #fff;
             font-size: 13px;
             margin-bottom: 15px;
             outline: none;
+        }
+        .modal-input:focus {
+            border-color: var(--accent-green);
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="brand-badge">Zer0Life Labs • Solana</div>
-        <h1>Run Tracker</h1>
+        <div class="brand-badge">⚡️ Zer0Life Labs • Solana Edition</div>
+        <h1>Cyber Run Art</h1>
     </div>
 
     <div class="main-card">
@@ -249,18 +273,18 @@
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Текущая пробежка</span>
+            <span class="metric-label">Дистанция</span>
             <span class="metric-value" id="currentDist">0.00 км</span>
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Награда за сессию</span>
+            <span class="metric-label">Награда сессии</span>
             <span class="metric-value" id="currentReward">0 ZRL</span>
         </div>
 
         <div class="status-indicator">
             <div class="pulse-dot" id="statusDot"></div>
-            <span id="statusText">Ожидание старта</span>
+            <span id="statusText">Готов к старту</span>
         </div>
     </div>
 
@@ -273,8 +297,8 @@
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
             <h3>Вывод ZRL в сеть Solana</h3>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px;">Введите ваш Solana-адрес кошелька (Phantom), чтобы вывести токены.</p>
-            <input type="text" id="solanaAddress" class="modal-input" placeholder="Введите Solana адрес...">
+            <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px;">Укажите ваш кошелек Phantom для трансфера токенов.</p>
+            <input type="text" id="solanaAddress" class="modal-input" placeholder="Solana адрес кошелька...">
             <button class="btn" onclick="submitWithdraw()">Запросить вывод</button>
             <button class="btn btn-secondary" style="margin-top: 8px;" onclick="closeWithdrawModal()">Отмена</button>
         </div>
@@ -290,11 +314,11 @@
         let lastPosition = null;
         let lastTime = null;
 
-        // Загружаем сохраненный баланс из памяти телефона
         let userBalance = parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
 
         function updateBalanceUI() {
+            document.getElementById('totalBalanceinnerText', Math.floor(userBalance));
             document.getElementById('totalBalance').innerText = Math.floor(userBalance);
         }
 
@@ -345,7 +369,7 @@
                             if (timeDiffHours > 0) {
                                 const speedKmh = dist / timeDiffHours;
                                 if (speedKmh > 17) {
-                                    text.innerText = "⚠️ Слишком быстро! Сбавьте темп.";
+                                    text.innerText = "⚠️ Слишком быстро (самокат)! Сбавьте темп.";
                                     lastPosition = { lat: latitude, lon: longitude };
                                     lastTime = currentTime;
                                     return;
@@ -375,23 +399,21 @@
                 }
                 isRunning = false;
 
-                // Начисляем заработанные за сессию токены к общему балансу
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
                 localStorage.setItem('zrl_balance', userBalance);
                 updateBalanceUI();
 
-                // Сбрасываем сессию UI
                 btn.innerText = "Начать пробежку";
                 btn.className = "btn";
                 dot.classList.remove('active');
-                text.innerText = "Тренировка завершена!";
+                text.innerText = "Тренировка сохранена!";
 
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
 
-                alert(`Отличная работа! На ваш баланс зачислено ${earnedZrl} ZRL.`);
+                alert(`Успех! На ваш баланс зачислено ${earnedZrl} ZRL.`);
                 sessionDistance = 0;
                 updateSessionUI();
             }
@@ -418,15 +440,15 @@
         function submitWithdraw() {
             const address = document.getElementById('solanaAddress').value.trim();
             if (address.length < 30) {
-                alert("Пожалуйста, введите корректный Solana адрес кошелька Phantom.");
+                alert("Введите корректный Solana адрес кошелька Phantom.");
                 return;
             }
             if (userBalance <= 0) {
-                alert("У вас недостаточно ZRL для вывода.");
+                alert("У вас нет токенов ZRL на балансе для вывода.");
                 return;
             }
 
-            alert(`Запрос на вывод ${Math.floor(userBalance)} ZRL на адрес ${address.substring(0, 6)}... успешно создан!`);
+            alert(`Запрос на вывод ${Math.floor(userBalance)} ZRL на кошелек ${address.substring(0, 6)}... отправлен.`);
             userBalance = 0;
             localStorage.setItem('zrl_balance', userBalance);
             updateBalanceUI();
