@@ -15,6 +15,7 @@
             --danger-red: #ff0055;
             --text-primary: #ffffff;
             --text-secondary: #8b8b9e;
+            --jordan-red: #ff2233;
         }
 
         * {
@@ -32,7 +33,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 16px;
+            padding: 16px;
             background-image: 
                 radial-gradient(circle at 50% -20%, rgba(0, 255, 102, 0.2) 0%, transparent 50%),
                 radial-gradient(circle at 50% 120%, rgba(255, 0, 85, 0.15) 0%, transparent 50%);
@@ -48,19 +49,19 @@
             display: inline-block;
             background: rgba(0, 255, 102, 0.1);
             color: var(--accent-green);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 900;
             letter-spacing: 3px;
-            padding: 6px 16px;
+            padding: 4px 14px;
             border-radius: 20px;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             border: 1px solid var(--border-neon);
-            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
         }
 
         h1 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 900;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -68,65 +69,104 @@
             text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
         }
 
-        /* Блок анимации персонажа (Jordan fit + Zer0life cap) */
-        .runner-art-container {
+        /* Зона кастомного анимированного персонажа */
+        .runner-box {
             width: 100%;
             max-width: 380px;
-            height: 100px;
+            height: 110px;
             background: linear-gradient(135deg, #12121c, #08080c);
             border: 2px dashed rgba(0, 255, 102, 0.4);
             border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
-            margin: 8px 0;
+            padding: 0 16px;
+            margin: 6px 0;
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 0 15px rgba(0, 255, 102, 0.1);
         }
 
-        .runner-art-container::before {
+        .runner-box::before {
             content: 'JORDAN x ZRL';
             position: absolute;
             right: -5px;
-            bottom: -10px;
+            bottom: -8px;
             font-size: 38px;
             font-weight: 900;
-            color: rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.02);
             font-style: italic;
             pointer-events: none;
         }
 
-        .runner-avatar {
-            font-size: 44px;
-            transition: transform 0.2s;
-        }
-
-        /* Анимация бега персонажа */
-        .runner-avatar.running {
-            animation: runBounce 0.4s infinite alternate ease-in-out;
-        }
-
-        @keyframes runBounce {
-            0% { transform: translateY(0px) rotate(-5deg) scaleX(1); }
-            100% { transform: translateY(-8px) rotate(5deg) scaleX(1.05); }
-        }
-
-        .runner-info h4 {
-            font-size: 13px;
+        .runner-meta h4 {
+            font-size: 12px;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--accent-green);
         }
 
-        .runner-info p {
-            font-size: 10px;
+        .runner-meta p {
+            font-size: 9px;
             color: var(--text-secondary);
             margin-top: 2px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+        }
+
+        /* Контейнер человечка */
+        .character-stage {
+            width: 70px;
+            height: 90px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* SVG персонажа в прикиде Jordan + Кепка Zer0life */
+        .runner-svg {
+            width: 65px;
+            height: 85px;
+            transform-origin: bottom center;
+        }
+
+        /* Логика анимаций бега */
+        .running-anim .body-group {
+            animation: bodyRun 0.35s infinite alternate ease-in-out;
+        }
+        .running-anim .leg-left {
+            animation: legLeftRun 0.35s infinite ease-in-out;
+        }
+        .running-anim .leg-right {
+            animation: legRightRun 0.35s infinite ease-in-out;
+        }
+        .running-anim .arm-left {
+            animation: armLeftRun 0.35s infinite ease-in-out;
+        }
+        .running-anim .arm-right {
+            animation: armRightRun 0.35s infinite ease-in-out;
+        }
+
+        @keyframes bodyRun {
+            0% { transform: translateY(0px) rotate(-3deg); }
+            100% { transform: translateY(-4px) rotate(3deg); }
+        }
+        @keyframes legLeftRun {
+            0% { transform: rotate(-35deg); transform-origin: 28px 45px; }
+            100% { transform: rotate(35deg); transform-origin: 28px 45px; }
+        }
+        @keyframes legRightRun {
+            0% { transform: rotate(35deg); transform-origin: 28px 45px; }
+            100% { transform: rotate(-35deg); transform-origin: 28px 45px; }
+        }
+        @keyframes armLeftRun {
+            0% { transform: rotate(30deg); transform-origin: 32px 25px; }
+            100% { transform: rotate(-30deg); transform-origin: 32px 25px; }
+        }
+        @keyframes armRightRun {
+            0% { transform: rotate(-30deg); transform-origin: 32px 25px; }
+            100% { transform: rotate(30deg); transform-origin: 32px 25px; }
         }
 
         .main-card {
@@ -134,8 +174,8 @@
             max-width: 380px;
             background: var(--card-surface);
             border: 1px solid rgba(0, 255, 102, 0.3);
-            border-radius: 24px;
-            padding: 20px 18px;
+            border-radius: 22px;
+            padding: 18px 16px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
             position: relative;
         }
@@ -146,13 +186,13 @@
             top: 0; left: 0; right: 0;
             height: 4px;
             background: linear-gradient(90deg, var(--danger-red), var(--accent-green));
-            border-radius: 24px 24px 0 0;
+            border-radius: 22px 22px 0 0;
         }
 
         .balance-section {
             text-align: center;
-            margin-bottom: 14px;
-            padding-bottom: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
@@ -165,7 +205,7 @@
         }
 
         .balance-value {
-            font-size: 40px;
+            font-size: 38px;
             font-weight: 900;
             color: var(--accent-green);
             text-shadow: 0 0 30px var(--accent-glow);
@@ -174,25 +214,25 @@
         }
 
         .metric-group {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: rgba(255, 255, 255, 0.03);
-            padding: 10px 14px;
-            border-radius: 12px;
+            padding: 8px 12px;
+            border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .metric-label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
             font-weight: 700;
             text-transform: uppercase;
         }
 
         .metric-value {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 900;
             color: var(--text-primary);
         }
@@ -202,17 +242,17 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
-            margin-top: 12px;
+            margin-top: 10px;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 800;
         }
 
         .pulse-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             background-color: var(--text-secondary);
             border-radius: 50%;
             transition: background-color 0.3s;
@@ -235,7 +275,7 @@
             max-width: 380px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
         .btn {
@@ -244,8 +284,8 @@
             color: #030305;
             border: none;
             border-radius: 14px;
-            padding: 16px;
-            font-size: 14px;
+            padding: 15px;
+            font-size: 13px;
             font-weight: 900;
             cursor: pointer;
             text-transform: uppercase;
@@ -271,7 +311,7 @@
             color: #ffffff;
         }
 
-        /* Модалка */
+        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -286,16 +326,16 @@
         .modal-content {
             background: var(--card-surface);
             border: 1px solid var(--border-neon);
-            border-radius: 22px;
-            padding: 24px;
+            border-radius: 20px;
+            padding: 22px;
             width: 100%;
-            max-width: 360px;
+            max-width: 340px;
             text-align: center;
             box-shadow: 0 25px 50px rgba(0,0,0,0.9);
         }
         .modal-content h3 {
-            margin-bottom: 12px;
-            font-size: 18px;
+            margin-bottom: 10px;
+            font-size: 16px;
             text-transform: uppercase;
             font-weight: 900;
             font-style: italic;
@@ -304,11 +344,11 @@
             width: 100%;
             background: #030305;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 14px;
+            border-radius: 10px;
+            padding: 12px;
             color: #fff;
-            font-size: 13px;
-            margin-bottom: 15px;
+            font-size: 12px;
+            margin-bottom: 14px;
             outline: none;
         }
         .modal-input:focus {
@@ -323,13 +363,61 @@
         <h1>Zer0life Run</h1>
     </div>
 
-    <!-- Анимированный персонаж в прикиде Jordan + Кепка Zer0life -->
-    <div class="runner-art-container">
-        <div class="runner-info">
-            <h4>Jordan Fit • ZRL Cap</h4>
-            <p id="runnerStatusTitle">Стоит на месте</p>
+    <!-- Анимированный пацан в спортивке Jordan, шортах Jordan, кроссах Jordan и кепке Zer0life -->
+    <div class="runner-box">
+        <div class="runner-meta">
+            <h4>Fit: Jordan x ZRL</h4>
+            <p id="runnerStateText">Стоит на месте</p>
         </div>
-        <div class="runner-avatar" id="runnerAvatar">🧢👟🏃‍♂️</div>
+        <div class="character-stage">
+            <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 80">
+                <!-- Тело (Спортивка Jordan - черный/красный) -->
+                <g class="body-group">
+                    <!-- Торс / худи Jordan -->
+                    <rect x="22" y="24" width="16" height="22" rx="4" fill="#15151a" stroke="#ff2233" stroke-width="1.5"/>
+                    <!-- Логотип Jumpman на груди (упрощенно) -->
+                    <circle cx="30" cy="32" r="2.5" fill="#ff2233"/>
+                    
+                    <!-- Голова -->
+                    <circle cx="30" cy="14" r="6" fill="#fcd0a1"/>
+                    
+                    <!-- Кепка Zer0life (зеленый акцент) -->
+                    <path d="M22 12 C22 8, 38 8, 38 12 Z" fill="#030305"/>
+                    <path d="M34 11 L43 12.5 L34 14 Z" fill="#00ff66"/>
+
+                    <!-- Руки (Спортивка) -->
+                    <g class="arm-left">
+                        <line x1="22" y1="26" x2="12" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="12" cy="39" r="2.5" fill="#fcd0a1"/>
+                    </g>
+                    <g class="arm-right">
+                        <line x1="38" y1="26" x2="48" y2="38" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="48" cy="39" r="2.5" fill="#fcd0a1"/>
+                    </g>
+                </g>
+
+                <!-- Ноги в шортах Jordan и кроссовках Jordan -->
+                <!-- Левая нога -->
+                <g class="leg-left">
+                    <!-- Шорты Jordan -->
+                    <rect x="25" y="44" width="6" height="12" fill="#ff2233"/>
+                    <!-- Штанина/голень -->
+                    <line x1="28" y1="56" x2="24" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                    <!-- Кроссы Jordan (красно-белые) -->
+                    <path d="M21 68 L28 68 L29 72 L20 72 Z" fill="#ffffff" stroke="#ff2233" stroke-width="1"/>
+                </g>
+
+                <!-- Правая нога -->
+                <g class="leg-right">
+                    <!-- Шорты Jordan -->
+                    <rect x="29" y="44" width="6" height="12" fill="#ff2233"/>
+                    <!-- Штанина/голень -->
+                    <line x1="32" y1="56" x2="36" y2="68" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+                    <!-- Кроссы Jordan -->
+                    <path d="M33 68 L40 68 L41 72 L32 72 Z" fill="#ffffff" stroke="#ff2233" stroke-width="1"/>
+                </g>
+            </svg>
+        </div>
     </div>
 
     <div class="main-card">
@@ -364,10 +452,10 @@
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
             <h3>Вывод ZRL в Solana</h3>
-            <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 15px; text-transform: uppercase;">Введите ваш адрес кошелька Phantom.</p>
+            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Введите ваш адрес кошелька Phantom.</p>
             <input type="text" id="solanaAddress" class="modal-input" placeholder="Solana адрес...">
             <button class="btn" onclick="submitWithdraw()">Запросить вывод</button>
-            <button class="btn btn-secondary" style="margin-top: 8px;" onclick="closeWithdrawModal()">Отмена</button>
+            <button class="btn btn-secondary" style="margin-top: 6px;" onclick="closeWithdrawModal()">Отмена</button>
         </div>
     </div>
 
@@ -404,8 +492,8 @@
             const btn = document.getElementById('actionBtn');
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
-            const avatar = document.getElementById('runnerAvatar');
-            const runnerTitle = document.getElementById('runnerStatusTitle');
+            const avatarSvg = document.getElementById('runnerAvatar');
+            const stateText = document.getElementById('runnerStateText');
 
             if (!isRunning) {
                 if (!navigator.geolocation) {
@@ -418,9 +506,9 @@
                 lastPosition = null;
                 lastTime = null;
 
-                // Запуск анимации бега персонажа
-                avatar.classList.add('running');
-                runnerTitle.innerText = "Динамический бег...";
+                // Запускаем анимацию бега человечка
+                avatarSvg.classList.add('running-anim');
+                stateText.innerText = "Бежит в прикиде Jordan!";
 
                 btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
@@ -471,9 +559,9 @@
                 }
                 isRunning = false;
 
-                // Остановка анимации бега персонажа
-                avatar.classList.remove('running');
-                runnerTitle.innerText = "Стоит на месте";
+                // Останавливаем анимацию бега
+                avatarSvg.classList.remove('running-anim');
+                stateText.innerText = "Стоит на месте";
 
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
