@@ -209,6 +209,7 @@
         let watchId = null;
         let totalDistance = 0;
         let lastPosition = null;
+        let lastTime = null;
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371;
@@ -236,31 +237,50 @@
                 isRunning = true;
                 totalDistance = 0;
                 lastPosition = null;
+                lastTime = null;
 
                 btn.innerText = "Завершить и забрать";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "Трекинг активен (на улице)...";
+                text.innerText = "Античит активен (бег)...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude, accuracy } = position.coords;
+                        const currentTime = Date.now();
                         
-                        // Игнорируем плохой сигнал в помещении (если точность хуже 20 метров)
+                        // Игнорируем плохой GPS-сигнал в помещении (хуже 20 метров)
                         if (accuracy > 20) {
                             return;
                         }
 
-                        if (lastPosition) {
+                        if (lastPosition && lastTime) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
+                            const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
                             
-                            // Учитываем реальное движение только если прошли больше 10 метров за такт
+                            if (timeDiffHours > 0) {
+                                const speedKmh = dist / timeDiffHours;
+
+                                // АНТИЧИТ ПРОТИВ САМОКАТОВ И ТРАНСПОРТА: лимит 17 км/ч
+                                if (speedKmh > 17) {
+                                    text.innerText = "⚠️ Слишком быстро (самокат/авто)? Сбавьте темп!";
+                                    lastPosition = { lat: latitude, lon: longitude };
+                                    lastTime = currentTime;
+                                    return;
+                                } else {
+                                    text.innerText = "Трекинг активен (бег)...";
+                                }
+                            }
+
+                            // Учитываем дистанцию только если шаг больше 10 метров
                             if (dist > 0.01) { 
                                 totalDistance += dist;
                                 updateUI();
                             }
                         }
+
                         lastPosition = { lat: latitude, lon: longitude };
+                        lastTime = currentTime;
                     },
                     (error) => {
                         console.error(error);
