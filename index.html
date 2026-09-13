@@ -423,14 +423,14 @@
 
         <div class="status-indicator">
             <div class="pulse-dot" id="statusDot"></div>
-            <span id="statusText">Готов к старту</span>
+            <span id="statusText">Готов к старта</span>
         </div>
     </div>
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
-        <!-- Тестовая кнопка для мгновенной проверки начисления без GPS -->
-        <button class="btn btn-test" onclick="simulateRunStep()">⚡ [Тест] Добавить 0.5 км пробега</button>
+        <!-- Оставили запасную кнопку теста на случай если телефон в кармане заблокирует GPS -->
+        <button class="btn btn-test" onclick="simulateRunStep()">⚡ [Тест] Добавить 0.5 км</button>
         <button class="btn btn-secondary" onclick="openWithdrawModal()">Вывод на Phantom (Solana)</button>
     </div>
 
@@ -453,7 +453,6 @@
         let watchId = null;
         let sessionDistance = 0;
         let lastPosition = null;
-        let lastTime = null;
 
         let userBalance = parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
@@ -463,7 +462,7 @@
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
+            const R = 6371; // Радиус Земли в км
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = 
@@ -490,7 +489,6 @@
                 isRunning = true;
                 sessionDistance = 0;
                 lastPosition = null;
-                lastTime = null;
 
                 avatarSvg.classList.add('running-anim');
                 stateText.innerText = "Бежит в прикиде Jordan!";
@@ -498,35 +496,37 @@
                 btn.innerText = "Завершить и сохранить ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "GPS трекинг активен...";
+                text.innerText = "Поиск спутников GPS...";
 
+                // Запрос реального GPS трекинга
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude, accuracy } = position.coords;
-                        const currentTime = Date.now();
                         
-                        // Смягчили фильтр точности до 50 метров для помещений/улицы
-                        if (accuracy > 50) return;
+                        text.innerText = `GPS активен (точность: ${Math.round(accuracy)}м)`;
 
-                        if (lastPosition && lastTime) {
+                        // Если точность хуже 70 метров, пропускаем точку, чтобы не было ложных рывков
+                        if (accuracy > 70) return;
+
+                        if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
                             
-                            // Учли короткие шаги
-                            if (dist > 0.002) { 
+                            // Если смещение больше 3 метров (чтобы исключить дрожание на месте)
+                            if (dist > 0.003) { 
                                 sessionDistance += dist;
                                 updateSessionUI();
                             }
                         }
 
                         lastPosition = { lat: latitude, lon: longitude };
-                        lastTime = currentTime;
                     },
                     (error) => {
                         console.warn(error);
                         text.innerText = "⚠️ Ошибка GPS. Проверьте разрешения.";
                     },
-                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
                 );
+
             } else {
                 if (watchId !== null) {
                     navigator.geolocation.clearWatch(watchId);
@@ -556,7 +556,7 @@
             }
         }
 
-        // Тестовая функция имитации бега (добавляет 0.5 км и ZRL в реальном времени)
+        // Тестовая кнопка на случай блокировки экрана
         function simulateRunStep() {
             sessionDistance += 0.5;
             updateSessionUI();
