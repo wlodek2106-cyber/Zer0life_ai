@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import os
+import threading
 import asyncio
 import base58
 import base64
@@ -24,11 +25,20 @@ api_app = Flask(__name__)
 CORS(api_app)
 
 TOKEN = os.getenv("BOT_TOKEN")
-# Прописываем твой реальный URL с Render напрямую для надежности
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
+
+# Создаем глобальный постоянный цикл для асинхронных задач бота
+bot_loop = asyncio.new_event_loop()
+
+def start_background_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+# Запускаем постоянный поток для асинхронных операций
+threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
@@ -82,8 +92,12 @@ def withdraw():
 def telegram_webhook():
     if request.headers.get('content-type') == 'application/json':
         json_data = request.get_json()
-        update = types.Update.model_validate(json_data, context={"bot": bot})
-        asyncio.run(dp.feed_update(bot, update))
+        try:
+            update = types.Update.model_validate(json_data, context={"bot": bot})
+            # Безопасно отправляем задачу в постоянный глобальный цикл
+            asyncio.run_coroutine_threadsafe(dp.feed_update(bot, update), bot_loop)
+        except Exception as e:
+            logging.error(f"Webhook error: {e}")
         return '', 200
     return 'Invalid request', 403
 
@@ -100,23 +114,30 @@ async def cmd_start(message: types.Message):
         parse_mode="HTML"
     )
 
-async def setup_webhook():
+def setup_webhook_sync():
     if bot and RENDER_URL:
-        webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
-        await bot.set_webhook(webhook_url)
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="🏃 Zer0Life Run",
-                web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
-            )
-        )
-        logging.info(f"Вебхук успешно установлен на: {webhook_url}")
+        try:
+            webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
+            future = asyncio.run_coroutine_threadsafe(bot.set_webhook(webhook_url), bot_loop)
+            future.result(timeout=5)
+            
+            menu_future = asyncio.run_coroutine_threadsafe(bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="🏃 Zer0Life Run",
+                    web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
+                )
+            ), bot_loop)
+            menu_future.result(timeout=5)
+            
+            logging.info(f"Вебхук успешно зарегистрирован: {webhook_url}")
+        except Exception as e:
+            logging.error(f"Webhook setup error: {e}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     
     if TOKEN:
-        asyncio.run(setup_webhook())
+        setup_webhook_sync()
     
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
