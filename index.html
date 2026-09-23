@@ -397,8 +397,8 @@
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Steps</span>
-            <span class="metric-value" id="currentDist">0 steps</span>
+            <span class="metric-label">Distance</span>
+            <span class="metric-value" id="currentDist">0.00 km</span>
         </div>
 
         <div class="metric-group">
@@ -434,7 +434,7 @@
         tg.expand();
 
         let isRunning = false;
-        let sessionSteps = 0;
+        let sessionDistance = 0; // Теперь считаем дистанцию в км
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let lastStepTime = 0;
 
@@ -447,7 +447,7 @@
             localStorage.setItem('zrl_balance', userBalance);
         }
 
-        // Обработчик датчика движения (шагомер)
+        // Конвертируем движения (шаги) в километры (средняя длина шага ~0.75 метра)
         function handleMotion(event) {
             if (!isRunning) return;
 
@@ -458,15 +458,14 @@
             const curY = acc.y || 0;
             const curZ = acc.z || 0;
 
-            // Вычисляем общую интенсивность встряски (шага)
             const delta = Math.abs(curX - lastAcceleration.x) + 
                           Math.abs(curY - lastAcceleration.y) + 
                           Math.abs(curZ - lastAcceleration.z);
 
-            // Порог срабатывания шага и задержка (анти-спам, чтобы не считать дрожание рук)
             const now = Date.now();
-            if (delta > 3.2 && (now - lastStepTime) > 300) {
-                sessionSteps++;
+            if (delta > 3.0 && (now - lastStepTime) > 350) {
+                // Каждый шаг = 0.00075 км (0.75 метра)
+                sessionDistance += 0.00075;
                 lastStepTime = now;
                 updateSessionUI();
             }
@@ -481,12 +480,11 @@
             const avatarSvg = document.getElementById('runnerAvatar');
 
             if (!isRunning) {
-                // Запрос разрешений для датчиков на iOS 13+
                 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                     try {
                         const permissionState = await DeviceMotionEvent.requestPermission();
                         if (permissionState !== 'granted') {
-                            alert("Доступ к датчикам движения отклонен. Шаги не смогут учитываться.");
+                            alert("Доступ к датчикам движения отклонен.");
                             return;
                         }
                     } catch (e) {
@@ -495,13 +493,13 @@
                 }
 
                 isRunning = true;
-                sessionSteps = 0;
+                sessionDistance = 0;
 
                 avatarSvg.classList.add('running-active');
                 btn.innerText = "End and Save ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "Steps active. Walk or run!";
+                text.innerText = "Tracking distance...";
 
                 window.addEventListener('devicemotion', handleMotion, true);
 
@@ -511,8 +509,8 @@
 
                 avatarSvg.classList.remove('running-active');
 
-                // Награда: 1 шаг = 5 ZRL (можешь изменить множитель по желанию)
-                const earnedZrl = sessionSteps * 5;
+                // 500 ZRL за каждый пройденный километр
+                const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
                 updateBalanceUI();
 
@@ -525,15 +523,15 @@
                     tg.HapticFeedback.notificationOccurred('success');
                 }
 
-                alert(`Успех! Пройдено шагов: ${sessionSteps}. Начислено: ${earnedZrl} ZRL.`);
-                sessionSteps = 0;
+                alert(`Успех! Пройдено: ${sessionDistance.toFixed(2)} км. Начислено: ${earnedZrl} ZRL.`);
+                sessionDistance = 0;
                 updateSessionUI();
             }
         }
 
         function updateSessionUI() {
-            document.getElementById('currentDist').innerText = sessionSteps + " steps";
-            const earnedZrl = sessionSteps * 5;
+            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " km";
+            const earnedZrl = Math.floor(sessionDistance * 500);
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
         }
 
