@@ -18,6 +18,7 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
+from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
@@ -91,17 +92,26 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Создаем классическую транзакцию, где плательщик газа — пользователь
-        tx = Transaction()
-        tx.add(transfer_ix)
-        tx.recent_blockhash = recent_blockhash
-        tx.fee_payer = user_pubkey
+        # Создаем сообщение, где плательщик комиссии — пул (сервер оплачивает газ за пользователя)
+        message = Message.new_with_blockhash(
+            instructions=[transfer_ix],
+            payer=pool_keypair.pubkey(),
+            blockhash=recent_blockhash
+        )
         
-        # Сервер подписывает транзакцию ключом пула (владельца токенов)
-        tx.sign([pool_keypair], recent_blockhash)
+        # Создаем и подписываем транзакцию ключом пула
+        tx = Transaction(
+            from_keypairs=[pool_keypair],
+            message=message,
+            recent_blockhash=recent_blockhash
+        )
         
-        serialized_tx = base64.b64encode(bytes(tx)).decode('utf-8')
-        return jsonify({"transaction": serialized_tx})
+        # Сразу отправляем транзакцию с сервера в блокчейн Solana
+        tx_bytes = bytes(tx)
+        res = client.send_raw_transaction(tx_bytes)
+        tx_signature = str(res.value)
+        
+        return jsonify({"success": True, "signature": tx_signature})
         
     except Exception as e:
         error_trace = traceback.format_exc()
