@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zer0life Run v3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Библиотека Solana Web3 для фронтенда -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
     <style>
         :root {
             --bg-base: #030305;
@@ -341,20 +343,6 @@
             font-weight: 900;
             font-style: italic;
         }
-        .modal-input {
-            width: 100%;
-            background: #030305;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            padding: 12px;
-            color: #fff;
-            font-size: 12px;
-            margin-bottom: 14px;
-            outline: none;
-        }
-        .modal-input:focus {
-            border-color: var(--accent-green);
-        }
     </style>
 </head>
 <body>
@@ -430,13 +418,14 @@
         <button class="btn btn-secondary" onclick="openWithdrawModal()">Withdraw to Phantom (Solana)</button>
     </div>
 
-    <!-- Modal -->
+    <!-- Модальное окно -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
             <h3>Withdraw ZRL to Solana</h3>
-            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Enter your Phantom wallet address.</p>
-            <input type="text" id="solanaAddress" class="modal-input" placeholder="Solana address...">
-            <button class="btn" onclick="submitWithdraw()">Request Withdrawal</button>
+            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">
+                Phantom connection is required to pay network fee.
+            </p>
+            <button class="btn" onclick="submitWithdraw()">Connect & Withdraw</button>
             <button class="btn btn-secondary" style="margin-top: 6px;" onclick="closeWithdrawModal()">Cancel</button>
         </div>
     </div>
@@ -557,22 +546,64 @@
             document.getElementById('withdrawModal').style.display = 'none';
         }
 
-        function submitWithdraw() {
-            const address = document.getElementById('solanaAddress').value.trim();
-            if (address.length < 30) {
-                alert("Enter a valid Phantom wallet Solana address.");
-                return;
-            }
-            if (userBalance <= 0) {
-                alert("You have no ZRL tokens on your balance to withdraw.");
+        // --- ФУНКЦИЯ ВЫВОДА С ВАШИМ URL ---
+        async function submitWithdraw() {
+            const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw'; 
+            
+            const provider = window.phantom?.solana;
+            if (!provider?.isPhantom) {
+                alert("Пожалуйста, откройте мини-приложение через встроенный браузер Phantom Wallet.");
                 return;
             }
 
-            alert(`Withdrawal request for ${Math.floor(userBalance)} ZRL to wallet ${address.substring(0, 6)}... submitted.`);
-            userBalance = 0;
-            localStorage.setItem('zrl_balance', userBalance);
-            updateBalanceUI();
-            closeWithdrawModal();
+            try {
+                // Автоматическое подключение кошелька
+                const resp = await provider.connect();
+                const userWalletAddress = resp.publicKey.toString();
+
+                if (userBalance <= 0) {
+                    alert("У вас нет токенов ZRL на балансе для вывода.");
+                    return;
+                }
+
+                alert("Формирование транзакции... Подтвердите оплату комиссии в кошельке Phantom.");
+                
+                // 1. Запрашиваем полуготовую транзакцию у вашего Python-бота
+                const serverResponse = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        walletAddress: userWalletAddress,
+                        amount: Math.floor(userBalance)
+                    })
+                });
+
+                const data = await serverResponse.json();
+                if (data.error) throw new Error(data.error);
+
+                // 2. Декодируем транзакцию для браузера
+                const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+                const transaction = solanaWeb3.Transaction.from(txBuffer);
+
+                // 3. Открываем Phantom, чтобы игрок оплатил комиссию сети (fee_payer)
+                const { signature } = await provider.signAndSendTransaction(transaction);
+                
+                // 4. Ждем подтверждения от сети Solana
+                const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
+                await connection.confirmTransaction(signature);
+                
+                alert(`Успех! Токены выведены. Хэш: ${signature}`);
+                
+                // Обнуляем баланс
+                userBalance = 0;
+                localStorage.setItem('zrl_balance', userBalance);
+                updateBalanceUI();
+                closeWithdrawModal();
+
+            } catch (err) {
+                console.error(err);
+                alert("Ошибка: " + err.message);
+            }
         }
     </script>
 </body>
