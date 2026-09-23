@@ -55,11 +55,14 @@ def withdraw():
         client = Client("https://api.mainnet-beta.solana.com")
         recent_blockhash = client.get_latest_blockhash().value.blockhash
         
-        tx = Transaction()
-        tx.add(transfer_ix)
+        # Исправленное создание транзакции под актуальный синтаксис solders
+        tx = Transaction.new_with_payer(
+            instructions=[transfer_ix],
+            payer=user_pubkey
+        )
         tx.recent_blockhash = recent_blockhash
-        tx.fee_payer = user_pubkey
         
+        # Пул подписывает транзакцию первым
         tx.sign_partial(pool_keypair)
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
@@ -129,7 +132,7 @@ async def main():
     
     bot = Bot(token=TOKEN)
     
-    # ПРИНУДИТЕЛЬНО УДАЛЯЕМ ВИСЯЩИЙ ВЕБХУК ПЕРЕД ЗАПУСКОМ ПОЛЛИНГА
+    # Принудительно очищаем вебхук перед запуском поллинга
     await bot.delete_webhook(drop_pending_updates=True)
     
     await set_main_menu(bot)
