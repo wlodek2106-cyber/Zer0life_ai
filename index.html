@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,8 +6,6 @@
     <title>Zer0life Run v3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
-    <!-- Подключаем WalletConnect Web3Modal для Solana -->
-    <script src="https://unpkg.com/@web3modal/bundle@4.1.9/dist/index.umd.js"></script>
     <style>
         :root {
             --bg-base: #030305;
@@ -295,13 +293,64 @@
             box-shadow: 0 4px 25px rgba(255, 0, 85, 0.5);
             color: #ffffff;
         }
+
+        /* Модальное окно выбора кошельков */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 3, 5, 0.85);
+            backdrop-filter: blur(12px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .modal-content {
+            background: var(--card-surface);
+            border: 1px solid var(--border-neon);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 330px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.9);
+        }
+        .modal-content h3 {
+            margin-bottom: 14px;
+            font-size: 15px;
+            text-transform: uppercase;
+            font-weight: 900;
+            font-style: italic;
+        }
+        .wallet-option {
+            background: #13131c;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            font-weight: 800;
+            font-size: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            transition: border-color 0.2s;
+        }
+        .wallet-option:hover {
+            border-color: var(--accent-green);
+        }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
         <div class="brand-title">Zer0Life Run</div>
-        <button class="connect-btn" id="connectNavBtn" onclick="handleConnectClick()">Connect</button>
+        <button class="connect-btn" id="connectNavBtn" onclick="openWalletModal()">Connect</button>
     </div>
 
     <div class="gear-card-new">
@@ -367,7 +416,28 @@
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Start Run</button>
-        <button class="btn btn-secondary" onclick="handleWithdrawClick()">Withdraw to Wallet</button>
+        <button class="btn btn-secondary" onclick="openWalletModal()">Withdraw to Wallet</button>
+    </div>
+
+    <!-- Модальное окно выбора кошельков через диплинки -->
+    <div class="modal" id="walletModal">
+        <div class="modal-content">
+            <h3>Select Wallet</h3>
+            
+            <button class="wallet-option" onclick="openWalletDeepLink('phantom')">
+                <span>👻 Phantom Wallet</span>
+            </button>
+            
+            <button class="wallet-option" onclick="openWalletDeepLink('trust')">
+                <span>🛡️ Trust Wallet</span>
+            </button>
+            
+            <button class="wallet-option" onclick="openWalletDeepLink('jupiter')">
+                <span>🪐 Solflare / Jupiter</span>
+            </button>
+
+            <button class="btn btn-secondary" style="margin-top: 10px;" onclick="closeWalletModal()">Cancel</button>
+        </div>
     </div>
 
     <script>
@@ -378,35 +448,10 @@
         let sessionDistance = 0;
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let lastStepTime = 0;
-        let connectedAddress = null;
 
         const urlParams = new URLSearchParams(window.location.search);
         let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
-
-        // Инициализация WalletConnect (AppKit) для Solana
-        // projectId можно получить бесплатно на cloud.walletconnect.com
-        const projectId = 'c4266652a4220b3327d7da88e288e404'; // Тестовый публичный ID, для продакшена лучше создать свой
-        
-        let modal = null;
-        try {
-            const metadata = {
-                name: 'Zer0Life Run',
-                description: 'Move-to-Earn on Solana',
-                url: window.location.origin,
-                icons: ['https://avatars.githubusercontent.com/u/37784886']
-            };
-
-            modal = window.createAppKit ? window.createAppKit({
-                adapters: [new window.SolanaAdapter()],
-                networks: [window.solanaMainnet],
-                metadata,
-                projectId,
-                features: { analytics: false }
-            }) : null;
-        } catch (e) {
-            console.error("WalletConnect Init Error:", e);
-        }
 
         function updateBalanceUI() {
             document.getElementById('totalBalance').innerText = Math.floor(userBalance);
@@ -487,73 +532,42 @@
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
         }
 
-        async function handleConnectClick() {
-            if (modal) {
-                await modal.open();
-            } else {
-                alert("Модальное окно WalletConnect загружается, попробуйте еще раз через пару секунд.");
-            }
+        function openWalletModal() {
+            document.getElementById('walletModal').style.display = 'flex';
         }
 
-        async function handleWithdrawClick() {
+        function closeWalletModal() {
+            document.getElementById('walletModal').style.display = 'none';
+        }
+
+        // Открытие конкретного кошелька через мобильные диплинки
+        function openWalletDeepLink(walletType) {
+            closeWalletModal();
+
             if (userBalance <= 0) {
                 alert("У вас нет токенов ZRL на балансе для вывода.");
                 return;
             }
 
-            // Открываем модалку WalletConnect, если еще не подключены
-            if (!modal) {
-                alert("WalletConnect не инициализирован.");
-                return;
+            const currentUrl = window.location.href.split('?')[0];
+            const callbackUrl = `${currentUrl}?bal=${userBalance}`;
+
+            let deepLink = "";
+
+            if (walletType === 'phantom') {
+                // Официальный диплинк Phantom для открытия браузера внутри кошелька
+                deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(callbackUrl)}?ref=${encodeURIComponent(callbackUrl)}`;
+            } else if (walletType === 'trust') {
+                // Официальный диплинк Trust Wallet
+                deepLink = `https://link.trustwallet.com/open_url?coin_id=501&url=${encodeURIComponent(callbackUrl)}`;
+            } else if (walletType === 'jupiter') {
+                // Диплинк Solflare
+                deepLink = `https://solflare.com/ul/v1/browse/${encodeURIComponent(callbackUrl)}`;
             }
 
-            try {
-                // Открываем окно выбора кошелька (Phantom, Trust, Solflare и др.)
-                await modal.open();
-                
-                // Получаем текущую сессию
-                const walletProvider = modal.getAddress();
-                if (!walletProvider) {
-                    return; // Пользователь закрыл модалку
-                }
-                
-                connectedAddress = walletProvider;
-                const shortAddr = connectedAddress.slice(0, 4) + '...' + connectedAddress.slice(-4);
-                document.getElementById('connectNavBtn').innerText = shortAddr;
-
-                alert("Кошелек подключен! Запрашиваем транзакцию вывода на сервере...");
-
-                const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
-                const serverResponse = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        walletAddress: connectedAddress,
-                        amount: Math.floor(userBalance)
-                    })
-                });
-
-                const data = await serverResponse.json();
-                if (data.error) throw new Error(data.error);
-
-                // Отправляем транзакцию на подпись через провайдер WalletConnect
-                const provider = modal.getWalletProvider();
-                const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
-                const transaction = solanaWeb3.Transaction.from(txBuffer);
-
-                const signature = await provider.signAndSendTransaction(transaction);
-                
-                const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
-                await connection.confirmTransaction(signature);
-                
-                alert(`Успех! Токены отправлены на ваш кошелек. Подпись: ${signature}`);
-                
-                userBalance = 0;
-                updateBalanceUI();
-
-            } catch (err) {
-                console.error(err);
-                alert("Ошибка при выводе: " + (err.message || err));
+            if (deepLink) {
+                // Пытаемся открыть приложение кошелька
+                window.location.href = deepLink;
             }
         }
     </script>
