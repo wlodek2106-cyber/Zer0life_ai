@@ -92,7 +92,6 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Указываем пул как плательщика комиссии, чтобы для подписи хватало только ключа пула
         message = Message.new_with_blockhash(
             instructions=[transfer_ix],
             payer=pool_keypair.pubkey(),
@@ -102,7 +101,8 @@ def withdraw():
         tx = Transaction.new_unsigned(message)
         tx.sign([pool_keypair], recent_blockhash)
         
-        serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
+        # Корректная сериализация транзакции в байты для solders
+        serialized_tx = base64.b64encode(bytes(tx)).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
         
     except Exception as e:
