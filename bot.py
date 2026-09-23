@@ -92,14 +92,13 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Компилируем сообщение через Message с указанием плательщика комиссии (пользователь)
+        # Указываем пул как плательщика комиссии, чтобы для подписи хватало только ключа пула
         message = Message.new_with_blockhash(
             instructions=[transfer_ix],
-            payer=user_pubkey,
+            payer=pool_keypair.pubkey(),
             blockhash=recent_blockhash
         )
         
-        # Создаем транзакцию с подписью пула
         tx = Transaction.new_unsigned(message)
         tx.sign([pool_keypair], recent_blockhash)
         
