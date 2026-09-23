@@ -55,7 +55,6 @@ def withdraw():
         client = Client("https://api.mainnet-beta.solana.com")
         recent_blockhash = client.get_latest_blockhash().value.blockhash
         
-        # Исправленное создание транзакции без вызова ошибки fee_payer
         tx = Transaction()
         tx.add(transfer_ix)
         tx.recent_blockhash = recent_blockhash
@@ -129,6 +128,10 @@ async def main():
     threading.Thread(target=run_api_server, daemon=True).start()
     
     bot = Bot(token=TOKEN)
+    
+    # ПРИНУДИТЕЛЬНО УДАЛЯЕМ ВИСЯЩИЙ ВЕБХУК ПЕРЕД ЗАПУСКОМ ПОЛЛИНГА
+    await bot.delete_webhook(drop_pending_updates=True)
+    
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
