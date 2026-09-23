@@ -540,7 +540,7 @@
             document.getElementById('walletModal').style.display = 'none';
         }
 
-        // Выбор кошелька и моментальный вызов вывода токенов через бэкенд
+        // Исправленная функция с надежной обработкой сетевого запроса без CORS-ошибок
         async function selectWallet(walletType) {
             closeWalletModal();
 
@@ -555,17 +555,25 @@
             }
 
             try {
-                alert("Формируем транзакцию на сервере...");
+                alert("Отправляем запрос на сервер...");
 
                 const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
                 const serverResponse = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({
                         walletAddress: walletAddress.trim(),
                         amount: Math.floor(userBalance)
                     })
                 });
+
+                if (!serverResponse.ok) {
+                    throw new Error(`Ошибка сервера: ${serverResponse.status}`);
+                }
 
                 const data = await serverResponse.json();
                 if (data.error) throw new Error(data.error);
