@@ -71,7 +71,7 @@ def run_api_server():
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
 
-# Твой актуальный токен
+# ПОЛНЫЙ ТОКЕН НОВОГО БОТА (ВСТАВЬ СВОЙ, ЕСЛИ ЭТОТ ЕЩЕ НЕ ПОМЕНЯН)
 TOKEN = "8820567588:AAGFNZqO1QL65DNUXPJOPckRYcIqoY2qlJg"
 
 dp = Dispatcher()
