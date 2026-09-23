@@ -1,9 +1,84 @@
 import json
 import logging
 import sys
+import os
+import threading
+import base58
+import base64
+
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from solana.rpc.api import Client
+from solana.transaction import Transaction
+from solders.pubkey import Pubkey
+from solders.keypair import Keypair
+from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
+
+# Инициализация внутреннего сервера для обработки транзакций
+api_app = Flask(__name__)
+CORS(api_app)
+
+@api_app.route('/withdraw', methods=['POST'])
+def withdraw():
+    try:
+        data = request.json
+        user_pubkey = Pubkey.from_string(data['walletAddress'])
+        amount = float(data['amount'])
+        
+        # Получаем настройки токена и приватный ключ пула из Render Environment Variables
+        zrl_mint_address = os.getenv('ZRL_MINT')
+        private_key_base58 = os.getenv('PRIVATE_KEY')
+        
+        if not zrl_mint_address or not private_key_base58:
+            return jsonify({"error": "Сервер не настроен (отсутствуют ключи)"}), 500
+
+        zrl_mint = Pubkey.from_string(zrl_mint_address)
+        pool_keypair = Keypair.from_bytes(base58.b58decode(private_key_base58))
+        
+        # Вычисляем Associated Token Accounts (ATA)
+        pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
+        user_ata = get_associated_token_address(user_pubkey, zrl_mint)
+        
+        # Формируем инструкцию перевода
+        # ВАЖНО: Если у вашего токена ZRL не 6 нулей (decimals), измените цифру 6 ниже на нужную
+        transfer_ix = transfer_checked(
+            TransferCheckedParams(
+                program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                source=pool_ata,
+                mint=zrl_mint,
+                dest=user_ata,
+                owner=pool_keypair.pubkey(),
+                amount=int(amount * (10**6)), 
+                decimals=6
+            )
+        )
+        
+        client = Client("https://api.mainnet-beta.solana.com")
+        recent_blockhash = client.get_latest_blockhash().value.blockhash
+        
+        # Создаем транзакцию и назначаем кошелек игрока плательщиком комиссии
+        tx = Transaction(fee_payer=user_pubkey)
+        tx.add(transfer_ix)
+        tx.recent_blockhash = recent_blockhash
+        
+        # Пул подписывает транзакцию первым, разрешая списание токенов
+        tx.sign_partial(pool_keypair)
+        
+        # Конвертируем в Base64 для передачи во фронтенд
+        serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
+        return jsonify({"transaction": serialized_tx})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+def run_api_server():
+    # Render задает порт автоматически
+    port = int(os.environ.get("PORT", 8080))
+    api_app.run(host="0.0.0.0", port=port)
 
 # Токен вашего бота
 TOKEN = "8820567588:AAFhzlVFIOBNJjS4gbLxVUrriQpmNemg6OQ"
@@ -59,6 +134,9 @@ async def handle_web_app_data(message: types.Message):
         await message.answer("Не удалось обработать результаты тренировки.")
 
 async def main():
+    # Запускаем API сервер в фоновом потоке
+    threading.Thread(target=run_api_server, daemon=True).start()
+    
     bot = Bot(token=TOKEN)
     await set_main_menu(bot)
     await dp.start_polling(bot)
