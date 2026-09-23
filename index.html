@@ -470,38 +470,51 @@
                     return;
                 }
 
-                isRunning = true;
-                sessionDistance = 0;
-                lastPosition = null;
+                text.innerText = "Requesting GPS...";
 
-                avatarSvg.classList.add('running-active');
-
-                btn.innerText = "End and Save ZRL";
-                btn.className = "btn btn-danger";
-                dot.classList.add('active');
-                text.innerText = "Searching for GPS satellites...";
-
-                watchId = navigator.geolocation.watchPosition(
+                // Принудительный запрос позиции для инициализации разрешений GPS
+                navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const { latitude, longitude, accuracy } = position.coords;
-                        text.innerText = `GPS active (accuracy: ${Math.round(accuracy)}m)`;
+                        isRunning = true;
+                        sessionDistance = 0;
+                        lastPosition = null;
 
-                        if (accuracy > 70) return;
+                        avatarSvg.classList.add('running-active');
 
-                        if (lastPosition) {
-                            const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            if (dist > 0.003) { 
-                                sessionDistance += dist;
-                                updateSessionUI();
-                            }
-                        }
-                        lastPosition = { lat: latitude, lon: longitude };
+                        btn.innerText = "End and Save ZRL";
+                        btn.className = "btn btn-danger";
+                        dot.classList.add('active');
+                        text.innerText = "GPS active. Moving...";
+
+                        watchId = navigator.geolocation.watchPosition(
+                            (pos) => {
+                                const { latitude, longitude, accuracy } = pos.coords;
+                                text.innerText = `GPS active (acc: ${Math.round(accuracy)}m)`;
+
+                                // Расширенный порог точности до 150 метров
+                                if (accuracy > 150) return;
+
+                                if (lastPosition) {
+                                    const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
+                                    if (dist > 0.001) { // Увеличенная чувствительность (от 1 метра)
+                                        sessionDistance += dist;
+                                        updateSessionUI();
+                                    }
+                                }
+                                lastPosition = { lat: latitude, lon: longitude };
+                            },
+                            (error) => {
+                                console.warn(error);
+                                text.innerText = "⚠️ GPS Error: " + error.message;
+                            },
+                            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+                        );
                     },
                     (error) => {
-                        console.warn(error);
-                        text.innerText = "⚠️ GPS Error. Check permissions.";
+                        alert("Ошибка доступа к GPS. Разрешите геолокацию в настройках телефона и Telegram.");
+                        text.innerText = "⚠️ GPS Permission Denied";
                     },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
 
             } else {
@@ -546,7 +559,6 @@
             document.getElementById('withdrawModal').style.display = 'none';
         }
 
-        // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫВОДА С АВТОМАТИЧЕСКИМ ОТКРЫТИЕМ PHANTOM ---
         async function submitWithdraw() {
             const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw'; 
             
@@ -555,7 +567,6 @@
                 return;
             }
 
-            // Если открыто внутри Telegram, автоматически перенаправляем в Phantom через Deep Link
             const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
             
             if (isTelegramMobile) {
@@ -576,7 +587,6 @@
 
                 alert("Формирование транзакции... Подтвердите оплату комиссии в кошельке Phantom.");
                 
-                // 1. Запрашиваем полуготовую транзакцию у вашего Python-бота
                 const serverResponse = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -589,20 +599,16 @@
                 const data = await serverResponse.json();
                 if (data.error) throw new Error(data.error);
 
-                // 2. Декодируем транзакцию для браузера
                 const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
                 const transaction = solanaWeb3.Transaction.from(txBuffer);
 
-                // 3. Открываем Phantom, чтобы игрок оплатил комиссию сети (fee_payer)
                 const { signature } = await provider.signAndSendTransaction(transaction);
                 
-                // 4. Ждем подтверждения от сети Solana
                 const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
                 await connection.confirmTransaction(signature);
                 
                 alert(`Успех! Токены выведены. Хэш: ${signature}`);
                 
-                // Обнуляем баланс
                 userBalance = 0;
                 localStorage.setItem('zrl_balance', userBalance);
                 updateBalanceUI();
