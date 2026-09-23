@@ -24,7 +24,8 @@ api_app = Flask(__name__)
 CORS(api_app)
 
 TOKEN = os.getenv("BOT_TOKEN")
-RENDER_URL = os.getenv("RENDER_EXTERNAL_URL")  # Render автоматически передает сюда URL сервиса
+# Прописываем твой реальный URL с Render напрямую для надежности
+RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
@@ -77,7 +78,6 @@ def withdraw():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Вебхук для приема сообщений от Telegram
 @api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
 def telegram_webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -110,12 +110,12 @@ async def setup_webhook():
                 web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
             )
         )
-        logging.info("Вебхук для Telegram бота успешно установлен!")
+        logging.info(f"Вебхук успешно установлен на: {webhook_url}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     
-    if TOKEN and RENDER_URL:
+    if TOKEN:
         asyncio.run(setup_webhook())
     
     port = int(os.environ.get("PORT", 8080))
