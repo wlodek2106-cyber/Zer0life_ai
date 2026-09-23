@@ -546,25 +546,33 @@
             document.getElementById('withdrawModal').style.display = 'none';
         }
 
-        // --- ФУНКЦИЯ ВЫВОДА С ВАШИМ URL ---
+        // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫВОДА С АВТОМАТИЧЕСКИМ ОТКРЫТИЕМ PHANTOM ---
         async function submitWithdraw() {
             const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw'; 
             
-            const provider = window.phantom?.solana;
-            if (!provider?.isPhantom) {
+            if (userBalance <= 0) {
+                alert("У вас нет токенов ZRL на балансе для вывода.");
+                return;
+            }
+
+            // Если открыто внутри Telegram, автоматически перенаправляем в Phantom через Deep Link
+            const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
+            
+            if (isTelegramMobile) {
+                const appUrl = window.location.href;
+                window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(appUrl)}`;
+                return;
+            }
+
+            const provider = window.phantom?.solana || window.solana;
+            if (!provider) {
                 alert("Пожалуйста, откройте мини-приложение через встроенный браузер Phantom Wallet.");
                 return;
             }
 
             try {
-                // Автоматическое подключение кошелька
                 const resp = await provider.connect();
                 const userWalletAddress = resp.publicKey.toString();
-
-                if (userBalance <= 0) {
-                    alert("У вас нет токенов ZRL на балансе для вывода.");
-                    return;
-                }
 
                 alert("Формирование транзакции... Подтвердите оплату комиссии в кошельке Phantom.");
                 
