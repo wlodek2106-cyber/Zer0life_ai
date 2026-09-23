@@ -16,6 +16,7 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
+from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
 api_app = Flask(__name__)
@@ -53,16 +54,17 @@ def withdraw():
         )
         
         client = Client("https://api.mainnet-beta.solana.com")
-        recent_blockhash = client.get_latest_blockhash().value.blockhash
+        recent_blockhash_str = client.get_latest_blockhash().value.blockhash
+        recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Исправленное создание транзакции под актуальный синтаксис solders
+        # Корректное создание транзакции с блокешем для актуальной версии solders
         tx = Transaction.new_with_payer(
             instructions=[transfer_ix],
             payer=user_pubkey
         )
         tx.recent_blockhash = recent_blockhash
         
-        # Пул подписывает транзакцию первым
+        # Пул подписывает транзакцию
         tx.sign_partial(pool_keypair)
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
@@ -111,12 +113,12 @@ async def cmd_run(message: types.Message):
 async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
-        steps = data.get("steps", 0)
+        distance = data.get("distance", 0)
         reward = data.get("reward", 0)
         
         await message.answer(
             f"Отличная тренировка! 🏁\n"
-            f"Шагов: {steps}\n"
+            f"Дистанция: {distance} км\n"
             f"Начислено на баланс: <b>{reward} ZRL</b>",
             parse_mode="HTML"
         )
@@ -131,10 +133,7 @@ async def main():
     threading.Thread(target=run_api_server, daemon=True).start()
     
     bot = Bot(token=TOKEN)
-    
-    # Принудительно очищаем вебхук перед запуском поллинга
     await bot.delete_webhook(drop_pending_updates=True)
-    
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
