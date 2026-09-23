@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -68,7 +68,6 @@
             text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
         }
 
-        /* Абсолютно новый блок экипировки без старых названий */
         .gear-card-new {
             width: 100%;
             max-width: 380px;
@@ -135,7 +134,6 @@
             transform-origin: bottom center;
         }
 
-        /* Анимация бега */
         .running-active .body-group {
             animation: bodyRun 0.35s infinite alternate ease-in-out;
         }
@@ -315,15 +313,6 @@
             color: #ffffff;
         }
 
-        .btn-test {
-            background: rgba(0, 255, 102, 0.08);
-            border: 1px dashed var(--accent-green);
-            color: var(--accent-green);
-            font-size: 11px;
-            padding: 10px;
-        }
-
-        /* Модальное окно */
         .modal {
             display: none;
             position: fixed;
@@ -375,7 +364,6 @@
         <h1>Zer0life Run</h1>
     </div>
 
-    <!-- Чистый блок экипировки без упоминания старого текста -->
     <div class="gear-card-new">
         <div class="gear-info">
             <h4>ZEROLIFE GEAR</h4>
@@ -417,40 +405,39 @@
 
     <div class="main-card">
         <div class="balance-section">
-            <div class="balance-label">Общий баланс ZRL</div>
+            <div class="balance-label">Total ZRL Balance</div>
             <div class="balance-value" id="totalBalance">0</div>
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Дистанция</span>
-            <span class="metric-value" id="currentDist">0.00 км</span>
+            <span class="metric-label">Distance</span>
+            <span class="metric-value" id="currentDist">0.00 km</span>
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Награда сессии</span>
+            <span class="metric-label">Session Reward</span>
             <span class="metric-value" id="currentReward">0 ZRL</span>
         </div>
 
         <div class="status-indicator">
             <div class="pulse-dot" id="statusDot"></div>
-            <span id="statusText">Готов к старту</span>
+            <span id="statusText">Ready to start</span>
         </div>
     </div>
 
     <div class="actions">
-        <button class="btn" id="actionBtn" onclick="toggleRun()">Начать пробежку</button>
-        <button class="btn btn-test" onclick="addTestKm()">⚡ [ТЕСТ] Добавить 0.5 км</button>
-        <button class="btn btn-secondary" onclick="openWithdrawModal()">Вывод на Phantom (Solana)</button>
+        <button class="btn" id="actionBtn" onclick="toggleRun()">Start Run</button>
+        <button class="btn btn-secondary" onclick="openWithdrawModal()">Withdraw to Phantom (Solana)</button>
     </div>
 
-    <!-- Модальное окно вывода -->
+    <!-- Modal -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
-            <h3>Вывод ZRL в Solana</h3>
-            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Введите ваш адрес кошелька Phantom.</p>
-            <input type="text" id="solanaAddress" class="modal-input" placeholder="Solana адрес...">
-            <button class="btn" onclick="submitWithdraw()">Запросить вывод</button>
-            <button class="btn btn-secondary" style="margin-top: 6px;" onclick="closeWithdrawModal()">Отмена</button>
+            <h3>Withdraw ZRL to Solana</h3>
+            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Enter your Phantom wallet address.</p>
+            <input type="text" id="solanaAddress" class="modal-input" placeholder="Solana address...">
+            <button class="btn" onclick="submitWithdraw()">Request Withdrawal</button>
+            <button class="btn btn-secondary" style="margin-top: 6px;" onclick="closeWithdrawModal()">Cancel</button>
         </div>
     </div>
 
@@ -490,7 +477,7 @@
 
             if (!isRunning) {
                 if (!navigator.geolocation) {
-                    alert("Геолокация не поддерживается вашим устройством");
+                    alert("Geolocation is not supported by your device");
                     return;
                 }
 
@@ -500,15 +487,15 @@
 
                 avatarSvg.classList.add('running-active');
 
-                btn.innerText = "Завершить и сохранить ZRL";
+                btn.innerText = "End and Save ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "Поиск спутников GPS...";
+                text.innerText = "Searching for GPS satellites...";
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const { latitude, longitude, accuracy } = position.coords;
-                        text.innerText = `GPS активен (точность: ${Math.round(accuracy)}м)`;
+                        text.innerText = `GPS active (accuracy: ${Math.round(accuracy)}m)`;
 
                         if (accuracy > 70) return;
 
@@ -523,7 +510,7 @@
                     },
                     (error) => {
                         console.warn(error);
-                        text.innerText = "⚠️ Ошибка GPS. Проверьте разрешения.";
+                        text.innerText = "⚠️ GPS Error. Check permissions.";
                     },
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
                 );
@@ -541,31 +528,23 @@
                 localStorage.setItem('zrl_balance', userBalance);
                 updateBalanceUI();
 
-                btn.innerText = "Начать пробежку";
+                btn.innerText = "Start Run";
                 btn.className = "btn";
                 dot.classList.remove('active');
-                text.innerText = "Тренировка сохранена!";
+                text.innerText = "Workout saved!";
 
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
 
-                alert(`Успех! На ваш баланс зачислено ${earnedZrl} ZRL.`);
+                alert(`Success! ${earnedZrl} ZRL credited to your balance.`);
                 sessionDistance = 0;
                 updateSessionUI();
             }
         }
 
-        function addTestKm() {
-            sessionDistance += 0.5;
-            updateSessionUI();
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-        }
-
         function updateSessionUI() {
-            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " км";
+            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " km";
             const earnedZrl = Math.floor(sessionDistance * 500);
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
         }
@@ -581,15 +560,15 @@
         function submitWithdraw() {
             const address = document.getElementById('solanaAddress').value.trim();
             if (address.length < 30) {
-                alert("Введите корректный Solana адрес кошелька Phantom.");
+                alert("Enter a valid Phantom wallet Solana address.");
                 return;
             }
             if (userBalance <= 0) {
-                alert("У вас нет токенов ZRL на балансе для вывода.");
+                alert("You have no ZRL tokens on your balance to withdraw.");
                 return;
             }
 
-            alert(`Запрос на вывод ${Math.floor(userBalance)} ZRL на кошелек ${address.substring(0, 6)}... отправлен.`);
+            alert(`Withdrawal request for ${Math.floor(userBalance)} ZRL to wallet ${address.substring(0, 6)}... submitted.`);
             userBalance = 0;
             localStorage.setItem('zrl_balance', userBalance);
             updateBalanceUI();
