@@ -18,7 +18,6 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
-# Инициализация внутреннего сервера для обработки транзакций
 api_app = Flask(__name__)
 CORS(api_app)
 
@@ -56,9 +55,12 @@ def withdraw():
         client = Client("https://api.mainnet-beta.solana.com")
         recent_blockhash = client.get_latest_blockhash().value.blockhash
         
-        tx = Transaction(fee_payer=user_pubkey)
+        # Исправленное создание транзакции без вызова ошибки fee_payer
+        tx = Transaction()
         tx.add(transfer_ix)
         tx.recent_blockhash = recent_blockhash
+        tx.fee_payer = user_pubkey
+        
         tx.sign_partial(pool_keypair)
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
@@ -71,7 +73,6 @@ def run_api_server():
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
 
-# Безопасно берем токен из переменной окружения Render
 TOKEN = os.getenv("BOT_TOKEN")
 
 dp = Dispatcher()
@@ -91,8 +92,8 @@ async def cmd_start(message: types.Message):
     ])
     await message.answer(
         "Йоу! Добро пожаловать в <b>Zer0Life</b> ⚡️\n\n"
-        "Бегай, тренируйся и зарабатывай <b>ZRL за каждый шаг</b>!\n"
-        "Нажми кнопку ниже или открой приложение в меню, чтобы начать:",
+        "Шагай, тренируйся и зарабатывай <b>ZRL</b>!\n"
+        "Нажми кнопку ниже, чтобы начать:",
         reply_markup=keyboard,
         parse_mode="HTML"
     )
@@ -102,7 +103,7 @@ async def cmd_run(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
     ])
-    await message.answer("Откройте мини-приложение для пробежки:", reply_markup=keyboard)
+    await message.answer("Откройте мини-приложение:", reply_markup=keyboard)
 
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
