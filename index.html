@@ -397,8 +397,8 @@
         </div>
 
         <div class="metric-group">
-            <span class="metric-label">Distance</span>
-            <span class="metric-value" id="currentDist">0.00 km</span>
+            <span class="metric-label">Steps</span>
+            <span class="metric-value" id="currentDist">0 steps</span>
         </div>
 
         <div class="metric-group">
@@ -434,11 +434,10 @@
         tg.expand();
 
         let isRunning = false;
-        let watchId = null;
-        let sessionDistance = 0;
-        let lastPosition = null;
+        let sessionSteps = 0;
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        let lastStepTime = 0;
 
-        // Синхронизация баланса через URL-параметры и localStorage
         const urlParams = new URLSearchParams(window.location.search);
         let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
@@ -448,73 +447,72 @@
             localStorage.setItem('zrl_balance', userBalance);
         }
 
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+        // Обработчик датчика движения (шагомер)
+        function handleMotion(event) {
+            if (!isRunning) return;
+
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            const curX = acc.x || 0;
+            const curY = acc.y || 0;
+            const curZ = acc.z || 0;
+
+            // Вычисляем общую интенсивность встряски (шага)
+            const delta = Math.abs(curX - lastAcceleration.x) + 
+                          Math.abs(curY - lastAcceleration.y) + 
+                          Math.abs(curZ - lastAcceleration.z);
+
+            // Порог срабатывания шага и задержка (анти-спам, чтобы не считать дрожание рук)
+            const now = Date.now();
+            if (delta > 3.2 && (now - lastStepTime) > 300) {
+                sessionSteps++;
+                lastStepTime = now;
+                updateSessionUI();
+            }
+
+            lastAcceleration = { x: curX, y: curY, z: curZ };
         }
 
-        function toggleRun() {
+        async function toggleRun() {
             const btn = document.getElementById('actionBtn');
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
             const avatarSvg = document.getElementById('runnerAvatar');
 
             if (!isRunning) {
-                if (!navigator.geolocation) {
-                    alert("Geolocation is not supported by your device");
-                    return;
+                // Запрос разрешений для датчиков на iOS 13+
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try {
+                        const permissionState = await DeviceMotionEvent.requestPermission();
+                        if (permissionState !== 'granted') {
+                            alert("Доступ к датчикам движения отклонен. Шаги не смогут учитываться.");
+                            return;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
 
                 isRunning = true;
-                sessionDistance = 0;
-                lastPosition = null;
+                sessionSteps = 0;
 
                 avatarSvg.classList.add('running-active');
                 btn.innerText = "End and Save ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "GPS active. Tracking movement...";
+                text.innerText = "Steps active. Walk or run!";
 
-                // Мгновенный запуск watchPosition без блокирующих проверок
-                watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        const { latitude, longitude, accuracy } = pos.coords;
-                        text.innerText = `GPS active (acc: ${Math.round(accuracy)}m)`;
-
-                        if (accuracy > 300) return; // Максимально мягкий порог для предотвращения сбросов
-
-                        if (lastPosition) {
-                            const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            if (dist > 0.0002) { // Чувствительность от 20 метров смещения
-                                sessionDistance += dist;
-                                updateSessionUI();
-                            }
-                        }
-                        lastPosition = { lat: latitude, lon: longitude };
-                    },
-                    (error) => {
-                        console.warn(error);
-                        text.innerText = "⚠️ GPS searching for signal...";
-                    },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 60000 }
-                );
+                window.addEventListener('devicemotion', handleMotion, true);
 
             } else {
-                if (watchId !== null) {
-                    navigator.geolocation.clearWatch(watchId);
-                }
+                window.removeEventListener('devicemotion', handleMotion, true);
                 isRunning = false;
 
                 avatarSvg.classList.remove('running-active');
 
-                const earnedZrl = Math.floor(sessionDistance * 500);
+                // Награда: 1 шаг = 5 ZRL (можешь изменить множитель по желанию)
+                const earnedZrl = sessionSteps * 5;
                 userBalance += earnedZrl;
                 updateBalanceUI();
 
@@ -527,15 +525,15 @@
                     tg.HapticFeedback.notificationOccurred('success');
                 }
 
-                alert(`Success! ${earnedZrl} ZRL credited to your balance.`);
-                sessionDistance = 0;
+                alert(`Успех! Пройдено шагов: ${sessionSteps}. Начислено: ${earnedZrl} ZRL.`);
+                sessionSteps = 0;
                 updateSessionUI();
             }
         }
 
         function updateSessionUI() {
-            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " km";
-            const earnedZrl = Math.floor(sessionDistance * 500);
+            document.getElementById('currentDist').innerText = sessionSteps + " steps";
+            const earnedZrl = sessionSteps * 5;
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
         }
 
