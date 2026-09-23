@@ -6,6 +6,7 @@ import threading
 import asyncio
 import base58
 import base64
+import traceback
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -17,6 +18,7 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
+from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
@@ -90,19 +92,23 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Классическое и надежное создание транзакции без паники NotEnoughSigners
-        tx = Transaction()
-        tx.add(transfer_ix)
-        tx.recent_blockhash = recent_blockhash
-        tx.fee_payer = user_pubkey
+        # Компилируем сообщение через Message с указанием плательщика комиссии (пользователь)
+        message = Message.new_with_blockhash(
+            instructions=[transfer_ix],
+            payer=user_pubkey,
+            blockhash=recent_blockhash
+        )
         
-        # Подписываем транзакцию ключом пула ликвидности
-        tx.sign([pool_keypair])
+        # Создаем транзакцию с подписью пула
+        tx = Transaction.new_unsigned(message)
+        tx.sign([pool_keypair], recent_blockhash)
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
         
     except Exception as e:
+        error_trace = traceback.format_exc()
+        print("ERROR IN WITHDRAW:", error_trace)
         return jsonify({"error": str(e)}), 400
 
 @api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
