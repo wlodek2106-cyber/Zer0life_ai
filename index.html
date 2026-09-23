@@ -540,7 +540,7 @@
             document.getElementById('walletModal').style.display = 'none';
         }
 
-        // Исправленная функция с надежной обработкой сетевого запроса без CORS-ошибок
+        // Функция с выводом точного текста ошибки в alert для диагностики
         async function selectWallet(walletType) {
             closeWalletModal();
 
@@ -555,37 +555,39 @@
             }
 
             try {
-                alert("Отправляем запрос на сервер...");
+                alert("DEBUG: Отправка запроса на бэкенд...");
 
                 const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
                 const serverResponse = await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'cors',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         walletAddress: walletAddress.trim(),
                         amount: Math.floor(userBalance)
                     })
                 });
 
-                if (!serverResponse.ok) {
-                    throw new Error(`Ошибка сервера: ${serverResponse.status}`);
+                const responseText = await serverResponse.text();
+                alert(`DEBUG Ответ сервера (${serverResponse.status}): ${responseText}`);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error("Сервер вернул не JSON: " + responseText);
                 }
 
-                const data = await serverResponse.json();
-                if (data.error) throw new Error(data.error);
+                if (!serverResponse.ok || data.error) {
+                    throw new Error(data.error || "Неизвестная ошибка сервера");
+                }
 
-                alert(`Транзакция успешно сформирована! Бассейн токенов отправил ${Math.floor(userBalance)} ZRL на ваш адрес.`);
-                
+                alert(`Успех! Токены отправлены на ваш адрес.`);
                 userBalance = 0;
                 updateBalanceUI();
 
             } catch (err) {
                 console.error(err);
-                alert("Ошибка вывода: " + err.message);
+                alert("ОШИБКА FETCH: " + err.message);
             }
         }
     </script>
