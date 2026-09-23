@@ -438,7 +438,7 @@
         let sessionDistance = 0;
         let lastPosition = null;
 
-        // Синхронизация баланса через localStorage и URL (чтобы баланс не терялся при открытии Phantom)
+        // Синхронизация баланса через URL-параметры и localStorage
         const urlParams = new URLSearchParams(window.location.search);
         let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
@@ -480,19 +480,19 @@
                 btn.innerText = "End and Save ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
-                text.innerText = "GPS active. Moving...";
+                text.innerText = "GPS active. Tracking movement...";
 
-                // Запускаем watchPosition сразу без блокирующих проверок
+                // Мгновенный запуск watchPosition без блокирующих проверок
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
                         const { latitude, longitude, accuracy } = pos.coords;
                         text.innerText = `GPS active (acc: ${Math.round(accuracy)}m)`;
 
-                        if (accuracy > 200) return; // Мягкий порог для стабильности
+                        if (accuracy > 300) return; // Максимально мягкий порог для предотвращения сбросов
 
                         if (lastPosition) {
                             const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                            if (dist > 0.0005) { // Учет шагов от 50 метров / точная чувствительность
+                            if (dist > 0.0002) { // Чувствительность от 20 метров смещения
                                 sessionDistance += dist;
                                 updateSessionUI();
                             }
@@ -501,9 +501,9 @@
                     },
                     (error) => {
                         console.warn(error);
-                        text.innerText = "⚠️ GPS waiting for signal...";
+                        text.innerText = "⚠️ GPS searching for signal...";
                     },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 60000 }
                 );
 
             } else {
@@ -558,7 +558,6 @@
             const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
             
             if (isTelegramMobile) {
-                // Передаем баланс прямо в ссылке в Phantom, чтобы он не сбрасывался
                 const baseUrl = window.location.href.split('?')[0];
                 const appUrl = `${baseUrl}?bal=${userBalance}`;
                 window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(appUrl)}`;
