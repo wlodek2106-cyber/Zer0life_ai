@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zer0life Run v3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Библиотека Solana Web3 для фронтенда -->
     <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
     <style>
         :root {
@@ -439,11 +438,14 @@
         let sessionDistance = 0;
         let lastPosition = null;
 
-        let userBalance = parseFloat(localStorage.getItem('zrl_balance')) || 0;
+        // Синхронизация баланса через localStorage и URL (чтобы баланс не терялся при открытии Phantom)
+        const urlParams = new URLSearchParams(window.location.search);
+        let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
         updateBalanceUI();
 
         function updateBalanceUI() {
             document.getElementById('totalBalance').innerText = Math.floor(userBalance);
+            localStorage.setItem('zrl_balance', userBalance);
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -470,51 +472,38 @@
                     return;
                 }
 
-                text.innerText = "Requesting GPS...";
+                isRunning = true;
+                sessionDistance = 0;
+                lastPosition = null;
 
-                // Принудительный запрос позиции для инициализации разрешений GPS
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        isRunning = true;
-                        sessionDistance = 0;
-                        lastPosition = null;
+                avatarSvg.classList.add('running-active');
+                btn.innerText = "End and Save ZRL";
+                btn.className = "btn btn-danger";
+                dot.classList.add('active');
+                text.innerText = "GPS active. Moving...";
 
-                        avatarSvg.classList.add('running-active');
+                // Запускаем watchPosition сразу без блокирующих проверок
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const { latitude, longitude, accuracy } = pos.coords;
+                        text.innerText = `GPS active (acc: ${Math.round(accuracy)}m)`;
 
-                        btn.innerText = "End and Save ZRL";
-                        btn.className = "btn btn-danger";
-                        dot.classList.add('active');
-                        text.innerText = "GPS active. Moving...";
+                        if (accuracy > 200) return; // Мягкий порог для стабильности
 
-                        watchId = navigator.geolocation.watchPosition(
-                            (pos) => {
-                                const { latitude, longitude, accuracy } = pos.coords;
-                                text.innerText = `GPS active (acc: ${Math.round(accuracy)}m)`;
-
-                                // Расширенный порог точности до 150 метров
-                                if (accuracy > 150) return;
-
-                                if (lastPosition) {
-                                    const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
-                                    if (dist > 0.001) { // Увеличенная чувствительность (от 1 метра)
-                                        sessionDistance += dist;
-                                        updateSessionUI();
-                                    }
-                                }
-                                lastPosition = { lat: latitude, lon: longitude };
-                            },
-                            (error) => {
-                                console.warn(error);
-                                text.innerText = "⚠️ GPS Error: " + error.message;
-                            },
-                            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
-                        );
+                        if (lastPosition) {
+                            const dist = calculateDistance(lastPosition.lat, lastPosition.lon, latitude, longitude);
+                            if (dist > 0.0005) { // Учет шагов от 50 метров / точная чувствительность
+                                sessionDistance += dist;
+                                updateSessionUI();
+                            }
+                        }
+                        lastPosition = { lat: latitude, lon: longitude };
                     },
                     (error) => {
-                        alert("Ошибка доступа к GPS. Разрешите геолокацию в настройках телефона и Telegram.");
-                        text.innerText = "⚠️ GPS Permission Denied";
+                        console.warn(error);
+                        text.innerText = "⚠️ GPS waiting for signal...";
                     },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
                 );
 
             } else {
@@ -527,7 +516,6 @@
 
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
-                localStorage.setItem('zrl_balance', userBalance);
                 updateBalanceUI();
 
                 btn.innerText = "Start Run";
@@ -570,7 +558,9 @@
             const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
             
             if (isTelegramMobile) {
-                const appUrl = window.location.href;
+                // Передаем баланс прямо в ссылке в Phantom, чтобы он не сбрасывался
+                const baseUrl = window.location.href.split('?')[0];
+                const appUrl = `${baseUrl}?bal=${userBalance}`;
                 window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(appUrl)}`;
                 return;
             }
@@ -610,7 +600,6 @@
                 alert(`Успех! Токены выведены. Хэш: ${signature}`);
                 
                 userBalance = 0;
-                localStorage.setItem('zrl_balance', userBalance);
                 updateBalanceUI();
                 closeWithdrawModal();
 
