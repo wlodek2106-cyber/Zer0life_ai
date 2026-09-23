@@ -17,12 +17,20 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
-from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
 api_app = Flask(__name__)
 CORS(api_app, resources={r"/*": {"origins": "*"}})
+
+@api_app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        return response, 200
 
 @api_app.after_request
 def add_cors_headers(response):
@@ -38,19 +46,19 @@ dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
 bot_loop = asyncio.new_event_loop()
-
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
-@api_app.route('/withdraw', methods=['POST', 'OPTIONS'])
+@api_app.route('/withdraw', methods=['POST'])
 def withdraw():
-    if request.method == 'OPTIONS':
-        return '', 200
     try:
         data = request.json
+        if not data or 'walletAddress' not in data or 'amount' not in data:
+            return jsonify({"error": "Неверные данные запроса"}), 400
+
         user_pubkey = Pubkey.from_string(data['walletAddress'])
         amount = float(data['amount'])
         
@@ -82,12 +90,14 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        message = Message([transfer_ix], user_pubkey)
-        tx = Transaction(
-            from_keypairs=[pool_keypair],
-            message=message,
-            recent_blockhash=recent_blockhash
-        )
+        # Классическое и надежное создание транзакции без паники NotEnoughSigners
+        tx = Transaction()
+        tx.add(transfer_ix)
+        tx.recent_blockhash = recent_blockhash
+        tx.fee_payer = user_pubkey
+        
+        # Подписываем транзакцию ключом пула ликвидности
+        tx.sign([pool_keypair])
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
