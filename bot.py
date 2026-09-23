@@ -13,9 +13,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from solana.rpc.api import Client
-from solana.transaction import Transaction
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
+from solders.transaction import Transaction
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
 # Инициализация внутреннего сервера для обработки транзакций
