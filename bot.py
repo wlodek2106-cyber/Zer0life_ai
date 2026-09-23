@@ -22,7 +22,14 @@ from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
 api_app = Flask(__name__)
-CORS(api_app)
+CORS(api_app, resources={r"/*": {"origins": "*"}})
+
+@api_app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+    return response
 
 TOKEN = os.getenv("BOT_TOKEN")
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
@@ -30,18 +37,18 @@ RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
-# Создаем глобальный постоянный цикл для асинхронных задач бота
 bot_loop = asyncio.new_event_loop()
 
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
-# Запускаем постоянный поток для асинхронных операций
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
-@api_app.route('/withdraw', methods=['POST'])
+@api_app.route('/withdraw', methods=['POST', 'OPTIONS'])
 def withdraw():
+    if request.method == 'OPTIONS':
+        return '', 200
     try:
         data = request.json
         user_pubkey = Pubkey.from_string(data['walletAddress'])
@@ -94,7 +101,6 @@ def telegram_webhook():
         json_data = request.get_json()
         try:
             update = types.Update.model_validate(json_data, context={"bot": bot})
-            # Безопасно отправляем задачу в постоянный глобальный цикл
             asyncio.run_coroutine_threadsafe(dp.feed_update(bot, update), bot_loop)
         except Exception as e:
             logging.error(f"Webhook error: {e}")
@@ -128,16 +134,13 @@ def setup_webhook_sync():
                 )
             ), bot_loop)
             menu_future.result(timeout=5)
-            
-            logging.info(f"Вебхук успешно зарегистрирован: {webhook_url}")
+            logging.info(f"Вебхук зарегистрирован: {webhook_url}")
         except Exception as e:
             logging.error(f"Webhook setup error: {e}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    
     if TOKEN:
         setup_webhook_sync()
-    
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
