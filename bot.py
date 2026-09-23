@@ -29,7 +29,6 @@ def withdraw():
         user_pubkey = Pubkey.from_string(data['walletAddress'])
         amount = float(data['amount'])
         
-        # Получаем настройки токена и приватный ключ пула из Render Environment Variables
         zrl_mint_address = os.getenv('ZRL_MINT')
         private_key_base58 = os.getenv('PRIVATE_KEY')
         
@@ -39,12 +38,9 @@ def withdraw():
         zrl_mint = Pubkey.from_string(zrl_mint_address)
         pool_keypair = Keypair.from_bytes(base58.b58decode(private_key_base58))
         
-        # Вычисляем Associated Token Accounts (ATA)
         pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
         user_ata = get_associated_token_address(user_pubkey, zrl_mint)
         
-        # Формируем инструкцию перевода
-        # ВАЖНО: Если у вашего токена ZRL не 6 нулей (decimals), измените цифру 6 ниже на нужную
         transfer_ix = transfer_checked(
             TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -60,15 +56,11 @@ def withdraw():
         client = Client("https://api.mainnet-beta.solana.com")
         recent_blockhash = client.get_latest_blockhash().value.blockhash
         
-        # Создаем транзакцию и назначаем кошелек игрока плательщиком комиссии
         tx = Transaction(fee_payer=user_pubkey)
         tx.add(transfer_ix)
         tx.recent_blockhash = recent_blockhash
-        
-        # Пул подписывает транзакцию первым, разрешая списание токенов
         tx.sign_partial(pool_keypair)
         
-        # Конвертируем в Base64 для передачи во фронтенд
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
         
@@ -76,16 +68,14 @@ def withdraw():
         return jsonify({"error": str(e)}), 400
 
 def run_api_server():
-    # Render задает порт автоматически
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
 
-# Токен вашего бота
-TOKEN = "8820567588:AAFhzlVFIOBNJjS4gbLxVUrriQpmNemg6OQ"
+# Твой актуальный токен
+TOKEN = "8820567588:AAGFNZqO1QL65DNUXPJOPckRYcIqoY2qlJg"
 
 dp = Dispatcher()
 
-# Установка кнопки меню
 async def set_main_menu(bot: Bot):
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
@@ -94,7 +84,6 @@ async def set_main_menu(bot: Bot):
         )
     )
 
-# Команда /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -108,7 +97,6 @@ async def cmd_start(message: types.Message):
         parse_mode="HTML"
     )
 
-# Команда /run
 @dp.message(Command("run"))
 async def cmd_run(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -116,7 +104,6 @@ async def cmd_run(message: types.Message):
     ])
     await message.answer("Откройте мини-приложение для пробежки:", reply_markup=keyboard)
 
-# Прием данных от мини-приложения
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
     try:
@@ -134,7 +121,6 @@ async def handle_web_app_data(message: types.Message):
         await message.answer("Не удалось обработать результаты тренировки.")
 
 async def main():
-    # Запускаем API сервер в фоновом потоке
     threading.Thread(target=run_api_server, daemon=True).start()
     
     bot = Bot(token=TOKEN)
