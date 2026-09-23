@@ -16,11 +16,9 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
-from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
-# Инициализация Flask для обработки выводов
 api_app = Flask(__name__)
 CORS(api_app)
 
@@ -59,13 +57,14 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        message = Message.compile(
-            instructions=[transfer_ix],
-            payer=user_pubkey,
-            recent_blockhash=recent_blockhash
-        )
+        # Самый базовый и стабильный конструктор транзакции
+        tx = Transaction()
+        tx.add(transfer_ix)
+        tx.recent_blockhash = recent_blockhash
+        tx.fee_payer = user_pubkey
         
-        tx = Transaction([pool_keypair], message, recent_blockhash)
+        # Подписываем транзакцию ключом пула
+        tx.sign([pool_keypair])
         
         serialized_tx = base64.b64encode(tx.serialize()).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
@@ -77,7 +76,6 @@ def run_api_server():
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
 
-# Настройка Telegram бота
 TOKEN = os.getenv("BOT_TOKEN")
 dp = Dispatcher()
 
@@ -99,15 +97,11 @@ async def main():
         logging.error("ОШИБКА: Переменная BOT_TOKEN не найдена на сервере!")
         return
 
-    # Запускаем Flask-сервер в отдельном потоке
     threading.Thread(target=run_api_server, daemon=True).start()
     
     bot = Bot(token=TOKEN)
-    
-    # Сбрасываем старый вебхук, чтобы поллинг работал без конфликтов
     await bot.delete_webhook(drop_pending_updates=True)
     
-    # Устанавливаем кнопку меню
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
             text="🏃 Zer0Life Run",
@@ -115,7 +109,6 @@ async def main():
         )
     )
     
-    logging.info("Бот успешно запущен и слушает обновления...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
