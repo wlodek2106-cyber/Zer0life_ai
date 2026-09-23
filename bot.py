@@ -2,10 +2,12 @@ import json
 import logging
 import sys
 import os
+import threading
+import asyncio
 import base58
 import base64
 
-from aiogram import Bot, Dispatcher, F, types
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 
@@ -19,14 +21,9 @@ from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
+# Инициализация Flask API
 api_app = Flask(__name__)
 CORS(api_app)
-
-TOKEN = os.getenv("BOT_TOKEN")
-RENDER_URL = os.getenv("RENDER_EXTERNAL_URL") # Render сам подставляет сюда URL твоего сервиса
-
-dp = Dispatcher()
-bot = Bot(token=TOKEN) if TOKEN else None
 
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
@@ -64,7 +61,6 @@ def withdraw():
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
         message = Message([transfer_ix], user_pubkey)
-        
         tx = Transaction(
             from_keypairs=[pool_keypair],
             message=message,
@@ -77,17 +73,9 @@ def withdraw():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Эндпоинт для приема обновлений от Telegram (Webhook)
-@api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
-def telegram_webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_data = request.get_json()
-        update = types.Update.model_validate(json_data, context={"bot": bot})
-        # Передаем апдейт в диспетчер асинхронно или напрямую
-        import asyncio
-        asyncio.run(dp.feed_update(bot, update))
-        return '', 200
-    return 'Invalid request', 403
+# Логика Telegram-бота
+TOKEN = os.getenv("BOT_TOKEN")
+dp = Dispatcher()
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -102,22 +90,33 @@ async def cmd_start(message: types.Message):
         parse_mode="HTML"
     )
 
-async def setup_webhook():
-    if bot and RENDER_URL:
-        webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
-        await bot.set_webhook(webhook_url)
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="🏃 Zer0Life Run",
-                web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
-            )
+async def run_telegram_bot():
+    if not TOKEN:
+        logging.error("BOT_TOKEN не найден!")
+        return
+    bot = Bot(token=TOKEN)
+    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🏃 Zer0Life Run",
+            web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
         )
+    )
+    logging.info("Telegram бот запущен в фоновом режиме...")
+    await dp.start_polling(bot)
+
+def start_bot_thread():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_telegram_bot())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    if TOKEN and RENDER_URL:
-        import asyncio
-        asyncio.run(setup_webhook())
     
+    # Запускаем Telegram бота в отдельном потоке, чтобы он не блокировал Flask
+    if TOKEN:
+        threading.Thread(target=start_bot_thread, daemon=True).start()
+    
+    # Запуск Flask сервера
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
