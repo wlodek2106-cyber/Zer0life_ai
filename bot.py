@@ -5,6 +5,10 @@ import os
 import base58
 import base64
 
+from aiogram import Bot, Dispatcher, F, types
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from solana.rpc.api import Client
@@ -17,6 +21,12 @@ from spl.token.instructions import transfer_checked, TransferCheckedParams, get_
 
 api_app = Flask(__name__)
 CORS(api_app)
+
+TOKEN = os.getenv("BOT_TOKEN")
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL") # Render сам подставляет сюда URL твоего сервиса
+
+dp = Dispatcher()
+bot = Bot(token=TOKEN) if TOKEN else None
 
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
@@ -67,7 +77,47 @@ def withdraw():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+# Эндпоинт для приема обновлений от Telegram (Webhook)
+@api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
+def telegram_webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_data = request.get_json()
+        update = types.Update.model_validate(json_data, context={"bot": bot})
+        # Передаем апдейт в диспетчер асинхронно или напрямую
+        import asyncio
+        asyncio.run(dp.feed_update(bot, update))
+        return '', 200
+    return 'Invalid request', 403
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+    ])
+    await message.answer(
+        "Йоу! Добро пожаловать в <b>Zer0Life Run</b> ⚡️\n\n"
+        "Тренируйся, шагай и зарабатывай токены <b>ZRL</b>!\n"
+        "Нажми кнопку ниже, чтобы открыть приложение:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+async def setup_webhook():
+    if bot and RENDER_URL:
+        webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
+        await bot.set_webhook(webhook_url)
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="🏃 Zer0Life Run",
+                web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
+            )
+        )
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    if TOKEN and RENDER_URL:
+        import asyncio
+        asyncio.run(setup_webhook())
+    
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
