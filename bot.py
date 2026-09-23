@@ -71,8 +71,8 @@ def run_api_server():
     port = int(os.environ.get("PORT", 8080))
     api_app.run(host="0.0.0.0", port=port)
 
-# ПОЛНЫЙ ТОКЕН НОВОГО БОТА (ВСТАВЬ СВОЙ, ЕСЛИ ЭТОТ ЕЩЕ НЕ ПОМЕНЯН)
-TOKEN = "8820567588:AAGFNZqO1QL65DNUXPJOPckRYcIqoY2qlJg"
+# Безопасно берем токен из переменной окружения Render
+TOKEN = os.getenv("BOT_TOKEN")
 
 dp = Dispatcher()
 
@@ -91,7 +91,7 @@ async def cmd_start(message: types.Message):
     ])
     await message.answer(
         "Йоу! Добро пожаловать в <b>Zer0Life</b> ⚡️\n\n"
-        "Бегай, тренируйся и зарабатывай <b>500 ZRL за каждый километр</b>!\n"
+        "Бегай, тренируйся и зарабатывай <b>ZRL за каждый шаг</b>!\n"
         "Нажми кнопку ниже или открой приложение в меню, чтобы начать:",
         reply_markup=keyboard,
         parse_mode="HTML"
@@ -108,12 +108,12 @@ async def cmd_run(message: types.Message):
 async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
-        distance = data.get("distance", 0)
+        steps = data.get("steps", 0)
         reward = data.get("reward", 0)
         
         await message.answer(
             f"Отличная тренировка! 🏁\n"
-            f"Пройдено: {distance} км\n"
+            f"Шагов: {steps}\n"
             f"Начислено на баланс: <b>{reward} ZRL</b>",
             parse_mode="HTML"
         )
@@ -121,6 +121,10 @@ async def handle_web_app_data(message: types.Message):
         await message.answer("Не удалось обработать результаты тренировки.")
 
 async def main():
+    if not TOKEN:
+        logging.error("ОШИБКА: Переменная BOT_TOKEN не найдена на сервере!")
+        return
+
     threading.Thread(target=run_api_server, daemon=True).start()
     
     bot = Bot(token=TOKEN)
