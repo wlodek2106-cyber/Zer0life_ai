@@ -18,7 +18,6 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
-from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
@@ -92,15 +91,13 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Плательщик комиссии — пользователь, но транзакцию также подписывает пул (владелец токенов)
-        message = Message.new_with_blockhash(
-            instructions=[transfer_ix],
-            payer=user_pubkey,
-            blockhash=recent_blockhash
-        )
+        # Создаем классическую транзакцию, где плательщик газа — пользователь
+        tx = Transaction()
+        tx.add(transfer_ix)
+        tx.recent_blockhash = recent_blockhash
+        tx.fee_payer = user_pubkey
         
-        tx = Transaction.new_unsigned(message)
-        # Сервер подписывает своей частью (пул ликвидности), а пользователь подпишет у себя в кошельке
+        # Сервер подписывает транзакцию ключом пула (владельца токенов)
         tx.sign([pool_keypair], recent_blockhash)
         
         serialized_tx = base64.b64encode(bytes(tx)).decode('utf-8')
