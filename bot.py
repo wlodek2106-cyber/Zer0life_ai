@@ -57,12 +57,12 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Передаем blockhash сразу в конструктор Transaction.new_with_payer
+        # Корректное создание транзакции для вашей версии solders
         tx = Transaction.new_with_payer(
             instructions=[transfer_ix],
-            payer=user_pubkey,
-            recent_blockhash=recent_blockhash
+            payer=user_pubkey
         )
+        tx.recent_blockhash = recent_blockhash
         
         # Пул подписывает транзакцию
         tx.sign_partial(pool_keypair)
