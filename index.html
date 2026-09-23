@@ -33,46 +33,52 @@
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 16px;
+            padding: 12px 16px;
             background-image: 
                 radial-gradient(circle at 50% -20%, rgba(0, 255, 102, 0.2) 0%, transparent 50%),
                 radial-gradient(circle at 50% 120%, rgba(255, 0, 85, 0.15) 0%, transparent 50%);
         }
 
-        .header {
-            text-align: center;
+        /* Верхняя панель с кнопкой Connect */
+        .top-navbar {
             width: 100%;
             max-width: 380px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
         }
 
-        .brand-badge {
-            display: inline-block;
-            background: rgba(0, 255, 102, 0.1);
-            color: var(--accent-green);
-            font-size: 10px;
+        .brand-title {
+            font-size: 14px;
             font-weight: 900;
-            letter-spacing: 3px;
-            padding: 4px 14px;
-            border-radius: 20px;
             text-transform: uppercase;
-            margin-bottom: 4px;
-            border: 1px solid var(--border-neon);
-            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
-        }
-
-        h1 {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
+            letter-spacing: 1px;
             font-style: italic;
-            text-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+        }
+
+        .connect-btn {
+            background: var(--accent-green);
+            color: #030305;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
+            transition: transform 0.1s;
+        }
+
+        .connect-btn:active {
+            transform: scale(0.95);
         }
 
         .gear-card-new {
             width: 100%;
             max-width: 380px;
-            height: 82px;
+            height: 75px;
             background: linear-gradient(135deg, #12121c, #08080c);
             border: 2px dashed rgba(0, 255, 102, 0.4);
             border-radius: 18px;
@@ -80,29 +86,15 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 16px;
-            margin: 6px 0;
+            margin: 4px 0;
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 15px rgba(0, 255, 102, 0.1);
-        }
-
-        .gear-card-new::before {
-            content: 'ZER0LIFE';
-            position: absolute;
-            right: -5px;
-            bottom: -8px;
-            font-size: 38px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.02);
-            font-style: italic;
-            pointer-events: none;
         }
 
         .gear-info h4 {
             font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 1px;
             color: var(--accent-green);
         }
 
@@ -111,7 +103,6 @@
             color: var(--text-secondary);
             margin-top: 2px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .gear-visual-box {
@@ -121,8 +112,8 @@
         }
 
         .character-box {
-            width: 45px;
-            height: 55px;
+            width: 40px;
+            height: 50px;
             position: relative;
             display: flex;
             align-items: center;
@@ -130,8 +121,8 @@
         }
 
         .runner-svg {
-            width: 42px;
-            height: 55px;
+            width: 38px;
+            height: 50px;
             transform-origin: bottom center;
         }
 
@@ -177,19 +168,10 @@
             max-width: 380px;
             background: var(--card-surface);
             border: 1px solid rgba(0, 255, 102, 0.3);
-            border-radius: 22px;
+            border-radius: 20px;
             padding: 16px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
             position: relative;
-        }
-
-        .main-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--danger-red), var(--accent-green));
-            border-radius: 22px 22px 0 0;
         }
 
         .balance-section {
@@ -208,7 +190,7 @@
         }
 
         .balance-value {
-            font-size: 36px;
+            font-size: 34px;
             font-weight: 900;
             color: var(--accent-green);
             text-shadow: 0 0 30px var(--accent-glow);
@@ -247,9 +229,8 @@
             gap: 8px;
             font-size: 10px;
             color: var(--text-secondary);
-            margin-top: 8px;
+            margin-top: 6px;
             text-transform: uppercase;
-            letter-spacing: 1px;
             font-weight: 800;
         }
 
@@ -314,11 +295,12 @@
             color: #ffffff;
         }
 
+        /* Модальное окно выбора кошельков */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 3, 5, 0.9);
+            background: rgba(3, 3, 5, 0.85);
             backdrop-filter: blur(12px);
             align-items: center;
             justify-content: center;
@@ -329,26 +311,48 @@
             background: var(--card-surface);
             border: 1px solid var(--border-neon);
             border-radius: 20px;
-            padding: 22px;
+            padding: 20px;
             width: 100%;
-            max-width: 340px;
+            max-width: 330px;
             text-align: center;
             box-shadow: 0 25px 50px rgba(0,0,0,0.9);
         }
         .modal-content h3 {
-            margin-bottom: 10px;
-            font-size: 16px;
+            margin-bottom: 14px;
+            font-size: 15px;
             text-transform: uppercase;
             font-weight: 900;
             font-style: italic;
+        }
+        .wallet-option {
+            background: #13131c;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            font-weight: 800;
+            font-size: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            transition: border-color 0.2s;
+        }
+        .wallet-option:hover {
+            border-color: var(--accent-green);
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div class="brand-badge">Solana Network</div>
-        <h1>Zer0life Run</h1>
+    <!-- Верхняя панель с кнопкой Connect -->
+    <div class="top-navbar">
+        <div class="brand-title">Zer0Life Run</div>
+        <button class="connect-btn" id="connectNavBtn" onclick="openWalletModal()">Connect</button>
     </div>
 
     <div class="gear-card-new">
@@ -386,7 +390,7 @@
                     </g>
                 </svg>
             </div>
-            <span style="font-size: 18px;">⚡</span>
+            <span style="font-size: 16px;">⚡</span>
         </div>
     </div>
 
@@ -414,18 +418,27 @@
 
     <div class="actions">
         <button class="btn" id="actionBtn" onclick="toggleRun()">Start Run</button>
-        <button class="btn btn-secondary" onclick="openWithdrawModal()">Withdraw to Phantom (Solana)</button>
+        <button class="btn btn-secondary" onclick="openWalletModal()">Withdraw to Wallet</button>
     </div>
 
-    <!-- Модальное окно -->
-    <div class="modal" id="withdrawModal">
+    <!-- Модальное окно выбора кошельков -->
+    <div class="modal" id="walletModal">
         <div class="modal-content">
-            <h3>Withdraw ZRL to Solana</h3>
-            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">
-                Phantom connection is required to pay network fee.
-            </p>
-            <button class="btn" onclick="submitWithdraw()">Connect & Withdraw</button>
-            <button class="btn btn-secondary" style="margin-top: 6px;" onclick="closeWithdrawModal()">Cancel</button>
+            <h3>Select Wallet</h3>
+            
+            <button class="wallet-option" onclick="connectWallet('phantom')">
+                <span>👻 Phantom Wallet</span>
+            </button>
+            
+            <button class="wallet-option" onclick="connectWallet('trust')">
+                <span>🛡️ Trust Wallet</span>
+            </button>
+            
+            <button class="wallet-option" onclick="connectWallet('jupiter')">
+                <span>🪐 Jupiter / Solflare</span>
+            </button>
+
+            <button class="btn btn-secondary" style="margin-top: 10px;" onclick="closeWalletModal()">Cancel</button>
         </div>
     </div>
 
@@ -434,9 +447,10 @@
         tg.expand();
 
         let isRunning = false;
-        let sessionDistance = 0; // Теперь считаем дистанцию в км
+        let sessionDistance = 0;
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let lastStepTime = 0;
+        let connectedWalletAddress = null;
 
         const urlParams = new URLSearchParams(window.location.search);
         let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
@@ -447,10 +461,8 @@
             localStorage.setItem('zrl_balance', userBalance);
         }
 
-        // Конвертируем движения (шаги) в километры (средняя длина шага ~0.75 метра)
         function handleMotion(event) {
             if (!isRunning) return;
-
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
 
@@ -464,12 +476,10 @@
 
             const now = Date.now();
             if (delta > 3.0 && (now - lastStepTime) > 350) {
-                // Каждый шаг = 0.00075 км (0.75 метра)
-                sessionDistance += 0.00075;
+                sessionDistance += 0.00075; // 0.75 метра за шаг -> в км
                 lastStepTime = now;
                 updateSessionUI();
             }
-
             lastAcceleration = { x: curX, y: curY, z: curZ };
         }
 
@@ -487,29 +497,22 @@
                             alert("Доступ к датчикам движения отклонен.");
                             return;
                         }
-                    } catch (e) {
-                        console.error(e);
-                    }
+                    } catch (e) { console.error(e); }
                 }
 
                 isRunning = true;
                 sessionDistance = 0;
-
                 avatarSvg.classList.add('running-active');
                 btn.innerText = "End and Save ZRL";
                 btn.className = "btn btn-danger";
                 dot.classList.add('active');
                 text.innerText = "Tracking distance...";
-
                 window.addEventListener('devicemotion', handleMotion, true);
-
             } else {
                 window.removeEventListener('devicemotion', handleMotion, true);
                 isRunning = false;
-
                 avatarSvg.classList.remove('running-active');
 
-                // 500 ZRL за каждый пройденный километр
                 const earnedZrl = Math.floor(sessionDistance * 500);
                 userBalance += earnedZrl;
                 updateBalanceUI();
@@ -519,10 +522,7 @@
                 dot.classList.remove('active');
                 text.innerText = "Workout saved!";
 
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                }
-
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 alert(`Успех! Пройдено: ${sessionDistance.toFixed(2)} км. Начислено: ${earnedZrl} ZRL.`);
                 sessionDistance = 0;
                 updateSessionUI();
@@ -535,48 +535,64 @@
             document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
         }
 
-        function openWithdrawModal() {
-            document.getElementById('withdrawModal').style.display = 'flex';
+        function openWalletModal() {
+            document.getElementById('walletModal').style.display = 'flex';
         }
 
-        function closeWithdrawModal() {
-            document.getElementById('withdrawModal').style.display = 'none';
+        function closeWalletModal() {
+            document.getElementById('walletModal').style.display = 'none';
         }
 
-        async function submitWithdraw() {
-            const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw'; 
-            
+        // Подключение выбранного кошелька и автоматический вывод средств
+        async function connectWallet(walletType) {
+            closeWalletModal();
+            const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
+
             if (userBalance <= 0) {
                 alert("У вас нет токенов ZRL на балансе для вывода.");
                 return;
             }
 
             const isTelegramMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !window.solana && !window.phantom;
-            
+
             if (isTelegramMobile) {
+                // Если открыто в обычном Telegram без встроенного кошелька — редиректим в Phantom App
                 const baseUrl = window.location.href.split('?')[0];
                 const appUrl = `${baseUrl}?bal=${userBalance}`;
                 window.location.href = `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(appUrl)}`;
                 return;
             }
 
-            const provider = window.phantom?.solana || window.solana;
+            // Выбор провайдера в зависимости от нажатой кнопки
+            let provider = null;
+            if (walletType === 'phantom') {
+                provider = window.phantom?.solana || window.solana;
+            } else if (walletType === 'trust') {
+                provider = window.solana || window.trustwallet?.solana;
+            } else {
+                provider = window.solana;
+            }
+
             if (!provider) {
-                alert("Пожалуйста, откройте мини-приложение через встроенный браузер Phantom Wallet.");
+                alert(`Кошелек (${walletType}) не обнаружен. Откройте приложение через встроенный браузер кошелька.`);
                 return;
             }
 
             try {
                 const resp = await provider.connect();
-                const userWalletAddress = resp.publicKey.toString();
+                connectedWalletAddress = resp.publicKey.toString();
 
-                alert("Формирование транзакции... Подтвердите оплату комиссии в кошельке Phantom.");
-                
+                // Меняем текст кнопки Connect на сокращенный адрес
+                const shortAddr = connectedWalletAddress.slice(0, 4) + '...' + connectedWalletAddress.slice(-4);
+                document.getElementById('connectNavBtn').innerText = shortAddr;
+
+                alert("Кошелек подключен! Формируем транзакцию вывода ZRL...");
+
                 const serverResponse = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        walletAddress: userWalletAddress,
+                        walletAddress: connectedWalletAddress,
                         amount: Math.floor(userBalance)
                     })
                 });
@@ -592,15 +608,14 @@
                 const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
                 await connection.confirmTransaction(signature);
                 
-                alert(`Успех! Токены выведены. Хэш: ${signature}`);
+                alert(`Успех! Токены отправлены на ваш кошелек. Хэш: ${signature}`);
                 
                 userBalance = 0;
                 updateBalanceUI();
-                closeWithdrawModal();
 
             } catch (err) {
                 console.error(err);
-                alert("Ошибка: " + err.message);
+                alert("Ошибка подключения/вывода: " + err.message);
             }
         }
     </script>
