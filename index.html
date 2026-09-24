@@ -294,7 +294,6 @@
             color: #ffffff;
         }
 
-        /* Модальное окно выбора кошельков */
         .modal {
             display: none;
             position: fixed;
@@ -540,7 +539,7 @@
             document.getElementById('walletModal').style.display = 'none';
         }
 
-        // Функция с выводом точного текста ошибки в alert для диагностики
+        // Запрос транзакции с сервера и открытие кошелька пользователя для оплаты газа и получения ZRL
         async function selectWallet(walletType) {
             closeWalletModal();
 
@@ -549,13 +548,13 @@
                 return;
             }
 
-            const walletAddress = prompt(`Введите адрес вашего ${walletType.toUpperCase()} кошелька для получения ${Math.floor(userBalance)} ZRL:`);
+            const walletAddress = prompt(`Введите адрес вашего ${walletType.toUpperCase()} кошелька для оплаты газа и получения ${Math.floor(userBalance)} ZRL:`);
             if (!walletAddress || walletAddress.trim() === "") {
                 return;
             }
 
             try {
-                alert("DEBUG: Отправка запроса на бэкенд...");
+                alert("Формируем транзакцию для подписания...");
 
                 const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
                 const serverResponse = await fetch(API_URL, {
@@ -567,27 +566,33 @@
                     })
                 });
 
-                const responseText = await serverResponse.text();
-                alert(`DEBUG Ответ сервера (${serverResponse.status}): ${responseText}`);
+                const data = await serverResponse.json();
+                if (data.error) throw new Error(data.error);
 
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    throw new Error("Сервер вернул не JSON: " + responseText);
+                const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+                
+                const currentUrl = window.location.href.split('?')[0];
+                const encodedTx = encodeURIComponent(btoa(String.fromCharCode.apply(null, txBuffer)));
+                const callbackUrl = encodeURIComponent(currentUrl);
+
+                let deepLink = "";
+                if (walletType === 'phantom') {
+                    deepLink = `https://phantom.app/ul/v1/signAndSendTransaction?transaction=${encodedTx}&redirect_link=${callbackUrl}`;
+                } else if (walletType === 'trust') {
+                    deepLink = `https://link.trustwallet.com/open_url?coin_id=501&url=${encodeURIComponent(currentUrl)}&tx=${encodedTx}`;
+                } else {
+                    deepLink = `https://solflare.com/ul/v1/signAndSendTransaction?transaction=${encodedTx}&redirect_link=${callbackUrl}`;
                 }
 
-                if (!serverResponse.ok || data.error) {
-                    throw new Error(data.error || "Неизвестная ошибка сервера");
-                }
+                alert("Перенаправляем в ваш кошелек для подтверждения транзакции...");
+                window.location.href = deepLink;
 
-                alert(`Успех! Токены отправлены на ваш адрес.`);
                 userBalance = 0;
                 updateBalanceUI();
 
             } catch (err) {
                 console.error(err);
-                alert("ОШИБКА FETCH: " + err.message);
+                alert("Ошибка вывода: " + err.message);
             }
         }
     </script>
