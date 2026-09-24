@@ -92,19 +92,14 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Плательщик комиссии — пользователь, но создаем сообщение через Message.new_with_blockhash
         message = Message.new_with_blockhash(
             instructions=[transfer_ix],
             payer=user_pubkey,
             blockhash=recent_blockhash
         )
         
-        # Создаем транзакцию с правильными аргументами для solders и подписываем частью пула
-        tx = Transaction(
-            from_keypairs=[pool_keypair],
-            message=message,
-            recent_blockhash=recent_blockhash
-        )
+        tx = Transaction.new_unsigned(message)
+        tx.sign([pool_keypair], recent_blockhash)
         
         serialized_tx = base64.b64encode(bytes(tx)).decode('utf-8')
         return jsonify({"transaction": serialized_tx})
