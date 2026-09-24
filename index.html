@@ -447,6 +447,18 @@
         let sessionDistance = 0;
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let lastStepTime = 0;
+        let currentSpeed = 0;
+
+        // Отслеживаем GPS-скорость для защиты от транспорта
+        if ('geolocation' in navigator) {
+            navigator.geolocation.watchPosition((position) => {
+                if (position.coords.speed !== null) {
+                    currentSpeed = position.coords.speed * 3.6; // Перевод м/с в км/ч
+                }
+            }, (error) => {
+                console.log("GPS error: ", error);
+            }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
@@ -459,6 +471,15 @@
 
         function handleMotion(event) {
             if (!isRunning) return;
+
+            // ЕСЛИ СКОРОСТЬ ВЫШЕ 14 КМ/Ч (транспорт) — шаги не засчитываем!
+            if (currentSpeed > 14) {
+                document.getElementById('statusText').innerText = "Transport detected (Paused)";
+                return;
+            } else {
+                document.getElementById('statusText').innerText = "Tracking distance...";
+            }
+
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
 
@@ -539,7 +560,6 @@
             document.getElementById('walletModal').style.display = 'none';
         }
 
-        // Запрос транзакции с сервера и открытие кошелька пользователя для оплаты газа и получения ZRL
         async function selectWallet(walletType) {
             closeWalletModal();
 
