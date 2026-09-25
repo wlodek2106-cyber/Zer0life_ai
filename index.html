@@ -1,620 +1,148 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0life Run v3</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+    <title>Zer0Life Run - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-            --bg-base: #030305;
-            --card-surface: #0a0a0f;
-            --border-neon: #00ff66;
-            --accent-green: #00ff66;
-            --accent-glow: rgba(0, 255, 102, 0.4);
-            --danger-red: #ff0055;
-            --text-primary: #ffffff;
-            --text-secondary: #8b8b9e;
+            --bg-dark: #0a0e17;
+            --panel-bg: #131a2a;
+            --neon-green: #39ff14;
         }
-
-        * {
-            box-sizing: border-box;
+        body { 
+            background-color: var(--bg-dark); 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            overscroll-behavior-y: none;
         }
-
-        body {
-            background-color: var(--bg-base);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background-image: 
-                radial-gradient(circle at 50% -20%, rgba(0, 255, 102, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 50% 120%, rgba(255, 0, 85, 0.15) 0%, transparent 50%);
-        }
-
-        .top-navbar {
-            width: 100%;
-            max-width: 380px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .brand-title {
-            font-size: 14px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-style: italic;
-        }
-
-        .connect-btn {
-            background: var(--accent-green);
-            color: #030305;
-            border: none;
-            border-radius: 20px;
-            padding: 6px 16px;
-            font-size: 12px;
-            font-weight: 900;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
-            transition: transform 0.1s;
-        }
-
-        .connect-btn:active {
-            transform: scale(0.95);
-        }
-
-        .gear-card-new {
-            width: 100%;
-            max-width: 380px;
-            height: 75px;
-            background: linear-gradient(135deg, #12121c, #08080c);
-            border: 2px dashed rgba(0, 255, 102, 0.4);
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            margin: 4px 0;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .gear-info h4 {
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: var(--accent-green);
-        }
-
-        .gear-info p {
-            font-size: 9px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-            text-transform: uppercase;
-        }
-
-        .gear-visual-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .character-box {
-            width: 40px;
-            height: 50px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .runner-svg {
-            width: 38px;
-            height: 50px;
-            transform-origin: bottom center;
-        }
-
-        .running-active .body-group {
-            animation: bodyRun 0.35s infinite alternate ease-in-out;
-        }
-        .running-active .leg-left {
-            animation: legLeftRun 0.35s infinite ease-in-out;
-        }
-        .running-active .leg-right {
-            animation: legRightRun 0.35s infinite ease-in-out;
-        }
-        .running-active .arm-left {
-            animation: armLeftRun 0.35s infinite ease-in-out;
-        }
-        .running-active .arm-right {
-            animation: armRightRun 0.35s infinite ease-in-out;
-        }
-
-        @keyframes bodyRun {
-            0% { transform: translateY(0px) rotate(-3deg); }
-            100% { transform: translateY(-4px) rotate(3deg); }
-        }
-        @keyframes legLeftRun {
-            0% { transform: rotate(-35deg); transform-origin: 28px 40px; }
-            100% { transform: rotate(35deg); transform-origin: 28px 40px; }
-        }
-        @keyframes legRightRun {
-            0% { transform: rotate(35deg); transform-origin: 28px 40px; }
-            100% { transform: rotate(-35deg); transform-origin: 28px 40px; }
-        }
-        @keyframes armLeftRun {
-            0% { transform: rotate(30deg); transform-origin: 32px 22px; }
-            100% { transform: rotate(-30deg); transform-origin: 32px 22px; }
-        }
-        @keyframes armRightRun {
-            0% { transform: rotate(-30deg); transform-origin: 32px 22px; }
-            100% { transform: rotate(30deg); transform-origin: 32px 22px; }
-        }
-
-        .main-card {
-            width: 100%;
-            max-width: 380px;
-            background: var(--card-surface);
-            border: 1px solid rgba(0, 255, 102, 0.3);
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-            position: relative;
-        }
-
-        .balance-section {
-            text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .balance-label {
-            font-size: 10px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 800;
-        }
-
-        .balance-value {
-            font-size: 34px;
-            font-weight: 900;
-            color: var(--accent-green);
-            text-shadow: 0 0 30px var(--accent-glow);
-            font-style: italic;
-            margin-top: 2px;
-        }
-
-        .metric-group {
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 8px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .metric-label {
-            font-size: 10px;
-            color: var(--text-secondary);
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .metric-value {
-            font-size: 14px;
-            font-weight: 900;
-            color: var(--text-primary);
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-top: 6px;
-            text-transform: uppercase;
-            font-weight: 800;
-        }
-
-        .pulse-dot {
-            width: 7px;
-            height: 7px;
-            background-color: var(--text-secondary);
-            border-radius: 50%;
-            transition: background-color 0.3s;
-        }
-
-        .pulse-dot.active {
-            background-color: var(--accent-green);
-            box-shadow: 0 0 15px var(--accent-green);
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.6); opacity: 0.3; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .actions {
-            width: 100%;
-            max-width: 380px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .btn {
-            width: 100%;
-            background: var(--accent-green);
-            color: #030305;
-            border: none;
-            border-radius: 14px;
-            padding: 13px;
-            font-size: 13px;
-            font-weight: 900;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            box-shadow: 0 4px 25px rgba(0, 255, 102, 0.4);
-            transition: transform 0.1s;
-        }
-
-        .btn:active {
-            transform: scale(0.97);
-        }
-
-        .btn-secondary {
-            background: #13131c;
-            color: var(--text-primary);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: none;
-        }
-
-        .btn-danger {
-            background: var(--danger-red);
-            box-shadow: 0 4px 25px rgba(255, 0, 85, 0.5);
-            color: #ffffff;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 3, 5, 0.85);
+        .glass-panel {
+            background: rgba(19, 26, 42, 0.7);
             backdrop-filter: blur(12px);
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 100;
-        }
-        .modal-content {
-            background: var(--card-surface);
-            border: 1px solid var(--border-neon);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            padding: 20px;
-            width: 100%;
-            max-width: 330px;
-            text-align: center;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.9);
         }
-        .modal-content h3 {
-            margin-bottom: 14px;
-            font-size: 15px;
-            text-transform: uppercase;
-            font-weight: 900;
-            font-style: italic;
+        .neon-text { text-shadow: 0 0 10px rgba(57, 255, 20, 0.4); }
+        .btn-primary {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+            transition: transform 0.1s;
         }
-        .wallet-option {
-            background: #13131c;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 12px;
-            border-radius: 12px;
-            width: 100%;
-            font-weight: 800;
-            font-size: 12px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            text-transform: uppercase;
-            transition: border-color 0.2s;
-        }
-        .wallet-option:hover {
-            border-color: var(--accent-green);
-        }
+        .btn-primary:active { transform: scale(0.96); }
+        .progress-bar-glow { box-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
+        
+        /* Прячем скроллбар */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
+<body class="h-screen w-full flex justify-center items-center overflow-hidden">
 
-    <div class="top-navbar">
-        <div class="brand-title">Zer0Life Run</div>
-        <button class="connect-btn" id="connectNavBtn" onclick="openWalletModal()">Connect</button>
-    </div>
-
-    <div class="gear-card-new">
-        <div class="gear-info">
-            <h4>ZEROLIFE GEAR</h4>
-            <p>MOVE TO EARN • ZRL TOKEN</p>
-        </div>
-        <div class="gear-visual-box">
-            <div class="character-box">
-                <svg class="runner-svg" id="runnerAvatar" viewBox="0 0 60 75">
-                    <g class="body-group">
-                        <rect x="22" y="22" width="16" height="20" rx="4" fill="#15151a" stroke="#00ff66" stroke-width="1.5"/>
-                        <circle cx="30" cy="28" r="2.5" fill="#00ff66"/>
-                        <circle cx="30" cy="12" r="6" fill="#fcd0a1"/>
-                        <path d="M22 10 C22 6, 38 6, 38 10 Z" fill="#030305"/>
-                        <path d="M34 9 L43 10.5 L34 12 Z" fill="#00ff66"/>
-                        <g class="arm-left">
-                            <line x1="22" y1="24" x2="12" y2="35" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                            <circle cx="12" cy="36" r="2.5" fill="#fcd0a1"/>
-                        </g>
-                        <g class="arm-right">
-                            <line x1="38" y1="24" x2="48" y2="35" stroke="#15151a" stroke-width="4" stroke-linecap="round"/>
-                            <circle cx="48" cy="36" r="2.5" fill="#fcd0a1"/>
-                        </g>
-                    </g>
-                    <g class="leg-left">
-                        <rect x="25" y="40" width="6" height="12" fill="#00ff66"/>
-                        <line x1="28" y1="52" x2="24" y2="62" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                        <path d="M21 62 L28 62 L29 66 L20 66 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
-                    </g>
-                    <g class="leg-right">
-                        <rect x="29" y="40" width="6" height="12" fill="#00ff66"/>
-                        <line x1="32" y1="52" x2="36" y2="62" stroke="#111" stroke-width="4" stroke-linecap="round"/>
-                        <path d="M33 62 L40 62 L41 66 L32 66 Z" fill="#ffffff" stroke="#00ff66" stroke-width="1"/>
-                    </g>
-                </svg>
+    <div class="w-full max-w-md h-full relative flex flex-col bg-[#0a0e17]">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center px-5 pt-4 pb-2 z-10">
+            <button class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <div class="text-center">
+                <h1 class="text-sm font-bold tracking-wide">Zer0Life Run</h1>
+                <p class="text-[10px] text-gray-500 uppercase tracking-widest">mini app</p>
             </div>
-            <span style="font-size: 16px;">⚡</span>
-        </div>
-    </div>
-
-    <div class="main-card">
-        <div class="balance-section">
-            <div class="balance-label">Total ZRL Balance</div>
-            <div class="balance-value" id="totalBalance">0</div>
-        </div>
-
-        <div class="metric-group">
-            <span class="metric-label">Distance</span>
-            <span class="metric-value" id="currentDist">0.00 km</span>
-        </div>
-
-        <div class="metric-group">
-            <span class="metric-label">Session Reward</span>
-            <span class="metric-value" id="currentReward">0 ZRL</span>
-        </div>
-
-        <div class="status-indicator">
-            <div class="pulse-dot" id="statusDot"></div>
-            <span id="statusText">Ready to start</span>
-        </div>
-    </div>
-
-    <div class="actions">
-        <button class="btn" id="actionBtn" onclick="toggleRun()">Start Run</button>
-        <button class="btn btn-secondary" onclick="openWalletModal()">Withdraw to Wallet</button>
-    </div>
-
-    <!-- Модальное окно выбора кошельков -->
-    <div class="modal" id="walletModal">
-        <div class="modal-content">
-            <h3>Select Wallet</h3>
-            
-            <button class="wallet-option" onclick="selectWallet('phantom')">
-                <span>👻 Phantom Wallet</span>
+            <button class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
             </button>
+        </header>
+
+        <!-- Main Content Scrollable -->
+        <main class="flex-1 overflow-y-auto px-5 pb-24 pt-4 space-y-4 relative z-10">
             
-            <button class="wallet-option" onclick="selectWallet('trust')">
-                <span>🛡️ Trust Wallet</span>
-            </button>
-            
-            <button class="wallet-option" onclick="selectWallet('solflare')">
-                <span>🪐 Solflare Wallet</span>
-            </button>
+            <!-- ZRL Balance Card -->
+            <div class="glass-panel p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-full border-2 border-[#39ff14] bg-gray-800 p-0.5 overflow-hidden shadow-[0_0_15px_rgba(57,255,20,0.2)]">
+                        <!-- Место под аватар кота -->
+                        <div class="w-full h-full rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-xs">🐱</div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">ZRL Balance</p>
+                        <h2 class="text-2xl font-black tracking-tight">1,248.75</h2>
+                    </div>
+                </div>
+                <button class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                </button>
+            </div>
 
-            <button class="btn btn-secondary" style="margin-top: 10px;" onclick="closeWalletModal()">Cancel</button>
-        </div>
-    </div>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        let isRunning = false;
-        let sessionDistance = 0;
-        let lastAcceleration = { x: 0, y: 0, z: 0 };
-        let lastStepTime = 0;
-        let currentSpeed = 0;
-
-        // Отслеживаем GPS-скорость для защиты от транспорта
-        if ('geolocation' in navigator) {
-            navigator.geolocation.watchPosition((position) => {
-                if (position.coords.speed !== null) {
-                    currentSpeed = position.coords.speed * 3.6; // Перевод м/с в км/ч
-                }
-            }, (error) => {
-                console.log("GPS error: ", error);
-            }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        let userBalance = parseFloat(urlParams.get('bal')) || parseFloat(localStorage.getItem('zrl_balance')) || 0;
-        updateBalanceUI();
-
-        function updateBalanceUI() {
-            document.getElementById('totalBalance').innerText = Math.floor(userBalance);
-            localStorage.setItem('zrl_balance', userBalance);
-        }
-
-        function handleMotion(event) {
-            if (!isRunning) return;
-
-            // ЕСЛИ СКОРОСТЬ ВЫШЕ 14 КМ/Ч (транспорт) — шаги не засчитываем!
-            if (currentSpeed > 14) {
-                document.getElementById('statusText').innerText = "Transport detected (Paused)";
-                return;
-            } else {
-                document.getElementById('statusText').innerText = "Tracking distance...";
-            }
-
-            const acc = event.accelerationIncludingGravity;
-            if (!acc) return;
-
-            const curX = acc.x || 0;
-            const curY = acc.y || 0;
-            const curZ = acc.z || 0;
-
-            const delta = Math.abs(curX - lastAcceleration.x) + 
-                          Math.abs(curY - lastAcceleration.y) + 
-                          Math.abs(curZ - lastAcceleration.z);
-
-            const now = Date.now();
-            if (delta > 3.0 && (now - lastStepTime) > 350) {
-                sessionDistance += 0.00075;
-                lastStepTime = now;
-                updateSessionUI();
-            }
-            lastAcceleration = { x: curX, y: curY, z: curZ };
-        }
-
-        async function toggleRun() {
-            const btn = document.getElementById('actionBtn');
-            const dot = document.getElementById('statusDot');
-            const text = document.getElementById('statusText');
-            const avatarSvg = document.getElementById('runnerAvatar');
-
-            if (!isRunning) {
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    try {
-                        const permissionState = await DeviceMotionEvent.requestPermission();
-                        if (permissionState !== 'granted') {
-                            alert("Доступ к датчикам движения отклонен.");
-                            return;
-                        }
-                    } catch (e) { console.error(e); }
-                }
-
-                isRunning = true;
-                sessionDistance = 0;
-                avatarSvg.classList.add('running-active');
-                btn.innerText = "End and Save ZRL";
-                btn.className = "btn btn-danger";
-                dot.classList.add('active');
-                text.innerText = "Tracking distance...";
-                window.addEventListener('devicemotion', handleMotion, true);
-            } else {
-                window.removeEventListener('devicemotion', handleMotion, true);
-                isRunning = false;
-                avatarSvg.classList.remove('running-active');
-
-                const earnedZrl = Math.floor(sessionDistance * 500);
-                userBalance += earnedZrl;
-                updateBalanceUI();
-
-                btn.innerText = "Start Run";
-                btn.className = "btn";
-                dot.classList.remove('active');
-                text.innerText = "Workout saved!";
-
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                alert(`Успех! Пройдено: ${sessionDistance.toFixed(2)} км. Начислено: ${earnedZrl} ZRL.`);
-                sessionDistance = 0;
-                updateSessionUI();
-            }
-        }
-
-        function updateSessionUI() {
-            document.getElementById('currentDist').innerText = sessionDistance.toFixed(2) + " km";
-            const earnedZrl = Math.floor(sessionDistance * 500);
-            document.getElementById('currentReward').innerText = earnedZrl + " ZRL";
-        }
-
-        function openWalletModal() {
-            document.getElementById('walletModal').style.display = 'flex';
-        }
-
-        function closeWalletModal() {
-            document.getElementById('walletModal').style.display = 'none';
-        }
-
-        async function selectWallet(walletType) {
-            closeWalletModal();
-
-            if (userBalance <= 0) {
-                alert("У вас нет токенов ZRL на балансе для вывода. Сначала сделайте пробежку!");
-                return;
-            }
-
-            const walletAddress = prompt(`Введите адрес вашего ${walletType.toUpperCase()} кошелька для оплаты газа и получения ${Math.floor(userBalance)} ZRL:`);
-            if (!walletAddress || walletAddress.trim() === "") {
-                return;
-            }
-
-            try {
-                alert("Формируем транзакцию для подписания...");
-
-                const API_URL = 'https://zer0life-ai-iz5n.onrender.com/withdraw';
-                const serverResponse = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        walletAddress: walletAddress.trim(),
-                        amount: Math.floor(userBalance)
-                    })
-                });
-
-                const data = await serverResponse.json();
-                if (data.error) throw new Error(data.error);
-
-                const txBuffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+            <!-- Today's Run Card -->
+            <div class="glass-panel p-4 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-[#39ff14] opacity-5 blur-[50px] rounded-full"></div>
                 
-                const currentUrl = window.location.href.split('?')[0];
-                const encodedTx = encodeURIComponent(btoa(String.fromCharCode.apply(null, txBuffer)));
-                const callbackUrl = encodeURIComponent(currentUrl);
+                <div class="flex justify-between items-start mb-2 relative z-10">
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium mb-1">Today's Run</p>
+                        <h3 class="text-xl font-bold">2.34 km</h3>
+                        <p class="text-sm font-bold text-[#39ff14] mt-1 neon-text">+12.6 ZRL</p>
+                    </div>
+                    <button class="btn-primary px-5 py-2 rounded-xl text-sm font-black tracking-wide">
+                        Claim
+                    </button>
+                </div>
+            </div>
 
-                let deepLink = "";
-                if (walletType === 'phantom') {
-                    deepLink = `https://phantom.app/ul/v1/signAndSendTransaction?transaction=${encodedTx}&redirect_link=${callbackUrl}`;
-                } else if (walletType === 'trust') {
-                    deepLink = `https://link.trustwallet.com/open_url?coin_id=501&url=${encodeURIComponent(currentUrl)}&tx=${encodedTx}`;
-                } else {
-                    deepLink = `https://solflare.com/ul/v1/signAndSendTransaction?transaction=${encodedTx}&redirect_link=${callbackUrl}`;
-                }
+            <!-- Level Progress -->
+            <div class="px-1">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm font-bold">Level 3</span>
+                    <span class="text-[10px] text-gray-400 font-medium tracking-wider">480 / 1,000 XP</span>
+                </div>
+                <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-[#39ff14] w-[48%] rounded-full progress-bar-glow"></div>
+                </div>
+            </div>
 
-                alert("Перенаправляем в ваш кошелек для подтверждения транзакции...");
-                window.location.href = deepLink;
+            <!-- Central Graphic (Placeholder for 3D Cat/City) -->
+            <div class="w-full h-48 mt-6 rounded-2xl relative overflow-hidden border border-white/5 flex items-end justify-center pb-4" style="background: radial-gradient(circle at center, #1a2436 0%, #0a0e17 100%);">
+                <!-- В реальном проекте здесь будет картинка кота со спины -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InRyYW5zcGFyZW50Ii8+PGxpbmUgeDE9IjAlIiB5MT0iMTAwJSIgeDI9IjUwJSIgeTI9IjYwJSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiIvPjxsaW5lIHgxPSIxMDAlIiB5MT0iMTAwJSIgeDI9IjUwJSIgeTI9IjYwJSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==')] bg-cover opacity-50"></div>
+                <div class="text-gray-500 text-xs tracking-widest uppercase z-10 font-bold">Runner Ready</div>
+            </div>
+        </main>
 
-                userBalance = 0;
-                updateBalanceUI();
+        <!-- Floating Start Button -->
+        <div class="absolute bottom-24 left-0 w-full px-5 z-20">
+            <button class="w-full btn-primary py-4 rounded-2xl text-lg font-black uppercase tracking-wider flex items-center justify-center space-x-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>Start Run</span>
+            </button>
+        </div>
 
-            } catch (err) {
-                console.error(err);
-                alert("Ошибка вывода: " + err.message);
-            }
-        }
-    </script>
+        <!-- Bottom Navigation -->
+        <nav class="absolute bottom-0 left-0 w-full h-20 bg-[#0a0e17]/90 backdrop-blur-md border-t border-white/5 flex justify-around items-center px-2 pb-4 pt-2 z-30">
+            <button class="flex flex-col items-center space-y-1 text-[#39ff14]">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3l8 6v12h-5v-7H9v7H4V9l8-6z"/></svg>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-500 hover:text-gray-300 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span class="text-[10px] font-medium">Run</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-500 hover:text-gray-300 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <span class="text-[10px] font-medium">Rewards</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-500 hover:text-gray-300 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span class="text-[10px] font-medium">Wallet</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 text-gray-500 hover:text-gray-300 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                <span class="text-[10px] font-medium">More</span>
+            </button>
+        </nav>
+    </div>
+
 </body>
 </html>
