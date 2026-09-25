@@ -102,6 +102,19 @@
             display: flex;
             justify-content: space-between;
         }
+        
+        #speed-warning {
+            color: #ff4757;
+            font-size: 12px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
 
         .run-stats-container {
             display: flex;
@@ -284,6 +297,7 @@
         <div class="run-card">
             <div class="run-header">
                 Today's Run
+                <span id="speed-warning">Too fast! (Anti-cheat)</span>
             </div>
             <div class="run-stats-container">
                 <div class="run-stats">
@@ -342,7 +356,8 @@
         tg.ready();
 
         const ZRL_PER_KM = 500;
-        const METERS_PER_STEP = 0.00075; // 1 шаг = 0.75 метра (около 1333 шагов на 1 км)
+        const METERS_PER_STEP = 0.00075; 
+        const MAX_SPEED_KMH = 14; // Лимит скорости античита (автобус/машина исключены)
         
         const LEVELS = [
             { level: 1, targetKm: 5 },
@@ -361,6 +376,11 @@
         
         let isRunning = false;
         let lastMotionTime = 0;
+        let watchId = null;
+        let currentSpeedKmh = 0;
+        let lastLat = null;
+        let lastLon = null;
+        let lastTime = null;
 
         const balanceEl = document.getElementById('total-balance');
         const todayDistEl = document.getElementById('today-distance');
@@ -369,6 +389,7 @@
         const levelTextEl = document.getElementById('current-level-text');
         const progressTextEl = document.getElementById('level-progress-text');
         const progressBarEl = document.getElementById('level-progress-bar');
+        const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
@@ -378,6 +399,17 @@
             localStorage.setItem('zrl_total_distance', totalDistance);
             localStorage.setItem('zrl_unclaimed', unclaimedZRL);
             localStorage.setItem('zrl_today_steps', todaySteps);
+        }
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
         }
 
         function updateUI() {
@@ -407,16 +439,50 @@
             progressBarEl.style.width = `${progressPercent}%`;
         }
 
-        // Честный подсчет шагов через акселерометр телефона при реальном движении
+        // Отслеживание скорости через GPS для античита
+        function handlePositionUpdate(position) {
+            const currentLat = position.coords.latitude;
+            const currentLon = position.coords.longitude;
+            const currentTime = position.timestamp;
+
+            if (lastLat !== null && lastLon !== null && lastTime !== null) {
+                const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
+                const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
+
+                if (timeDiffHours > 0) {
+                    currentSpeedKmh = distanceKm / timeDiffHours;
+
+                    if (currentSpeedKmh > MAX_SPEED_KMH) {
+                        warningEl.style.display = 'block';
+                    } else {
+                        warningEl.style.display = 'none';
+                    }
+                }
+            }
+
+            lastLat = currentLat;
+            lastLon = currentLon;
+            lastTime = currentTime;
+        }
+
+        // Фиксация шагов с проверкой на скорость транспорта
         function handleMotion(event) {
             if (!isRunning) return;
+
+            // Если скорость выше лимита (автобус/машина), блокируем фарм
+            if (currentSpeedKmh > MAX_SPEED_KMH) {
+                warningEl.style.display = 'block';
+                return;
+            } else {
+                warningEl.style.display = 'none';
+            }
+
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
 
             const totalAcc = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
             const now = Date.now();
 
-            // Порог встряски для фиксации шага с минимальным интервалом 300мс
             if (totalAcc > 13.5 && (now - lastMotionTime) > 300) {
                 lastMotionTime = now;
                 todaySteps++;
@@ -436,13 +502,25 @@
             startBtn.classList.remove('active-run');
             startBtnText.innerText = 'Start Run';
             window.removeEventListener('devicemotion', handleMotion);
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            warningEl.style.display = 'none';
         }
 
         startBtn.addEventListener('click', async () => {
             tg.HapticFeedback.impactOccurred('heavy');
             
             if (!isRunning) {
-                // Запрос разрешений на использование датчиков движения (обязательно для iOS)
+                if ("geolocation" in navigator) {
+                    watchId = navigator.geolocation.watchPosition(
+                        handlePositionUpdate, 
+                        (err) => console.log(err), 
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                    );
+                }
+
                 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                     try {
                         const response = await DeviceMotionEvent.requestPermission();
