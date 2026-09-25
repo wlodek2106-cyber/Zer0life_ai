@@ -99,6 +99,21 @@
             font-size: 14px;
             font-weight: 600;
             margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        #speed-warning {
+            color: #ff4757;
+            font-size: 12px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .run-stats-container {
@@ -168,7 +183,7 @@
         }
 
         .progress-bar-fill {
-            width: 0%; /* Начинаем с 0% */
+            width: 0%;
             height: 100%;
             background: linear-gradient(90deg, #5fc342 0%, #a8f07a 100%);
             border-radius: 4px;
@@ -274,7 +289,10 @@
 
         <!-- Run Stats Card -->
         <div class="run-card">
-            <div class="run-header">Today's Run</div>
+            <div class="run-header">
+                Today's Run
+                <span id="speed-warning">Too fast! (Anti-cheat)</span>
+            </div>
             <div class="run-stats-container">
                 <div class="run-stats">
                     <span class="distance" id="today-distance">0.00 km</span>
@@ -319,7 +337,18 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             Run
         </div>
-        <!-- Остальные иконки навигации скрыты для компактности -->
+        <div class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
+            Rewards
+        </div>
+        <div class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
+            Wallet
+        </div>
+        <div class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+            More
+        </div>
     </div>
 
     <script>
@@ -327,10 +356,9 @@
         tg.expand();
         tg.ready();
 
-        // ИГРОВАЯ МАТЕМАТИКА И СОСТОЯНИЕ
         const ZRL_PER_KM = 500;
+        const MAX_SPEED_KMH = 14; // Античит
         
-        // Пороги уровней в километрах (всего за всё время)
         const LEVELS = [
             { level: 1, targetKm: 5 },
             { level: 2, targetKm: 20 },
@@ -340,14 +368,18 @@
             { level: 6, targetKm: 200 }
         ];
 
-        // Исходные показатели
-        let totalBalance = 0.00;
-        let todayDistance = 0.00;
-        let totalDistance = 0.00; // Накопленная дистанция для уровней
-        let unclaimedZRL = 0.00;
+        // Загружаем сохраненные данные из памяти телефона (если они есть)
+        let totalBalance = parseFloat(localStorage.getItem('zrl_total_balance')) || 0.00;
+        let todayDistance = parseFloat(localStorage.getItem('zrl_today_distance')) || 0.00;
+        let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
+        let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
         
+        // GPS Переменные
         let isRunning = false;
-        let simulationInterval;
+        let watchId = null;
+        let lastLat = null;
+        let lastLon = null;
+        let lastTime = null;
 
         // Элементы интерфейса
         const balanceEl = document.getElementById('total-balance');
@@ -356,25 +388,44 @@
         const levelTextEl = document.getElementById('current-level-text');
         const progressTextEl = document.getElementById('level-progress-text');
         const progressBarEl = document.getElementById('level-progress-bar');
+        const warningEl = document.getElementById('speed-warning');
+        const startBtn = document.getElementById('start-run-btn');
+        const startBtnText = document.getElementById('start-btn-text');
 
-        // Функция обновления интерфейса
+        // Функция сохранения данных в память телефона
+        function saveData() {
+            localStorage.setItem('zrl_total_balance', totalBalance);
+            localStorage.setItem('zrl_today_distance', todayDistance);
+            localStorage.setItem('zrl_total_distance', totalDistance);
+            localStorage.setItem('zrl_unclaimed', unclaimedZRL);
+        }
+
+        // Формула Гаверсинуса для расчета расстояния по GPS
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
+
         function updateUI() {
             balanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
             todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL';
 
-            // Расчет текущего уровня
             let currentLevelObj = LEVELS[0];
             for (let i = 0; i < LEVELS.length; i++) {
                 if (totalDistance < LEVELS[i].targetKm) {
                     currentLevelObj = LEVELS[i];
                     break;
                 }
-                // Если достигли максимума
                 if (i === LEVELS.length - 1) currentLevelObj = LEVELS[i]; 
             }
 
-            // Вычисление прогресса внутри текущего уровня
             let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
             let kmInCurrentLevel = totalDistance - prevLevelKm;
             let kmNeededForLevel = currentLevelObj.targetKm - prevLevelKm;
@@ -387,47 +438,99 @@
             progressBarEl.style.width = `${progressPercent}%`;
         }
 
-        // Логика добавления дистанции (симуляция GPS)
-        function addDistance(km) {
-            todayDistance += km;
-            totalDistance += km;
-            unclaimedZRL += (km * ZRL_PER_KM);
-            updateUI();
+        function handlePositionUpdate(position) {
+            const currentLat = position.coords.latitude;
+            const currentLon = position.coords.longitude;
+            const currentTime = position.timestamp;
+
+            if (lastLat !== null && lastLon !== null && lastTime !== null) {
+                const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
+                const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
+
+                if (timeDiffHours > 0) {
+                    const speedKmh = distanceKm / timeDiffHours;
+
+                    if (speedKmh <= MAX_SPEED_KMH) {
+                        warningEl.style.display = 'none';
+                        todayDistance += distanceKm;
+                        totalDistance += distanceKm;
+                        unclaimedZRL += (distanceKm * ZRL_PER_KM);
+                        
+                        updateUI();
+                        saveData(); // Сохраняем прогресс на ходу
+                    } else if (speedKmh > MAX_SPEED_KMH && distanceKm > 0.01) {
+                        warningEl.style.display = 'block';
+                        tg.HapticFeedback.notificationOccurred('warning');
+                    }
+                }
+            }
+
+            lastLat = currentLat;
+            lastLon = currentLon;
+            lastTime = currentTime;
         }
 
-        // Кнопка Start/Stop Run
-        const startBtn = document.getElementById('start-run-btn');
-        const startBtnText = document.getElementById('start-btn-text');
+        function handleLocationError(error) {
+            let msg = "GPS Error. Please allow location access.";
+            if (error.code === 1) msg = "Location permission denied.";
+            tg.showAlert(msg);
+            stopRunning();
+        }
+
+        function stopRunning() {
+            isRunning = false;
+            startBtn.classList.remove('active-run');
+            startBtnText.innerText = 'Start Run';
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            warningEl.style.display = 'none';
+        }
 
         startBtn.addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('heavy');
-            isRunning = !isRunning;
-
-            if (isRunning) {
-                // Начинаем бег
-                startBtn.classList.add('active-run');
-                startBtnText.innerText = 'Stop Run';
-                
-                // Симуляция: добавляем 0.05 км (50 метров) каждую секунду для наглядности
-                simulationInterval = setInterval(() => {
-                    addDistance(0.05); 
-                }, 1000);
+            
+            if (!isRunning) {
+                if ("geolocation" in navigator) {
+                    isRunning = true;
+                    startBtn.classList.add('active-run');
+                    startBtnText.innerText = 'Stop Run';
+                    
+                    lastLat = null;
+                    lastLon = null;
+                    lastTime = null;
+                    
+                    watchId = navigator.geolocation.watchPosition(
+                        handlePositionUpdate, 
+                        handleLocationError, 
+                        {
+                            enableHighAccuracy: true,
+                            maximumAge: 0,
+                            timeout: 10000
+                        }
+                    );
+                } else {
+                    tg.showAlert("GPS tracking is not supported on your device.");
+                }
             } else {
-                // Останавливаем бег
-                startBtn.classList.remove('active-run');
-                startBtnText.innerText = 'Start Run';
-                clearInterval(simulationInterval);
+                stopRunning();
             }
         });
 
-        // Кнопка Claim (собрать токены)
+        // Кнопка Claim (Перевод накопленных токенов на общий баланс)
         document.getElementById('claim-btn').addEventListener('click', () => {
             if (unclaimedZRL > 0) {
                 tg.HapticFeedback.notificationOccurred('success');
                 totalBalance += unclaimedZRL;
-                unclaimedZRL = 0;
+                unclaimedZRL = 0; // Сбрасываем накопленные за пробежку
+                
                 updateUI();
+                saveData(); // Сохраняем новый баланс в память
+                
                 tg.showAlert('Tokens successfully claimed to your balance!');
+            } else {
+                tg.showAlert('No tokens to claim yet. Go for a run!');
             }
         });
 
@@ -436,7 +539,7 @@
             alert('Connecting to Solana Phantom Wallet...');
         });
 
-        // Инициализация стартовых нулей
+        // Первичный запуск отображения
         updateUI();
     </script>
 </body>
