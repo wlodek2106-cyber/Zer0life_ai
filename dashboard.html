@@ -240,7 +240,7 @@
             box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
         }
 
-        /* Общие стили модальных окон */
+        /* Модальные окна */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -322,7 +322,6 @@
             border-radius: 10px;
         }
 
-        /* Кнопки в модалке кошелька */
         .wallet-option-btn {
             background-color: #1a1c23;
             border: 1px solid #2d303b;
@@ -475,9 +474,7 @@
                 <span class="modal-title" id="wallet-modal-title">Connect Wallet</span>
                 <button class="close-modal" id="close-wallet">&times;</button>
             </div>
-            <div id="wallet-modal-body">
-                <!-- Контент меняется в зависимости от статуса подключения -->
-            </div>
+            <div id="wallet-modal-body"></div>
         </div>
     </div>
 
@@ -540,7 +537,6 @@
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
-        const walletBtnText = document.getElementById('wallet-btn-text');
 
         function saveData() {
             localStorage.setItem('zrl_total_balance', totalBalance);
@@ -552,9 +548,7 @@
 
         function updateWalletUI() {
             if (connectedWallet) {
-                // Сокращаем адрес вида ZRL9xK2...4p9Q
-                const shortAddr = connectedWallet.substring(0, 5) + '...' + connectedWallet.substring(connectedWallet.length - 4);
-                walletbtnText = shortAddr;
+                const shortAddr = connectedWallet.substring(0, 4) + '...' + connectedWallet.substring(connectedWallet.length - 4);
                 document.getElementById('wallet-btn-text').innerText = shortAddr;
             } else {
                 document.getElementById('wallet-btn-text').innerText = 'Connect';
@@ -630,7 +624,36 @@
             });
         }
 
-        // Рендер модалки кошелька
+        // Вызов реального Phantom Deep Link с запросом подписи/подключения
+        function connectPhantomWallet() {
+            tg.HapticFeedback.impactOccurred('medium');
+            
+            const appUrl = window.location.href.split('#')[0];
+            const cluster = "mainnet-beta";
+            
+            // Официальный стандарт глубокой ссылки для подключения Phantom в мобильных приложениях
+            const phantomDeepLink = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(appUrl)}&redirect_link=${encodeURIComponent(appUrl)}&cluster=${cluster}`;
+
+            // Перенаправляем пользователя в приложение Phantom
+            if (tg.openExtLink) {
+                tg.openExtLink(phantomDeepLink);
+            } else {
+                window.open(phantomDeepLink, '_blank');
+            }
+
+            // Ожидание ответа или ручной ввод адреса/подтверждение для интеграции в Mini App
+            setTimeout(() => {
+                const manualAddress = prompt("Enter your Solana Wallet Address after connecting in Phantom:");
+                if (manualAddress && manualAddress.length > 30) {
+                    connectedWallet = manualAddress.trim();
+                    localStorage.setItem('zrl_wallet', connectedWallet);
+                    walletModal.style.display = 'none';
+                    updateUI();
+                    tg.showAlert("Wallet successfully linked!");
+                }
+            }, 1500);
+        }
+
         function renderWalletModal() {
             const body = document.getElementById('wallet-modal-body');
             const title = document.getElementById('wallet-modal-title');
@@ -640,7 +663,7 @@
                 title.innerText = 'Wallet Management';
                 body.innerHTML = `
                     <div style="background: #1a1c23; border: 1px solid #2d303b; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
-                        <span style="font-size: 12px; color: #8a8d98;">Connected Address</span>
+                        <span style="font-size: 12px; color: #8a8d98;">Connected Solana Address</span>
                         <div style="font-size: 14px; font-weight: 700; color: #a8f07a; word-break: break-all; margin-top: 4px;">${connectedWallet}</div>
                     </div>
                     <button class="disconnect-btn" id="disconnect-wallet-btn">Disconnect Wallet</button>
@@ -656,26 +679,11 @@
                 title.innerText = 'Connect Solana Wallet';
                 body.innerHTML = `
                     <button class="wallet-option-btn" id="connect-phantom">
-                        <span style="font-size: 18px;">👻</span> Phantom Wallet
-                    </button>
-                    <button class="wallet-option-btn" id="connect-solflare">
-                        <span style="font-size: 18px;">☀️</span> Solflare Wallet
+                        <span style="font-size: 18px;">👻</span> Connect Phantom Wallet
                     </button>
                 `;
-                
-                document.getElementById('connect-phantom').addEventListener('click', () => simulateConnect('Phantom'));
-                document.getElementById('connect-solflare').addEventListener('click', () => simulateConnect('Solflare'));
+                document.getElementById('connect-phantom').addEventListener('click', connectPhantomWallet);
             }
-        }
-
-        function simulateConnect(walletName) {
-            tg.HapticFeedback.notificationOccurred('success');
-            // Генерируем красивый фейковый Solana адрес для демонстрации
-            connectedWallet = 'ZRL' + Math.random().toString(36).substring(2, 8).toUpperCase() + 'Solana99X';
-            localStorage.setItem('zrl_wallet', connectedWallet);
-            walletModal.style.display = 'none';
-            updateUI();
-            tg.showAlert(`${walletName} successfully connected!`);
         }
 
         function handlePositionUpdate(position) {
@@ -796,7 +804,6 @@
             }
         });
 
-        // Модальное окно Rewards
         const rewardsModal = document.getElementById('rewards-modal');
         document.getElementById('nav-rewards').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
@@ -808,7 +815,6 @@
             rewardsModal.style.display = 'none';
         });
 
-        // Модальное окно Wallet
         const walletModal = document.getElementById('wallet-modal');
         const openWalletModal = () => {
             tg.HapticFeedback.impactOccurred('light');
