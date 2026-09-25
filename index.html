@@ -3,292 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0Life Run - Web3 Edition</title>
+    <title>Zer0Life Run - Onboarding</title>
+    <!-- Подключаем шрифты для точного попадания в дизайн -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&family=Permanent+Marker&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --bg-dark: #070a13;
-            --panel-bg: #111726;
-            --neon-green: #39ff14;
-            --text-gray: #8a93a6;
-        }
-        body { 
-            background-color: var(--bg-dark); 
-            color: #ffffff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        body {
             margin: 0;
+            background-color: #000;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-        .glass-panel {
-            background: var(--panel-bg);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .btn-green {
-            background: var(--neon-green);
-            color: #000;
-            box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
-            transition: transform 0.1s;
-        }
-        .btn-green:active { transform: scale(0.96); }
-        .text-glow { text-shadow: 0 0 15px rgba(57, 255, 20, 0.5); }
         
-        /* Фон для экрана пробежки (имитация дороги) */
-        .run-bg {
-            background: linear-gradient(to bottom, #070a13 0%, #1a233a 50%, #070a13 100%);
-            position: relative;
+        /* Шрифты для логотипа */
+        .font-zerolife {
+            font-family: 'Montserrat', sans-serif;
         }
-        .run-bg::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0; height: 50%;
-            background: repeating-linear-gradient(
-                to bottom,
-                transparent,
-                transparent 40px,
-                rgba(255,255,255,0.03) 40px,
-                rgba(255,255,255,0.03) 80px
-            );
-            transform: perspective(200px) rotateX(60deg);
-            pointer-events: none;
+        .font-run {
+            font-family: 'Permanent Marker', cursive;
         }
 
-        /* Прячем скроллбар */
-        ::-webkit-scrollbar { display: none; }
-        
-        .fade-enter { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        /* Фоновая картинка с котом */
+        .bg-cat-image {
+            /* ВСТАВЬ СЮДА ССЫЛКУ НА СВОЮ КАРТИНКУ С КОТОМ */
+            background-image: url('https://placehold.co/1080x1920/1a1a2e/ffffff?text=YOUR+CAT+IMAGE+HERE');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Цвета кнопок */
+        .btn-green {
+            background-color: #9bf864; /* Светло-зеленый цвет из макета */
+            color: #000000;
+        }
+        .btn-telegram {
+            background-color: #151a25; /* Темно-синий/серый цвет кнопки */
+            color: #ffffff;
+        }
     </style>
 </head>
 <body class="h-screen w-full flex justify-center items-center overflow-hidden">
 
-    <div class="w-full max-w-md h-full relative flex flex-col bg-[var(--bg-dark)] shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md h-full relative flex flex-col justify-between bg-cat-image shadow-2xl">
         
-        <!-- ==================== ЭКРАН 1: HOME / DASHBOARD ==================== -->
-        <div id="homeScreen" class="flex-1 flex flex-col h-full fade-enter">
+        <!-- Затемнение снизу, чтобы текст читался идеально -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"></div>
+
+        <!-- ==================== HEADER ==================== -->
+        <header class="relative z-10 flex justify-between items-center px-5 pt-10 pb-4">
+            <button class="text-white text-sm font-medium hover:opacity-70 transition-opacity">
+                Close
+            </button>
+            <div class="text-center mt-1">
+                <h1 class="text-white text-[15px] font-bold tracking-wide">Zer0Life Run</h1>
+                <p class="text-gray-400 text-[10px] uppercase tracking-widest">mini app</p>
+            </div>
+            <!-- Иконка 4 точки -->
+            <button class="text-white hover:opacity-70 transition-opacity">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="7" r="1.5" fill="currentColor"/>
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+                    <circle cx="17" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="7" cy="12" r="1.5" fill="currentColor"/>
+                </svg>
+            </button>
+        </header>
+
+        <!-- ==================== BOTTOM CONTENT ==================== -->
+        <main class="relative z-10 px-6 pb-12 flex flex-col items-center w-full mt-auto">
             
-            <!-- Header -->
-            <header class="flex justify-between items-center px-5 pt-5 pb-3">
-                <button class="text-gray-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
-                <div class="text-center">
-                    <h1 class="text-[15px] font-bold tracking-wide">Zer0Life Run</h1>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest">mini app</p>
-                </div>
-                <button class="text-gray-400"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg></button>
-            </header>
+            <!-- Логотип (ZER0LIFE RUN) -->
+            <div class="flex flex-col items-center mb-10 w-full transform -rotate-2">
+                <h2 class="font-zerolife text-5xl italic font-black text-white tracking-tighter" style="line-height: 0.9;">
+                    ZERØLIFE
+                </h2>
+                <h2 class="font-run text-[64px] text-[#9bf864] -mt-3 drop-shadow-md">
+                    RUN
+                </h2>
+                <p class="text-white text-[10px] font-bold tracking-[0.3em] uppercase mt-1">
+                    Move to earn
+                </p>
+            </div>
 
-            <main class="flex-1 overflow-y-auto px-5 pb-24 space-y-4">
+            <!-- Кнопки действий -->
+            <div class="w-full space-y-3">
+                <!-- Get Started -->
+                <button class="w-full btn-green font-bold text-[15px] py-4 rounded-[14px] transition-transform active:scale-95 shadow-lg">
+                    Get Started
+                </button>
                 
-                <!-- Wallet Card -->
-                <div class="glass-panel p-4 flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 rounded-full border-2 border-[var(--neon-green)] flex items-center justify-center bg-gray-800 text-xl shadow-[0_0_10px_rgba(57,255,20,0.3)]">
-                            🐱
-                        </div>
-                        <div>
-                            <p class="text-[11px] text-[var(--text-gray)] font-medium mb-0.5">ZRL Balance</p>
-                            <h2 class="text-2xl font-black tracking-tight" id="mainBalance">1,248.75</h2>
-                        </div>
-                    </div>
-                    <button class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10" onclick="alert('Открытие кошелька...')">
-                        <svg class="w-5 h-5 text-[var(--neon-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                    </button>
-                </div>
-
-                <!-- Today's Run Card -->
-                <div class="glass-panel p-4 relative overflow-hidden">
-                    <div class="absolute top-[-50%] right-[-10%] w-32 h-32 bg-[var(--neon-green)] opacity-10 blur-[40px] rounded-full pointer-events-none"></div>
-                    <div class="flex justify-between items-center relative z-10">
-                        <div>
-                            <p class="text-[11px] text-[var(--text-gray)] font-medium mb-1">Today's Run</p>
-                            <h3 class="text-xl font-bold">2.34 km</h3>
-                            <p class="text-xs font-bold text-[var(--neon-green)] mt-1 text-glow">+12.6 ZRL</p>
-                        </div>
-                        <button class="btn-green px-5 py-2 rounded-xl text-xs font-bold tracking-wide uppercase">
-                            Claim
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Level Progress -->
-                <div class="px-1 mt-2">
-                    <div class="flex justify-between items-end mb-2">
-                        <span class="text-[13px] font-bold">Level 3</span>
-                        <span class="text-[10px] text-[var(--text-gray)] font-medium tracking-wider">480 / 1,000 XP</span>
-                    </div>
-                    <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div class="h-full bg-[var(--neon-green)] w-[48%] rounded-full shadow-[0_0_8px_rgba(57,255,20,0.5)]"></div>
-                    </div>
-                </div>
-
-                <!-- 3D Graphic Area -->
-                <div class="w-full h-56 mt-4 rounded-3xl relative overflow-hidden bg-gradient-to-b from-[#1a233a] to-[#070a13] flex flex-col items-center justify-end pb-6 border border-white/5">
-                    <div class="absolute inset-0 flex items-center justify-center opacity-20 text-[100px]">🏙️</div>
-                    <div class="z-10 text-6xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">🐈‍⬛</div>
-                    
-                    <button onclick="startWorkout()" class="btn-green absolute bottom-4 w-4/5 py-4 rounded-2xl text-[15px] font-black uppercase tracking-wider flex items-center justify-center space-x-2 z-20">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        <span>Start Run</span>
-                    </button>
-                </div>
-            </main>
-
-            <!-- Bottom Navigation -->
-            <nav class="absolute bottom-0 w-full h-20 bg-[var(--bg-dark)] border-t border-white/5 flex justify-around items-center px-2 pb-4 pt-2 z-30">
-                <button class="flex flex-col items-center space-y-1 text-[var(--neon-green)]">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                    <span class="text-[9px] font-bold">Home</span>
+                <!-- Login with Telegram -->
+                <button class="w-full btn-telegram font-medium text-[14px] py-4 rounded-[14px] flex items-center justify-center space-x-2 transition-transform active:scale-95 border border-white/5">
+                    <!-- Иконка Telegram -->
+                    <svg class="w-5 h-5 text-[#40b3e6]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
+                    </svg>
+                    <span>Login with Telegram</span>
                 </button>
-                <button class="flex flex-col items-center space-y-1 text-[var(--text-gray)] hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    <span class="text-[9px] font-medium">Run</span>
-                </button>
-                <button class="flex flex-col items-center space-y-1 text-[var(--text-gray)] hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>
-                    <span class="text-[9px] font-medium">Rewards</span>
-                </button>
-                <button class="flex flex-col items-center space-y-1 text-[var(--text-gray)] hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    <span class="text-[9px] font-medium">Wallet</span>
-                </button>
-            </nav>
-        </div>
+            </div>
 
-        <!-- ==================== ЭКРАН 2: RUN MODE ==================== -->
-        <div id="runScreen" class="hidden flex-1 flex flex-col h-full run-bg fade-enter">
-            
-            <header class="flex justify-between items-center px-5 pt-5 pb-3 z-10 relative">
-                <button onclick="stopWorkout()" class="flex items-center text-[var(--neon-green)] font-bold text-[13px]">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    Back
-                </button>
-                <div class="text-center">
-                    <h1 class="text-[15px] font-bold tracking-wide">Zer0Life Run</h1>
-                    <p class="text-[10px] text-[var(--neon-green)] uppercase tracking-widest animate-pulse">Recording</p>
-                </div>
-                <button class="text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg></button>
-            </header>
-
-            <main class="flex-1 flex flex-col items-center pt-8 z-10 relative">
-                
-                <h2 class="text-[52px] font-black tracking-tighter tabular-nums drop-shadow-lg leading-none" id="runDistance">0.00 <span class="text-2xl text-[var(--text-gray)]">km</span></h2>
-                <p class="text-[11px] text-[var(--text-gray)] uppercase tracking-widest mt-1">Distance</p>
-                
-                <div class="flex justify-between w-full px-12 mt-10">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold tabular-nums drop-shadow-md" id="runTime">00:00</div>
-                        <p class="text-[10px] text-[var(--text-gray)] uppercase tracking-widest mt-1">Time</p>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold tabular-nums drop-shadow-md">6:12</div>
-                        <p class="text-[10px] text-[var(--text-gray)] uppercase tracking-widest mt-1">Pace / km</p>
-                    </div>
-                </div>
-
-                <div class="flex-1"></div>
-
-                <!-- Info Block -->
-                <div class="text-center mb-8">
-                    <p class="text-[12px] text-gray-300 font-medium">Collecting ZRL...</p>
-                    <p class="text-lg font-bold text-[var(--neon-green)] text-glow mt-1" id="runZrl">+0.0 ZRL</p>
-                </div>
-
-                <!-- Pause Button -->
-                <button onclick="stopWorkout()" class="w-20 h-20 rounded-full bg-[var(--neon-green)] flex items-center justify-center shadow-[0_0_30px_rgba(57,255,20,0.4)] mb-8 active:scale-95 transition-transform">
-                    <svg class="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                </button>
-
-                <!-- Energy Bar -->
-                <div class="w-full px-6 pb-8">
-                    <div class="flex justify-between items-end mb-2">
-                        <div class="flex items-center space-x-1 text-yellow-500">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path></svg>
-                            <span class="text-[11px] font-bold text-white uppercase tracking-wider">Energy</span>
-                        </div>
-                        <span class="text-[10px] text-[var(--text-gray)] font-medium">68%</span>
-                    </div>
-                    <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div class="h-full bg-yellow-500 w-[68%] rounded-full shadow-[0_0_8px_rgba(234,179,8,0.5)]"></div>
-                    </div>
-                </div>
-
-            </main>
-        </div>
-
+        </main>
     </div>
 
-    <!-- JavaScript Logic -->
-    <script>
-        const homeScreen = document.getElementById('homeScreen');
-        const runScreen = document.getElementById('runScreen');
-        
-        // Переменные интерфейса
-        const distEl = document.getElementById('runDistance');
-        const timeEl = document.getElementById('runTime');
-        const zrlEl = document.getElementById('runZrl');
-        const mainBalanceEl = document.getElementById('mainBalance');
-
-        let isRunning = false;
-        let distance = 0;
-        let zrlEarned = 0;
-        let seconds = 0;
-        let timerInterval;
-        let totalBalance = 1248.75; // Текущий баланс из макета
-
-        function startWorkout() {
-            // Анимация переключения экранов
-            homeScreen.classList.add('hidden');
-            runScreen.classList.remove('hidden');
-            
-            // Сброс значений
-            distance = 0;
-            zrlEarned = 0;
-            seconds = 0;
-            updateRunUI();
-
-            // Запуск симуляции бега (в проде меняется на GPS API)
-            isRunning = true;
-            timerInterval = setInterval(() => {
-                seconds++;
-                
-                // Имитация: каждые 1 сек добавляем ~3 метра
-                distance += 0.003; 
-                // Имитация: 5 ZRL за каждый 1 км
-                zrlEarned = distance * 5; 
-                
-                updateRunUI();
-            }, 1000);
-        }
-
-        function stopWorkout() {
-            isRunning = false;
-            clearInterval(timerInterval);
-
-            // Сохраняем заработанное в общий баланс
-            totalBalance += zrlEarned;
-            
-            // Форматируем баланс с запятыми
-            mainBalanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
-            // Возвращаем домашний экран
-            runScreen.classList.add('hidden');
-            homeScreen.classList.remove('hidden');
-        }
-
-        function updateRunUI() {
-            // Формат дистанции (0.00 km)
-            distEl.innerHTML = `${distance.toFixed(2)} <span class="text-2xl text-[var(--text-gray)]">km</span>`;
-            
-            // Формат ZRL (+0.0 ZRL)
-            zrlEl.innerText = `+${zrlEarned.toFixed(1)} ZRL`;
-            
-            // Формат времени (ММ:СС)
-            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
-            timeEl.innerText = `${m}:${s}`;
-        }
-    </script>
 </body>
 </html>
