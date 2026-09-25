@@ -1,110 +1,146 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0Life Run - Onboarding</title>
-    <!-- Подключаем шрифты для точного попадания в дизайн -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&family=Permanent+Marker&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Zer0life Run</title>
     <style>
-        body {
+        body, html {
             margin: 0;
-            background-color: #000;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-        
-        /* Шрифты для логотипа */
-        .font-zerolife {
-            font-family: 'Montserrat', sans-serif;
-        }
-        .font-run {
-            font-family: 'Permanent Marker', cursive;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0b0c10;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        /* Фоновая картинка с котом */
-        .bg-cat-image {
-            /* ВСТАВЬ СЮДА ССЫЛКУ НА СВОЮ КАРТИНКУ С КОТОМ */
-            background-image: url('https://placehold.co/1080x1920/1a1a2e/ffffff?text=YOUR+CAT+IMAGE+HERE');
+        /* Контейнер с вашим фоновым изображением */
+        .main-container {
+            flex-grow: 1;
+            background-image: url('https://i.postimg.cc/J00FbBRZ/IMG-8899.jpg'); 
             background-size: cover;
-            background-position: center;
+            background-position: center top;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
         }
 
-        /* Цвета кнопок */
-        .btn-green {
-            background-color: #9bf864; /* Светло-зеленый цвет из макета */
-            color: #000000;
+        /* Темный градиент снизу */
+        .main-container::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to top, rgba(11, 12, 16, 1) 10%, rgba(11, 12, 16, 0.8) 40%, transparent 100%);
+            z-index: 1;
         }
-        .btn-telegram {
-            background-color: #151a25; /* Темно-синий/серый цвет кнопки */
+
+        .content {
+            position: relative;
+            z-index: 2;
+            padding: 0 24px 40px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 900;
+            font-style: italic;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 0.9;
+            margin-bottom: 8px;
+            transform: skewX(-5deg);
+        }
+
+        .title-white {
             color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .title-green {
+            color: #a8f07a;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 32px;
+            opacity: 0.8;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border-radius: 16px;
+            border: none;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: #a8f07a;
+            color: #000000;
+            margin-bottom: 12px;
+        }
+
+        .btn-secondary {
+            background-color: #1a1c23;
+            color: #ffffff;
+            border: 1px solid #2d303b;
+        }
+
+        .tg-icon {
+            width: 20px;
+            height: 20px;
+            fill: #a8f07a;
         }
     </style>
 </head>
-<body class="h-screen w-full flex justify-center items-center overflow-hidden">
+<body>
 
-    <div class="w-full max-w-md h-full relative flex flex-col justify-between bg-cat-image shadow-2xl">
-        
-        <!-- Затемнение снизу, чтобы текст читался идеально -->
-        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"></div>
-
-        <!-- ==================== HEADER ==================== -->
-        <header class="relative z-10 flex justify-between items-center px-5 pt-10 pb-4">
-            <button class="text-white text-sm font-medium hover:opacity-70 transition-opacity">
-                Close
-            </button>
-            <div class="text-center mt-1">
-                <h1 class="text-white text-[15px] font-bold tracking-wide">Zer0Life Run</h1>
-                <p class="text-gray-400 text-[10px] uppercase tracking-widest">mini app</p>
+    <div class="main-container">
+        <div class="content">
+            <div class="title">
+                <div class="title-white">ZERØLIFE</div>
+                <div class="title-green">RUN</div>
             </div>
-            <!-- Иконка 4 точки -->
-            <button class="text-white hover:opacity-70 transition-opacity">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="7" r="1.5" fill="currentColor"/>
-                    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
-                    <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
-                    <circle cx="17" cy="12" r="1.5" fill="currentColor"/>
-                    <circle cx="7" cy="12" r="1.5" fill="currentColor"/>
-                </svg>
-            </button>
-        </header>
-
-        <!-- ==================== BOTTOM CONTENT ==================== -->
-        <main class="relative z-10 px-6 pb-12 flex flex-col items-center w-full mt-auto">
             
-            <!-- Логотип (ZER0LIFE RUN) -->
-            <div class="flex flex-col items-center mb-10 w-full transform -rotate-2">
-                <h2 class="font-zerolife text-5xl italic font-black text-white tracking-tighter" style="line-height: 0.9;">
-                    ZERØLIFE
-                </h2>
-                <h2 class="font-run text-[64px] text-[#9bf864] -mt-3 drop-shadow-md">
-                    RUN
-                </h2>
-                <p class="text-white text-[10px] font-bold tracking-[0.3em] uppercase mt-1">
-                    Move to earn
-                </p>
-            </div>
+            <div class="subtitle">Move to Earn</div>
 
-            <!-- Кнопки действий -->
-            <div class="w-full space-y-3">
-                <!-- Get Started -->
-                <button class="w-full btn-green font-bold text-[15px] py-4 rounded-[14px] transition-transform active:scale-95 shadow-lg">
-                    Get Started
-                </button>
-                
-                <!-- Login with Telegram -->
-                <button class="w-full btn-telegram font-medium text-[14px] py-4 rounded-[14px] flex items-center justify-center space-x-2 transition-transform active:scale-95 border border-white/5">
-                    <!-- Иконка Telegram -->
-                    <svg class="w-5 h-5 text-[#40b3e6]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
-                    </svg>
-                    <span>Login with Telegram</span>
-                </button>
-            </div>
-
-        </main>
+            <button class="btn btn-primary">
+                Get Started
+            </button>
+            
+            <button class="btn btn-secondary">
+                <svg class="tg-icon" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.99 1.25-5.61 3.66-.53.36-1.01.53-1.44.52-.47-.01-1.38-.26-2.05-.48-.83-.27-1.48-.42-1.42-.89.03-.25.38-.51 1.07-.78 4.2-1.82 7-3.02 8.4-3.61 4-.1.71-2.73.54-3.55.51z"/>
+                </svg>
+                Login with Telegram
+            </button>
+        </div>
     </div>
 
 </body>
