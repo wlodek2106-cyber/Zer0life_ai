@@ -71,13 +71,17 @@
             background-color: #1a1c23;
             border: 1px solid #2d303b;
             border-radius: 12px;
-            width: 44px;
             height: 44px;
+            padding: 0 14px;
             display: flex;
             justify-content: center;
             align-items: center;
+            gap: 8px;
             cursor: pointer;
             transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a8f07a;
         }
 
         .wallet-btn:active {
@@ -236,7 +240,7 @@
             box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
         }
 
-        /* Модальное окно Rewards */
+        /* Общие стили модальных окон */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -318,6 +322,41 @@
             border-radius: 10px;
         }
 
+        /* Кнопки в модалке кошелька */
+        .wallet-option-btn {
+            background-color: #1a1c23;
+            border: 1px solid #2d303b;
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: 0.2s;
+        }
+
+        .wallet-option-btn:hover {
+            border-color: #a8f07a;
+        }
+
+        .disconnect-btn {
+            background-color: rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            color: #ff4757;
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
         /* Нижняя навигация */
         .bottom-nav {
             position: fixed;
@@ -366,12 +405,14 @@
                     <span class="balance-amount" id="total-balance">0.00</span>
                 </div>
             </div>
+            <!-- Кнопка кошелька -->
             <div class="wallet-btn" id="wallet-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a8f07a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
                     <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
                     <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
                 </svg>
+                <span id="wallet-btn-text">Connect</span>
             </div>
         </div>
 
@@ -423,19 +464,30 @@
                 <span class="modal-title">Levels & Rewards</span>
                 <button class="close-modal" id="close-rewards">&times;</button>
             </div>
-            <div id="levels-list-container">
-                <!-- Сюда динамически подгружаются уровни -->
+            <div id="levels-list-container"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно Wallet -->
+    <div class="modal-overlay" id="wallet-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="wallet-modal-title">Connect Wallet</span>
+                <button class="close-modal" id="close-wallet">&times;</button>
+            </div>
+            <div id="wallet-modal-body">
+                <!-- Контент меняется в зависимости от статуса подключения -->
             </div>
         </div>
     </div>
 
     <!-- Нижняя навигация -->
     <div class="bottom-nav">
-        <div class="nav-item active" id="nav-rewards">
+        <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
             Rewards
         </div>
-        <div class="nav-item" id="nav-wallet">
+        <div class="nav-item active" id="nav-wallet">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
@@ -468,6 +520,7 @@
         let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
         let todaySteps = parseInt(localStorage.getItem('zrl_today_steps')) || 0;
+        let connectedWallet = localStorage.getItem('zrl_wallet') || null;
         
         let isRunning = false;
         let lastMotionTime = 0;
@@ -487,6 +540,7 @@
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
+        const walletBtnText = document.getElementById('wallet-btn-text');
 
         function saveData() {
             localStorage.setItem('zrl_total_balance', totalBalance);
@@ -494,6 +548,17 @@
             localStorage.setItem('zrl_total_distance', totalDistance);
             localStorage.setItem('zrl_unclaimed', unclaimedZRL);
             localStorage.setItem('zrl_today_steps', todaySteps);
+        }
+
+        function updateWalletUI() {
+            if (connectedWallet) {
+                // Сокращаем адрес вида ZRL9xK2...4p9Q
+                const shortAddr = connectedWallet.substring(0, 5) + '...' + connectedWallet.substring(connectedWallet.length - 4);
+                walletbtnText = shortAddr;
+                document.getElementById('wallet-btn-text').innerText = shortAddr;
+            } else {
+                document.getElementById('wallet-btn-text').innerText = 'Connect';
+            }
         }
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -536,9 +601,9 @@
             levelTextEl.innerText = 'Level ' + currentLevelObj.level;
             progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
             progressBarEl.style.width = `${progressPercent}%`;
+            updateWalletUI();
         }
 
-        // Рендер списка уровней в модалке Rewards
         function renderRewardsList() {
             const container = document.getElementById('levels-list-container');
             container.innerHTML = '';
@@ -563,6 +628,54 @@
                 `;
                 container.appendChild(card);
             });
+        }
+
+        // Рендер модалки кошелька
+        function renderWalletModal() {
+            const body = document.getElementById('wallet-modal-body');
+            const title = document.getElementById('wallet-modal-title');
+            body.innerHTML = '';
+
+            if (connectedWallet) {
+                title.innerText = 'Wallet Management';
+                body.innerHTML = `
+                    <div style="background: #1a1c23; border: 1px solid #2d303b; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+                        <span style="font-size: 12px; color: #8a8d98;">Connected Address</span>
+                        <div style="font-size: 14px; font-weight: 700; color: #a8f07a; word-break: break-all; margin-top: 4px;">${connectedWallet}</div>
+                    </div>
+                    <button class="disconnect-btn" id="disconnect-wallet-btn">Disconnect Wallet</button>
+                `;
+                document.getElementById('disconnect-wallet-btn').addEventListener('click', () => {
+                    tg.HapticFeedback.notificationOccurred('warning');
+                    localStorage.removeItem('zrl_wallet');
+                    connectedWallet = null;
+                    walletModal.style.display = 'none';
+                    updateUI();
+                });
+            } else {
+                title.innerText = 'Connect Solana Wallet';
+                body.innerHTML = `
+                    <button class="wallet-option-btn" id="connect-phantom">
+                        <span style="font-size: 18px;">👻</span> Phantom Wallet
+                    </button>
+                    <button class="wallet-option-btn" id="connect-solflare">
+                        <span style="font-size: 18px;">☀️</span> Solflare Wallet
+                    </button>
+                `;
+                
+                document.getElementById('connect-phantom').addEventListener('click', () => simulateConnect('Phantom'));
+                document.getElementById('connect-solflare').addEventListener('click', () => simulateConnect('Solflare'));
+            }
+        }
+
+        function simulateConnect(walletName) {
+            tg.HapticFeedback.notificationOccurred('success');
+            // Генерируем красивый фейковый Solana адрес для демонстрации
+            connectedWallet = 'ZRL' + Math.random().toString(36).substring(2, 8).toUpperCase() + 'Solana99X';
+            localStorage.setItem('zrl_wallet', connectedWallet);
+            walletModal.style.display = 'none';
+            updateUI();
+            tg.showAlert(`${walletName} successfully connected!`);
         }
 
         function handlePositionUpdate(position) {
@@ -683,7 +796,7 @@
             }
         });
 
-        // Управление модальным окном Rewards
+        // Модальное окно Rewards
         const rewardsModal = document.getElementById('rewards-modal');
         document.getElementById('nav-rewards').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
@@ -695,14 +808,19 @@
             rewardsModal.style.display = 'none';
         });
 
-        document.getElementById('wallet-btn').addEventListener('click', () => {
+        // Модальное окно Wallet
+        const walletModal = document.getElementById('wallet-modal');
+        const openWalletModal = () => {
             tg.HapticFeedback.impactOccurred('light');
-            alert('Connecting to Solana Phantom Wallet...');
-        });
+            renderWalletModal();
+            walletModal.style.display = 'flex';
+        };
 
-        document.getElementById('nav-wallet').addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
-            alert('Connecting to Solana Phantom Wallet...');
+        document.getElementById('wallet-btn').addEventListener('click', openWalletModal);
+        document.getElementById('nav-wallet').addEventListener('click', openWalletModal);
+
+        document.getElementById('close-wallet').addEventListener('click', () => {
+            walletModal.style.display = 'none';
         });
 
         document.getElementById('nav-more').addEventListener('click', () => {
