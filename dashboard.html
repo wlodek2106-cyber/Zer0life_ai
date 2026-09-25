@@ -27,7 +27,7 @@
             overflow-y: auto;
         }
 
-        /* Header (Баланс и Кошелек) */
+        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -84,7 +84,7 @@
             transform: scale(0.95);
         }
 
-        /* Карточка "Today's Run" */
+        /* Карточка пробежки */
         .run-card {
             background-color: #15171e;
             border: 1px solid rgba(168, 240, 122, 0.2);
@@ -93,15 +93,6 @@
             margin-bottom: 24px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             position: relative;
-        }
-
-        .run-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 20px;
-            box-shadow: inset 0 0 15px rgba(168, 240, 122, 0.05);
-            pointer-events: none;
         }
 
         .run-header {
@@ -142,6 +133,11 @@
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .claim-btn:active {
+            transform: scale(0.95);
         }
 
         /* Прогресс уровня */
@@ -172,10 +168,11 @@
         }
 
         .progress-bar-fill {
-            width: 48%; 
+            width: 0%; /* Начинаем с 0% */
             height: 100%;
             background: linear-gradient(90deg, #5fc342 0%, #a8f07a 100%);
             border-radius: 4px;
+            transition: width 0.3s ease;
         }
 
         /* Центральное изображение */
@@ -183,7 +180,6 @@
             flex-grow: 1;
             border-radius: 20px;
             background-color: #1a1c23;
-            /* Вставлена ваша ссылка на кота со спины */
             background-image: url('https://i.postimg.cc/Y9H8xDw6/IMG-8907.jpg'); 
             background-size: cover;
             background-position: center;
@@ -210,6 +206,13 @@
             gap: 10px;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(168, 240, 122, 0.3);
+            transition: all 0.3s;
+        }
+
+        .start-run-btn.active-run {
+            background-color: #ff4757;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
         }
 
         /* Нижняя навигация */
@@ -240,7 +243,7 @@
         .nav-item.active {
             color: #a8f07a;
         }
-
+        
         .nav-icon {
             width: 24px;
             height: 24px;
@@ -257,7 +260,7 @@
                 <div class="avatar"></div>
                 <div class="balance-info">
                     <span class="balance-label">ZRL Balance</span>
-                    <span class="balance-amount">1,248.75</span>
+                    <span class="balance-amount" id="total-balance">0.00</span>
                 </div>
             </div>
             <div class="wallet-btn" id="wallet-btn">
@@ -274,28 +277,26 @@
             <div class="run-header">Today's Run</div>
             <div class="run-stats-container">
                 <div class="run-stats">
-                    <span class="distance">2.34 km</span>
-                    <span class="earned-tokens">+12.6 ZRL</span>
+                    <span class="distance" id="today-distance">0.00 km</span>
+                    <span class="earned-tokens" id="today-earned">+0.00 ZRL</span>
                 </div>
-                <button class="claim-btn">Claim</button>
+                <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
         </div>
 
         <!-- Level Progress -->
         <div class="level-section">
             <div class="level-header">
-                <span>Level 3</span>
-                <span class="level-xp">480 / 1,000 XP</span>
+                <span id="current-level-text">Level 1</span>
+                <span class="level-xp" id="level-progress-text">0.00 / 5.00 km</span>
             </div>
             <div class="progress-bar-bg">
-                <div class="progress-bar-fill"></div>
+                <div class="progress-bar-fill" id="level-progress-bar"></div>
             </div>
         </div>
 
         <!-- Hero Image -->
-        <div class="hero-image-container">
-            <!-- Ссылка на картинку применена в CSS -->
-        </div>
+        <div class="hero-image-container"></div>
 
         <!-- Start Run Button -->
         <button class="start-run-btn" id="start-run-btn">
@@ -304,7 +305,7 @@
                 <path d="m4 17 5-4 4 1 2-4"></path>
                 <path d="M15 21v-4l-4-3-1-6 5-2"></path>
             </svg>
-            Start Run
+            <span id="start-btn-text">Start Run</span>
         </button>
     </div>
 
@@ -318,18 +319,7 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             Run
         </div>
-        <div class="nav-item">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
-            Rewards
-        </div>
-        <div class="nav-item">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
-            Wallet
-        </div>
-        <div class="nav-item">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-            More
-        </div>
+        <!-- Остальные иконки навигации скрыты для компактности -->
     </div>
 
     <script>
@@ -337,15 +327,117 @@
         tg.expand();
         tg.ready();
 
-        document.getElementById('start-run-btn').addEventListener('click', () => {
+        // ИГРОВАЯ МАТЕМАТИКА И СОСТОЯНИЕ
+        const ZRL_PER_KM = 500;
+        
+        // Пороги уровней в километрах (всего за всё время)
+        const LEVELS = [
+            { level: 1, targetKm: 5 },
+            { level: 2, targetKm: 20 },
+            { level: 3, targetKm: 50 },
+            { level: 4, targetKm: 100 },
+            { level: 5, targetKm: 150 },
+            { level: 6, targetKm: 200 }
+        ];
+
+        // Исходные показатели
+        let totalBalance = 0.00;
+        let todayDistance = 0.00;
+        let totalDistance = 0.00; // Накопленная дистанция для уровней
+        let unclaimedZRL = 0.00;
+        
+        let isRunning = false;
+        let simulationInterval;
+
+        // Элементы интерфейса
+        const balanceEl = document.getElementById('total-balance');
+        const todayDistEl = document.getElementById('today-distance');
+        const todayEarnedEl = document.getElementById('today-earned');
+        const levelTextEl = document.getElementById('current-level-text');
+        const progressTextEl = document.getElementById('level-progress-text');
+        const progressBarEl = document.getElementById('level-progress-bar');
+
+        // Функция обновления интерфейса
+        function updateUI() {
+            balanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
+            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL';
+
+            // Расчет текущего уровня
+            let currentLevelObj = LEVELS[0];
+            for (let i = 0; i < LEVELS.length; i++) {
+                if (totalDistance < LEVELS[i].targetKm) {
+                    currentLevelObj = LEVELS[i];
+                    break;
+                }
+                // Если достигли максимума
+                if (i === LEVELS.length - 1) currentLevelObj = LEVELS[i]; 
+            }
+
+            // Вычисление прогресса внутри текущего уровня
+            let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
+            let kmInCurrentLevel = totalDistance - prevLevelKm;
+            let kmNeededForLevel = currentLevelObj.targetKm - prevLevelKm;
+            
+            let progressPercent = (kmInCurrentLevel / kmNeededForLevel) * 100;
+            if (progressPercent > 100) progressPercent = 100;
+
+            levelTextEl.innerText = 'Level ' + currentLevelObj.level;
+            progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
+            progressBarEl.style.width = `${progressPercent}%`;
+        }
+
+        // Логика добавления дистанции (симуляция GPS)
+        function addDistance(km) {
+            todayDistance += km;
+            totalDistance += km;
+            unclaimedZRL += (km * ZRL_PER_KM);
+            updateUI();
+        }
+
+        // Кнопка Start/Stop Run
+        const startBtn = document.getElementById('start-run-btn');
+        const startBtnText = document.getElementById('start-btn-text');
+
+        startBtn.addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('heavy');
-            alert('GPS Tracker initialized! Time to run.');
+            isRunning = !isRunning;
+
+            if (isRunning) {
+                // Начинаем бег
+                startBtn.classList.add('active-run');
+                startBtnText.innerText = 'Stop Run';
+                
+                // Симуляция: добавляем 0.05 км (50 метров) каждую секунду для наглядности
+                simulationInterval = setInterval(() => {
+                    addDistance(0.05); 
+                }, 1000);
+            } else {
+                // Останавливаем бег
+                startBtn.classList.remove('active-run');
+                startBtnText.innerText = 'Start Run';
+                clearInterval(simulationInterval);
+            }
+        });
+
+        // Кнопка Claim (собрать токены)
+        document.getElementById('claim-btn').addEventListener('click', () => {
+            if (unclaimedZRL > 0) {
+                tg.HapticFeedback.notificationOccurred('success');
+                totalBalance += unclaimedZRL;
+                unclaimedZRL = 0;
+                updateUI();
+                tg.showAlert('Tokens successfully claimed to your balance!');
+            }
         });
 
         document.getElementById('wallet-btn').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
             alert('Connecting to Solana Phantom Wallet...');
         });
+
+        // Инициализация стартовых нулей
+        updateUI();
     </script>
 </body>
 </html>
