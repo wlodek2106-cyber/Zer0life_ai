@@ -327,13 +327,9 @@
         </button>
     </div>
 
-    <!-- Bottom Navigation -->
+    <!-- Нижняя навигация (оставлены только нужные разделы) -->
     <div class="bottom-nav">
         <div class="nav-item active">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            Home
-        </div>
-        <div class="nav-item">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             Run
         </div>
@@ -368,20 +364,17 @@
             { level: 6, targetKm: 200 }
         ];
 
-        // Загружаем сохраненные данные из памяти телефона (если они есть)
         let totalBalance = parseFloat(localStorage.getItem('zrl_total_balance')) || 0.00;
         let todayDistance = parseFloat(localStorage.getItem('zrl_today_distance')) || 0.00;
         let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
         
-        // GPS Переменные
         let isRunning = false;
         let watchId = null;
         let lastLat = null;
         let lastLon = null;
         let lastTime = null;
 
-        // Элементы интерфейса
         const balanceEl = document.getElementById('total-balance');
         const todayDistEl = document.getElementById('today-distance');
         const todayEarnedEl = document.getElementById('today-earned');
@@ -392,7 +385,6 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // Функция сохранения данных в память телефона
         function saveData() {
             localStorage.setItem('zrl_total_balance', totalBalance);
             localStorage.setItem('zrl_today_distance', todayDistance);
@@ -400,7 +392,6 @@
             localStorage.setItem('zrl_unclaimed', unclaimedZRL);
         }
 
-        // Формула Гаверсинуса для расчета расстояния по GPS
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -457,7 +448,7 @@
                         unclaimedZRL += (distanceKm * ZRL_PER_KM);
                         
                         updateUI();
-                        saveData(); // Сохраняем прогресс на ходу
+                        saveData();
                     } else if (speedKmh > MAX_SPEED_KMH && distanceKm > 0.01) {
                         warningEl.style.display = 'block';
                         tg.HapticFeedback.notificationOccurred('warning');
@@ -518,15 +509,14 @@
             }
         });
 
-        // Кнопка Claim (Перевод накопленных токенов на общий баланс)
         document.getElementById('claim-btn').addEventListener('click', () => {
             if (unclaimedZRL > 0) {
                 tg.HapticFeedback.notificationOccurred('success');
                 totalBalance += unclaimedZRL;
-                unclaimedZRL = 0; // Сбрасываем накопленные за пробежку
+                unclaimedZRL = 0;
                 
                 updateUI();
-                saveData(); // Сохраняем новый баланс в память
+                saveData();
                 
                 tg.showAlert('Tokens successfully claimed to your balance!');
             } else {
@@ -539,7 +529,6 @@
             alert('Connecting to Solana Phantom Wallet...');
         });
 
-        // Первичный запуск отображения
         updateUI();
     </script>
 </body>
