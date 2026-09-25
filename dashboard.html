@@ -342,7 +342,7 @@
         tg.ready();
 
         const ZRL_PER_KM = 500;
-        const STEPS_PER_KM = 1333; // Около 1333 шагов на 1 км
+        const METERS_PER_STEP = 0.00075; // 1 шаг = 0.75 метра (около 1333 шагов на 1 км)
         
         const LEVELS = [
             { level: 1, targetKm: 5 },
@@ -360,7 +360,7 @@
         let todaySteps = parseInt(localStorage.getItem('zrl_today_steps')) || 0;
         
         let isRunning = false;
-        let runInterval = null;
+        let lastMotionTime = 0;
 
         const balanceEl = document.getElementById('total-balance');
         const todayDistEl = document.getElementById('today-distance');
@@ -407,39 +407,62 @@
             progressBarEl.style.width = `${progressPercent}%`;
         }
 
-        // Запуск стабильного процесса бега (симуляция естественного темпа тренировки)
-        function startRunning() {
-            isRunning = true;
-            startBtn.classList.add('active-run');
-            startBtnText.innerText = 'Stop Run';
+        // Честный подсчет шагов через акселерометр телефона при реальном движении
+        function handleMotion(event) {
+            if (!isRunning) return;
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
 
-            // Каждую секунду прибавляем небольшую порцию километров и шагов (имитация активного бега)
-            runInterval = setInterval(() => {
-                const addKm = 0.02; // 20 метров за секунду
-                const addSteps = Math.round(addKm * STEPS_PER_KM);
+            const totalAcc = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+            const now = Date.now();
 
-                todayDistance += addKm;
-                totalDistance += addKm;
-                todaySteps += addSteps;
-                unclaimedZRL += (addKm * ZRL_PER_KM);
+            // Порог встряски для фиксации шага с минимальным интервалом 300мс
+            if (totalAcc > 13.5 && (now - lastMotionTime) > 300) {
+                lastMotionTime = now;
+                todaySteps++;
+
+                const stepKm = METERS_PER_STEP;
+                todayDistance += stepKm;
+                totalDistance += stepKm;
+                unclaimedZRL += (stepKm * ZRL_PER_KM);
 
                 updateUI();
                 saveData();
-            }, 1000);
+            }
         }
 
         function stopRunning() {
             isRunning = false;
             startBtn.classList.remove('active-run');
             startBtnText.innerText = 'Start Run';
-            clearInterval(runInterval);
+            window.removeEventListener('devicemotion', handleMotion);
         }
 
-        startBtn.addEventListener('click', () => {
+        startBtn.addEventListener('click', async () => {
             tg.HapticFeedback.impactOccurred('heavy');
             
             if (!isRunning) {
-                startRunning();
+                // Запрос разрешений на использование датчиков движения (обязательно для iOS)
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try {
+                        const response = await DeviceMotionEvent.requestPermission();
+                        if (response === 'granted') {
+                            window.addEventListener('devicemotion', handleMotion);
+                            isRunning = true;
+                            startBtn.classList.add('active-run');
+                            startBtnText.innerText = 'Stop Run';
+                        } else {
+                            tg.showAlert("Motion permission is required to track your run.");
+                        }
+                    } catch (e) {
+                        console.log(e);
+                    }
+                } else {
+                    window.addEventListener('devicemotion', handleMotion);
+                    isRunning = true;
+                    startBtn.classList.add('active-run');
+                    startBtnText.innerText = 'Stop Run';
+                }
             } else {
                 stopRunning();
             }
@@ -456,7 +479,7 @@
                 
                 tg.showAlert('Tokens successfully claimed to your balance!');
             } else {
-                tg.showAlert('No tokens to claim yet. Start a run first!');
+                tg.showAlert('No tokens to claim yet. Make some steps!');
             }
         });
 
