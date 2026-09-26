@@ -467,7 +467,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно Wallet -->
+    <!-- Модальное окно Wallet с поддержкой селектора сетей/кошельков -->
     <div class="modal-overlay" id="wallet-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -624,34 +624,34 @@
             });
         }
 
-        // Вызов реального Phantom Deep Link с запросом подписи/подключения
-        function connectPhantomWallet() {
+        // Подключение к сети Solana через встроенный provider (Phantom / Solflare / др.)
+        async function connectSolanaWallet(providerName) {
             tg.HapticFeedback.impactOccurred('medium');
-            
-            const appUrl = window.location.href.split('#')[0];
-            const cluster = "mainnet-beta";
-            
-            // Официальный стандарт глубокой ссылки для подключения Phantom в мобильных приложениях
-            const phantomDeepLink = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(appUrl)}&redirect_link=${encodeURIComponent(appUrl)}&cluster=${cluster}`;
 
-            // Перенаправляем пользователя в приложение Phantom
-            if (tg.openExtLink) {
-                tg.openExtLink(phantomDeepLink);
-            } else {
-                window.open(phantomDeepLink, '_blank');
-            }
+            try {
+                let provider = null;
+                
+                if (providerName === 'Phantom') {
+                    provider = window.phantom?.solana || window.solana;
+                } else if (providerName === 'Solflare') {
+                    provider = window.solflare;
+                }
 
-            // Ожидание ответа или ручной ввод адреса/подтверждение для интеграции в Mini App
-            setTimeout(() => {
-                const manualAddress = prompt("Enter your Solana Wallet Address after connecting in Phantom:");
-                if (manualAddress && manualAddress.length > 30) {
-                    connectedWallet = manualAddress.trim();
+                if (provider) {
+                    const response = await provider.connect();
+                    connectedWallet = response.publicKey.toString();
                     localStorage.setItem('zrl_wallet', connectedWallet);
                     walletModal.style.display = 'none';
                     updateUI();
-                    tg.showAlert("Wallet successfully linked!");
+                    tg.showAlert(`Connected to Solana: ${connectedWallet.substring(0, 4)}...`);
+                } else {
+                    // Если провайдер не найден в окружении, предлагаем запустить автоконнект через Web3 объект или ручной ввод
+                    alert(`${providerName} wallet not found. Please open this app inside Phantom Browser or install the wallet.`);
                 }
-            }, 1500);
+            } catch (err) {
+                console.error(err);
+                tg.showAlert("Connection failed or rejected.");
+            }
         }
 
         function renderWalletModal() {
@@ -660,10 +660,10 @@
             body.innerHTML = '';
 
             if (connectedWallet) {
-                title.innerText = 'Wallet Management';
+                title.innerText = 'Solana Wallet';
                 body.innerHTML = `
                     <div style="background: #1a1c23; border: 1px solid #2d303b; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
-                        <span style="font-size: 12px; color: #8a8d98;">Connected Solana Address</span>
+                        <span style="font-size: 12px; color: #8a8d98;">Connected Address (Solana Network)</span>
                         <div style="font-size: 14px; font-weight: 700; color: #a8f07a; word-break: break-all; margin-top: 4px;">${connectedWallet}</div>
                     </div>
                     <button class="disconnect-btn" id="disconnect-wallet-btn">Disconnect Wallet</button>
@@ -676,13 +676,18 @@
                     updateUI();
                 });
             } else {
-                title.innerText = 'Connect Solana Wallet';
+                title.innerText = 'Connect Wallet (Solana)';
                 body.innerHTML = `
                     <button class="wallet-option-btn" id="connect-phantom">
-                        <span style="font-size: 18px;">👻</span> Connect Phantom Wallet
+                        <span style="font-size: 18px;">👻</span> Phantom Wallet
+                    </button>
+                    <button class="wallet-option-btn" id="connect-solflare">
+                        <span style="font-size: 18px;">☀️</span> Solflare Wallet
                     </button>
                 `;
-                document.getElementById('connect-phantom').addEventListener('click', connectPhantomWallet);
+                
+                document.getElementById('connect-phantom').addEventListener('click', () => connectSolanaWallet('Phantom'));
+                document.getElementById('connect-solflare').addEventListener('click', () => connectSolanaWallet('Solflare'));
             }
         }
 
