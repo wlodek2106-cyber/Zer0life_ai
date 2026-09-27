@@ -56,6 +56,17 @@ threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).st
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
     try:
+        zrl_mint_address = os.getenv('ZRL_MINT')
+        private_key_base58 = os.getenv('PRIVATE_KEY')
+        
+        missing = []
+        if not zrl_mint_address: missing.append('ZRL_MINT')
+        if not private_key_base58: missing.append('PRIVATE_KEY')
+        
+        if missing:
+            print(f"CRITICAL CONFIG ERROR: Missing env vars: {missing}")
+            return jsonify({"error": f"На сервере Render не заданы переменные: {', '.join(missing)}"}), 500
+
         data = request.json
         if not data or 'walletAddress' not in data or 'amount' not in data:
             return jsonify({"error": "Неверные данные запроса"}), 400
@@ -65,13 +76,6 @@ def withdraw():
         tg_id = data.get('telegramId')
 
         user_pubkey = Pubkey.from_string(user_wallet_str)
-        
-        zrl_mint_address = os.getenv('ZRL_MINT')
-        private_key_base58 = os.getenv('PRIVATE_KEY')
-        
-        if not zrl_mint_address or not private_key_base58:
-            return jsonify({"error": "Сервер не настроен (отсутствуют ключи)"}), 500
-
         zrl_mint = Pubkey.from_string(zrl_mint_address)
         pool_keypair = Keypair.from_bytes(base58.b58decode(private_key_base58))
         
@@ -173,6 +177,5 @@ if __name__ == "__main__":
     if TOKEN:
         setup_webhook_sync()
     
-    # Исправленный порт для корректной работы на Render
     port = int(os.environ.get("PORT", 10000))
     api_app.run(host="0.0.0.0", port=port)
