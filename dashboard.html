@@ -742,7 +742,7 @@
         function initWalletModalEvents() {
             document.getElementById('wallet-short-addr').innerText = internalWallet.substring(0, 6) + '...' + internalWallet.substring(internalWallet.length - 4);
             document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
-            document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2); // Условный курс ZRL
+            document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
@@ -751,21 +751,47 @@
                 tg.showAlert('Deposit address copied! Send Solana, USDC or ZRL to this address.');
             };
 
-            document.getElementById('withdraw-btn').onclick = () => {
+            // РЕАЛЬНЫЙ ВЫВОД ЧЕРЕЗ БЭКЕНД НА RENDER
+            document.getElementById('withdraw-btn').onclick = async () => {
                 tg.HapticFeedback.impactOccurred('medium');
-                const targetAddr = prompt("Enter external Solana destination address:");
-                if (targetAddr && targetAddr.length > 10) {
-                    const amountStr = prompt(`Enter amount of ZRL to withdraw (Available: ${totalBalance.toFixed(2)} ZRL):`);
+                const targetAddr = prompt("Введите ваш реальный адрес кошелька Solana (например, Phantom):");
+                
+                if (targetAddr && targetAddr.length > 30) {
+                    const amountStr = prompt(`Доступно для вывода: ${totalBalance.toFixed(2)} ZRL. Сколько выводим?`);
                     const amount = parseFloat(amountStr);
+                    
                     if (amount > 0 && amount <= totalBalance) {
-                        totalBalance -= amount;
-                        updateUI();
-                        saveData();
-                        tg.HapticFeedback.notificationOccurred('success');
-                        tg.showAlert(`Withdrawal request submitted! Sent ${amount} ZRL to ${targetAddr.substring(0, 6)}...`);
-                        walletModal.style.display = 'none';
+                        tg.showAlert("⏳ Обработка транзакции в сети Solana...");
+                        
+                        try {
+                            // Замените URL ниже на ваш реальный адрес бэкенда на Render
+                            let response = await fetch('https://zer0life-ai.onrender.com/api/withdraw', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    wallet: targetAddr, 
+                                    amount: amount 
+                                })
+                            });
+                            
+                            let result = await response.json();
+                            
+                            if (result.success) {
+                                totalBalance -= amount;
+                                updateUI();
+                                saveData();
+                                tg.HapticFeedback.notificationOccurred('success');
+                                
+                                tg.showAlert(`✅ Успешно выведено!\nХэш: ${result.txHash.substring(0, 10)}...\nПроверить в Solscan: https://solscan.io/tx/${result.txHash}`);
+                                walletModal.style.display = 'none';
+                            } else {
+                                tg.showAlert('❌ Ошибка транзакции: ' + result.error);
+                            }
+                        } catch (e) {
+                            tg.showAlert('❌ Ошибка связи с сервером выплат.');
+                        }
                     } else {
-                        tg.showAlert('Invalid amount or insufficient balance.');
+                        tg.showAlert('⚠️ Неверная сумма или недостаточно средств.');
                     }
                 }
             };
