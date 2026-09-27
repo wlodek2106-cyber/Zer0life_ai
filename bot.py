@@ -5,7 +5,6 @@ import os
 import threading
 import asyncio
 import base58
-import base64
 import traceback
 
 from aiogram import Bot, Dispatcher, types
@@ -61,8 +60,11 @@ def withdraw():
         if not data or 'walletAddress' not in data or 'amount' not in data:
             return jsonify({"error": "Неверные данные запроса"}), 400
 
-        user_pubkey = Pubkey.from_string(data['walletAddress'])
+        user_wallet_str = data['walletAddress']
         amount = float(data['amount'])
+        tg_id = data.get('telegramId') # Получаем ID пользователя для уведомления в боте
+
+        user_pubkey = Pubkey.from_string(user_wallet_str)
         
         zrl_mint_address = os.getenv('ZRL_MINT')
         private_key_base58 = os.getenv('PRIVATE_KEY')
@@ -76,6 +78,9 @@ def withdraw():
         pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
         user_ata = get_associated_token_address(user_pubkey, zrl_mint)
         
+        client = Client("https://api.mainnet-beta.solana.com")
+        
+        # Инструкция перевода (плательщик и владелец — пул)
         transfer_ix = transfer_checked(
             TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -88,26 +93,42 @@ def withdraw():
             )
         )
         
-        client = Client("https://api.mainnet-beta.solana.com")
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Пользователь выступает плательщиком комиссии (газа) за транзакцию
+        # Пул выступает плательщиком газа и инициатором перевода
         message = Message.new_with_blockhash(
             instructions=[transfer_ix],
-            payer=user_pubkey,
+            payer=pool_keypair.pubkey(),
             blockhash=recent_blockhash
         )
         
-        # Сервер подписывает транзакцию со стороны пула (владельца токенов)
-        tx = Transaction(
-            from_keypairs=[pool_keypair],
-            message=message,
+        tx = Transaction.new_signed_with_payer(
+            instructions=[transfer_ix],
+            payer=pool_keypair.pubkey(),
+            signing_keypairs=[pool_keypair],
             recent_blockhash=recent_blockhash
         )
         
-        serialized_tx = base64.b64encode(bytes(tx)).decode('utf-8')
-        return jsonify({"transaction": serialized_tx})
+        # Отправляем транзакцию в блокчейн Solana прямо с сервера
+        result = client.send_transaction(tx)
+        tx_signature = str(result.value)
+        
+        # Если передан Telegram ID, отправляем уведомление пользователю через бота
+        if tg_id and bot:
+            asyncio.run_coroutine_threadsafe(
+                bot.send_message(
+                    chat_id=int(tg_id),
+                    text=f"✅ **Операция выполнена!**\n\n"
+                         f"Успешно выведено: `{amount} ZRL`\n"
+                         f"Кошелек: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
+                         f"🔗 [Смотреть транзакцию в Solscan](https://solscan.io/tx/{tx_signature})",
+                    parse_mode="Markdown"
+                ),
+                bot_loop
+            )
+
+        return jsonify({"success": True, "txHash": tx_signature})
         
     except Exception as e:
         error_trace = traceback.format_exc()
