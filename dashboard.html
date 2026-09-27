@@ -537,7 +537,7 @@
                 </div>
 
                 <div id="crypto-assets-list">
-                    <!-- ZRL -->
+                    <!-- ZRL Token -->
                     <div class="crypto-asset-row">
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
@@ -649,6 +649,8 @@
         let totalBalance = parseFloat(localStorage.getItem('zrl_total_balance')) || 0.00;
         let solBalance = parseFloat(localStorage.getItem('zrl_sol_balance')) || 0.00;
         let usdcBalance = parseFloat(localStorage.getItem('zrl_usdc_balance')) || 0.00;
+        let poolZrlBalance = parseFloat(localStorage.getItem('zrl_pool_token_balance')) || 0.00;
+        
         let todayDistance = parseFloat(localStorage.getItem('zrl_today_distance')) || 0.00;
         let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
@@ -677,6 +679,7 @@
             localStorage.setItem('zrl_total_balance', totalBalance);
             localStorage.setItem('zrl_sol_balance', solBalance);
             localStorage.setItem('zrl_usdc_balance', usdcBalance);
+            localStorage.setItem('zrl_pool_token_balance', poolZrlBalance);
             localStorage.setItem('zrl_today_distance', todayDistance);
             localStorage.setItem('zrl_total_distance', totalDistance);
             localStorage.setItem('zrl_unclaimed', unclaimedZRL);
@@ -761,16 +764,20 @@
 
         function initWalletModalEvents() {
             document.getElementById('wallet-short-addr').innerText = POOL_WALLET_ADDRESS.substring(0, 6) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
-            document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
-            document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             
+            // Отображаем ZRL (из пула)
+            document.getElementById('asset-zrl-bal').innerText = poolZrlBalance.toFixed(2);
+            document.getElementById('asset-zrl-usd').innerText = '$' + (poolZrlBalance * 0.001).toFixed(2);
+            
+            // Solana
             document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
 
+            // USDC
             document.getElementById('asset-usdc-bal').innerText = usdcBalance.toFixed(2);
             document.getElementById('asset-usdc-usd').innerText = '$' + usdcBalance.toFixed(2);
 
-            const totalPortfolioUsd = (totalBalance * 0.001) + (solBalance * 140) + usdcBalance;
+            const totalPortfolioUsd = (poolZrlBalance * 0.001) + (solBalance * 140) + usdcBalance;
             document.getElementById('portfolio-usd').innerText = '$' + totalPortfolioUsd.toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
@@ -839,7 +846,7 @@
             tg.showAlert('✅ Pool address copied to clipboard!');
         };
 
-        // АВТОМАТИЧЕСКАЯ ФОНОВАЯ ПРОВЕРКА БАЛАНСА И ОПОВЕЩЕНИЕ
+        // АВТОМАТИЧЕСКАЯ ФОНОВАЯ ПРОВЕРКА SOL, USDC И ZRL
         async function checkDepositAutomatically() {
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
@@ -852,6 +859,7 @@
                 if (response.ok && result.success) {
                     const newSolBalance = result.solBalance || 0;
                     const newUsdcBalance = result.usdcBalance || 0;
+                    const newZrlBalance = result.zrlBalance || 0;
 
                     let messageAdded = "";
 
@@ -864,6 +872,11 @@
                         const diffUsdc = newUsdcBalance - usdcBalance;
                         messageAdded += `+${diffUsdc.toFixed(2)} USDC\n`;
                         usdcBalance = newUsdcBalance;
+                    }
+                    if (newZrlBalance > poolZrlBalance) {
+                        const diffZrl = newZrlBalance - poolZrlBalance;
+                        messageAdded += `+${diffZrl.toFixed(2)} ZRL\n`;
+                        poolZrlBalance = newZrlBalance;
                     }
 
                     if (messageAdded !== "") {
