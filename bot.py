@@ -92,22 +92,16 @@ def check_deposit():
         sol_response = client.get_balance(pubkey)
         sol_balance = sol_response.value / (10**9) if sol_response.value else 0.0
         
-        # 2. Получаем баланс USDC через сканирование токен-аккаунтов кошелька
+        # 2. Получаем баланс USDC строго по официальному Mint-адресу USDC
         usdc_balance = 0.0
         try:
-            token_program_id = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
-            accounts_resp = client.get_token_accounts_by_owner(pubkey, {"programId": token_program_id})
-            
-            if accounts_resp.value:
-                for acc in accounts_resp.value:
-                    pub_acc_str = str(acc.pubkey)
-                    bal_resp = client.get_token_account_balance(Pubkey.from_string(pub_acc_str))
-                    if bal_resp.value and bal_resp.value.ui_amount:
-                        # USDC имеет 6 знаков после запятой
-                        if bal_resp.value.decimals == 6 and bal_resp.value.ui_amount > 0:
-                            usdc_balance += float(bal_resp.value.ui_amount)
+            usdc_mint = Pubkey.from_string("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+            usdc_ata = get_associated_token_address(pubkey, usdc_mint)
+            token_account_resp = client.get_token_account_balance(usdc_ata)
+            if token_account_resp.value and token_account_resp.value.ui_amount:
+                usdc_balance = float(token_account_resp.value.ui_amount)
         except Exception as e:
-            print("Error fetching token accounts for USDC:", e)
+            print("USDC ATA balance fetch error:", e)
 
         return jsonify({
             "success": True, 
