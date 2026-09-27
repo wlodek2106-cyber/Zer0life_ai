@@ -751,7 +751,7 @@
                 tg.showAlert('Deposit address copied! Send Solana, USDC or ZRL to this address.');
             };
 
-            // ЗАЩИЩЕННЫЙ ВЫВОД С ТАЙМАУТОМ И ОТОБРАЖЕНИЕМ ОШИБОК
+            // МГНОВЕННЫЙ ЗАПРОС БЕЗ БЛОКИРУЮЩИХ АЛЕРТОВ
             document.getElementById('withdraw-btn').onclick = async () => {
                 tg.HapticFeedback.impactOccurred('medium');
                 const targetAddr = prompt("Введите ваш реальный адрес кошелька Solana (например, Phantom):");
@@ -761,43 +761,37 @@
                     const amount = parseFloat(amountStr);
                     
                     if (amount > 0 && amount <= totalBalance) {
-                        tg.showAlert("⏳ Обработка транзакции в сети Solana...");
-                        
                         try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 секунд таймаут
-
-                            let response = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                            const response = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ 
                                     walletAddress: targetAddr, 
                                     amount: amount,
                                     telegramId: tg.initDataUnsafe?.user?.id || 0
-                                }),
-                                signal: controller.signal
+                                })
                             });
                             
-                            clearTimeout(timeoutId);
-                            let result = await response.json();
+                            const text = await response.text();
+                            let result;
+                            try {
+                                result = JSON.parse(text);
+                            } catch (e) {
+                                throw new Error("Сервер вернул не JSON: " + text);
+                            }
                             
                             if (response.ok && result.success) {
                                 totalBalance -= amount;
                                 updateUI();
                                 saveData();
                                 tg.HapticFeedback.notificationOccurred('success');
-                                
-                                tg.showAlert(`✅ Успешно выведено!\nБот пришлет подтверждение в Telegram.\nХэш: ${result.txHash.substring(0, 10)}...`);
+                                tg.showAlert(`✅ Успешно выведено!\nTx: ${result.txHash.substring(0, 10)}...`);
                                 walletModal.style.display = 'none';
                             } else {
-                                tg.showAlert('❌ Ошибка сервера: ' + (result.error || 'Неизвестная ошибка'));
+                                tg.showAlert('❌ Ошибка: ' + (result.error || text));
                             }
                         } catch (e) {
-                            if (e.name === 'AbortError') {
-                                tg.showAlert('❌ Превышено время ожидания ответа сервера (таймаут). Попробуйте позже.');
-                            } else {
-                                tg.showAlert('❌ Ошибка сети: не удалось связаться с сервером выплат.');
-                            }
+                            tg.showAlert('❌ Сбой запроса: ' + e.message);
                         }
                     } else {
                         tg.showAlert('⚠️ Неверная сумма или недостаточно средств.');
