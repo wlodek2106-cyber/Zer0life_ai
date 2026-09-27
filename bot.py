@@ -64,12 +64,11 @@ def withdraw():
         if not private_key_base58: missing.append('PRIVATE_KEY')
         
         if missing:
-            print(f"CRITICAL CONFIG ERROR: Missing env vars: {missing}")
-            return jsonify({"error": f"На сервере Render не заданы переменные: {', '.join(missing)}"}), 500
+            return jsonify({"error": f"Server config error: missing env vars: {', '.join(missing)}"}), 500
 
         data = request.json
         if not data or 'walletAddress' not in data or 'amount' not in data:
-            return jsonify({"error": "Неверные данные запроса"}), 400
+            return jsonify({"error": "Invalid request data"}), 400
 
         user_wallet_str = data['walletAddress']
         amount = float(data['amount'])
@@ -113,10 +112,10 @@ def withdraw():
             asyncio.run_coroutine_threadsafe(
                 bot.send_message(
                     chat_id=int(tg_id),
-                    text=f"✅ **Операция выполнена!**\n\n"
-                         f"Успешно выведено: `{amount} ZRL`\n"
-                         f"Кошелек: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
-                         f"🔗 [Смотреть транзакцию в Solscan](https://solscan.io/tx/{tx_signature})",
+                    text=f"✅ **Withdrawal Successful!**\n\n"
+                         f"Amount: `{amount} ZRL`\n"
+                         f"Wallet: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
+                         f"🔗 [View transaction on Solscan](https://solscan.io/tx/{tx_signature})",
                     parse_mode="Markdown"
                 ),
                 bot_loop
@@ -144,12 +143,12 @@ def telegram_webhook():
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏃 Запустить Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+        [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
     ])
     await message.answer(
-        "Йоу! Добро пожаловать в <b>Zer0Life Run</b> ⚡️\n\n"
-        "Тренируйся, шагай и зарабатывай токены <b>ZRL</b>!\n"
-        "Нажми кнопку ниже, чтобы открыть приложение:",
+        "Yo! Welcome to <b>Zer0Life Run</b> ⚡️\n\n"
+        "Train, walk and earn <b>ZRL</b> tokens!\n"
+        "Click the button below to open the app:",
         reply_markup=keyboard,
         parse_mode="HTML"
     )
@@ -168,7 +167,7 @@ def setup_webhook_sync():
                 )
             ), bot_loop)
             menu_future.result(timeout=5)
-            logging.info(f"Вебхук зарегистрирован: {webhook_url}")
+            logging.info(f"Webhook registered: {webhook_url}")
         except Exception as e:
             logging.error(f"Webhook setup error: {e}")
 
