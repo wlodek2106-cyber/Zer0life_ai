@@ -46,7 +46,6 @@ RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
-# База данных пользователей
 USERS_FILE = "users.json"
 
 def load_users():
@@ -88,11 +87,9 @@ def check_deposit():
         client = Client("https://api.mainnet-beta.solana.com")
         pubkey = Pubkey.from_string(wallet_str)
         
-        # 1. Получаем реальный баланс SOL
         sol_response = client.get_balance(pubkey)
         sol_balance = sol_response.value / (10**9) if sol_response.value else 0.0
         
-        # 2. Получаем баланс USDC
         usdc_balance = 0.0
         try:
             usdc_mint = Pubkey.from_string("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
@@ -103,7 +100,6 @@ def check_deposit():
         except Exception as e:
             print("USDC balance fetch notice:", e)
 
-        # 3. Получаем баланс ZRL по переменной окружения ZRL_MINT
         zrl_balance = 0.0
         zrl_mint_address = os.getenv('ZRL_MINT')
         if zrl_mint_address:
