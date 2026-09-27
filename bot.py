@@ -84,18 +84,19 @@ def check_deposit():
         if not data or 'walletAddress' not in data:
             return jsonify({"error": "Invalid request data"}), 400
 
-        zrl_mint_address = os.getenv('ZRL_MINT')
-        private_key_base58 = os.getenv('PRIVATE_KEY')
+        wallet_str = data['walletAddress']
         
-        if not zrl_mint_address or not private_key_base58:
-            return jsonify({"error": "Server unconfigured"}), 500
-
-        # В реальном продакшене здесь идет проверка блокчейна Solana.
-        # Для рабочего Web3-продукта зачисляем тестовые/проверенные средства по запросу депозита.
-        return jsonify({"success": True, "receivedAmount": 50.0})
+        # Запрашиваем реальный баланс кошелька из блокчейна Solana
+        client = Client("https://api.mainnet-beta.solana.com")
+        pubkey = Pubkey.from_string(wallet_str)
+        
+        sol_response = client.get_balance(pubkey)
+        sol_balance = sol_response.value / (10**9) if sol_response.value else 0.0
+        
+        return jsonify({"success": True, "solBalance": sol_balance})
         
     except Exception as e:
-        print("ERROR IN DEPOSIT:", traceback.format_exc())
+        print("ERROR IN DEPOSIT CHECK:", traceback.format_exc())
         return jsonify({"error": str(e)}), 400
 
 @api_app.route('/withdraw', methods=['POST'])
