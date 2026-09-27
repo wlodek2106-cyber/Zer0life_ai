@@ -765,15 +765,12 @@
         function initWalletModalEvents() {
             document.getElementById('wallet-short-addr').innerText = POOL_WALLET_ADDRESS.substring(0, 6) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
             
-            // Отображаем ZRL (из пула)
             document.getElementById('asset-zrl-bal').innerText = poolZrlBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (poolZrlBalance * 0.001).toFixed(2);
             
-            // Solana
             document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
 
-            // USDC
             document.getElementById('asset-usdc-bal').innerText = usdcBalance.toFixed(2);
             document.getElementById('asset-usdc-usd').innerText = '$' + usdcBalance.toFixed(2);
 
@@ -846,7 +843,7 @@
             tg.showAlert('✅ Pool address copied to clipboard!');
         };
 
-        // АВТОМАТИЧЕСКАЯ ФОНОВАЯ ПРОВЕРКА SOL, USDC И ZRL
+        // АВТОМАТИЧЕСКАЯ ФОНОВАЯ ПРОВЕРКА SOL, USDC И ZRL (ВЕСЬ ТЕКСТ НА АНГЛИЙСКОМ)
         async function checkDepositAutomatically() {
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
@@ -883,7 +880,7 @@
                         saveData();
                         initWalletModalEvents();
                         tg.HapticFeedback.notificationOccurred('success');
-                        tg.showAlert(`🎉 Баланс успешно пополнен!\n\nЗачислено:\n${messageAdded}`);
+                        tg.showAlert(`🎉 Deposit successfully credited!\n\nCredited:\n${messageAdded}`);
                     }
                 }
             } catch (e) {
