@@ -85,15 +85,35 @@ def check_deposit():
             return jsonify({"error": "Invalid request data"}), 400
 
         wallet_str = data['walletAddress']
-        
-        # Запрашиваем реальный баланс кошелька из блокчейна Solana
         client = Client("https://api.mainnet-beta.solana.com")
         pubkey = Pubkey.from_string(wallet_str)
         
+        # 1. Получаем реальный баланс SOL
         sol_response = client.get_balance(pubkey)
         sol_balance = sol_response.value / (10**9) if sol_response.value else 0.0
         
-        return jsonify({"success": True, "solBalance": sol_balance})
+        # 2. Получаем баланс USDC через сканирование токен-аккаунтов кошелька
+        usdc_balance = 0.0
+        try:
+            token_program_id = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+            accounts_resp = client.get_token_accounts_by_owner(pubkey, {"programId": token_program_id})
+            
+            if accounts_resp.value:
+                for acc in accounts_resp.value:
+                    pub_acc_str = str(acc.pubkey)
+                    bal_resp = client.get_token_account_balance(Pubkey.from_string(pub_acc_str))
+                    if bal_resp.value and bal_resp.value.ui_amount:
+                        # USDC имеет 6 знаков после запятой
+                        if bal_resp.value.decimals == 6 and bal_resp.value.ui_amount > 0:
+                            usdc_balance += float(bal_resp.value.ui_amount)
+        except Exception as e:
+            print("Error fetching token accounts for USDC:", e)
+
+        return jsonify({
+            "success": True, 
+            "solBalance": sol_balance,
+            "usdcBalance": usdc_balance
+        })
         
     except Exception as e:
         print("ERROR IN DEPOSIT CHECK:", traceback.format_exc())
