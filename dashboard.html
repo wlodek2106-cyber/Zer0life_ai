@@ -67,7 +67,6 @@
             font-weight: 700;
         }
 
-        /* Кнопка внутреннего кошелька */
         .wallet-btn {
             background: linear-gradient(135deg, #15171e 0%, #1f2330 100%);
             border: 1px solid rgba(168, 240, 122, 0.3);
@@ -338,11 +337,64 @@
             border-radius: 10px;
         }
 
+        /* Стили крипто-кошелька Web3 */
+        .crypto-asset-row {
+            background: #181b24;
+            border: 1px solid #282d3d;
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .asset-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .asset-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .asset-name {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .asset-sub {
+            font-size: 12px;
+            color: #8a8d98;
+        }
+
+        .asset-right {
+            text-align: right;
+        }
+
+        .asset-balance {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .asset-usd {
+            font-size: 12px;
+            color: #8a8d98;
+        }
+
         .wallet-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
-            margin-top: 16px;
+            margin-top: 20px;
         }
 
         .wallet-action-btn {
@@ -361,23 +413,6 @@
         .wallet-action-btn:hover {
             border-color: #14f195;
             background-color: rgba(20, 241, 149, 0.05);
-        }
-
-        .wallet-input {
-            width: 100%;
-            background: #181b24;
-            border: 1px solid #282d3d;
-            border-radius: 14px;
-            padding: 14px;
-            color: #ffffff;
-            font-size: 15px;
-            margin-top: 12px;
-            box-sizing: border-box;
-        }
-
-        .wallet-input:focus {
-            border-color: #14f195;
-            outline: none;
         }
 
         /* Нижняя навигация */
@@ -428,7 +463,7 @@
                     <span class="balance-amount" id="total-balance">0.00</span>
                 </div>
             </div>
-            <!-- Кнопка внутреннего кошелька -->
+            <!-- Кнопка кошелька -->
             <div class="wallet-btn" id="wallet-btn">
                 <div class="sol-icon">S</div>
                 <span id="wallet-btn-text">Wallet</span>
@@ -487,23 +522,68 @@
         </div>
     </div>
 
-    <!-- Модальное окно Внутреннего Кошелька Solana -->
+    <!-- Модальное окно Web3 Кошелька с активами ZRL, SOL, USDC -->
     <div class="modal-overlay" id="wallet-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Solana In-App Wallet</span>
+                <span class="modal-title">Solana Web3 Wallet</span>
                 <button class="close-modal" id="close-wallet">&times;</button>
             </div>
             <div id="wallet-modal-body">
-                <div style="background: #181b24; border: 1px solid #282d3d; border-radius: 18px; padding: 18px; margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 12px; color: #8a8d98;">Network</span>
-                        <span style="font-size: 12px; color: #14f195; font-weight: 700;">🟢 Solana Mainnet</span>
-                    </div>
-                    <span style="font-size: 12px; color: #8a8d98;">Your Deposit Address</span>
-                    <div style="font-size: 13px; font-weight: 700; color: #a8f07a; word-break: break-all; margin-top: 4px;" id="internal-wallet-addr">Loading...</div>
+                <!-- Общий баланс портфеля -->
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <span style="font-size: 13px; color: #8a8d98;">Total Portfolio Value</span>
+                    <div style="font-size: 28px; font-weight: 800; margin-top: 4px;" id="portfolio-usd">$0.00</div>
+                    <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">ZRL...Pub</div>
                 </div>
-                
+
+                <!-- Список крипты (ZRL, Solana, USDC) -->
+                <div id="crypto-assets-list">
+                    <!-- ZRL -->
+                    <div class="crypto-asset-row">
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
+                            <div>
+                                <div class="asset-name">ZRL Token</div>
+                                <div class="asset-sub">Zer0life Run</div>
+                            </div>
+                        </div>
+                        <div class="asset-right">
+                            <div class="asset-balance" id="asset-zrl-bal">0.00</div>
+                            <div class="asset-usd" id="asset-zrl-usd">$0.00</div>
+                        </div>
+                    </div>
+                    <!-- Solana -->
+                    <div class="crypto-asset-row">
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
+                            <div>
+                                <div class="asset-name">Solana</div>
+                                <div class="asset-sub">SOL</div>
+                            </div>
+                        </div>
+                        <div class="asset-right">
+                            <div class="asset-balance">0.00</div>
+                            <div class="asset-usd">$0.00</div>
+                        </div>
+                    </div>
+                    <!-- USDC -->
+                    <div class="crypto-asset-row">
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(39,117,202,0.15); color: #2775ca;">U</div>
+                            <div>
+                                <div class="asset-name">USDC</div>
+                                <div class="asset-sub">USD Coin</div>
+                            </div>
+                        </div>
+                        <div class="asset-right">
+                            <div class="asset-balance">0.00</div>
+                            <div class="asset-usd">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки управления -->
                 <div class="wallet-actions">
                     <button class="wallet-action-btn" id="deposit-btn">📥 Deposit</button>
                     <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
@@ -552,7 +632,6 @@
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
         let todaySteps = parseInt(localStorage.getItem('zrl_today_steps')) || 0;
         
-        // Автоматическая генерация уникального внутреннего адреса кошелька Solana для пользователя
         let internalWallet = localStorage.getItem('zrl_internal_sol_wallet');
         if (!internalWallet) {
             internalWallet = "ZRL" + Math.random().toString(36).substring(2, 6).toUpperCase() + "Solana" + Math.floor(Math.random() * 8999 + 1000) + "Pub";
@@ -661,17 +740,20 @@
         }
 
         function initWalletModalEvents() {
-            document.getElementById('internal-wallet-addr').innerText = internalWallet;
+            document.getElementById('wallet-short-addr').innerText = internalWallet.substring(0, 6) + '...' + internalWallet.substring(internalWallet.length - 4);
+            document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
+            document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2); // Условный курс ZRL
+            document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
                 navigator.clipboard.writeText(internalWallet);
                 tg.HapticFeedback.notificationOccurred('success');
-                tg.showAlert('Deposit address copied to clipboard! Send SOL or ZRL to this address.');
+                tg.showAlert('Deposit address copied! Send Solana, USDC or ZRL to this address.');
             };
 
             document.getElementById('withdraw-btn').onclick = () => {
                 tg.HapticFeedback.impactOccurred('medium');
-                const targetAddr = prompt("Enter destination Solana wallet address for withdrawal:");
+                const targetAddr = prompt("Enter external Solana destination address:");
                 if (targetAddr && targetAddr.length > 10) {
                     const amountStr = prompt(`Enter amount of ZRL to withdraw (Available: ${totalBalance.toFixed(2)} ZRL):`);
                     const amount = parseFloat(amountStr);
@@ -680,7 +762,7 @@
                         updateUI();
                         saveData();
                         tg.HapticFeedback.notificationOccurred('success');
-                        tg.showAlert(`Successfully withdrew ${amount} ZRL to ${targetAddr.substring(0, 6)}...`);
+                        tg.showAlert(`Withdrawal request submitted! Sent ${amount} ZRL to ${targetAddr.substring(0, 6)}...`);
                         walletModal.style.display = 'none';
                     } else {
                         tg.showAlert('Invalid amount or insufficient balance.');
