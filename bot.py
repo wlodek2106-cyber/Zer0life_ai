@@ -62,7 +62,7 @@ def withdraw():
 
         user_wallet_str = data['walletAddress']
         amount = float(data['amount'])
-        tg_id = data.get('telegramId') # Получаем ID пользователя для уведомления в боте
+        tg_id = data.get('telegramId')
 
         user_pubkey = Pubkey.from_string(user_wallet_str)
         
@@ -80,7 +80,6 @@ def withdraw():
         
         client = Client("https://api.mainnet-beta.solana.com")
         
-        # Инструкция перевода (плательщик и владелец — пул)
         transfer_ix = transfer_checked(
             TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -96,13 +95,6 @@ def withdraw():
         recent_blockhash_str = client.get_latest_blockhash().value.blockhash
         recent_blockhash = Hash.from_string(str(recent_blockhash_str))
         
-        # Пул выступает плательщиком газа и инициатором перевода
-        message = Message.new_with_blockhash(
-            instructions=[transfer_ix],
-            payer=pool_keypair.pubkey(),
-            blockhash=recent_blockhash
-        )
-        
         tx = Transaction.new_signed_with_payer(
             instructions=[transfer_ix],
             payer=pool_keypair.pubkey(),
@@ -110,11 +102,9 @@ def withdraw():
             recent_blockhash=recent_blockhash
         )
         
-        # Отправляем транзакцию в блокчейн Solana прямо с сервера
         result = client.send_transaction(tx)
         tx_signature = str(result.value)
         
-        # Если передан Telegram ID, отправляем уведомление пользователю через бота
         if tg_id and bot:
             asyncio.run_coroutine_threadsafe(
                 bot.send_message(
@@ -182,5 +172,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     if TOKEN:
         setup_webhook_sync()
-    port = int(os.environ.get("PORT", 8080))
+    
+    # Исправленный порт для корректной работы на Render
+    port = int(os.environ.get("PORT", 10000))
     api_app.run(host="0.0.0.0", port=port)
