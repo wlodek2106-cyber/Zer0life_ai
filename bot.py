@@ -46,6 +46,30 @@ RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
+# Работа с базой пользователей на сервере
+USERS_FILE = "users.json"
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r") as f:
+                return set(json.load(f))
+        except:
+            pass
+    return set()
+
+def save_user(user_id):
+    users = load_users()
+    users.add(str(user_id))
+    try:
+        with open(USERS_FILE, "w") as f:
+            json.dump(list(users), f)
+    except Exception as e:
+        logging.error(f"Error saving user: {e}")
+
+def get_total_users():
+    return len(load_users())
+
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
@@ -73,6 +97,9 @@ def withdraw():
         user_wallet_str = data['walletAddress']
         amount = float(data['amount'])
         tg_id = data.get('telegramId')
+        
+        if tg_id:
+            save_user(tg_id)
 
         user_pubkey = Pubkey.from_string(user_wallet_str)
         zrl_mint = Pubkey.from_string(zrl_mint_address)
@@ -114,7 +141,7 @@ def withdraw():
                     chat_id=int(tg_id),
                     text=f"✅ **Withdrawal Successful!**\n\n"
                          f"Amount: `{amount} ZRL`\n"
-                         f"Wallet: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
+                        f"Wallet: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
                          f"🔗 [View transaction on Solscan](https://solscan.io/tx/{tx_signature})",
                     parse_mode="Markdown"
                 ),
@@ -142,13 +169,17 @@ def telegram_webhook():
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    save_user(message.from_user.id)
+    total_users = get_total_users()
+    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
     ])
     await message.answer(
-        "Yo! Welcome to <b>Zer0Life Run</b> ⚡️\n\n"
-        "Train, walk and earn <b>ZRL</b> tokens!\n"
-        "Click the button below to open the app:",
+        f"Yo! Welcome to <b>Zer0Life Run</b> ⚡️\n\n"
+        f"👥 Total Runners: <b>{total_users}</b>\n"
+        f"Train, walk and earn <b>ZRL</b> tokens!\n\n"
+        f"Click the button below to open the app:",
         reply_markup=keyboard,
         parse_mode="HTML"
     )
