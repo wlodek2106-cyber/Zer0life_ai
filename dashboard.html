@@ -751,7 +751,7 @@
                 tg.showAlert('Deposit address copied! Send Solana, USDC or ZRL to this address.');
             };
 
-            // РЕАЛЬНЫЙ ВЫВОД ЧЕРЕЗ БЭКЕНД НА RENDER
+            // РЕАЛЬНЫЙ ВЫВОД С ПЕРЕДАЧЕЙ TELEGRAM ID
             document.getElementById('withdraw-btn').onclick = async () => {
                 tg.HapticFeedback.impactOccurred('medium');
                 const targetAddr = prompt("Введите ваш реальный адрес кошелька Solana (например, Phantom):");
@@ -764,13 +764,13 @@
                         tg.showAlert("⏳ Обработка транзакции в сети Solana...");
                         
                         try {
-                            // Замените URL ниже на ваш реальный адрес бэкенда на Render
-                            let response = await fetch('https://zer0life-ai.onrender.com/api/withdraw', {
+                            let response = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ 
-                                    wallet: targetAddr, 
-                                    amount: amount 
+                                    walletAddress: targetAddr, 
+                                    amount: amount,
+                                    telegramId: tg.initDataUnsafe?.user?.id || 0
                                 })
                             });
                             
@@ -782,10 +782,10 @@
                                 saveData();
                                 tg.HapticFeedback.notificationOccurred('success');
                                 
-                                tg.showAlert(`✅ Успешно выведено!\nХэш: ${result.txHash.substring(0, 10)}...\nПроверить в Solscan: https://solscan.io/tx/${result.txHash}`);
+                                tg.showAlert(`✅ Успешно выведено!\nБот пришлет подтверждение в Telegram.\nХэш: ${result.txHash.substring(0, 10)}...`);
                                 walletModal.style.display = 'none';
                             } else {
-                                tg.showAlert('❌ Ошибка транзакции: ' + result.error);
+                                tg.showAlert('❌ Ошибка транзакции: ' + (result.error || 'Неизвестная ошибка'));
                             }
                         } catch (e) {
                             tg.showAlert('❌ Ошибка связи с сервером выплат.');
