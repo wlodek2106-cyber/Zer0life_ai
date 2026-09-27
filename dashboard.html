@@ -589,6 +589,28 @@
         </div>
     </div>
 
+    <!-- Deposit Modal с QR-кодом и полным адресом -->
+    <div class="modal-overlay" id="deposit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Deposit Crypto</span>
+                <button class="close-modal" id="close-deposit">&times;</button>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;">Scan QR code or copy address to send Solana, USDC or ZRL:</p>
+                <div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 16px; margin-bottom: 15px;">
+                    <img id="deposit-qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; display: block;" />
+                </div>
+                <div id="deposit-full-addr" style="background: #181b24; padding: 12px; border-radius: 14px; font-size: 12px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 15px; user-select: all;"></div>
+                
+                <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                    <button class="wallet-action-btn" id="copy-addr-btn" style="background: #181b24; border-color: #a8f07a; color: #a8f07a;">📋 Copy Full Address</button>
+                    <button class="wallet-action-btn" id="verify-deposit-btn" style="background: #14f195; color: #000; border: none;">✅ I've Sent Funds (Verify)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Nav -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
@@ -736,16 +758,22 @@
             });
         }
 
+        const depositModal = document.getElementById('deposit-modal');
+
         function initWalletModalEvents() {
             document.getElementById('wallet-short-addr').innerText = internalWallet.substring(0, 6) + '...' + internalWallet.substring(internalWallet.length - 4);
             document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
 
+            // Открытие красивого окна Депозита с QR-кодом и полным адресом
             document.getElementById('deposit-btn').onclick = () => {
-                navigator.clipboard.writeText(internalWallet);
-                tg.HapticFeedback.notificationOccurred('success');
-                tg.showAlert('Deposit address copied! Send Solana, USDC or ZRL to this address.');
+                tg.HapticFeedback.impactOccurred('light');
+                document.getElementById('deposit-full-addr').innerText = internalWallet;
+                // Генерируем QR-код через публичный API генератора QR
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(internalWallet)}`;
+                walletModal.style.display = 'none';
+                depositModal.style.display = 'flex';
             };
 
             document.getElementById('withdraw-btn').onclick = async () => {
@@ -795,6 +823,44 @@
                 }
             };
         }
+
+        // Кнопки управления окном депозита
+        document.getElementById('close-deposit').onclick = () => {
+            depositModal.style.display = 'none';
+        };
+
+        document.getElementById('copy-addr-btn').onclick = () => {
+            navigator.clipboard.writeText(internalWallet);
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert('✅ Address copied to clipboard!');
+        };
+
+        document.getElementById('verify-deposit-btn').onclick = async () => {
+            tg.HapticFeedback.impactOccurred('medium');
+            tg.showAlert("⏳ Checking blockchain for deposits...");
+            try {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress: internalWallet })
+                });
+                
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    const addedAmount = result.receivedAmount || 50.0;
+                    totalBalance += addedAmount;
+                    updateUI();
+                    saveData();
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showAlert(`✅ Deposit successful! Credited +${addedAmount} ZRL.`);
+                    depositModal.style.display = 'none';
+                } else {
+                    tg.showAlert('❌ No new deposits found yet. Try again later.');
+                }
+            } catch (e) {
+                tg.showAlert('❌ Deposit check failed: ' + e.message);
+            }
+        };
 
         function handlePositionUpdate(position) {
             const currentLat = position.coords.latitude;
@@ -876,7 +942,7 @@
 
                 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                     try {
-                        const response = await DeviceMotionEvent.requestPlayerPermission ? await DeviceMotionEvent.requestPlayerPermission() : await DeviceMotionEvent.requestPermission();
+                        const response = await DeviceMotionEvent.requestPermission();
                         if (response === 'granted') {
                             window.addEventListener('devicemotion', handleMotion);
                             isRunning = true;
