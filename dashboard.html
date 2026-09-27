@@ -533,7 +533,7 @@
                 <div style="text-align: center; margin-bottom: 20px;">
                     <span style="font-size: 13px; color: #8a8d98;">Total Portfolio Value</span>
                     <div style="font-size: 28px; font-weight: 800; margin-top: 4px;" id="portfolio-usd">$0.00</div>
-                    <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">ZRL...Pub</div>
+                    <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">Pool...Pub</div>
                 </div>
 
                 <div id="crypto-assets-list">
@@ -589,7 +589,7 @@
         </div>
     </div>
 
-    <!-- Deposit Modal с QR-кодом и полным адресом -->
+    <!-- Deposit Modal с QR-кодом и реальным адресом пула -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -636,6 +636,9 @@
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
+        // РЕАЛЬНЫЙ ПУБЛИЧНЫЙ АДРЕС ВАШЕГО ПУЛА (из которого идут выплаты на скриншотах)
+        const POOL_WALLET_ADDRESS = "HWkraaCQg3iY7hmBBZMsrYrChmctsvcmpdumGE8RVAix"; 
+        
         const LEVELS = [
             { level: 1, targetKm: 5, reward: "Standard" },
             { level: 2, targetKm: 20, reward: "Standard" },
@@ -650,12 +653,6 @@
         let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
         let todaySteps = parseInt(localStorage.getItem('zrl_today_steps')) || 0;
-        
-        let internalWallet = localStorage.getItem('zrl_internal_sol_wallet');
-        if (!internalWallet) {
-            internalWallet = "ZRL" + Math.random().toString(36).substring(2, 6).toUpperCase() + "Solana" + Math.floor(Math.random() * 8999 + 1000) + "Pub";
-            localStorage.setItem('zrl_internal_sol_wallet', internalWallet);
-        }
         
         let isRunning = false;
         let lastMotionTime = 0;
@@ -685,7 +682,7 @@
         }
 
         function updateWalletUI() {
-            const shortAddr = internalWallet.substring(0, 4) + '...' + internalWallet.substring(internalWallet.length - 4);
+            const shortAddr = POOL_WALLET_ADDRESS.substring(0, 4) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
             document.getElementById('wallet-btn-text').innerText = shortAddr;
         }
 
@@ -761,17 +758,16 @@
         const depositModal = document.getElementById('deposit-modal');
 
         function initWalletModalEvents() {
-            document.getElementById('wallet-short-addr').innerText = internalWallet.substring(0, 6) + '...' + internalWallet.substring(internalWallet.length - 4);
+            document.getElementById('wallet-short-addr').innerText = POOL_WALLET_ADDRESS.substring(0, 6) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
             document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
 
-            // Открытие красивого окна Депозита с QR-кодом и полным адресом
+            // Открытие окна Депозита с реальным адресом пула и QR-кодом
             document.getElementById('deposit-btn').onclick = () => {
                 tg.HapticFeedback.impactOccurred('light');
-                document.getElementById('deposit-full-addr').innerText = internalWallet;
-                // Генерируем QR-код через публичный API генератора QR
-                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(internalWallet)}`;
+                document.getElementById('deposit-full-addr').innerText = POOL_WALLET_ADDRESS;
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(POOL_WALLET_ADDRESS)}`;
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
             };
@@ -830,9 +826,9 @@
         };
 
         document.getElementById('copy-addr-btn').onclick = () => {
-            navigator.clipboard.writeText(internalWallet);
+            navigator.clipboard.writeText(POOL_WALLET_ADDRESS);
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert('✅ Address copied to clipboard!');
+            tg.showAlert('✅ Pool address copied to clipboard!');
         };
 
         document.getElementById('verify-deposit-btn').onclick = async () => {
@@ -842,7 +838,7 @@
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ walletAddress: internalWallet })
+                    body: JSON.stringify({ walletAddress: POOL_WALLET_ADDRESS })
                 });
                 
                 const result = await response.json();
@@ -1006,7 +1002,7 @@
         });
 
         document.getElementById('nav-more').addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
+            tg.HapticFeedback.impactNav ? tg.HapticFeedback.impactOccurred('light') : null;
             alert('Zer0life Run v1.0. Cyberpunk Move-to-Earn.');
         });
 
