@@ -92,21 +92,35 @@ def check_deposit():
         sol_response = client.get_balance(pubkey)
         sol_balance = sol_response.value / (10**9) if sol_response.value else 0.0
         
-        # 2. Получаем баланс USDC строго по официальному Mint-адресу USDC
+        # 2. Получаем баланс USDC
         usdc_balance = 0.0
         try:
             usdc_mint = Pubkey.from_string("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
             usdc_ata = get_associated_token_address(pubkey, usdc_mint)
             token_account_resp = client.get_token_account_balance(usdc_ata)
-            if token_account_resp.value and token_account_resp.value.ui_amount:
-                usdc_balance = float(token_account_resp.value.ui_amount)
+            if token_account_resp and token_account_resp.value:
+                usdc_balance = float(token_account_resp.value.ui_amount or 0.0)
         except Exception as e:
-            print("USDC ATA balance fetch error:", e)
+            print("USDC balance fetch notice:", e)
+
+        # 3. Получаем баланс ZRL по переменной окружения ZRL_MINT
+        zrl_balance = 0.0
+        zrl_mint_address = os.getenv('ZRL_MINT')
+        if zrl_mint_address:
+            try:
+                zrl_mint = Pubkey.from_string(zrl_mint_address)
+                zrl_ata = get_associated_token_address(pubkey, zrl_mint)
+                zrl_resp = client.get_token_account_balance(zrl_ata)
+                if zrl_resp and zrl_resp.value:
+                    zrl_balance = float(zrl_resp.value.ui_amount or 0.0)
+            except Exception as e:
+                print("ZRL balance fetch notice:", e)
 
         return jsonify({
             "success": True, 
             "solBalance": sol_balance,
-            "usdcBalance": usdc_balance
+            "usdcBalance": usdc_balance,
+            "zrlBalance": zrl_balance
         })
         
     except Exception as e:
