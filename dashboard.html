@@ -561,8 +561,8 @@
                             </div>
                         </div>
                         <div class="asset-right">
-                            <div class="asset-balance">0.00</div>
-                            <div class="asset-usd">$0.00</div>
+                            <div class="asset-balance" id="asset-sol-bal">0.00</div>
+                            <div class="asset-usd" id="asset-sol-usd">$0.00</div>
                         </div>
                     </div>
                     <!-- USDC -->
@@ -649,6 +649,7 @@
         ];
 
         let totalBalance = parseFloat(localStorage.getItem('zrl_total_balance')) || 0.00;
+        let solBalance = parseFloat(localStorage.getItem('zrl_sol_balance')) || 0.00;
         let todayDistance = parseFloat(localStorage.getItem('zrl_today_distance')) || 0.00;
         let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
@@ -675,6 +676,7 @@
 
         function saveData() {
             localStorage.setItem('zrl_total_balance', totalBalance);
+            localStorage.setItem('zrl_sol_balance', solBalance);
             localStorage.setItem('zrl_today_distance', todayDistance);
             localStorage.setItem('zrl_total_distance', totalDistance);
             localStorage.setItem('zrl_unclaimed', unclaimedZRL);
@@ -761,7 +763,13 @@
             document.getElementById('wallet-short-addr').innerText = POOL_WALLET_ADDRESS.substring(0, 6) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
             document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
-            document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
+            
+            // Отображаем баланс SOL
+            document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
+            document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2); // Примерная оценка SOL по $140 или 0
+
+            const totalPortfolioUsd = (totalBalance * 0.001) + (solBalance * 140);
+            document.getElementById('portfolio-usd').innerText = '$' + totalPortfolioUsd.toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
                 tg.HapticFeedback.impactOccurred('light');
@@ -841,15 +849,22 @@
                 
                 const result = await response.json();
                 if (response.ok && result.success) {
-                    const addedAmount = result.receivedAmount || 50.0;
-                    totalBalance += addedAmount;
-                    updateUI();
-                    saveData();
-                    tg.HapticFeedback.notificationOccurred('success');
-                    tg.showAlert(`✅ Deposit successful! Credited +${addedAmount} ZRL.`);
+                    const newSolBalance = result.solBalance || 0;
+                    if (newSolBalance > solBalance) {
+                        const diff = newSolBalance - solBalance;
+                        solBalance = newSolBalance;
+                        saveData();
+                        updateWalletUI();
+                        tg.HapticFeedback.notificationOccurred('success');
+                        tg.showAlert(`✅ Deposit Received!\nSuccessfully credited +${diff.toFixed(4)} SOL to your balance.`);
+                    } else {
+                        tg.showAlert(`ℹ️ Current balance on blockchain: ${newSolBalance.toFixed(4)} SOL. No new deposits detected.`);
+                    }
                     depositModal.style.display = 'none';
+                    walletModal.style.display = 'flex';
+                    initWalletModalEvents();
                 } else {
-                    tg.showAlert('❌ No new deposits found yet. Try again later.');
+                    tg.showAlert('❌ Failed to check deposit.');
                 }
             } catch (e) {
                 tg.showAlert('❌ Deposit check failed: ' + e.message);
