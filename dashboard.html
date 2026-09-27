@@ -589,7 +589,7 @@
         </div>
     </div>
 
-    <!-- Deposit Modal с QR-кодом и реальным адресом пула -->
+    <!-- Deposit Modal с точным адресом -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -636,8 +636,8 @@
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
-        // РЕАЛЬНЫЙ ПУБЛИЧНЫЙ АДРЕС ВАШЕГО ПУЛА (из которого идут выплаты на скриншотах)
-        const POOL_WALLET_ADDRESS = "HWkraaCQg3iY7hmBBZMsrYrChmctsvcmpdumGE8RVAix"; 
+        // ВАШ ТОЧНЫЙ ПРАВИЛЬНЫЙ АДРЕС ПУЛА
+        const POOL_WALLET_ADDRESS = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"; 
         
         const LEVELS = [
             { level: 1, targetKm: 5, reward: "Standard" },
@@ -763,7 +763,6 @@
             document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             document.getElementById('portfolio-usd').innerText = '$' + (totalBalance * 0.001 + 0.00).toFixed(2);
 
-            // Открытие окна Депозита с реальным адресом пула и QR-кодом
             document.getElementById('deposit-btn').onclick = () => {
                 tg.HapticFeedback.impactOccurred('light');
                 document.getElementById('deposit-full-addr').innerText = POOL_WALLET_ADDRESS;
@@ -820,7 +819,6 @@
             };
         }
 
-        // Кнопки управления окном депозита
         document.getElementById('close-deposit').onclick = () => {
             depositModal.style.display = 'none';
         };
@@ -1002,7 +1000,7 @@
         });
 
         document.getElementById('nav-more').addEventListener('click', () => {
-            tg.HapticFeedback.impactNav ? tg.HapticFeedback.impactOccurred('light') : null;
+            tg.HapticFeedback.impactOccurred('light');
             alert('Zer0life Run v1.0. Cyberpunk Move-to-Earn.');
         });
 
