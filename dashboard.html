@@ -1223,9 +1223,9 @@
             if (isAdmin) {
                 document.getElementById('wallet-modal-title').innerText = "👑 Admin Pool Dashboard";
                 document.getElementById('wallet-short-addr').innerText = "System Pool Wallet (Real-time)";
-                document.getElementById('deposit-btn').style.display = 'none';
-                document.getElementById('withdraw-btn').style.display = 'none';
                 document.getElementById('usdc-row').style.display = 'flex';
+                document.getElementById('deposit-btn').innerText = "📥 Адрес Пула";
+                document.getElementById('withdraw-btn').innerText = "📤 Вывод с Пула";
             } else {
                 document.getElementById('wallet-modal-title').innerText = "Solana Web3 Wallet";
                 if (userWallet) {
@@ -1234,9 +1234,11 @@
                     document.getElementById('wallet-short-addr').innerText = 'Not Connected';
                 }
                 document.getElementById('usdc-row').style.display = 'flex';
+                document.getElementById('deposit-btn').innerText = "📥 Deposit";
+                document.getElementById('withdraw-btn').innerText = "📤 Withdraw";
             }
 
-            // Запрос балансов с сервера (для админа сервер отдаст пул, для игрока — его кошелек)
+            // Запрос балансов с сервера
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
                     method: 'POST',
@@ -1268,15 +1270,16 @@
             document.getElementById('portfolio-usd').innerText = '$' + totalPortfolioUsd.toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
-                if (!userWallet) {
+                if (!userWallet && !isAdmin) {
                     tg.showAlert('⚠️ Please set up your wallet first.');
                     return;
                 }
                 tg.HapticFeedback.impactOccurred('light');
-                document.getElementById('deposit-full-addr').innerText = userWallet;
-                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(userWallet)}`;
+                const targetAddr = isAdmin ? "Системный пул" : userWallet;
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
+                document.getElementById('deposit-full-addr').innerText = targetAddr;
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(targetAddr)}`;
             };
 
             document.getElementById('withdraw-btn').onclick = () => {
@@ -1285,7 +1288,7 @@
                 
                 showCustomPrompt(
                     "Withdraw ZRL", 
-                    `Available to withdraw: ${totalBalance.toFixed(2)} ZRL. Confirm your wallet address:`, 
+                    `Enter target wallet address for withdrawal:`, 
                     userWallet || "Solana wallet address...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
@@ -1295,14 +1298,29 @@
                                 "Enter amount...", 
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
-                                    if (amount > 0 && amount <= totalBalance) {
-                                        totalBalance -= amount;
-                                        updateUI();
-                                        saveData();
-                                        tg.HapticFeedback.notificationOccurred('success');
-                                        tg.showAlert(`✅ Withdrawal successful!\nSent to: ${targetAddr.substring(0,6)}...`);
+                                    if (amount > 0) {
+                                        try {
+                                            const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    telegramId: telegramId,
+                                                    walletAddress: targetAddr,
+                                                    amount: amount
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (res.ok && data.success) {
+                                                tg.HapticFeedback.notificationOccurred('success');
+                                                tg.showAlert(`✅ Withdrawal transaction sent!\nHash: ${data.txHash.substring(0, 10)}...`);
+                                            } else {
+                                                tg.showAlert(`❌ Error: ${data.error || 'Unknown error'}`);
+                                            }
+                                        } catch (err) {
+                                            tg.showAlert(`❌ Network error during withdrawal.`);
+                                        }
                                     } else {
-                                        tg.showAlert('⚠️ Invalid amount or insufficient balance.');
+                                        tg.showAlert('⚠️ Invalid amount.');
                                     }
                                 }
                             );
