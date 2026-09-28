@@ -772,12 +772,12 @@
     <div class="modal-overlay" id="wallet-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Solana Web3 Wallet</span>
+                <span class="modal-title" id="wallet-modal-title">Solana Web3 Wallet</span>
                 <button class="close-modal" id="close-wallet">&times;</button>
             </div>
             <div id="wallet-modal-body">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <span style="font-size: 13px; color: #8a8d98;">Total Portfolio Value</span>
+                    <span style="font-size: 13px; color: #8a8d98;" id="portfolio-label">Total Portfolio Value</span>
                     <div style="font-size: 28px; font-weight: 800; margin-top: 4px;" id="portfolio-usd">$0.00</div>
                     <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">Not Connected</div>
                 </div>
@@ -809,7 +809,7 @@
                             <div class="asset-usd" id="asset-sol-usd">$0.00</div>
                         </div>
                     </div>
-                    <div class="crypto-asset-row">
+                    <div class="crypto-asset-row" id="usdc-row">
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(39,117,202,0.15); color: #2775ca;">U</div>
                             <div>
@@ -824,7 +824,7 @@
                     </div>
                 </div>
 
-                <div class="wallet-actions">
+                <div class="wallet-actions" id="wallet-actions-div">
                     <button class="wallet-action-btn" id="deposit-btn">📥 Deposit</button>
                     <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
                 </div>
@@ -945,6 +945,9 @@
         tg.ready();
 
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
+        const ADMIN_ID = "428821665";
+        const isAdmin = String(telegramId) === ADMIN_ID;
+
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
         let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
@@ -1165,7 +1168,6 @@
             }
         }
 
-        // Автоматическое обновление таблицы лидеров каждый час
         setInterval(() => {
             const lbModal = document.getElementById('leaderboard-modal');
             if (lbModal && lbModal.style.display === 'flex') {
@@ -1217,11 +1219,40 @@
             };
         }
 
-        function initWalletModalEvents() {
-            if (userWallet) {
-                document.getElementById('wallet-short-addr').innerText = userWallet.substring(0, 6) + '...' + userWallet.substring(userWallet.length - 4);
+        async function initWalletModalEvents() {
+            if (isAdmin) {
+                document.getElementById('wallet-modal-title').innerText = "👑 Admin Pool Dashboard";
+                document.getElementById('wallet-short-addr').innerText = "System Pool Wallet (Real-time)";
+                document.getElementById('deposit-btn').style.display = 'none';
+                document.getElementById('withdraw-btn').style.display = 'none';
+                document.getElementById('usdc-row').style.display = 'flex';
             } else {
-                document.getElementById('wallet-short-addr').innerText = 'Not Connected';
+                document.getElementById('wallet-modal-title').innerText = "Solana Web3 Wallet";
+                if (userWallet) {
+                    document.getElementById('wallet-short-addr').innerText = userWallet.substring(0, 6) + '...' + userWallet.substring(userWallet.length - 4);
+                } else {
+                    document.getElementById('wallet-short-addr').innerText = 'Not Connected';
+                }
+                document.getElementById('usdc-row').style.display = 'flex';
+            }
+
+            // Запрос балансов с сервера (для админа сервер отдаст пул, для игрока — его кошелек)
+            try {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress: userWallet, telegramId: telegramId })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    solBalance = result.solBalance || 0;
+                    usdcBalance = result.usdcBalance || 0;
+                    if (isAdmin) {
+                        poolZrlBalance = result.zrlBalance || 0;
+                    }
+                }
+            } catch(e) {
+                console.log("Balance fetch error:", e);
             }
             
             document.getElementById('asset-zrl-bal').innerText = poolZrlBalance.toFixed(2);
@@ -1284,7 +1315,7 @@
         }
 
         async function checkDepositAutomatically() {
-            if (!userWallet) return;
+            if (!userWallet && !isAdmin) return;
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
                     method: 'POST',
@@ -1293,7 +1324,7 @@
                 });
                 
                 const result = await response.json();
-                if (response.ok && result.success) {
+                if (response.ok && result.success && !isAdmin) {
                     const newSolBalance = result.solBalance !== undefined ? result.solBalance : solBalance;
                     const newUsdcBalance = result.usdcBalance !== undefined ? result.usdcBalance : usdcBalance;
                     const newZrlBalance = result.zrlBalance !== undefined ? result.zrlBalance : poolZrlBalance;
