@@ -1532,7 +1532,7 @@
         function checkRandomMysteryBox() {
             if (Math.random() < 0.02) {
                 pendingBoxReward = Math.floor(Math.random() * 131) + 20; 
-                stopRunning(); 
+                // Бег больше не останавливается! Тренировка продолжается в фоновом режиме.
                 triggerHaptic('success');
                 playSound('success');
                 mysteryBoxModal.style.display = 'flex';
