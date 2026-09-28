@@ -48,6 +48,13 @@
             background-size: cover;
             background-position: center;
             border: 2px solid #2d303b;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .avatar:active {
+            transform: scale(0.92);
         }
 
         .balance-info {
@@ -675,10 +682,13 @@
 </head>
 <body>
 
+    <!-- Скрытый инпут для загрузки фотографии на аватарку -->
+    <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" />
+
     <div class="dashboard-container">
         <div class="header">
             <div class="balance-section">
-                <div class="avatar"></div>
+                <div class="avatar" id="user-avatar" title="Нажмите, чтобы сменить фото профиля"></div>
                 <div class="balance-info">
                     <span class="balance-label" id="username-label">Runner</span>
                     <span class="balance-amount" id="total-balance">0.00</span>
@@ -949,6 +959,40 @@
         const isAdmin = String(telegramId) === ADMIN_ID;
 
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
+
+        // Логика загрузки пользовательской аватарки
+        const avatarElement = document.getElementById('user-avatar');
+        const fileInput = document.getElementById('avatar-file-input');
+
+        const savedAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar');
+        if (savedAvatar) {
+            avatarElement.style.backgroundImage = `url('${savedAvatar}')`;
+        }
+
+        avatarElement.addEventListener('click', () => {
+            tg.HapticFeedback.impactOccurred('light');
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    tg.showAlert('⚠️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    avatarElement.style.backgroundImage = `url('${base64Image}')`;
+                    localStorage.setItem(STORAGE_PREFIX + 'custom_avatar', base64Image);
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showAlert('✅ Аватарка успешно обновлена!');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
         const METERS_PER_STEP = 0.00075; 
@@ -1317,7 +1361,6 @@
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
-                                                // Списываем токены с локального баланса и обновляем интерфейс
                                                 totalBalance -= amount;
                                                 saveData();
                                                 updateUI();
