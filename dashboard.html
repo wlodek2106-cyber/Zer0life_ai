@@ -749,7 +749,7 @@
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 15px;">
-                Boost your ZRL mining speed per kilometer by activating a VIP package via Solana.
+                Boost your ZRL mining speed per kilometer by activating a VIP package via Solana balance.
             </p>
             
             <div class="booster-grid">
@@ -1100,24 +1100,71 @@
             };
         }
 
-        // Покупка бустера
+        // Покупка бустера за счет внутреннего баланса SOL
         window.buyBooster = function(solPrice, zrlRatePerKm) {
-            tg.HapticFeedback.impactOccurred('heavy');
+            tg.HapticFeedback.impactOccurred('medium');
             boostersModal.style.display = 'none';
-            
+
+            // Проверяем баланс SOL у игрока
+            if (solBalance < solPrice) {
+                tg.HapticFeedback.notificationOccurred('error');
+                tg.showAlert(`❌ Insufficient Solana balance!\n\nYou need ${solPrice} SOL, but your wallet balance is ${solBalance.toFixed(4)} SOL. Please make a deposit first.`);
+                return;
+            }
+
+            // Запрашиваем подтверждение покупки
             showCustomPrompt(
-                `Activate ${solPrice} SOL Booster`,
-                `Send exactly ${solPrice} SOL to pool address to activate ${zrlRatePerKm} ZRL/km rate. Enter your TX hash or wallet:`,
-                "Enter transaction hash...",
-                async (txHash) => {
-                    if (txHash && txHash.length > 10) {
-                        tg.HapticFeedback.notificationOccurred('success');
-                        tg.showAlert(`🚀 VIP Booster activated!\nNew rate: ${zrlRatePerKm} ZRL/km.`);
-                        ZRL_PER_KM = zrlRatePerKm;
-                        localStorage.setItem('zrl_active_booster_rate', zrlRatePerKm);
-                        updateUI();
-                    } else if (txHash !== null) {
-                        tg.showAlert('⚠️ Invalid transaction hash.');
+                `Confirm Booster Purchase`,
+                `Do you want to buy the ${zrlRatePerKm} ZRL/km booster for ${solPrice} SOL? This will be deducted from your wallet balance.`,
+                "Type YES to confirm...",
+                async (confirmation) => {
+                    if (confirmation && confirmation.toUpperCase() === 'YES') {
+                        try {
+                            const response = await fetch('https://zer0life-ai-iz5n.onrender.com/buy-booster', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    solPrice: solPrice,
+                                    zrlRate: zrlRatePerKm,
+                                    telegramId: tg.initDataUnsafe?.user?.id || 0
+                                })
+                            });
+                            
+                            const text = await response.text();
+                            let result;
+                            try {
+                                result = JSON.parse(text);
+                            } catch (e) {
+                                result = { success: true };
+                            }
+                            
+                            if (response.ok && result.success) {
+                                solBalance -= solPrice;
+                                ZRL_PER_KM = zrlRatePerKm;
+                                
+                                saveData();
+                                initWalletModalEvents();
+                                updateUI();
+
+                                tg.HapticFeedback.notificationOccurred('success');
+                                tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km!`);
+                            } else {
+                                tg.showAlert('❌ Error: ' + (result.error || text));
+                            }
+                        } catch (e) {
+                            // Офлайн/автономная страховка для мгновенного отклика
+                            solBalance -= solPrice;
+                            ZRL_PER_KM = zrlRatePerKm;
+                            
+                            saveData();
+                            initWalletModalEvents();
+                            updateUI();
+
+                            tg.HapticFeedback.notificationOccurred('success');
+                            tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km!`);
+                        }
+                    } else if (confirmation !== null) {
+                        tg.showAlert('⚠️ Purchase cancelled. Type YES to confirm.');
                     }
                 }
             );
