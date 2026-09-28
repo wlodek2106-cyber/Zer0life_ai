@@ -109,7 +109,6 @@
             color: #000;
         }
 
-        /* Блоки выносливости (Energy & Boots Durability) */
         .energy-card {
             background: #15171e;
             border: 1px solid rgba(20, 241, 149, 0.2);
@@ -203,6 +202,21 @@
             font-size: 14px;
             color: #a8f07a;
             font-weight: 600;
+        }
+
+        /* Индикатор активного бустера */
+        .active-booster-badge {
+            background: rgba(168, 240, 122, 0.1);
+            border: 1px dashed rgba(168, 240, 122, 0.4);
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #a8f07a;
+            font-weight: 700;
         }
 
         .claim-btn {
@@ -684,6 +698,12 @@
                 </div>
                 <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
+
+            <!-- ИНДИКАТОР АКТИВНОГО БУСТЕРА -->
+            <div class="active-booster-badge" id="active-booster-badge">
+                <span>⚡ Active Booster: <strong id="booster-name-text">Standard (500 ZRL/km)</strong></span>
+                <span style="font-size: 10px; background: rgba(168,240,122,0.2); padding: 2px 6px; border-radius: 6px;" id="booster-tier-label">VIP</span>
+            </div>
         </div>
 
         <!-- Карточка ежедневных отметок (Daily Check-in) -->
@@ -930,37 +950,37 @@
             </p>
             
             <div class="booster-grid">
-                <div class="booster-card" onclick="buyBooster(0.5, 1000)">
+                <div class="booster-card" onclick="buyBooster(0.5, 1000, 'Starter (1,000 ZRL/km)')">
                     <div class="booster-badge">Starter</div>
                     <div class="booster-multiplier">2x Speed</div>
                     <div class="booster-rate">1,000 ZRL / km</div>
                     <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 1500)">
+                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (1,500 ZRL/km)')">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
                     <div class="booster-rate">1,500 ZRL / km</div>
                     <div class="booster-price-btn">1 SOL</div>
                 </div>
-                <div class="booster-card featured" onclick="buyBooster(5, 13000)">
+                <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #3b82f6; background: rgba(59,130,246,0.1);">Pro Tier</div>
                     <div class="booster-multiplier">26x Speed</div>
                     <div class="booster-rate">13,000 ZRL / km</div>
                     <div class="booster-price-btn">5 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(10, 30000)">
+                <div class="booster-card" onclick="buyBooster(10, 30000, 'Whale (30,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #a855f7; background: rgba(168,85,247,0.1);">Whale</div>
                     <div class="booster-multiplier">60x Speed</div>
                     <div class="booster-rate">30,000 ZRL / km</div>
                     <div class="booster-price-btn">10 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(20, 65000)">
+                <div class="booster-card" onclick="buyBooster(20, 65000, 'Elite Whale (65,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #ec4899; background: rgba(236,72,153,0.1);">Elite Whale</div>
                     <div class="booster-multiplier">130x Speed</div>
                     <div class="booster-rate">65,000 ZRL / km</div>
                     <div class="booster-price-btn">20 SOL</div>
                 </div>
-                <div class="booster-card featured" onclick="buyBooster(50, 200000)">
+                <div class="booster-card featured" onclick="buyBooster(50, 200000, 'Legend (200,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #f59e0b; background: rgba(245,158,11,0.1);">👑 Legend</div>
                     <div class="booster-multiplier">400x Speed</div>
                     <div class="booster-rate">200,000 ZRL / km</div>
@@ -1009,7 +1029,6 @@
         tg.expand();
         tg.ready();
 
-        // Аудио движок на базе Web Audio API для синтеза звуков эффектов
         let audioCtx = null;
         function initAudio() {
             if (!audioCtx) {
@@ -1061,7 +1080,6 @@
             }
         }
 
-        // Интеграция премиальных тактильных откликов
         function triggerHaptic(style) {
             try {
                 if (style === 'light') tg.HapticFeedback.impactOccurred('light');
@@ -1071,9 +1089,7 @@
                 else if (style === 'warning') tg.HapticFeedback.notificationOccurred('warning');
                 else if (style === 'error') tg.HapticFeedback.notificationOccurred('error');
                 else if (style === 'selection') tg.HapticFeedback.selectionChanged();
-            } catch(e) {
-                // Fallback if not inside Telegram
-            }
+            } catch(e) {}
         }
 
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
@@ -1119,6 +1135,8 @@
         });
 
         let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
+        let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (500 ZRL/km)';
+
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
@@ -1173,6 +1191,7 @@
             localStorage.setItem(STORAGE_PREFIX + 'current_energy', currentEnergy);
             localStorage.setItem(STORAGE_PREFIX + 'boots_hp', bootsHP);
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
+            localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
@@ -1224,6 +1243,8 @@
             } else {
                 bootsBarFill.style.background = 'linear-gradient(90deg, #ca8a04 0%, #a8f07a 100%)';
             }
+
+            document.getElementById('booster-name-text').innerText = activeBoosterName;
         }
 
         document.getElementById('repair-boots-btn').onclick = () => {
@@ -1904,6 +1925,7 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'current_energy');
                         localStorage.removeItem(STORAGE_PREFIX + 'boots_hp');
                         localStorage.removeItem(STORAGE_PREFIX + 'booster_rate');
+                        localStorage.removeItem(STORAGE_PREFIX + 'booster_name');
                         localStorage.removeItem(STORAGE_PREFIX + 'last_active_time');
                         localStorage.removeItem(STORAGE_PREFIX + 'registered_bonus');
                         localStorage.removeItem(STORAGE_PREFIX + 'checkin_day');
@@ -1925,7 +1947,7 @@
             );
         };
 
-        window.buyBooster = function(solPrice, zrlRatePerKm) {
+        window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
             triggerHaptic('medium');
             playSound('click');
             boostersModal.style.display = 'none';
@@ -1939,12 +1961,13 @@
 
             showCustomPrompt(
                 `Confirm Booster Purchase`,
-                `Buy ${zrlRatePerKm} ZRL/km booster for ${solPrice} SOL? Deducted from your personal wallet balance.`,
+                `Buy ${boosterName} booster for ${solPrice} SOL? Deducted from your personal wallet balance.`,
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
                         solBalance -= solPrice;
                         ZRL_PER_KM = zrlRatePerKm;
+                        activeBoosterName = boosterName;
                         bootsHP = 100.0; 
                         
                         saveData();
@@ -1954,7 +1977,7 @@
 
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km and brand new sneakers!`);
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nActive booster: ${boosterName}!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
                         tg.showAlert('⚠️ Purchase cancelled. Type YES to confirm.');
@@ -2039,7 +2062,6 @@
                 lastMotionTime = now;
                 todaySteps++;
 
-                // Мягкий тактильный отклик на каждый шаг
                 triggerHaptic('light');
 
                 const stepKm = METERS_PER_STEP;
