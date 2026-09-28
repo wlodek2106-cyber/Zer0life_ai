@@ -121,10 +121,14 @@ def get_leaderboard():
         
         leaderboard = []
         for index, user in enumerate(sorted_users[:50], start=1):
+            dist = float(user.get('distance', 0.0))
+            # Расчет уровня (каждые 5 км = +1 уровень)
+            level = int(dist // 5) + 1
+            
             leaderboard.append({
                 "rank": index,
-                "name": user.get('name', 'Runner'),
-                "dist": round(user.get('distance', 0.0), 2),
+                "name": f"{user.get('name', 'Runner')} (Lvl {level})",
+                "dist": round(dist, 2),
                 "zrl": int(user.get('balance', 0.0))
             })
             
