@@ -761,7 +761,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно реферальной программы с таблицей линий -->
+    <!-- Модальное окно реферальной программы с реальной таблицей линий -->
     <div class="modal-overlay" id="friends-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -791,9 +791,9 @@
                 <button class="lb-tab" onclick="switchRefTab('line2')">2nd Line (5%)</button>
             </div>
 
-            <!-- Список рефералов (Таблица) -->
+            <!-- Список рефералов (Таблица подтягивает реальные данные с сервера) -->
             <div id="ref-list-container" style="max-height: 200px; overflow-y: auto;">
-                <div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals yet. Share your link!</div>
+                <div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">Loading real data from server...</div>
             </div>
         </div>
     </div>
@@ -1004,6 +1004,10 @@
 
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
+        // Парсинг реферального параметра из ссылки запуска Telegram (например, ?start=ref_12345)
+        let startParam = tg.initDataUnsafe?.start_param || '';
+        let refBy = startParam.startsWith('ref_') ? startParam.replace('ref_', '') : null;
+
         // Логика загрузки пользовательской аватарки
         const avatarElement = document.getElementById('user-avatar');
         const fileInput = document.getElementById('avatar-file-input');
@@ -1101,7 +1105,8 @@
                         username: username,
                         walletAddress: userWallet,
                         distance: totalDistance,
-                        balance: totalBalance
+                        balance: totalBalance,
+                        refBy: refBy
                     })
                 });
             } catch(e) {
@@ -1146,8 +1151,8 @@
             }
         }
 
-        // Регистрация с начислением 1000 ZRL бонусных
-        document.getElementById('reg-submit-btn').onclick = () => {
+        // Регистрация с начислением 1000 ZRL бонусных и отправкой реферала на бэкенд
+        document.getElementById('reg-submit-btn').onclick = async () => {
             const inputName = document.getElementById('reg-username').value.trim();
             const inputWallet = document.getElementById('reg-wallet').value.trim();
 
@@ -1171,6 +1176,21 @@
 
             saveData();
 
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegramId: telegramId,
+                        username: username,
+                        walletAddress: userWallet,
+                        refBy: refBy
+                    })
+                });
+            } catch(e) {
+                console.log("Registration sync error:", e);
+            }
+
             document.getElementById('register-modal').style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
             tg.showAlert(`🎉 Welcome, ${username}!\n\n🎁 You received +1,000 ZRL registration bonus on start!`);
@@ -1178,9 +1198,9 @@
             checkDepositAutomatically();
         };
 
-        // Логика реферальной программы и таблицы линий
+        // Логика реферальной программы и подгрузка данных линий из базы сервера
         const friendsModal = document.getElementById('friends-modal');
-        const botUsername = "zer0life_run_bot"; // Твой бот
+        const botUsername = "zer0life_run_bot"; 
         const refLink = `https://t.me/${botUsername}/app?start=ref_${telegramId}`;
         document.getElementById('ref-link-box').innerText = refLink;
 
@@ -1193,40 +1213,46 @@
             renderReferralTable();
         };
 
-        function renderReferralTable() {
+        async function renderReferralTable() {
             const container = document.getElementById('ref-list-container');
-            
-            // Имитация данных рефералов для первой и второй линии (можно заменить на реальный запрос к бэкенду)
-            const line1Mock = [
-                { name: "CryptoAlex", income: "+450 ZRL", percent: "10%" },
-                { name: "SatoshiRunner", income: "+1,200 ZRL", percent: "10%" }
-            ];
-            const line2Mock = [
-                { name: "SolanaKing", income: "+180 ZRL", percent: "5%" }
-            ];
+            container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">Loading real data from server...</div>`;
 
-            const list = currentRefTab === 'line1' ? line1Mock : line2Mock;
+            try {
+                const response = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/referrals/${telegramId}`);
+                const data = await response.json();
 
-            if (list.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals in this line yet.</div>`;
-                return;
+                if (!response.ok || !data.success) {
+                    container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals yet. Share your link!</div>`;
+                    return;
+                }
+
+                const list = currentRefTab === 'line1' ? data.line1 : data.line2;
+
+                if (!list || list.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals in this line yet.</div>`;
+                    return;
+                }
+
+                container.innerHTML = '';
+                list.forEach(ref => {
+                    const row = document.createElement('div');
+                    row.className = 'lb-user-row';
+                    row.innerHTML = `
+                        <div class="lb-user-left">
+                            <div class="lb-name">${ref.name}</div>
+                        </div>
+                        <div class="lb-stats">
+                            <div class="lb-dist" style="color: #a8f07a;">+${ref.earnedZrl} ZRL</div>
+                            <div class="lb-zrl">Commission: ${currentRefTab === 'line1' ? '10%' : '5%'}</div>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+
+            } catch (e) {
+                console.log("Referral fetch error:", e);
+                container.innerHTML = `<div style="text-align: center; color: #ff4757; padding: 15px; font-size: 13px;">Failed to load referral data from server.</div>`;
             }
-
-            container.innerHTML = '';
-            list.forEach(ref => {
-                const row = document.createElement('div');
-                row.className = 'lb-user-row';
-                row.innerHTML = `
-                    <div class="lb-user-left">
-                        <div class="lb-name">${ref.name}</div>
-                    </div>
-                    <div class="lb-stats">
-                        <div class="lb-dist" style="color: #a8f07a;">${ref.income}</div>
-                        <div class="lb-zrl">Commission: ${ref.percent}</div>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
         }
 
         document.getElementById('nav-friends').addEventListener('click', () => {
