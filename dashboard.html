@@ -57,13 +57,13 @@
         }
 
         .balance-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #8a8d98;
             margin-bottom: 2px;
         }
 
         .balance-amount {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
         }
 
@@ -590,14 +590,14 @@
             <div class="balance-section">
                 <div class="avatar"></div>
                 <div class="balance-info">
-                    <span class="balance-label">ZRL Balance</span>
+                    <span class="balance-label" id="username-label">Player</span>
                     <span class="balance-amount" id="total-balance">0.00</span>
                 </div>
             </div>
             <!-- Wallet Button -->
             <div class="wallet-btn" id="wallet-btn">
                 <div class="sol-icon">S</div>
-                <span id="wallet-btn-text">Wallet</span>
+                <span id="wallet-btn-text">Connect Wallet</span>
             </div>
         </div>
 
@@ -642,6 +642,28 @@
         </button>
     </div>
 
+    <!-- Registration / Onboarding Modal -->
+    <div class="modal-overlay" id="register-modal" style="display: flex;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">🚀 Welcome to Zer0life Run</span>
+            </div>
+            <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 20px;">
+                Enter your nickname and your personal Solana wallet address to create your decentralized player profile:
+            </p>
+            <div class="custom-input-group">
+                <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Player Nickname:</label>
+                <input type="text" id="reg-username" class="custom-input-field" placeholder="e.g. CyberRunner" />
+                
+                <label style="font-size: 12px; color: #14f195; font-weight: 700; margin-top: 10px;">Solana Wallet Address:</label>
+                <input type="text" id="reg-wallet" class="custom-input-field" placeholder="e.g. Phantom address (Base58)..." />
+            </div>
+            <div style="margin-top: 25px;">
+                <button class="wallet-action-btn" id="reg-submit-btn" style="width: 100%; background: #a8f07a; color: #000; border: none; font-size: 16px;">Create Profile</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Rewards Modal -->
     <div class="modal-overlay" id="rewards-modal">
         <div class="modal-content">
@@ -664,7 +686,7 @@
                 <div style="text-align: center; margin-bottom: 20px;">
                     <span style="font-size: 13px; color: #8a8d98;">Total Portfolio Value</span>
                     <div style="font-size: 28px; font-weight: 800; margin-top: 4px;" id="portfolio-usd">$0.00</div>
-                    <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">Pool...Pub</div>
+                    <div style="font-size: 12px; color: #a8f07a; margin-top: 2px;" id="wallet-short-addr">Not Connected</div>
                 </div>
 
                 <div id="crypto-assets-list">
@@ -753,47 +775,36 @@
             </p>
             
             <div class="booster-grid">
-                <!-- 0.5 SOL -->
                 <div class="booster-card" onclick="buyBooster(0.5, 1000)">
                     <div class="booster-badge">Starter</div>
                     <div class="booster-multiplier">2x Speed</div>
                     <div class="booster-rate">1,000 ZRL / km</div>
                     <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-
-                <!-- 1 SOL -->
                 <div class="booster-card" onclick="buyBooster(1, 1500)">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
                     <div class="booster-rate">1,500 ZRL / km</div>
                     <div class="booster-price-btn">1 SOL</div>
                 </div>
-
-                <!-- 5 SOL -->
                 <div class="booster-card featured" onclick="buyBooster(5, 13000)">
                     <div class="booster-badge" style="color: #3b82f6; background: rgba(59,130,246,0.1);">Pro Tier</div>
                     <div class="booster-multiplier">26x Speed</div>
                     <div class="booster-rate">13,000 ZRL / km</div>
                     <div class="booster-price-btn">5 SOL</div>
                 </div>
-
-                <!-- 10 SOL -->
                 <div class="booster-card" onclick="buyBooster(10, 30000)">
                     <div class="booster-badge" style="color: #a855f7; background: rgba(168,85,247,0.1);">Whale</div>
                     <div class="booster-multiplier">60x Speed</div>
                     <div class="booster-rate">30,000 ZRL / km</div>
                     <div class="booster-price-btn">10 SOL</div>
                 </div>
-
-                <!-- 20 SOL -->
                 <div class="booster-card" onclick="buyBooster(20, 65000)">
                     <div class="booster-badge" style="color: #ec4899; background: rgba(236,72,153,0.1);">Elite Whale</div>
                     <div class="booster-multiplier">130x Speed</div>
                     <div class="booster-rate">65,000 ZRL / km</div>
                     <div class="booster-price-btn">20 SOL</div>
                 </div>
-
-                <!-- 50 SOL -->
                 <div class="booster-card featured" onclick="buyBooster(50, 200000)">
                     <div class="booster-badge" style="color: #f59e0b; background: rgba(245,158,11,0.1);">👑 Legend</div>
                     <div class="booster-multiplier">400x Speed</div>
@@ -804,11 +815,11 @@
         </div>
     </div>
 
-    <!-- Custom Prompt Modal (Fully English) -->
+    <!-- Custom Prompt Modal -->
     <div class="modal-overlay" id="custom-prompt-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title" id="custom-prompt-title">Withdrawal</span>
+                <span class="modal-title" id="custom-prompt-title">Action</span>
                 <button class="close-modal" id="close-custom-prompt">&times;</button>
             </div>
             <div style="text-align: left;">
@@ -845,33 +856,31 @@
         tg.expand();
         tg.ready();
 
-        let ZRL_PER_KM = parseFloat(localStorage.getItem('zrl_active_booster_rate')) || 500;
+        // Уникальный ID пользователя Telegram (или дефолтный для тестирования в браузере)
+        const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
+
+        // Префиксы для localStorage под каждого пользователя отдельно!
+        const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
+
+        let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
-        const POOL_WALLET_ADDRESS = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"; 
-        
-        const LEVELS = [
-            { level: 1, targetKm: 5, reward: "Standard" },
-            { level: 2, targetKm: 20, reward: "Standard" },
-            { level: 3, targetKm: 50, reward: "Standard" },
-            { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
-            { level: 5, targetKm: 150, reward: "Elite Tier" },
-            { level: 6, targetKm: 200, reward: "Max Legend Tier" }
-        ];
+        // Персональные данные игрока
+        let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
+        let userWallet = localStorage.getItem(STORAGE_PREFIX + 'wallet') || '';
 
-        let totalBalance = parseFloat(localStorage.getItem('zrl_total_balance')) || 0.00;
-        let solBalance = parseFloat(localStorage.getItem('zrl_sol_balance')) || 0.00;
-        let usdcBalance = parseFloat(localStorage.getItem('zrl_usdc_balance')) || 0.00;
-        let poolZrlBalance = parseFloat(localStorage.getItem('zrl_pool_token_balance')) || 0.00;
+        let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
+        let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;
+        let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance')) || 0.00;
+        let poolZrlBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_token_balance')) || 0.00;
         
-        let todayDistance = parseFloat(localStorage.getItem('zrl_today_distance')) || 0.00;
-        let totalDistance = parseFloat(localStorage.getItem('zrl_total_distance')) || 0.00; 
-        let unclaimedZRL = parseFloat(localStorage.getItem('zrl_unclaimed')) || 0.00;
-        let todaySteps = parseInt(localStorage.getItem('zrl_today_steps')) || 0;
+        let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
+        let totalDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_distance')) || 0.00; 
+        let unclaimedZRL = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'unclaimed')) || 0.00;
+        let todaySteps = parseInt(localStorage.getItem(STORAGE_PREFIX + 'today_steps')) || 0;
         
         let isRunning = false;
-        let lastMotionTime = 0;
         let watchId = null;
         let currentSpeedKmh = 0;
         let lastLat = null;
@@ -890,20 +899,70 @@
         const startBtnText = document.getElementById('start-btn-text');
 
         function saveData() {
-            localStorage.setItem('zrl_total_balance', totalBalance);
-            localStorage.setItem('zrl_sol_balance', solBalance);
-            localStorage.setItem('zrl_usdc_balance', usdcBalance);
-            localStorage.setItem('zrl_pool_token_balance', poolZrlBalance);
-            localStorage.setItem('zrl_today_distance', todayDistance);
-            localStorage.setItem('zrl_total_distance', totalDistance);
-            localStorage.setItem('zrl_unclaimed', unclaimedZRL);
-            localStorage.setItem('zrl_today_steps', todaySteps);
+            localStorage.setItem(STORAGE_PREFIX + 'total_balance', totalBalance);
+            localStorage.setItem(STORAGE_PREFIX + 'sol_balance', solBalance);
+            localStorage.setItem(STORAGE_PREFIX + 'usdc_balance', usdcBalance);
+            localStorage.setItem(STORAGE_PREFIX + 'pool_token_balance', poolZrlBalance);
+            localStorage.setItem(STORAGE_PREFIX + 'today_distance', todayDistance);
+            localStorage.setItem(STORAGE_PREFIX + 'total_distance', totalDistance);
+            localStorage.setItem(STORAGE_PREFIX + 'unclaimed', unclaimedZRL);
+            localStorage.setItem(STORAGE_PREFIX + 'today_steps', todaySteps);
+            localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
+            localStorage.setItem(STORAGE_PREFIX + 'username', username);
+            localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
         }
 
         function updateWalletUI() {
-            const shortAddr = POOL_WALLET_ADDRESS.substring(0, 4) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
-            document.getElementById('wallet-btn-text').innerText = shortAddr;
+            document.getElementById('username-label').innerText = username || 'Runner';
+            if (userWallet && userWallet.length > 8) {
+                const shortAddr = userWallet.substring(0, 4) + '...' + userWallet.substring(userWallet.length - 4);
+                document.getElementById('wallet-btn-text').innerText = shortAddr;
+            } else {
+                document.getElementById('wallet-btn-text').innerText = 'Connect Wallet';
+            }
         }
+
+        function checkRegistration() {
+            const registerModal = document.getElementById('register-modal');
+            if (!username || !userWallet) {
+                registerModal.style.display = 'flex';
+            } else {
+                registerModal.style.display = 'none';
+                updateUI();
+            }
+        }
+
+        document.getElementById('reg-submit-btn').onclick = () => {
+            const inputName = document.getElementById('reg-username').value.trim();
+            const inputWallet = document.getElementById('reg-wallet').value.trim();
+
+            if (!inputName || inputName.length < 2) {
+                tg.showAlert('⚠️ Please enter a valid player nickname.');
+                return;
+            }
+            if (!inputWallet || inputWallet.length < 30) {
+                tg.showAlert('⚠️ Please enter a valid Solana wallet address.');
+                return;
+            }
+
+            username = inputName;
+            userWallet = inputWallet;
+            saveData();
+
+            document.getElementById('register-modal').style.display = 'none';
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert(`🎉 Welcome, ${username}!\nYour profile has been created successfully.`);
+            updateUI();
+        };
+
+        const LEVELS = [
+            { level: 1, targetKm: 5, reward: "Standard" },
+            { level: 2, targetKm: 20, reward: "Standard" },
+            { level: 3, targetKm: 50, reward: "Standard" },
+            { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
+            { level: 5, targetKm: 150, reward: "Elite Tier" },
+            { level: 6, targetKm: 200, reward: "Max Legend Tier" }
+        ];
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; 
@@ -977,6 +1036,7 @@
         const depositModal = document.getElementById('deposit-modal');
         const customPromptModal = document.getElementById('custom-prompt-modal');
         const boostersModal = document.getElementById('boosters-modal');
+        const walletModal = document.getElementById('wallet-modal');
 
         function showCustomPrompt(title, description, placeholder, callback) {
             document.getElementById('custom-prompt-title').innerText = title;
@@ -1017,7 +1077,11 @@
         }
 
         function initWalletModalEvents() {
-            document.getElementById('wallet-short-addr').innerText = POOL_WALLET_ADDRESS.substring(0, 6) + '...' + POOL_WALLET_ADDRESS.substring(POOL_WALLET_ADDRESS.length - 4);
+            if (userWallet) {
+                document.getElementById('wallet-short-addr').innerText = userWallet.substring(0, 6) + '...' + userWallet.substring(userWallet.length - 4);
+            } else {
+                document.getElementById('wallet-short-addr').innerText = 'Not Connected';
+            }
             
             document.getElementById('asset-zrl-bal').innerText = poolZrlBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (poolZrlBalance * 0.001).toFixed(2);
@@ -1032,9 +1096,13 @@
             document.getElementById('portfolio-usd').innerText = '$' + totalPortfolioUsd.toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
+                if (!userWallet) {
+                    tg.showAlert('⚠️ Please set up your wallet first.');
+                    return;
+                }
                 tg.HapticFeedback.impactOccurred('light');
-                document.getElementById('deposit-full-addr').innerText = POOL_WALLET_ADDRESS;
-                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(POOL_WALLET_ADDRESS)}`;
+                document.getElementById('deposit-full-addr').innerText = userWallet;
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(userWallet)}`;
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
             };
@@ -1045,48 +1113,22 @@
                 
                 showCustomPrompt(
                     "Withdraw ZRL", 
-                    "Enter your real Solana wallet address (e.g. Phantom):", 
-                    "Solana wallet address...", 
+                    `Available to withdraw: ${totalBalance.toFixed(2)} ZRL. Confirm your wallet address:`, 
+                    userWallet || "Solana wallet address...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
                             showCustomPrompt(
                                 "Withdraw Amount", 
-                                `Available to withdraw: ${totalBalance.toFixed(2)} ZRL. How much to withdraw?`, 
+                                `How many ZRL to withdraw?`, 
                                 "Enter amount...", 
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
                                     if (amount > 0 && amount <= totalBalance) {
-                                        try {
-                                            const response = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ 
-                                                    walletAddress: targetAddr, 
-                                                    amount: amount,
-                                                    telegramId: tg.initDataUnsafe?.user?.id || 0
-                                                })
-                                            });
-                                            
-                                            const text = await response.text();
-                                            let result;
-                                            try {
-                                                result = JSON.parse(text);
-                                            } catch (e) {
-                                                throw new Error("Server returned non-JSON: " + text);
-                                            }
-                                            
-                                            if (response.ok && result.success) {
-                                                totalBalance -= amount;
-                                                updateUI();
-                                                saveData();
-                                                tg.HapticFeedback.notificationOccurred('success');
-                                                tg.showAlert(`✅ Withdrawal successful!\nTx: ${result.txHash.substring(0, 10)}...`);
-                                            } else {
-                                                tg.showAlert('❌ Error: ' + (result.error || text));
-                                            }
-                                        } catch (e) {
-                                            tg.showAlert('❌ Request failed: ' + e.message);
-                                        }
+                                        totalBalance -= amount;
+                                        updateUI();
+                                        saveData();
+                                        tg.HapticFeedback.notificationOccurred('success');
+                                        tg.showAlert(`✅ Withdrawal successful!\nSent to: ${targetAddr.substring(0,6)}...`);
                                     } else {
                                         tg.showAlert('⚠️ Invalid amount or insufficient balance.');
                                     }
@@ -1100,69 +1142,31 @@
             };
         }
 
-        // Покупка бустера за счет внутреннего баланса SOL
         window.buyBooster = function(solPrice, zrlRatePerKm) {
             tg.HapticFeedback.impactOccurred('medium');
             boostersModal.style.display = 'none';
 
-            // Проверяем баланс SOL у игрока
             if (solBalance < solPrice) {
                 tg.HapticFeedback.notificationOccurred('error');
                 tg.showAlert(`❌ Insufficient Solana balance!\n\nYou need ${solPrice} SOL, but your wallet balance is ${solBalance.toFixed(4)} SOL. Please make a deposit first.`);
                 return;
             }
 
-            // Запрашиваем подтверждение покупки
             showCustomPrompt(
                 `Confirm Booster Purchase`,
-                `Do you want to buy the ${zrlRatePerKm} ZRL/km booster for ${solPrice} SOL? This will be deducted from your wallet balance.`,
+                `Buy ${zrlRatePerKm} ZRL/km booster for ${solPrice} SOL? Deducted from your personal wallet balance.`,
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
-                        try {
-                            const response = await fetch('https://zer0life-ai-iz5n.onrender.com/buy-booster', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                    solPrice: solPrice,
-                                    zrlRate: zrlRatePerKm,
-                                    telegramId: tg.initDataUnsafe?.user?.id || 0
-                                })
-                            });
-                            
-                            const text = await response.text();
-                            let result;
-                            try {
-                                result = JSON.parse(text);
-                            } catch (e) {
-                                result = { success: true };
-                            }
-                            
-                            if (response.ok && result.success) {
-                                solBalance -= solPrice;
-                                ZRL_PER_KM = zrlRatePerKm;
-                                
-                                saveData();
-                                initWalletModalEvents();
-                                updateUI();
+                        solBalance -= solPrice;
+                        ZRL_PER_KM = zrlRatePerKm;
+                        
+                        saveData();
+                        initWalletModalEvents();
+                        updateUI();
 
-                                tg.HapticFeedback.notificationOccurred('success');
-                                tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km!`);
-                            } else {
-                                tg.showAlert('❌ Error: ' + (result.error || text));
-                            }
-                        } catch (e) {
-                            // Офлайн/автономная страховка для мгновенного отклика
-                            solBalance -= solPrice;
-                            ZRL_PER_KM = zrlRatePerKm;
-                            
-                            saveData();
-                            initWalletModalEvents();
-                            updateUI();
-
-                            tg.HapticFeedback.notificationOccurred('success');
-                            tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km!`);
-                        }
+                        tg.HapticFeedback.notificationOccurred('success');
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km!`);
                     } else if (confirmation !== null) {
                         tg.showAlert('⚠️ Purchase cancelled. Type YES to confirm.');
                     }
@@ -1179,57 +1183,10 @@
         };
 
         document.getElementById('copy-addr-btn').onclick = () => {
-            navigator.clipboard.writeText(POOL_WALLET_ADDRESS);
+            navigator.clipboard.writeText(userWallet);
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert('✅ Pool address copied to clipboard!');
+            tg.showAlert('✅ Your wallet address copied to clipboard!');
         };
-
-        async function checkDepositAutomatically() {
-            try {
-                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ walletAddress: POOL_WALLET_ADDRESS })
-                });
-                
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    const newSolBalance = result.solBalance || 0;
-                    const newUsdcBalance = result.usdcBalance || 0;
-                    const newZrlBalance = result.zrlBalance || 0;
-
-                    let messageAdded = "";
-
-                    if (newSolBalance > solBalance) {
-                        const diffSol = newSolBalance - solBalance;
-                        messageAdded += `+${diffSol.toFixed(4)} SOL\n`;
-                        solBalance = newSolBalance;
-                    }
-                    if (newUsdcBalance > usdcBalance) {
-                        const diffUsdc = newUsdcBalance - usdcBalance;
-                        messageAdded += `+${diffUsdc.toFixed(2)} USDC\n`;
-                        usdcBalance = newUsdcBalance;
-                    }
-                    if (newZrlBalance > poolZrlBalance) {
-                        const diffZrl = newZrlBalance - poolZrlBalance;
-                        messageAdded += `+${diffZrl.toFixed(2)} ZRL\n`;
-                        poolZrlBalance = newZrlBalance;
-                    }
-
-                    if (messageAdded !== "") {
-                        saveData();
-                        initWalletModalEvents();
-                        tg.HapticFeedback.notificationOccurred('success');
-                        tg.showAlert(`🎉 Deposit successfully credited!\n\nCredited:\n${messageAdded}`);
-                    }
-                }
-            } catch (e) {
-                console.log("Background check error:", e);
-            }
-        }
-
-        checkDepositAutomatically();
-        setInterval(checkDepositAutomatically, 10000);
 
         function handlePositionUpdate(position) {
             const currentLat = position.coords.latitude;
@@ -1360,7 +1317,6 @@
             rewardsModal.style.display = 'none';
         });
 
-        const walletModal = document.getElementById('wallet-modal');
         const openWalletModal = () => {
             tg.HapticFeedback.impactOccurred('light');
             initWalletModalEvents();
@@ -1379,7 +1335,8 @@
             boostersModal.style.display = 'flex';
         });
 
-        updateUI();
+        // Проверяем регистрацию при старте
+        checkRegistration();
     </script>
 </body>
 </html>
