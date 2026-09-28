@@ -1009,6 +1009,73 @@
         tg.expand();
         tg.ready();
 
+        // Аудио движок на базе Web Audio API для синтеза звуков эффектов
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                const now = audioCtx.currentTime;
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.04);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                } else if (type === 'coin') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(987.77, now);
+                    osc.frequency.setValueAtTime(1318.51, now + 0.06);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    osc.frequency.setValueAtTime(783.99, now + 0.16);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                }
+            } catch(e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        // Интеграция премиальных тактильных откликов
+        function triggerHaptic(style) {
+            try {
+                if (style === 'light') tg.HapticFeedback.impactOccurred('light');
+                else if (style === 'medium') tg.HapticFeedback.impactOccurred('medium');
+                else if (style === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+                else if (style === 'success') tg.HapticFeedback.notificationOccurred('success');
+                else if (style === 'warning') tg.HapticFeedback.notificationOccurred('warning');
+                else if (style === 'error') tg.HapticFeedback.notificationOccurred('error');
+                else if (style === 'selection') tg.HapticFeedback.selectionChanged();
+            } catch(e) {
+                // Fallback if not inside Telegram
+            }
+        }
+
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const ADMIN_ID = "428821665";
         const isAdmin = String(telegramId) === ADMIN_ID;
@@ -1024,7 +1091,8 @@
         }
 
         avatarElement.addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
+            triggerHaptic('light');
+            playSound('click');
             fileInput.click();
         });
 
@@ -1032,6 +1100,7 @@
             const file = event.target.files[0];
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
+                    triggerHaptic('error');
                     tg.showAlert('⚠️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
                     return;
                 }
@@ -1041,7 +1110,8 @@
                     const base64Image = e.target.result;
                     avatarElement.style.backgroundImage = `url('${base64Image}')`;
                     localStorage.setItem(STORAGE_PREFIX + 'custom_avatar', base64Image);
-                    tg.HapticFeedback.notificationOccurred('success');
+                    triggerHaptic('success');
+                    playSound('success');
                     tg.showAlert('✅ Аватарка успешно обновлена!');
                 };
                 reader.readAsDataURL(file);
@@ -1065,12 +1135,10 @@
         let unclaimedZRL = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'unclaimed')) || 0.00;
         let todaySteps = parseInt(localStorage.getItem(STORAGE_PREFIX + 'today_steps')) || 0;
         
-        // Энергия игрока
         let maxEnergy = 100.0;
         let currentEnergy = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'current_energy'));
         if (isNaN(currentEnergy)) currentEnergy = 100.0;
 
-        // Износ кроссовок (Durability HP)
         let maxBootsHP = 100;
         let bootsHP = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'boots_hp'));
         if (isNaN(bootsHP)) bootsHP = 100.0;
@@ -1145,7 +1213,6 @@
                 energyBarFill.style.background = 'linear-gradient(90deg, #10b981 0%, #14f195 100%)';
             }
 
-            // Обновляем шкалу износа бутс
             const bootsText = document.getElementById('boots-durability-text');
             const bootsBarFill = document.getElementById('boots-bar-fill');
             bootsText.innerText = `${bootsHP.toFixed(1)} / ${maxBootsHP} HP`;
@@ -1159,14 +1226,16 @@
             }
         }
 
-        // Кнопка починки бутс за 50 ZRL
         document.getElementById('repair-boots-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
             if (bootsHP >= 100) {
                 tg.showAlert("✅ Your sneakers are already at 100% durability!");
                 return;
             }
             const repairCost = 50;
             if (totalBalance < repairCost) {
+                triggerHaptic('error');
                 tg.showAlert(`❌ Insufficient ZRL balance! You need ${repairCost} ZRL to repair your sneakers.`);
                 return;
             }
@@ -1176,7 +1245,8 @@
             saveData();
             updateUI();
             updateEnergyUI();
-            tg.HapticFeedback.notificationOccurred('success');
+            triggerHaptic('success');
+            playSound('success');
             tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
         };
 
@@ -1196,7 +1266,7 @@
                 
                 if (hoursPassed >= 5) {
                     setTimeout(() => {
-                        tg.HapticFeedback.notificationOccurred('warning');
+                        triggerHaptic('warning');
                         tg.showAlert("⚠️ Energy Warning!\n\nYour activity has dropped significantly. Return to the game, start running, and boost your ZRL mining speed before rewards decay!");
                     }, 1000);
                 }
@@ -1226,14 +1296,18 @@
         }
 
         document.getElementById('reg-submit-btn').onclick = async () => {
+            triggerHaptic('medium');
+            playSound('click');
             const inputName = document.getElementById('reg-username').value.trim();
             const inputWallet = document.getElementById('reg-wallet').value.trim();
 
             if (!inputName || inputName.length < 2) {
+                triggerHaptic('error');
                 tg.showAlert('⚠️ Please enter a valid player nickname.');
                 return;
             }
             if (!inputWallet || inputWallet.length < 30) {
+                triggerHaptic('error');
                 tg.showAlert('⚠️ Please enter a valid Solana wallet address.');
                 return;
             }
@@ -1264,7 +1338,8 @@
             }
 
             document.getElementById('register-modal').style.display = 'none';
-            tg.HapticFeedback.notificationOccurred('success');
+            triggerHaptic('success');
+            playSound('success');
             tg.showAlert(`🎉 Welcome, ${username}!\n\n🎁 You received +1,000 ZRL registration bonus on start!`);
             updateUI();
             checkDepositAutomatically();
@@ -1314,9 +1389,12 @@
         }
 
         document.getElementById('checkin-btn').addEventListener('click', () => {
+            triggerHaptic('medium');
+            playSound('click');
             const todayStr = new Date().toDateString();
             
             if (lastCheckinDate === todayStr) {
+                triggerHaptic('warning');
                 tg.showAlert("⏳ You have already claimed today's reward! Come back tomorrow.");
                 return;
             }
@@ -1338,7 +1416,8 @@
             updateUI();
             updateCheckinUI();
 
-            tg.HapticFeedback.notificationOccurred('success');
+            triggerHaptic('success');
+            playSound('coin');
             tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
 
@@ -1395,6 +1474,8 @@
         }
 
         document.getElementById('quest-1-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
             if (!quest1Claimed && todayDistance >= 1.0) {
                 quest1Claimed = true;
                 localStorage.setItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString(), 'true');
@@ -1402,12 +1483,15 @@
                 saveData();
                 updateUI();
                 updateQuestsUI();
-                tg.HapticFeedback.notificationOccurred('success');
+                triggerHaptic('success');
+                playSound('coin');
                 tg.showAlert('🎉 Quest completed! You received +50 ZRL.');
             }
         };
 
         document.getElementById('quest-2-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
             if (!quest2Claimed && todaySteps >= 1000) {
                 quest2Claimed = true;
                 localStorage.setItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString(), 'true');
@@ -1415,7 +1499,8 @@
                 saveData();
                 updateUI();
                 updateQuestsUI();
-                tg.HapticFeedback.notificationOccurred('success');
+                triggerHaptic('success');
+                playSound('coin');
                 tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
             }
         };
@@ -1427,23 +1512,27 @@
             if (Math.random() < 0.02) {
                 pendingBoxReward = Math.floor(Math.random() * 131) + 20; 
                 stopRunning(); 
-                tg.HapticFeedback.notificationOccurred('success');
+                triggerHaptic('success');
+                playSound('success');
                 mysteryBoxModal.style.display = 'flex';
             }
         }
 
         document.getElementById('open-box-btn').onclick = () => {
+            triggerHaptic('success');
+            playSound('coin');
             totalBalance += pendingBoxReward;
             saveData();
             updateUI();
             mysteryBoxModal.style.display = 'none';
-            tg.HapticFeedback.notificationOccurred('success');
             tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
 
         let currentLbTab = 'daily';
 
         window.switchLbTab = function(tab) {
+            triggerHaptic('selection');
+            playSound('click');
             currentLbTab = tab;
             document.querySelectorAll('#leaderboard-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -1568,6 +1657,8 @@
         const leaderboardModal = document.getElementById('leaderboard-modal');
 
         function showCustomPrompt(title, description, placeholder, callback) {
+            triggerHaptic('light');
+            playSound('click');
             document.getElementById('custom-prompt-title').innerText = title;
             document.getElementById('custom-prompt-desc').innerText = description;
             const inputField = document.getElementById('custom-prompt-input');
@@ -1589,17 +1680,21 @@
             };
 
             confirmBtn.onclick = () => {
+                triggerHaptic('medium');
+                playSound('click');
                 const val = inputField.value.trim();
                 cleanUp();
                 callback(val);
             };
 
             cancelBtn.onclick = () => {
+                triggerHaptic('light');
                 cleanUp();
                 callback(null);
             };
 
             closeBtn.onclick = () => {
+                triggerHaptic('light');
                 cleanUp();
                 callback(null);
             };
@@ -1656,10 +1751,12 @@
 
             document.getElementById('deposit-btn').onclick = () => {
                 if (!userWallet && !isAdmin) {
+                    triggerHaptic('error');
                     tg.showAlert('⚠️ Please set up your wallet first.');
                     return;
                 }
-                tg.HapticFeedback.impactOccurred('light');
+                triggerHaptic('light');
+                playSound('click');
                 const targetAddr = isAdmin ? "System Pool Wallet" : userWallet;
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
@@ -1671,7 +1768,8 @@
             };
 
             document.getElementById('withdraw-btn').onclick = () => {
-                tg.HapticFeedback.impactOccurred('medium');
+                triggerHaptic('medium');
+                playSound('click');
                 walletModal.style.display = 'none';
                 
                 showCustomPrompt(
@@ -1688,6 +1786,7 @@
                                     const amount = parseFloat(amountStr);
                                     if (amount > 0) {
                                         if (amount > totalBalance) {
+                                            triggerHaptic('error');
                                             tg.showAlert('⚠️ Insufficient ZRL balance for withdrawal.');
                                             return;
                                         }
@@ -1707,20 +1806,25 @@
                                                 saveData();
                                                 updateUI();
 
-                                                tg.HapticFeedback.notificationOccurred('success');
+                                                triggerHaptic('success');
+                                                playSound('success');
                                                 tg.showAlert(`✅ Withdrawal transaction sent!\nHash: ${data.txHash.substring(0, 10)}...`);
                                             } else {
+                                                triggerHaptic('error');
                                                 tg.showAlert(`❌ Error: ${data.error || 'Unknown error'}`);
                                             }
                                         } catch (err) {
+                                            triggerHaptic('error');
                                             tg.showAlert(`❌ Network error during withdrawal.`);
                                         }
                                     } else {
+                                        triggerHaptic('error');
                                         tg.showAlert('⚠️ Invalid amount.');
                                     }
                                 }
                             );
                         } else if (targetAddr !== null) {
+                            triggerHaptic('error');
                             tg.showAlert('⚠️ Invalid wallet address.');
                         }
                     }
@@ -1765,7 +1869,8 @@
                         saveData();
                         initWalletModalEvents();
                         updateUI();
-                        tg.HapticFeedback.notificationOccurred('success');
+                        triggerHaptic('success');
+                        playSound('success');
                         tg.showAlert(`🎉 Deposit credited!\n\n${messageAdded}`);
                     }
                 }
@@ -1777,7 +1882,8 @@
         setInterval(checkDepositAutomatically, 10000);
 
         document.getElementById('logout-btn').onclick = () => {
-            tg.HapticFeedback.impactOccurred('heavy');
+            triggerHaptic('heavy');
+            playSound('click');
             
             showCustomPrompt(
                 "Logout Profile",
@@ -1804,13 +1910,15 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'last_checkin_date');
 
                         walletModal.style.display = 'none';
-                        tg.HapticFeedback.notificationOccurred('success');
+                        triggerHaptic('success');
+                        playSound('success');
                         tg.showAlert('🚪 Logged out successfully. Restarting session...');
                         
                         setTimeout(() => {
                             location.reload();
                         }, 1000);
                     } else if (val !== null) {
+                        triggerHaptic('warning');
                         tg.showAlert('⚠️ Action cancelled. Type YES to log out.');
                     }
                 }
@@ -1818,11 +1926,13 @@
         };
 
         window.buyBooster = function(solPrice, zrlRatePerKm) {
-            tg.HapticFeedback.impactOccurred('medium');
+            triggerHaptic('medium');
+            playSound('click');
             boostersModal.style.display = 'none';
 
             if (solBalance < solPrice) {
-                tg.HapticFeedback.notificationOccurred('error');
+                triggerHaptic('error');
+                playSound('warning');
                 tg.showAlert(`❌ Insufficient Solana balance!\n\nYou need ${solPrice} SOL, but your wallet balance is ${solBalance.toFixed(4)} SOL. Please make a deposit first.`);
                 return;
             }
@@ -1835,16 +1945,18 @@
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
                         solBalance -= solPrice;
                         ZRL_PER_KM = zrlRatePerKm;
-                        bootsHP = 100.0; // При покупке новых кроссовок/бустера прочность сбрасывается на максимум
+                        bootsHP = 100.0; 
                         
                         saveData();
                         initWalletModalEvents();
                         updateUI();
                         updateEnergyUI();
 
-                        tg.HapticFeedback.notificationOccurred('success');
+                        triggerHaptic('success');
+                        playSound('success');
                         tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nNew mining rate: ${zrlRatePerKm} ZRL/km and brand new sneakers!`);
                     } else if (confirmation !== null) {
+                        triggerHaptic('warning');
                         tg.showAlert('⚠️ Purchase cancelled. Type YES to confirm.');
                     }
                 }
@@ -1852,16 +1964,19 @@
         };
 
         document.getElementById('close-deposit').onclick = () => {
+            triggerHaptic('light');
             depositModal.style.display = 'none';
         };
 
         document.getElementById('close-boosters').onclick = () => {
+            triggerHaptic('light');
             boostersModal.style.display = 'none';
         };
 
         document.getElementById('copy-addr-btn').onclick = () => {
+            triggerHaptic('success');
+            playSound('click');
             navigator.clipboard.writeText(document.getElementById('deposit-full-addr').innerText);
-            tg.HapticFeedback.notificationOccurred('success');
             tg.showAlert('✅ Address copied to clipboard!');
         };
 
@@ -1895,12 +2010,14 @@
 
             if (currentEnergy <= 0) {
                 stopRunning();
+                triggerHaptic('error');
                 tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge before continuing.");
                 return;
             }
 
             if (bootsHP <= 0) {
                 stopRunning();
+                triggerHaptic('error');
                 tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers to continue earning tokens.");
                 return;
             }
@@ -1922,12 +2039,14 @@
                 lastMotionTime = now;
                 todaySteps++;
 
+                // Мягкий тактильный отклик на каждый шаг
+                triggerHaptic('light');
+
                 const stepKm = METERS_PER_STEP;
                 todayDistance += stepKm;
                 totalDistance += stepKm;
                 unclaimedZRL += (stepKm * ZRL_PER_KM);
                 
-                // Тратим энергию и изнашиваем бутсы при беге
                 currentEnergy = Math.max(0, currentEnergy - 0.05);
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
@@ -1952,14 +2071,17 @@
         }
 
         startBtn.addEventListener('click', async () => {
-            tg.HapticFeedback.impactOccurred('heavy');
+            triggerHaptic('heavy');
+            playSound('click');
             
             if (!isRunning) {
                 if (currentEnergy <= 0) {
+                    triggerHaptic('error');
                     tg.showAlert("⚡ Your energy is depleted! Wait for it to recover.");
                     return;
                 }
                 if (bootsHP <= 0) {
+                    triggerHaptic('error');
                     tg.showAlert("👟 Sneakers are broken (0 HP)! Repair them first.");
                     return;
                 }
@@ -1981,6 +2103,7 @@
                             startBtn.classList.add('active-run');
                             startBtnText.innerText = 'Stop Run';
                         } else {
+                            triggerHaptic('error');
                             tg.showAlert("Motion permission is required to track your run.");
                         }
                     } catch (e) {
@@ -1998,8 +2121,10 @@
         });
 
         document.getElementById('claim-btn').addEventListener('click', () => {
+            triggerHaptic('medium');
             if (unclaimedZRL > 0) {
-                tg.HapticFeedback.notificationOccurred('success');
+                triggerHaptic('success');
+                playSound('coin');
                 totalBalance += unclaimedZRL;
                 unclaimedZRL = 0;
                 
@@ -2008,22 +2133,26 @@
                 
                 tg.showAlert('Tokens successfully claimed to your balance!');
             } else {
+                triggerHaptic('warning');
                 tg.showAlert('No tokens to claim yet. Make some steps!');
             }
         });
 
         document.getElementById('nav-rewards').addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
+            triggerHaptic('light');
+            playSound('click');
             fetchLeaderboardFromBackend();
             leaderboardModal.style.display = 'flex';
         });
 
         document.getElementById('close-leaderboard').addEventListener('click', () => {
+            triggerHaptic('light');
             leaderboardModal.style.display = 'none';
         });
 
         const openWalletModal = () => {
-            tg.HapticFeedback.impactOccurred('light');
+            triggerHaptic('light');
+            playSound('click');
             initWalletModalEvents();
             walletModal.style.display = 'flex';
         };
@@ -2032,11 +2161,13 @@
         document.getElementById('nav-wallet').addEventListener('click', openWalletModal);
 
         document.getElementById('close-wallet').addEventListener('click', () => {
+            triggerHaptic('light');
             walletModal.style.display = 'none';
         });
 
         document.getElementById('nav-more').addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
+            triggerHaptic('light');
+            playSound('click');
             boostersModal.style.display = 'flex';
         });
 
