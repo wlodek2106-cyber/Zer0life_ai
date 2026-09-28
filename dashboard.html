@@ -841,14 +841,14 @@
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
-                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;">Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to your personal registered wallet address below:</p>
+                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="deposit-instruction-text">Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to your personal registered wallet address below:</p>
                 <div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 16px; margin-bottom: 15px;">
                     <img id="deposit-qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; display: block;" />
                 </div>
                 <div id="deposit-full-addr" style="background: #181b24; padding: 12px; border-radius: 14px; font-size: 12px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 15px; user-select: all;"></div>
                 
                 <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                    <button class="wallet-action-btn" id="copy-addr-btn" style="background: #181b24; border-color: #a8f07a; color: #a8f07a;">📋 Copy Wallet Address</button>
+                    <button class="wallet-action-btn" id="copy-addr-btn" style="background: #181b24; border-color: #a8f07a; color: #a8f07a;">📋 Copy Address</button>
                 </div>
             </div>
         </div>
@@ -1224,8 +1224,8 @@
                 document.getElementById('wallet-modal-title').innerText = "👑 Admin Pool Dashboard";
                 document.getElementById('wallet-short-addr').innerText = "System Pool Wallet (Real-time)";
                 document.getElementById('usdc-row').style.display = 'flex';
-                document.getElementById('deposit-btn').innerText = "📥 Адрес Пула";
-                document.getElementById('withdraw-btn').innerText = "📤 Вывод с Пула";
+                document.getElementById('deposit-btn').innerText = "📥 Pool Address";
+                document.getElementById('withdraw-btn').innerText = "📤 Pool Withdraw";
             } else {
                 document.getElementById('wallet-modal-title').innerText = "Solana Web3 Wallet";
                 if (userWallet) {
@@ -1275,9 +1275,12 @@
                     return;
                 }
                 tg.HapticFeedback.impactOccurred('light');
-                const targetAddr = isAdmin ? "Системный пул" : userWallet;
+                const targetAddr = isAdmin ? "System Pool Wallet" : userWallet;
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
+                document.getElementById('deposit-instruction-text').innerHTML = isAdmin 
+                    ? `Official <b>System Pool Wallet</b> address for deposits:` 
+                    : `Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to your personal registered wallet address below:`;
                 document.getElementById('deposit-full-addr').innerText = targetAddr;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(targetAddr)}`;
             };
@@ -1457,9 +1460,9 @@
         };
 
         document.getElementById('copy-addr-btn').onclick = () => {
-            navigator.clipboard.writeText(userWallet);
+            navigator.clipboard.writeText(document.getElementById('deposit-full-addr').innerText);
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert('✅ Your wallet address copied to clipboard!');
+            tg.showAlert('✅ Address copied to clipboard!');
         };
 
         function handlePositionUpdate(position) {
