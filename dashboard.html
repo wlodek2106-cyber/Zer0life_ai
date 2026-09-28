@@ -1165,6 +1165,14 @@
             }
         }
 
+        // Автоматическое обновление таблицы лидеров каждый час
+        setInterval(() => {
+            const lbModal = document.getElementById('leaderboard-modal');
+            if (lbModal && lbModal.style.display === 'flex') {
+                fetchLeaderboardFromBackend();
+            }
+        }, 3600000);
+
         const depositModal = document.getElementById('deposit-modal');
         const customPromptModal = document.getElementById('custom-prompt-modal');
         const boostersModal = document.getElementById('boosters-modal');
