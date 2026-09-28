@@ -17,7 +17,6 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
-from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
@@ -47,6 +46,7 @@ dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
 USERS_FILE = "users.json"
+STATS_FILE = "leaderboard_stats.json"
 
 def load_users():
     if os.path.exists(USERS_FILE):
@@ -69,12 +69,72 @@ def save_user(user_id):
 def get_total_users():
     return len(load_users())
 
+def load_stats():
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_stats_data(stats):
+    try:
+        with open(STATS_FILE, "w") as f:
+            json.dump(stats, f)
+    except Exception as e:
+        logging.error(f"Error saving stats: {e}")
+
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
+
+@api_app.route('/update-stats', methods=['POST'])
+def update_stats():
+    try:
+        data = request.json
+        if not data or 'telegramId' not in data:
+            return jsonify({"error": "Invalid data"}), 400
+        
+        tg_id = str(data['telegramId'])
+        stats = load_stats()
+        
+        stats[tg_id] = {
+            "name": data.get('username', 'Runner'),
+            "wallet": data.get('walletAddress', ''),
+            "distance": float(data.get('distance', 0.0)),
+            "balance": float(data.get('balance', 0.0))
+        }
+        save_stats_data(stats)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@api_app.route('/leaderboard', methods=['GET'])
+def get_leaderboard():
+    try:
+        stats = load_stats()
+        sorted_users = sorted(stats.values(), key=lambda x: x['distance'], reverse=True)
+        
+        leaderboard = []
+        for index, user in enumerate(sorted_users[:50], start=1):
+            leaderboard.append({
+                "rank": index,
+                "name": user.get('name', 'Runner'),
+                "dist": round(user.get('distance', 0.0), 2),
+                "zrl": int(user.get('balance', 0.0))
+            })
+            
+        return jsonify({
+            "success": True,
+            "leaderboard": leaderboard,
+            "myRank": {"rank": 1}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 @api_app.route('/check-deposit', methods=['POST'])
 def check_deposit():
