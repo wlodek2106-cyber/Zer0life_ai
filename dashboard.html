@@ -715,6 +715,49 @@
             </div>
         </div>
 
+        <!-- Карточка ежедневных отметок (Daily Check-in) -->
+        <div class="run-card" style="border-color: rgba(20, 241, 149, 0.3); background: linear-gradient(135deg, #15171e 0%, #161f22 100%);">
+            <div class="run-header">
+                <span>📅 Daily Check-in</span>
+                <span id="streak-day-label" style="color: #14f195; font-weight: 700;">Day 1 of 7</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 12px 0;">
+                <div class="day-box" id="day-box-1" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 1</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">10 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-2" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 2</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">20 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-3" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 3</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">30 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-4" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 4</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">40 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-5" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 5</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">50 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-6" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 6</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #a8f07a; margin-top: 4px;">60 ZRL</div>
+                </div>
+                <div class="day-box" id="day-box-7" style="background: #1c212b; border: 1px solid #2d303b; border-radius: 10px; padding: 8px 2px; text-align: center;">
+                    <div style="font-size: 10px; color: #8a8d98;">Day 7</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #14f195; margin-top: 4px;">100 ZRL</div>
+                </div>
+            </div>
+
+            <button class="claim-btn" id="checkin-btn" style="width: 100%; background: #14f195; color: #000; margin-top: 4px;">
+                Claim Daily Reward
+            </button>
+        </div>
+
         <div class="level-section">
             <div class="level-header">
                 <span id="current-level-text">Level 1</span>
@@ -757,43 +800,6 @@
             </div>
             <div style="margin-top: 25px;">
                 <button class="wallet-action-btn" id="reg-submit-btn" style="width: 100%; background: #a8f07a; color: #000; border: none; font-size: 16px;">Create Profile & Claim 1,000 ZRL</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно реферальной программы с реальной таблицей линий -->
-    <div class="modal-overlay" id="friends-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title">👥 Referral Program (2 Lines)</span>
-                <button class="close-modal" id="close-friends">&times;</button>
-            </div>
-            <p style="font-size: 13px; color: #a8f07a; margin-top: -10px; margin-bottom: 10px; font-weight: 700;">
-                ⚡ Earn passive income from your network:
-            </p>
-            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;">
-                • <b>1st Line:</b> 10% from your direct referrals' income.<br>
-                • <b>2nd Line:</b> 5% from referrals of your 1st line.<br>
-                New players get <b>1,000 ZRL</b> instantly on start!
-            </p>
-            
-            <div style="background: #181b24; padding: 12px; border-radius: 14px; font-size: 12px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 15px; text-align: center;" id="ref-link-box">
-                Generating link...
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <button class="wallet-action-btn" id="copy-ref-btn" style="background: #a8f07a; color: #000; border: none; font-size: 13px; padding: 10px;">📋 Copy Link</button>
-                <button class="wallet-action-btn" id="share-ref-btn" style="background: #181b24; border-color: #a8f07a; color: #a8f07a; font-size: 13px; padding: 10px;">🚀 Share TG</button>
-            </div>
-
-            <!-- Переключатели линий -->
-            <div class="leaderboard-tabs" style="margin-bottom: 12px;">
-                <button class="lb-tab active" onclick="switchRefTab('line1')">1st Line (10%)</button>
-                <button class="lb-tab" onclick="switchRefTab('line2')">2nd Line (5%)</button>
-            </div>
-
-            <!-- Список рефералов (Таблица подтягивает реальные данные с сервера) -->
-            <div id="ref-list-container" style="max-height: 200px; overflow-y: auto;">
-                <div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">Loading real data from server...</div>
             </div>
         </div>
     </div>
@@ -983,10 +989,6 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
-        <div class="nav-item" id="nav-friends">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            Friends
-        </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosters
@@ -1003,10 +1005,6 @@
         const isAdmin = String(telegramId) === ADMIN_ID;
 
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
-
-        // Парсинг реферального параметра из ссылки запуска Telegram (например, ?start=ref_12345)
-        let startParam = tg.initDataUnsafe?.start_param || '';
-        let refBy = startParam.startsWith('ref_') ? startParam.replace('ref_', '') : null;
 
         // Логика загрузки пользовательской аватарки
         const avatarElement = document.getElementById('user-avatar');
@@ -1105,8 +1103,7 @@
                         username: username,
                         walletAddress: userWallet,
                         distance: totalDistance,
-                        balance: totalBalance,
-                        refBy: refBy
+                        balance: totalBalance
                     })
                 });
             } catch(e) {
@@ -1151,7 +1148,7 @@
             }
         }
 
-        // Регистрация с начислением 1000 ZRL бонусных и отправкой реферала на бэкенд
+        // Регистрация с начислением 1000 ZRL бонусных
         document.getElementById('reg-submit-btn').onclick = async () => {
             const inputName = document.getElementById('reg-username').value.trim();
             const inputWallet = document.getElementById('reg-wallet').value.trim();
@@ -1183,8 +1180,7 @@
                     body: JSON.stringify({
                         telegramId: telegramId,
                         username: username,
-                        walletAddress: userWallet,
-                        refBy: refBy
+                        walletAddress: userWallet
                     })
                 });
             } catch(e) {
@@ -1198,83 +1194,77 @@
             checkDepositAutomatically();
         };
 
-        // Логика реферальной программы и подгрузка данных линий из базы сервера
-        const friendsModal = document.getElementById('friends-modal');
-        const botUsername = "zer0life_run_bot"; 
-        const refLink = `https://t.me/${botUsername}/app?start=ref_${telegramId}`;
-        document.getElementById('ref-link-box').innerText = refLink;
+        // Логика ежедневных чекинов (Daily Check-in)
+        const REWARD_AMOUNTS = [10, 20, 30, 40, 50, 60, 100];
+        let currentDay = parseInt(localStorage.getItem(STORAGE_PREFIX + 'checkin_day')) || 1;
+        let lastCheckinDate = localStorage.getItem(STORAGE_PREFIX + 'last_checkin_date') || '';
 
-        let currentRefTab = 'line1';
+        function updateCheckinUI() {
+            const todayStr = new Date().toDateString();
+            const btn = document.getElementById('checkin-btn');
+            const label = document.getElementById('streak-day-label');
 
-        window.switchRefTab = function(tab) {
-            currentRefTab = tab;
-            document.querySelectorAll('#friends-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            renderReferralTable();
-        };
+            label.innerText = `Day ${currentDay} of 7`;
 
-        async function renderReferralTable() {
-            const container = document.getElementById('ref-list-container');
-            container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">Loading real data from server...</div>`;
-
-            try {
-                const response = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/referrals/${telegramId}`);
-                const data = await response.json();
-
-                if (!response.ok || !data.success) {
-                    container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals yet. Share your link!</div>`;
-                    return;
+            for (let i = 1; i <= 7; i++) {
+                const box = document.getElementById(`day-box-${i}`);
+                if (!box) continue;
+                
+                if (i < currentDay || (i === currentDay && lastCheckinDate === todayStr)) {
+                    box.style.background = 'rgba(20, 241, 149, 0.15)';
+                    box.style.borderColor = '#14f195';
+                    box.style.opacity = '0.7';
+                } else if (i === currentDay) {
+                    box.style.background = '#1f2937';
+                    box.style.borderColor = '#a8f07a';
+                    box.style.opacity = '1';
+                } else {
+                    box.style.background = '#1c212b';
+                    box.style.borderColor = '#2d303b';
+                    box.style.opacity = '0.5';
                 }
+            }
 
-                const list = currentRefTab === 'line1' ? data.line1 : data.line2;
-
-                if (!list || list.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals in this line yet.</div>`;
-                    return;
-                }
-
-                container.innerHTML = '';
-                list.forEach(ref => {
-                    const row = document.createElement('div');
-                    row.className = 'lb-user-row';
-                    row.innerHTML = `
-                        <div class="lb-user-left">
-                            <div class="lb-name">${ref.name}</div>
-                        </div>
-                        <div class="lb-stats">
-                            <div class="lb-dist" style="color: #a8f07a;">+${ref.earnedZrl} ZRL</div>
-                            <div class="lb-zrl">Commission: ${currentRefTab === 'line1' ? '10%' : '5%'}</div>
-                        </div>
-                    `;
-                    container.appendChild(row);
-                });
-
-            } catch (e) {
-                console.log("Referral fetch error:", e);
-                container.innerHTML = `<div style="text-align: center; color: #ff4757; padding: 15px; font-size: 13px;">Failed to load referral data from server.</div>`;
+            if (lastCheckinDate === todayStr) {
+                btn.innerText = "Claimed Today ✅";
+                btn.style.background = "#2d303b";
+                btn.style.color = "#8a8d98";
+                btn.style.cursor = "not-allowed";
+            } else {
+                btn.innerText = `Claim Day ${currentDay} (${REWARD_AMOUNTS[currentDay - 1]} ZRL)`;
+                btn.style.background = "#14f195";
+                btn.style.color = "#000";
+                btn.style.cursor = "pointer";
             }
         }
 
-        document.getElementById('nav-friends').addEventListener('click', () => {
-            tg.HapticFeedback.impactOccurred('light');
-            renderReferralTable();
-            friendsModal.style.display = 'flex';
-        });
+        document.getElementById('checkin-btn').addEventListener('click', () => {
+            const todayStr = new Date().toDateString();
+            
+            if (lastCheckinDate === todayStr) {
+                tg.showAlert("⏳ You have already claimed today's reward! Come back tomorrow.");
+                return;
+            }
 
-        document.getElementById('close-friends').addEventListener('click', () => {
-            friendsModal.style.display = 'none';
-        });
+            const reward = REWARD_AMOUNTS[currentDay - 1];
+            totalBalance += reward;
+            
+            lastCheckinDate = todayStr;
+            localStorage.setItem(STORAGE_PREFIX + 'last_checkin_date', lastCheckinDate);
 
-        document.getElementById('copy-ref-btn').addEventListener('click', () => {
-            navigator.clipboard.writeText(refLink);
+            if (currentDay < 7) {
+                currentDay++;
+            } else {
+                currentDay = 1; 
+            }
+            localStorage.setItem(STORAGE_PREFIX + 'checkin_day', currentDay);
+
+            saveData();
+            updateUI();
+            updateCheckinUI();
+
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert('✅ Invite link copied to clipboard!');
-        });
-
-        document.getElementById('share-ref-btn').addEventListener('click', () => {
-            const shareText = encodeURIComponent("🚀 Join me in Zer0life Run! Get 1,000 ZRL free on start, run, and earn crypto tokens on Solana!");
-            const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${shareText}`;
-            window.open(shareUrl, '_blank');
+            tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
 
         let currentLbTab = 'daily';
@@ -1607,6 +1597,8 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'booster_rate');
                         localStorage.removeItem(STORAGE_PREFIX + 'last_active_time');
                         localStorage.removeItem(STORAGE_PREFIX + 'registered_bonus');
+                        localStorage.removeItem(STORAGE_PREFIX + 'checkin_day');
+                        localStorage.removeItem(STORAGE_PREFIX + 'last_checkin_date');
 
                         walletModal.style.display = 'none';
                         tg.HapticFeedback.notificationOccurred('success');
@@ -1868,6 +1860,7 @@
         }
 
         checkRegistration();
+        updateCheckinUI();
     </script>
 </body>
 </html>
