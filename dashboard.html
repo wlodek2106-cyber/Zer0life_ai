@@ -831,6 +831,69 @@
         </div>
     </div>
 
+    <!-- Модальное окно социальной сети (Friends & Chat) -->
+    <div class="modal-overlay" id="friends-modal">
+        <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <span class="modal-title" style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">👥 Friends & Chat</span>
+                <button class="close-modal" id="close-friends" style="color: #8a8d98; font-size: 22px;">&times;</button>
+            </div>
+
+            <!-- Вкладки управления друзьями -->
+            <div class="leaderboard-tabs" style="background: #141721; padding: 4px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 16px;">
+                <button class="lb-tab active" onclick="switchFriendsTab('list')" style="border-radius: 12px; font-size: 12px; padding: 8px;">My Friends</button>
+                <button class="lb-tab" onclick="switchFriendsTab('requests')" style="border-radius: 12px; font-size: 12px; padding: 8px;">Requests (<span id="req-count">0</span>)</button>
+                <button class="lb-tab" onclick="switchFriendsTab('add')" style="border-radius: 12px; font-size: 12px; padding: 8px;">+ Add Friend</button>
+            </div>
+
+            <!-- Секция: Список друзей -->
+            <div id="friends-tab-list" class="friend-tab-content">
+                <div id="friends-list-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
+                    <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Loading friends...</div>
+                </div>
+            </div>
+
+            <!-- Секция: Входящие заявки -->
+            <div id="friends-tab-requests" class="friend-tab-content" style="display: none;">
+                <div id="friend-requests-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
+                    <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No pending requests.</div>
+                </div>
+            </div>
+
+            <!-- Секция: Добавить друга -->
+            <div id="friends-tab-add" class="friend-tab-content" style="display: none;">
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px;">
+                    <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #fff;">Add Friend by Nickname</div>
+                    <p style="font-size: 12px; color: #8a8d98; margin-bottom: 12px;">Enter your friend's exact registered nickname to send a friend request.</p>
+                    <div class="custom-input-group" style="margin-top: 0;">
+                        <input type="text" id="add-friend-input" class="custom-input-field" placeholder="e.g. CyberRunner" />
+                    </div>
+                    <button class="claim-btn" id="send-friend-req-btn" style="width: 100%; margin-top: 14px; background: #a8f07a; color: #000;">Send Friend Request 🚀</button>
+                </div>
+            </div>
+
+            <!-- Окно чата с другом (изначально скрыто) -->
+            <div id="chat-box-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button onclick="closeChat()" style="background: none; border: none; color: #a8f07a; font-size: 14px; font-weight: 700; cursor: pointer;">← Back</button>
+                        <span id="chat-with-title" style="font-size: 15px; font-weight: 800; color: #fff;">Chat</span>
+                    </div>
+                    <span id="chat-status-badge" style="font-size: 10px; color: #14f195; background: rgba(20,241,149,0.1); padding: 2px 6px; border-radius: 6px;">Online</span>
+                </div>
+
+                <div id="chat-messages-list" style="height: 180px; overflow-y: auto; background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                    <div style="text-align: center; color: #8a8d98; font-size: 12px; margin: auto;">No messages yet. Say hello!</div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="chat-input-msg" class="custom-input-field" placeholder="Type a message..." style="margin-top: 0; padding: 10px 14px; font-size: 13px;" />
+                    <button class="claim-btn" id="chat-send-btn" style="padding: 0 16px; background: #a8f07a; color: #000;">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="leaderboard-modal">
         <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
             <div class="modal-header" style="margin-bottom: 16px;">
@@ -1017,6 +1080,10 @@
         <div class="nav-item active" id="nav-wallet">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
+        </div>
+        <div class="nav-item" id="nav-friends">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Friends
         </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -1532,7 +1599,6 @@
         function checkRandomMysteryBox() {
             if (Math.random() < 0.02) {
                 pendingBoxReward = Math.floor(Math.random() * 131) + 20; 
-                // Бег больше не останавливается! Тренировка продолжается в фоновом режиме.
                 triggerHaptic('success');
                 playSound('success');
                 mysteryBoxModal.style.display = 'flex';
@@ -1548,6 +1614,221 @@
             mysteryBoxModal.style.display = 'none';
             tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
+
+        // --- Социальная система: друзья и чат ---
+        const friendsModal = document.getElementById('friends-modal');
+        let currentFriendChatId = null;
+        let chatInterval = null;
+
+        window.switchFriendsTab = function(tabName) {
+            triggerHaptic('selection');
+            playSound('click');
+            document.querySelectorAll('#friends-modal .lb-tab').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.getElementById('friends-tab-list').style.display = (tabName === 'list') ? 'block' : 'none';
+            document.getElementById('friends-tab-requests').style.display = (tabName === 'requests') ? 'block' : 'none';
+            document.getElementById('friends-tab-add').style.display = (tabName === 'add') ? 'block' : 'none';
+            document.getElementById('chat-box-section').style.display = 'none';
+
+            if (chatInterval) clearInterval(chatInterval);
+
+            if (tabName === 'list' || tabName === 'requests') {
+                fetchFriendsData();
+            }
+        };
+
+        async function fetchFriendsData() {
+            try {
+                const res = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/friend/list?telegramId=${telegramId}`);
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    renderFriendsList(data.friends || []);
+                    renderRequestsList(data.requests || []);
+                    document.getElementById('req-count').innerText = (data.requests || []).length;
+                }
+            } catch(e) {
+                console.log("Error loading friends:", e);
+            }
+        }
+
+        function renderFriendsList(friends) {
+            const container = document.getElementById('friends-list-container');
+            if (friends.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No friends added yet. Go to + Add Friend!</div>`;
+                return;
+            }
+            container.innerHTML = '';
+            friends.forEach(f => {
+                const row = document.createElement('div');
+                row.style.cssText = `background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;`;
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #1f2a24; border: 1px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${f.username.substring(0,2).toUpperCase()}</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">${f.username}</div>
+                            <div style="font-size: 11px; color: #14f195;">${f.distance ? f.distance.toFixed(1) : '0.0'} km run</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" onclick="openChat('${f.telegramId}', '${f.username}')" style="padding: 6px 14px; font-size: 12px; background: #a8f07a; color: #000;">💬 Chat</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderRequestsList(requests) {
+            const container = document.getElementById('friend-requests-container');
+            if (requests.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No pending requests.</div>`;
+                return;
+            }
+            container.innerHTML = '';
+            requests.forEach(r => {
+                const row = document.createElement('div');
+                row.style.cssText = `background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;`;
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff;">${r.username.substring(0,2).toUpperCase()}</div>
+                        <div style="font-size: 14px; font-weight: 700; color: #fff;">${r.username}</div>
+                    </div>
+                    <button class="claim-btn" onclick="acceptFriend('${r.telegramId}')" style="padding: 6px 14px; font-size: 12px; background: #14f195; color: #000;">Accept ✅</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        document.getElementById('send-friend-req-btn').onclick = async () => {
+            triggerHaptic('medium');
+            playSound('click');
+            const targetUsername = document.getElementById('add-friend-input').value.trim();
+            if (!targetUsername) {
+                triggerHaptic('error');
+                tg.showAlert('⚠️ Please enter a nickname.');
+                return;
+            }
+            try {
+                const res = await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fromId: telegramId, fromUsername: username, targetUsername })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    triggerHaptic('success');
+                    playSound('success');
+                    tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
+                    document.getElementById('add-friend-input').value = '';
+                } else {
+                    triggerHaptic('error');
+                    tg.showAlert(`❌ ${data.error || 'User not found'}`);
+                }
+            } catch(e) {
+                triggerHaptic('error');
+                tg.showAlert('❌ Network error.');
+            }
+        };
+
+        window.acceptFriend = async function(fromId) {
+            triggerHaptic('success');
+            playSound('coin');
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/accept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: telegramId, friendId: fromId })
+                });
+                fetchFriendsData();
+            } catch(e) {}
+        };
+
+        window.openChat = function(friendId, friendName) {
+            triggerHaptic('light');
+            playSound('click');
+            currentFriendChatId = friendId;
+            document.getElementById('friends-tab-list').style.display = 'none';
+            document.getElementById('friends-tab-requests').style.display = 'none';
+            document.getElementById('friends-tab-add').style.display = 'none';
+            document.getElementById('chat-with-title').innerText = friendName;
+            document.getElementById('chat-box-section').style.display = 'block';
+
+            loadChatMessages();
+            if (chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(loadChatMessages, 3000);
+        };
+
+        window.closeChat = function() {
+            triggerHaptic('light');
+            if (chatInterval) clearInterval(chatInterval);
+            currentFriendChatId = null;
+            document.getElementById('chat-box-section').style.display = 'none';
+            document.getElementById('friends-tab-list').style.display = 'block';
+            fetchFriendsData();
+        };
+
+        async function loadChatMessages() {
+            if (!currentFriendChatId) return;
+            try {
+                const res = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/chat/messages?user1=${telegramId}&user2=${currentFriendChatId}`);
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    const list = document.getElementById('chat-messages-list');
+                    list.innerHTML = '';
+                    if (data.messages.length === 0) {
+                        list.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; margin: auto;">No messages yet. Say hello!</div>`;
+                        return;
+                    }
+                    data.messages.forEach(m => {
+                        const isMe = String(m.senderId) === String(telegramId);
+                        const bubble = document.createElement('div');
+                        bubble.style.cssText = `
+                            max-width: 75%;
+                            padding: 8px 12px;
+                            border-radius: 12px;
+                            font-size: 13px;
+                            word-break: break-word;
+                            align-self: ${isMe ? 'flex-end' : 'flex-start'};
+                            background: ${isMe ? '#a8f07a' : '#1f2430'};
+                            color: ${isMe ? '#000' : '#fff'};
+                        `;
+                        bubble.innerText = m.text;
+                        list.appendChild(bubble);
+                    });
+                    list.scrollTop = list.scrollHeight;
+                }
+            } catch(e) {}
+        }
+
+        document.getElementById('chat-send-btn').onclick = async () => {
+            const input = document.getElementById('chat-input-msg');
+            const text = input.value.trim();
+            if (!text || !currentFriendChatId) return;
+            
+            triggerHaptic('light');
+            playSound('click');
+            input.value = '';
+
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ senderId: telegramId, receiverId: currentFriendChatId, text })
+                });
+                loadChatMessages();
+            } catch(e) {}
+        };
+
+        document.getElementById('nav-friends').addEventListener('click', () => {
+            triggerHaptic('light');
+            playSound('click');
+            friendsModal.style.display = 'flex';
+            fetchFriendsData();
+        });
+
+        document.getElementById('close-friends').addEventListener('click', () => {
+            triggerHaptic('light');
+            if (chatInterval) clearInterval(chatInterval);
+            friendsModal.style.display = 'none';
+        });
 
         let currentLbTab = 'daily';
 
@@ -1663,13 +1944,6 @@
                 listContainer.innerHTML = `<div style="text-align: center; color: #ff4757; padding: 20px; font-size: 13px;">Failed to load real leaderboard from server.</div>`;
             }
         }
-
-        setInterval(() => {
-            const lbModal = document.getElementById('leaderboard-modal');
-            if (lbModal && lbModal.style.display === 'flex') {
-                fetchLeaderboardFromBackend();
-            }
-        }, 3600000);
 
         const depositModal = document.getElementById('deposit-modal');
         const customPromptModal = document.getElementById('custom-prompt-modal');
