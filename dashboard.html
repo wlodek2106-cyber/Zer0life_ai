@@ -415,6 +415,84 @@
             background-color: rgba(20, 241, 149, 0.05);
         }
 
+        /* VIP Boosters Store Styles */
+        .booster-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .booster-card {
+            background: linear-gradient(135deg, #15171e 0%, #1a1e29 100%);
+            border: 1px solid rgba(168, 240, 122, 0.2);
+            border-radius: 18px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .booster-card:hover {
+            border-color: #a8f07a;
+            box-shadow: 0 0 20px rgba(168, 240, 122, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .booster-card.featured {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #1a221e 0%, #121824 100%);
+            border-color: rgba(20, 241, 149, 0.4);
+        }
+
+        .booster-badge {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #14f195;
+            background: rgba(20, 241, 149, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            align-self: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .booster-multiplier {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 2px;
+        }
+
+        .booster-rate {
+            font-size: 11px;
+            color: #a8f07a;
+            margin-bottom: 12px;
+        }
+
+        .booster-price-btn {
+            background: rgba(168, 240, 122, 0.1);
+            border: 1px solid rgba(168, 240, 122, 0.3);
+            color: #a8f07a;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .booster-card:hover .booster-price-btn {
+            background: #a8f07a;
+            color: #000;
+        }
+
         /* Custom Input Modal */
         .custom-input-group {
             display: flex;
@@ -663,6 +741,69 @@
         </div>
     </div>
 
+    <!-- VIP Boosters Store Modal -->
+    <div class="modal-overlay" id="boosters-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">⚡ VIP Boosters Store</span>
+                <button class="close-modal" id="close-boosters">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 15px;">
+                Boost your ZRL mining speed per kilometer by activating a VIP package via Solana.
+            </p>
+            
+            <div class="booster-grid">
+                <!-- 0.5 SOL -->
+                <div class="booster-card" onclick="buyBooster(0.5, 1000)">
+                    <div class="booster-badge">Starter</div>
+                    <div class="booster-multiplier">2x Speed</div>
+                    <div class="booster-rate">1,000 ZRL / km</div>
+                    <div class="booster-price-btn">0.5 SOL</div>
+                </div>
+
+                <!-- 1 SOL -->
+                <div class="booster-card" onclick="buyBooster(1, 1500)">
+                    <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
+                    <div class="booster-multiplier">3x Speed</div>
+                    <div class="booster-rate">1,500 ZRL / km</div>
+                    <div class="booster-price-btn">1 SOL</div>
+                </div>
+
+                <!-- 5 SOL -->
+                <div class="booster-card featured" onclick="buyBooster(5, 13000)">
+                    <div class="booster-badge" style="color: #3b82f6; background: rgba(59,130,246,0.1);">Pro Tier</div>
+                    <div class="booster-multiplier">26x Speed</div>
+                    <div class="booster-rate">13,000 ZRL / km</div>
+                    <div class="booster-price-btn">5 SOL</div>
+                </div>
+
+                <!-- 10 SOL -->
+                <div class="booster-card" onclick="buyBooster(10, 30000)">
+                    <div class="booster-badge" style="color: #a855f7; background: rgba(168,85,247,0.1);">Whale</div>
+                    <div class="booster-multiplier">60x Speed</div>
+                    <div class="booster-rate">30,000 ZRL / km</div>
+                    <div class="booster-price-btn">10 SOL</div>
+                </div>
+
+                <!-- 20 SOL -->
+                <div class="booster-card" onclick="buyBooster(20, 65000)">
+                    <div class="booster-badge" style="color: #ec4899; background: rgba(236,72,153,0.1);">Elite Whale</div>
+                    <div class="booster-multiplier">130x Speed</div>
+                    <div class="booster-rate">65,000 ZRL / km</div>
+                    <div class="booster-price-btn">20 SOL</div>
+                </div>
+
+                <!-- 50 SOL -->
+                <div class="booster-card featured" onclick="buyBooster(50, 200000)">
+                    <div class="booster-badge" style="color: #f59e0b; background: rgba(245,158,11,0.1);">👑 Legend</div>
+                    <div class="booster-multiplier">400x Speed</div>
+                    <div class="booster-rate">200,000 ZRL / km</div>
+                    <div class="booster-price-btn" style="background: #f59e0b; color: #000; border: none;">50 SOL</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Prompt Modal (Fully English) -->
     <div class="modal-overlay" id="custom-prompt-modal">
         <div class="modal-content">
@@ -694,8 +835,8 @@
             Wallet
         </div>
         <div class="nav-item" id="nav-more">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-            More
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Boosters
         </div>
     </div>
 
@@ -704,7 +845,7 @@
         tg.expand();
         tg.ready();
 
-        const ZRL_PER_KM = 500;
+        let ZRL_PER_KM = parseFloat(localStorage.getItem('zrl_active_booster_rate')) || 500;
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
@@ -791,7 +932,7 @@
             balanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
             stepsEl.innerText = 'Steps: ' + todaySteps;
-            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL';
+            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
 
             let currentLevelObj = getCurrentLevelObj();
             let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
@@ -835,8 +976,8 @@
 
         const depositModal = document.getElementById('deposit-modal');
         const customPromptModal = document.getElementById('custom-prompt-modal');
+        const boostersModal = document.getElementById('boosters-modal');
 
-        // Кастомная замена prompt для тотального англоязычного интерфейса
         function showCustomPrompt(title, description, placeholder, callback) {
             document.getElementById('custom-prompt-title').innerText = title;
             document.getElementById('custom-prompt-desc').innerText = description;
@@ -959,8 +1100,35 @@
             };
         }
 
+        // Покупка бустера
+        window.buyBooster = function(solPrice, zrlRatePerKm) {
+            tg.HapticFeedback.impactOccurred('heavy');
+            boostersModal.style.display = 'none';
+            
+            showCustomPrompt(
+                `Activate ${solPrice} SOL Booster`,
+                `Send exactly ${solPrice} SOL to pool address to activate ${zrlRatePerKm} ZRL/km rate. Enter your TX hash or wallet:`,
+                "Enter transaction hash...",
+                async (txHash) => {
+                    if (txHash && txHash.length > 10) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                        tg.showAlert(`🚀 VIP Booster activated!\nNew rate: ${zrlRatePerKm} ZRL/km.`);
+                        ZRL_PER_KM = zrlRatePerKm;
+                        localStorage.setItem('zrl_active_booster_rate', zrlRatePerKm);
+                        updateUI();
+                    } else if (txHash !== null) {
+                        tg.showAlert('⚠️ Invalid transaction hash.');
+                    }
+                }
+            );
+        };
+
         document.getElementById('close-deposit').onclick = () => {
             depositModal.style.display = 'none';
+        };
+
+        document.getElementById('close-boosters').onclick = () => {
+            boostersModal.style.display = 'none';
         };
 
         document.getElementById('copy-addr-btn').onclick = () => {
@@ -969,7 +1137,6 @@
             tg.showAlert('✅ Pool address copied to clipboard!');
         };
 
-        // Автоматическая фоновая проверка SOL, USDC и ZRL
         async function checkDepositAutomatically() {
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
@@ -1162,7 +1329,7 @@
 
         document.getElementById('nav-more').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
-            alert('Zer0life Run v1.0. Cyberpunk Move-to-Earn.');
+            boostersModal.style.display = 'flex';
         });
 
         updateUI();
