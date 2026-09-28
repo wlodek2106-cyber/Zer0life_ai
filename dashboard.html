@@ -593,7 +593,6 @@
 </head>
 <body>
 
-    <!-- Скрытый инпут для загрузки фотографии на аватарку -->
     <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" />
 
     <div class="dashboard-container">
@@ -669,6 +668,34 @@
             </button>
         </div>
 
+        <!-- НОВАЯ КАРТОЧКА: Ежедневные квесты (Daily Quests) -->
+        <div class="run-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #18221c 100%);">
+            <div class="run-header">
+                <span>🎯 Daily Quests</span>
+                <span style="color: #a8f07a; font-weight: 700; font-size: 12px;">Resets in 24h</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                <!-- Квест 1: Пройти 1 км -->
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: #fff;">Run 1.0 km today</div>
+                        <div style="font-size: 11px; color: #8a8d98; margin-top: 2px;" id="quest-1-progress">Progress: 0.00 / 1.0 km</div>
+                    </div>
+                    <button class="claim-btn" id="quest-1-btn" style="padding: 6px 14px; font-size: 12px; background: #2d303b; color: #8a8d98; cursor: not-allowed;" disabled>+50 ZRL</button>
+                </div>
+
+                <!-- Квест 2: Сделать 1000 шагов -->
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: #fff;">Complete 1,000 steps</div>
+                        <div style="font-size: 11px; color: #8a8d98; margin-top: 2px;" id="quest-2-progress">Progress: 0 / 1,000</div>
+                    </div>
+                    <button class="claim-btn" id="quest-2-btn" style="padding: 6px 14px; font-size: 12px; background: #2d303b; color: #8a8d98; cursor: not-allowed;" disabled>+30 ZRL</button>
+                </div>
+            </div>
+        </div>
+
         <div class="level-section">
             <div class="level-header">
                 <span id="current-level-text">Level 1</span>
@@ -715,7 +742,6 @@
         </div>
     </div>
 
-    <!-- Обновленный премиальный лидерборд в стиле референса -->
     <div class="modal-overlay" id="leaderboard-modal">
         <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
             <div class="modal-header" style="margin-bottom: 16px;">
@@ -729,15 +755,12 @@
                 <button class="lb-tab" onclick="switchLbTab('all')" style="border-radius: 12px; font-size: 13px; padding: 10px;">Weekly</button>
             </div>
 
-            <!-- Подиум топ-3 -->
             <div class="podium-container" id="podium-container" style="display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 8px; margin-bottom: 20px; align-items: flex-end;"></div>
 
-            <!-- Список участников -->
             <div id="leaderboard-list" style="max-height: 220px; overflow-y: auto; padding-right: 2px; margin-bottom: 16px;">
                 <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Loading real stats from server...</div>
             </div>
 
-            <!-- Закрепленная плашка пользователя внизу -->
             <div id="my-rank-sticky-container"></div>
         </div>
     </div>
@@ -1180,6 +1203,87 @@
             tg.HapticFeedback.notificationOccurred('success');
             tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
+
+        // ЛОГИКА ЕЖЕДНЕВНЫХ КВЕСТОВ (Daily Quests)
+        let quest1Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString()) === 'true';
+        let quest2Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString()) === 'true';
+
+        function updateQuestsUI() {
+            const q1Prog = document.getElementById('quest-1-progress');
+            const q1Btn = document.getElementById('quest-1-btn');
+            const q2Prog = document.getElementById('quest-2-progress');
+            const q2Btn = document.getElementById('quest-2-btn');
+
+            // Квест 1: 1 км
+            q1Prog.innerText = `Progress: ${Math.min(todayDistance, 1.0).toFixed(2)} / 1.0 km`;
+            if (quest1Claimed) {
+                q1Btn.innerText = "Claimed ✅";
+                q1Btn.style.background = "#2d303b";
+                q1Btn.style.color = "#8a8d98";
+                q1Btn.style.cursor = "not-allowed";
+                q1Btn.disabled = true;
+            } else if (todayDistance >= 1.0) {
+                q1Btn.innerText = "Claim +50 ZRL";
+                q1Btn.style.background = "#14f195";
+                q1Btn.style.color = "#000";
+                q1Btn.style.cursor = "pointer";
+                q1Btn.disabled = false;
+            } else {
+                q1Btn.innerText = "+50 ZRL";
+                q1Btn.style.background = "#2d303b";
+                q1Btn.style.color = "#8a8d98";
+                q1Btn.style.cursor = "not-allowed";
+                q1Btn.disabled = true;
+            }
+
+            // Квест 2: 1000 шагов
+            q2Prog.innerText = `Progress: ${Math.min(todaySteps, 1000)} / 1,000`;
+            if (quest2Claimed) {
+                q2Btn.innerText = "Claimed ✅";
+                q2Btn.style.background = "#2d303b";
+                q2Btn.style.color = "#8a8d98";
+                q2Btn.style.cursor = "not-allowed";
+                q2Btn.disabled = true;
+            } else if (todaySteps >= 1000) {
+                q2Btn.innerText = "Claim +30 ZRL";
+                q2Btn.style.background = "#14f195";
+                q2Btn.style.color = "#000";
+                q2Btn.style.cursor = "pointer";
+                q2Btn.disabled = false;
+            } else {
+                q2Btn.innerText = "+30 ZRL";
+                q2Btn.style.background = "#2d303b";
+                q2Btn.style.color = "#8a8d98";
+                q2Btn.style.cursor = "not-allowed";
+                q2Btn.disabled = true;
+            }
+        }
+
+        document.getElementById('quest-1-btn').onclick = () => {
+            if (!quest1Claimed && todayDistance >= 1.0) {
+                quest1Claimed = true;
+                localStorage.setItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString(), 'true');
+                totalBalance += 50;
+                saveData();
+                updateUI();
+                updateQuestsUI();
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.showAlert('🎉 Quest completed! You received +50 ZRL.');
+            }
+        };
+
+        document.getElementById('quest-2-btn').onclick = () => {
+            if (!quest2Claimed && todaySteps >= 1000) {
+                quest2Claimed = true;
+                localStorage.setItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString(), 'true');
+                totalBalance += 30;
+                saveData();
+                updateUI();
+                updateQuestsUI();
+                tg.HapticFeedback.notificationOccurred('success');
+                tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
+            }
+        };
 
         let currentLbTab = 'daily';
 
@@ -1652,6 +1756,7 @@
                 unclaimedZRL += (stepKm * ZRL_PER_KM);
 
                 updateUI();
+                updateQuestsUI();
                 saveData();
             }
         }
@@ -1802,6 +1907,7 @@
 
         checkRegistration();
         updateCheckinUI();
+        updateQuestsUI();
     </script>
 </body>
 </html>
