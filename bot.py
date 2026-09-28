@@ -19,7 +19,7 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from solders.message import Message
 from solders.hash import Hash
-from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
+from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
 api_app = Flask(__name__)
 CORS(api_app, resources={r"/*": {"origins": "*"}})
@@ -244,6 +244,23 @@ def withdraw():
         
         client = Client("https://api.mainnet-beta.solana.com")
         
+        instructions = []
+        
+        # Автоматически создаем токен-счет получателя, если он еще не существует
+        try:
+            account_info = client.get_account_info(user_ata)
+            if account_info.value is None:
+                instructions.append(
+                    create_associated_token_account(
+                        payer=pool_keypair.pubkey(),
+                        owner=user_pubkey,
+                        mint=zrl_mint
+                    )
+                )
+        except Exception as e:
+            print("ATA check/creation notice:", e)
+
+        # Инструкция перевода токенов
         transfer_ix = transfer_checked(
             TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -255,18 +272,18 @@ def withdraw():
                 decimals=6
             )
         )
+        instructions.append(transfer_ix)
         
         recent_blockhash_resp = client.get_latest_blockhash()
         recent_blockhash = recent_blockhash_resp.value.blockhash
         
         tx = Transaction.new_signed_with_payer(
-            instructions=[transfer_ix],
+            instructions=instructions,
             payer=pool_keypair.pubkey(),
             signing_keypairs=[pool_keypair],
             recent_blockhash=recent_blockhash
         )
         
-        # Отправка сырых байтов транзакции обходит несовместимость версий клиентских библиотек
         result = client.send_raw_transaction(bytes(tx))
         tx_signature = str(result.value)
         
@@ -320,27 +337,4 @@ async def cmd_start(message: types.Message):
     )
 
 def setup_webhook_sync():
-    if bot and RENDER_URL:
-        try:
-            webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
-            future = asyncio.run_coroutine_threadsafe(bot.set_webhook(webhook_url), bot_loop)
-            future.result(timeout=5)
-            
-            menu_future = asyncio.run_coroutine_threadsafe(bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(
-                    text="🏃 Zer0Life Run",
-                    web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
-                )
-            ), bot_loop)
-            menu_future.result(timeout=5)
-            logging.info(f"Webhook registered: {webhook_url}")
-        except Exception as e:
-            logging.error(f"Webhook setup error: {e}")
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    if TOKEN:
-        setup_webhook_sync()
-    
-    port = int(os.environ.get("PORT", 10000))
-    api_app.run(host="0.0.0.0", port=port)
+Дрочись тут...
