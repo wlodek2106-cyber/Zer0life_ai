@@ -780,14 +780,10 @@
             </div>
 
             <!-- Top 3 Podium -->
-            <div class="podium-container" id="podium-container">
-                <!-- Заполняется динамически -->
-            </div>
+            <div class="podium-container" id="podium-container"></div>
 
             <!-- Full List -->
-            <div id="leaderboard-list">
-                <!-- Заполняется динамически -->
-            </div>
+            <div id="leaderboard-list"></div>
         </div>
     </div>
 
@@ -1025,6 +1021,24 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
+            // Фиксируем текущее время как последнюю активность
+            localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
+        }
+
+        // Функция проверки неактивности (больше 5 часов)
+        function checkInactivity() {
+            const lastActive = localStorage.getItem(STORAGE_PREFIX + 'last_active_time');
+            if (lastActive && username && userWallet) {
+                const now = Date.now();
+                const hoursPassed = (now - parseInt(lastActive)) / (1000 * 60 * 60);
+                
+                if (hoursPassed >= 5) {
+                    setTimeout(() => {
+                        tg.HapticFeedback.notificationOccurred('warning');
+                        tg.showAlert("⚠️ Energy Warning!\n\nYour activity has dropped significantly. Return to the game, start running, and boost your ZRL mining speed before rewards decay!");
+                    }, 1000);
+                }
+            }
         }
 
         function updateWalletUI() {
@@ -1045,6 +1059,7 @@
                 registerModal.style.display = 'none';
                 updateUI();
                 checkDepositAutomatically();
+                checkInactivity(); // Запуск проверки неактивности при старте
             }
         }
 
@@ -1063,7 +1078,7 @@
 
             username = inputName;
             userWallet = inputWallet;
-            saveData();
+            saveData(); // Сохраняет профиль и записывает начальную метку времени
 
             document.getElementById('register-modal').style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
@@ -1114,7 +1129,6 @@
             podiumContainer.innerHTML = '';
             listContainer.innerHTML = '';
 
-            // Топ-3 на подиуме (2, 1, 3)
             const podiumOrder = [data[1], data[0], data[2]];
             podiumOrder.forEach((user) => {
                 if (!user) return;
@@ -1130,7 +1144,6 @@
                 podiumContainer.appendChild(div);
             });
 
-            // Остальные участники с 4 места
             data.slice(3).forEach(user => {
                 const row = document.createElement('div');
                 row.className = 'lb-user-row';
@@ -1147,7 +1160,6 @@
                 listContainer.appendChild(row);
             });
 
-            // Строка текущего игрока внизу лидерборда
             const myRow = document.createElement('div');
             myRow.className = 'lb-user-row';
             myRow.style.borderColor = '#a8f07a';
@@ -1343,6 +1355,7 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'unclaimed');
                         localStorage.removeItem(STORAGE_PREFIX + 'today_steps');
                         localStorage.removeItem(STORAGE_PREFIX + 'booster_rate');
+                        localStorage.removeItem(STORAGE_PREFIX + 'last_active_time');
 
                         walletModal.style.display = 'none';
                         tg.HapticFeedback.notificationOccurred('success');
@@ -1522,7 +1535,6 @@
             }
         });
 
-        // Открытие Leaderboard по клику на нижнюю кнопку Leaderboard
         document.getElementById('nav-rewards').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
             renderLeaderboard();
