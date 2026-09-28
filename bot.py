@@ -45,8 +45,8 @@ RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 
 # ==================== НАСТРОЙКИ АДМИНА ====================
 ADMIN_TELEGRAM_ID = "428821665"
-# Автоматически определяем адрес пула по твоему приватному ключу или оставляем пустым для дефолтного кошелька
-ADMIN_POOL_WALLET = "" 
+# Жестко прописан твой системный адрес пула для отображения и депо
+ADMIN_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix" 
 # ==========================================================
 
 dp = Dispatcher()
@@ -165,7 +165,7 @@ def check_deposit():
 
         tg_id = str(data.get('telegramId', ''))
         
-        # Если заходит админ (ты), сервер проверяет баланс главного пула/системного кошелька
+        # Если заходит админ, проверяем системный пул
         if tg_id == ADMIN_TELEGRAM_ID:
             wallet_str = get_pool_pubkey_str()
         else:
