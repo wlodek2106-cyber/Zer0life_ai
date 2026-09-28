@@ -300,41 +300,123 @@
             cursor: pointer;
         }
 
-        .level-card-item {
-            background-color: #1a1c23;
-            border: 1px solid #2d303b;
+        /* Leaderboard Styles */
+        .leaderboard-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            background: #15171e;
+            padding: 4px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(168, 240, 122, 0.1);
+        }
+
+        .lb-tab {
+            background: transparent;
+            border: none;
+            color: #8a8d98;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .lb-tab.active {
+            background: #a8f07a;
+            color: #000;
+        }
+
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        .podium-item {
+            background: linear-gradient(135deg, #15171e 0%, #1f2330 100%);
+            border: 1px solid rgba(168, 240, 122, 0.2);
             border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
+            padding: 12px 8px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .podium-item.first {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #1f221e 0%, #151d19 100%);
+            transform: translateY(-8px);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+
+        .podium-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #2d303b;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 12px;
+            color: #a8f07a;
+        }
+
+        .lb-user-row {
+            background: #15171e;
+            border: 1px solid #282d3d;
+            border-radius: 14px;
+            padding: 12px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 8px;
         }
 
-        .level-card-item.active-tier {
-            border-color: #a8f07a;
-            background-color: rgba(168, 240, 122, 0.05);
+        .lb-user-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .tier-info h4 {
-            margin: 0 0 4px 0;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .tier-info p {
-            margin: 0;
-            font-size: 12px;
+        .lb-rank {
+            font-size: 14px;
+            font-weight: 800;
             color: #8a8d98;
+            width: 20px;
+            text-align: center;
         }
 
-        .tier-badge {
-            font-size: 13px;
+        .lb-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .lb-stats {
+            text-align: right;
+        }
+
+        .lb-dist {
+            font-size: 14px;
             font-weight: 700;
             color: #a8f07a;
-            background: rgba(168, 240, 122, 0.1);
-            padding: 6px 12px;
-            border-radius: 10px;
+        }
+
+        .lb-zrl {
+            font-size: 11px;
+            color: #8a8d98;
         }
 
         /* Crypto Assets */
@@ -683,14 +765,29 @@
         </div>
     </div>
 
-    <!-- Rewards Modal -->
-    <div class="modal-overlay" id="rewards-modal">
+    <!-- Global Leaderboard Modal -->
+    <div class="modal-overlay" id="leaderboard-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Levels & Rewards</span>
-                <button class="close-modal" id="close-rewards">&times;</button>
+                <span class="modal-title">🏆 Global Leaderboard</span>
+                <button class="close-modal" id="close-leaderboard">&times;</button>
             </div>
-            <div id="levels-list-container"></div>
+            
+            <div class="leaderboard-tabs">
+                <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
+                <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
+                <button class="lb-tab" onclick="switchLbTab('all')">All-Time</button>
+            </div>
+
+            <!-- Top 3 Podium -->
+            <div class="podium-container" id="podium-container">
+                <!-- Заполняется динамически -->
+            </div>
+
+            <!-- Full List -->
+            <div id="leaderboard-list">
+                <!-- Заполняется динамически -->
+            </div>
         </div>
     </div>
 
@@ -861,7 +958,7 @@
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
-            Rewards
+            Leaderboard
         </div>
         <div class="nav-item active" id="nav-wallet">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
@@ -975,88 +1072,104 @@
             checkDepositAutomatically();
         };
 
-        const LEVELS = [
-            { level: 1, targetKm: 5, reward: "Standard" },
-            { level: 2, targetKm: 20, reward: "Standard" },
-            { level: 3, targetKm: 50, reward: "Standard" },
-            { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
-            { level: 5, targetKm: 150, reward: "Elite Tier" },
-            { level: 6, targetKm: 200, reward: "Max Legend Tier" }
-        ];
+        // Моковые данные для глобального лидерборда
+        const MOCK_LEADERBOARD = {
+            daily: [
+                { rank: 1, name: "CyberRunner", dist: 24.5, zrl: 12250 },
+                { rank: 2, name: "SolanaSavage", dist: 19.2, zrl: 9600 },
+                { rank: 3, name: "NeonPace", dist: 15.0, zrl: 7500 },
+                { rank: 4, name: "SpeedDemon", dist: 12.8, zrl: 6400 },
+                { rank: 5, name: "CryptoJogger", dist: 10.4, zrl: 5200 },
+            ],
+            weekly: [
+                { rank: 1, name: "SolanaSavage", dist: 142.0, zrl: 71000 },
+                { rank: 2, name: "CyberRunner", dist: 128.5, zrl: 64250 },
+                { rank: 3, name: "SpeedDemon", dist: 110.2, zrl: 55100 },
+                { rank: 4, name: "NeonPace", dist: 95.4, zrl: 47700 },
+                { rank: 5, name: "ApeRunner", dist: 84.0, zrl: 42000 },
+            ],
+            all: [
+                { rank: 1, name: "CyberRunner", dist: 650.0, zrl: 325000 },
+                { rank: 2, name: "SolanaSavage", dist: 590.2, zrl: 295100 },
+                { rank: 3, name: "NeonPace", dist: 480.0, zrl: 240000 },
+                { rank: 4, name: "SpeedDemon", dist: 410.5, zrl: 205250 },
+                { rank: 5, name: "CryptoJogger", dist: 350.2, zrl: 175100 },
+            ]
+        };
 
-        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * (Math.PI / 180);
-            const dLon = (lon2 - lon1) * (Math.PI / 180);
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c; 
-        }
+        let currentLbTab = 'daily';
 
-        function getCurrentLevelObj() {
-            let currentLevelObj = LEVELS[0];
-            for (let i = 0; i < LEVELS.length; i++) {
-                if (totalDistance < LEVELS[i].targetKm) {
-                    currentLevelObj = LEVELS[i];
-                    break;
-                }
-                if (i === LEVELS.length - 1) currentLevelObj = LEVELS[i]; 
-            }
-            return currentLevelObj;
-        }
+        window.switchLbTab = function(tab) {
+            currentLbTab = tab;
+            document.querySelectorAll('.lb-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderLeaderboard();
+        };
 
-        function updateUI() {
-            balanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
-            stepsEl.innerText = 'Steps: ' + todaySteps;
-            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
+        function renderLeaderboard() {
+            const data = MOCK_LEADERBOARD[currentLbTab];
+            const podiumContainer = document.getElementById('podium-container');
+            const listContainer = document.getElementById('leaderboard-list');
 
-            let currentLevelObj = getCurrentLevelObj();
-            let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
-            let kmInCurrentLevel = totalDistance - prevLevelKm;
-            let kmNeededForLevel = currentLevelObj.targetKm - prevLevelKm;
-            
-            let progressPercent = (kmInCurrentLevel / kmNeededForLevel) * 100;
-            if (progressPercent > 100) progressPercent = 100;
+            podiumContainer.innerHTML = '';
+            listContainer.innerHTML = '';
 
-            levelTextEl.innerText = 'Level ' + currentLevelObj.level;
-            progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
-            progressBarEl.style.width = `${progressPercent}%`;
-            updateWalletUI();
-        }
-
-        function renderRewardsList() {
-            const container = document.getElementById('levels-list-container');
-            container.innerHTML = '';
-            let currentLevelObj = getCurrentLevelObj();
-
-            LEVELS.forEach(lvl => {
-                const isActive = lvl.level === currentLevelObj.level;
-                const isPassed = totalDistance >= lvl.targetKm;
-
-                let badgeText = lvl.reward;
-                if (isPassed && !isActive) badgeText = "Completed ✓";
-                if (isActive) badgeText = "Current Tier";
-
-                const card = document.createElement('div');
-                card.className = `level-card-item ${isActive ? 'active-tier' : ''}`;
-                card.innerHTML = `
-                    <div class="tier-info">
-                        <h4>Level ${lvl.level} (${lvl.targetKm} km)</h4>
-                        <p>${lvl.reward}</p>
-                    </div>
-                    <div class="tier-badge" style="${isPassed && !isActive ? 'color: #8a8d98; background: #2d303b;' : ''}">${badgeText}</div>
+            // Топ-3 на подиуме (2, 1, 3)
+            const podiumOrder = [data[1], data[0], data[2]];
+            podiumOrder.forEach((user) => {
+                if (!user) return;
+                const isFirst = user.rank === 1;
+                const div = document.createElement('div');
+                div.className = `podium-item ${isFirst ? 'first' : ''}`;
+                div.innerHTML = `
+                    <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 4px;">#${user.rank}</div>
+                    <div class="podium-avatar">${user.name.substring(0, 2).toUpperCase()}</div>
+                    <div style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">${user.name}</div>
+                    <div style="font-size: 11px; color: #a8f07a; margin-top: 2px;">${user.dist} km</div>
                 `;
-                container.appendChild(card);
+                podiumContainer.appendChild(div);
             });
+
+            // Остальные участники с 4 места
+            data.slice(3).forEach(user => {
+                const row = document.createElement('div');
+                row.className = 'lb-user-row';
+                row.innerHTML = `
+                    <div class="lb-user-left">
+                        <div class="lb-rank">#${user.rank}</div>
+                        <div class="lb-name">${user.name}</div>
+                    </div>
+                    <div class="lb-stats">
+                        <div class="lb-dist">${user.dist} km</div>
+                        <div class="lb-zrl">${user.zrl.toLocaleString()} ZRL</div>
+                    </div>
+                `;
+                listContainer.appendChild(row);
+            });
+
+            // Строка текущего игрока внизу лидерборда
+            const myRow = document.createElement('div');
+            myRow.className = 'lb-user-row';
+            myRow.style.borderColor = '#a8f07a';
+            myRow.style.background = 'rgba(168, 240, 122, 0.03)';
+            myRow.innerHTML = `
+                <div class="lb-user-left">
+                    <div class="lb-rank" style="color: #a8f07a;">#42</div>
+                    <div class="lb-name">${username || 'You'} (You)</div>
+                </div>
+                <div class="lb-stats">
+                    <div class="lb-dist">${totalDistance.toFixed(1)} km</div>
+                    <div class="lb-zrl">${totalBalance.toFixed(0)} ZRL</div>
+                </div>
+            `;
+            listContainer.appendChild(myRow);
         }
 
         const depositModal = document.getElementById('deposit-modal');
         const customPromptModal = document.getElementById('custom-prompt-modal');
         const boostersModal = document.getElementById('boosters-modal');
         const walletModal = document.getElementById('wallet-modal');
+        const leaderboardModal = document.getElementById('leaderboard-modal');
 
         function showCustomPrompt(title, description, placeholder, callback) {
             document.getElementById('custom-prompt-title').innerText = title;
@@ -1162,7 +1275,6 @@
             };
         }
 
-        // Автоматическая проверка поступления средств на персональный кошелек игрока через сервер
         async function checkDepositAutomatically() {
             if (!userWallet) return;
             try {
@@ -1410,15 +1522,15 @@
             }
         });
 
-        const rewardsModal = document.getElementById('rewards-modal');
+        // Открытие Leaderboard по клику на нижнюю кнопку Leaderboard
         document.getElementById('nav-rewards').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
-            renderRewardsList();
-            rewardsModal.style.display = 'flex';
+            renderLeaderboard();
+            leaderboardModal.style.display = 'flex';
         });
 
-        document.getElementById('close-rewards').addEventListener('click', () => {
-            rewardsModal.style.display = 'none';
+        document.getElementById('close-leaderboard').addEventListener('click', () => {
+            leaderboardModal.style.display = 'none';
         });
 
         const openWalletModal = () => {
