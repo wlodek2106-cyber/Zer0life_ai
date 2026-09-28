@@ -1,6 +1,4 @@
 Flask
 Flask-Cors
-solana
-solders
-base58
 requests
+base58
