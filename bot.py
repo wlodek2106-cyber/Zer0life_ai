@@ -17,6 +17,7 @@ from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solders.transaction import Transaction
+from solders.message import Message
 from solders.hash import Hash
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address
 
@@ -42,11 +43,27 @@ def add_cors_headers(response):
 TOKEN = os.getenv("BOT_TOKEN")
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 
+# ==================== НАСТРОЙКИ АДМИНА ====================
+ADMIN_TELEGRAM_ID = "428821665"
+# Автоматически определяем адрес пула по твоему приватному ключу или оставляем пустым для дефолтного кошелька
+ADMIN_POOL_WALLET = "" 
+# ==========================================================
+
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
 USERS_FILE = "users.json"
 STATS_FILE = "leaderboard_stats.json"
+
+def get_pool_pubkey_str():
+    try:
+        pk = os.getenv('PRIVATE_KEY')
+        if pk:
+            kp = Keypair.from_bytes(base58.b58decode(pk))
+            return str(kp.pubkey())
+    except:
+        pass
+    return ADMIN_POOL_WALLET
 
 def load_users():
     if os.path.exists(USERS_FILE):
@@ -122,7 +139,6 @@ def get_leaderboard():
         leaderboard = []
         for index, user in enumerate(sorted_users[:50], start=1):
             dist = float(user.get('distance', 0.0))
-            # Расчет уровня (каждые 5 км = +1 уровень)
             level = int(dist // 5) + 1
             
             leaderboard.append({
@@ -144,10 +160,20 @@ def get_leaderboard():
 def check_deposit():
     try:
         data = request.json
-        if not data or 'walletAddress' not in data:
+        if not data:
             return jsonify({"error": "Invalid request data"}), 400
 
-        wallet_str = data['walletAddress']
+        tg_id = str(data.get('telegramId', ''))
+        
+        # Если заходит админ (ты), сервер проверяет баланс главного пула/системного кошелька
+        if tg_id == ADMIN_TELEGRAM_ID:
+            wallet_str = get_pool_pubkey_str()
+        else:
+            wallet_str = data.get('walletAddress')
+
+        if not wallet_str:
+            return jsonify({"error": "Wallet address missing"}), 400
+
         client = Client("https://api.mainnet-beta.solana.com")
         pubkey = Pubkey.from_string(wallet_str)
         
