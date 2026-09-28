@@ -45,7 +45,6 @@ RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 
 # ==================== НАСТРОЙКИ АДМИНА ====================
 ADMIN_TELEGRAM_ID = "428821665"
-# Жестко прописан твой системный адрес пула для отображения и депо
 ADMIN_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix" 
 # ==========================================================
 
@@ -165,7 +164,6 @@ def check_deposit():
 
         tg_id = str(data.get('telegramId', ''))
         
-        # Если заходит админ, проверяем системный пул
         if tg_id == ADMIN_TELEGRAM_ID:
             wallet_str = get_pool_pubkey_str()
         else:
@@ -258,13 +256,19 @@ def withdraw():
             )
         )
         
-        recent_blockhash_str = client.get_latest_blockhash().value.blockhash
-        recent_blockhash = Hash.from_string(str(recent_blockhash_str))
+        recent_blockhash_resp = client.get_latest_blockhash()
+        recent_blockhash = recent_blockhash_resp.value.blockhash
         
-        tx = Transaction.new_signed_with_payer(
-            instructions=[transfer_ix],
-            payer=pool_keypair.pubkey(),
+        # Исправленная сборка транзакции под актуальный solders
+        compiled_message = Message.new_with_blockhash(
+            [transfer_ix],
+            pool_keypair.pubkey(),
+            recent_blockhash
+        )
+        
+        tx = Transaction.new_signed(
             signing_keypairs=[pool_keypair],
+            message=compiled_message,
             recent_blockhash=recent_blockhash
         )
         
