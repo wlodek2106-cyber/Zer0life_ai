@@ -668,7 +668,7 @@
             </button>
         </div>
 
-        <!-- НОВАЯ КАРТОЧКА: Ежедневные квесты (Daily Quests) -->
+        <!-- Карточка ежедневных квестов (Daily Quests) -->
         <div class="run-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #18221c 100%);">
             <div class="run-header">
                 <span>🎯 Daily Quests</span>
@@ -676,7 +676,6 @@
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-                <!-- Квест 1: Пройти 1 км -->
                 <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-size: 13px; font-weight: 700; color: #fff;">Run 1.0 km today</div>
@@ -685,7 +684,6 @@
                     <button class="claim-btn" id="quest-1-btn" style="padding: 6px 14px; font-size: 12px; background: #2d303b; color: #8a8d98; cursor: not-allowed;" disabled>+50 ZRL</button>
                 </div>
 
-                <!-- Квест 2: Сделать 1000 шагов -->
                 <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-size: 13px; font-weight: 700; color: #fff;">Complete 1,000 steps</div>
@@ -716,6 +714,16 @@
             </svg>
             <span id="start-btn-text">Start Run</span>
         </button>
+    </div>
+
+    <!-- МОДАЛКА ДЛЯ КРИПТО-БОКСА (MYSTERY BOX) -->
+    <div class="modal-overlay" id="mystery-box-modal" style="align-items: center; justify-content: center;">
+        <div class="modal-content" style="max-width: 320px; text-align: center; border-radius: 28px; background: linear-gradient(135deg, #1b241e 0%, #121816 100%); border: 1px solid #14f195;">
+            <div style="font-size: 50px; margin-bottom: 10px;">🎁</div>
+            <div style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px;">Mystery Box Found!</div>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 20px;">You discovered a secret crypto box during your run. Open it to claim instant ZRL tokens!</p>
+            <button class="claim-btn" id="open-box-btn" style="width: 100%; background: #14f195; color: #000; font-size: 16px; padding: 14px;">Open Box 🚀</button>
+        </div>
     </div>
 
     <div class="modal-overlay" id="register-modal">
@@ -1204,7 +1212,6 @@
             tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
 
-        // ЛОГИКА ЕЖЕДНЕВНЫХ КВЕСТОВ (Daily Quests)
         let quest1Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString()) === 'true';
         let quest2Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString()) === 'true';
 
@@ -1214,7 +1221,6 @@
             const q2Prog = document.getElementById('quest-2-progress');
             const q2Btn = document.getElementById('quest-2-btn');
 
-            // Квест 1: 1 км
             q1Prog.innerText = `Progress: ${Math.min(todayDistance, 1.0).toFixed(2)} / 1.0 km`;
             if (quest1Claimed) {
                 q1Btn.innerText = "Claimed ✅";
@@ -1236,7 +1242,6 @@
                 q1Btn.disabled = true;
             }
 
-            // Квест 2: 1000 шагов
             q2Prog.innerText = `Progress: ${Math.min(todaySteps, 1000)} / 1,000`;
             if (quest2Claimed) {
                 q2Btn.innerText = "Claimed ✅";
@@ -1283,6 +1288,29 @@
                 tg.HapticFeedback.notificationOccurred('success');
                 tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
             }
+        };
+
+        // ЛОГИКА СЛУЧАЙНОГО КРИПТО-БОКСА (MYSTERY BOX)
+        const mysteryBoxModal = document.getElementById('mystery-box-modal');
+        let pendingBoxReward = 0;
+
+        function checkRandomMysteryBox() {
+            // Шанс выпадения бокса при шаге (примерно 2% на каждый шаг во время бега)
+            if (Math.random() < 0.02) {
+                pendingBoxReward = Math.floor(Math.random() * 131) + 20; // от 20 до 150 ZRL
+                stopRunning(); // Останавливаем бег, чтобы игрок забрал приз
+                tg.HapticFeedback.notificationOccurred('success');
+                mysteryBoxModal.style.display = 'flex';
+            }
+        }
+
+        document.getElementById('open-box-btn').onclick = () => {
+            totalBalance += pendingBoxReward;
+            saveData();
+            updateUI();
+            mysteryBoxModal.style.display = 'none';
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
 
         let currentLbTab = 'daily';
@@ -1757,6 +1785,7 @@
 
                 updateUI();
                 updateQuestsUI();
+                checkRandomMysteryBox(); // Проверяем выпадение крипто-бокса на шаге
                 saveData();
             }
         }
