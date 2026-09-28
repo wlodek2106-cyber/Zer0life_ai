@@ -1238,7 +1238,6 @@
                 document.getElementById('withdraw-btn').innerText = "📤 Withdraw";
             }
 
-            // Запрос балансов с сервера
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
                     method: 'POST',
@@ -1302,6 +1301,10 @@
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
                                     if (amount > 0) {
+                                        if (amount > totalBalance) {
+                                            tg.showAlert('⚠️ Insufficient ZRL balance for withdrawal.');
+                                            return;
+                                        }
                                         try {
                                             const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                                 method: 'POST',
@@ -1314,6 +1317,11 @@
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
+                                                // Списываем токены с локального баланса и обновляем интерфейс
+                                                totalBalance -= amount;
+                                                saveData();
+                                                updateUI();
+
                                                 tg.HapticFeedback.notificationOccurred('success');
                                                 tg.showAlert(`✅ Withdrawal transaction sent!\nHash: ${data.txHash.substring(0, 10)}...`);
                                             } else {
