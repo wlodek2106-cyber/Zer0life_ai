@@ -415,6 +415,25 @@
             background-color: rgba(20, 241, 149, 0.05);
         }
 
+        .logout-btn {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            color: #ff4757;
+            width: 100%;
+            border-radius: 16px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 71, 87, 0.2);
+        }
+
         /* VIP Boosters Store Styles */
         .booster-grid {
             display: grid;
@@ -643,7 +662,7 @@
     </div>
 
     <!-- Registration / Onboarding Modal -->
-    <div class="modal-overlay" id="register-modal" style="display: flex;">
+    <div class="modal-overlay" id="register-modal">
         <div class="modal-content">
             <div class="modal-header">
                 <span class="modal-title">🚀 Welcome to Zer0life Run</span>
@@ -738,6 +757,9 @@
                     <button class="wallet-action-btn" id="deposit-btn">📥 Deposit</button>
                     <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
                 </div>
+
+                <!-- Кнопка Выхода из аккаунта -->
+                <button class="logout-btn" id="logout-btn">🚪 Logout / Switch Profile</button>
             </div>
         </div>
     </div>
@@ -856,17 +878,13 @@
         tg.expand();
         tg.ready();
 
-        // Уникальный ID пользователя Telegram (или дефолтный для тестирования в браузере)
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
-
-        // Префиксы для localStorage под каждого пользователя отдельно!
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
         let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
         const METERS_PER_STEP = 0.00075; 
         const MAX_SPEED_KMH = 14; 
         
-        // Персональные данные игрока
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = localStorage.getItem(STORAGE_PREFIX + 'wallet') || '';
 
@@ -1142,6 +1160,44 @@
             };
         }
 
+        // Логика выхода из аккаунта (очистка локального профиля текущего пользователя)
+        document.getElementById('logout-btn').onclick = () => {
+            tg.HapticFeedback.impactOccurred('heavy');
+            
+            showCustomPrompt(
+                "Logout Profile",
+                "Are you sure you want to log out? Type YES to confirm clearing your profile data:",
+                "Type YES...",
+                (val) => {
+                    if (val && val.toUpperCase() === 'YES') {
+                        // Очищаем данные текущего пользователя
+                        localStorage.removeItem(STORAGE_PREFIX + 'username');
+                        localStorage.removeItem(STORAGE_PREFIX + 'wallet');
+                        localStorage.removeItem(STORAGE_PREFIX + 'total_balance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'sol_balance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'usdc_balance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'pool_token_balance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'today_distance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'total_distance');
+                        localStorage.removeItem(STORAGE_PREFIX + 'unclaimed');
+                        localStorage.removeItem(STORAGE_PREFIX + 'today_steps');
+                        localStorage.removeItem(STORAGE_PREFIX + 'booster_rate');
+
+                        walletModal.style.display = 'none';
+                        tg.HapticFeedback.notificationOccurred('success');
+                        tg.showAlert('🚪 Logged out successfully. Restarting session...');
+                        
+                        // Перезагружаем интерфейс для показа окна регистрации
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else if (val !== null) {
+                        tg.showAlert('⚠️ Action cancelled. Type YES to log out.');
+                    }
+                }
+            );
+        };
+
         window.buyBooster = function(solPrice, zrlRatePerKm) {
             tg.HapticFeedback.impactOccurred('medium');
             boostersModal.style.display = 'none';
@@ -1335,7 +1391,6 @@
             boostersModal.style.display = 'flex';
         });
 
-        // Проверяем регистрацию при старте
         checkRegistration();
     </script>
 </body>
