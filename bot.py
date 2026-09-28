@@ -259,14 +259,13 @@ def withdraw():
         recent_blockhash_resp = client.get_latest_blockhash()
         recent_blockhash = recent_blockhash_resp.value.blockhash
         
-        compiled_message = Message.new_with_blockhash(
-            [transfer_ix],
-            pool_keypair.pubkey(),
-            recent_blockhash
+        # Корректная сборка и подпись транзакции для актуальной версии solders
+        tx = Transaction.new_signed_with_payer(
+            instructions=[transfer_ix],
+            payer=pool_keypair.pubkey(),
+            signing_keypairs=[pool_keypair],
+            recent_blockhash=recent_blockhash
         )
-        
-        # Исправлено: создание транзакции с подписью под текущую версию solders
-        tx = Transaction(message=compiled_message, signers=[pool_keypair])
         
         result = client.send_transaction(tx)
         tx_signature = str(result.value)
