@@ -246,7 +246,6 @@ def withdraw():
         
         instructions = []
         
-        # Автоматически создаем токен-счет получателя, если он еще не существует
         try:
             account_info = client.get_account_info(user_ata)
             if account_info.value is None:
@@ -260,7 +259,6 @@ def withdraw():
         except Exception as e:
             print("ATA check/creation notice:", e)
 
-        # Инструкция перевода токенов
         transfer_ix = transfer_checked(
             TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -337,4 +335,27 @@ async def cmd_start(message: types.Message):
     )
 
 def setup_webhook_sync():
-Дрочись тут...
+    if bot and RENDER_URL:
+        try:
+            webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
+            future = asyncio.run_coroutine_threadsafe(bot.set_webhook(webhook_url), bot_loop)
+            future.result(timeout=5)
+            
+            menu_future = asyncio.run_coroutine_threadsafe(bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="🏃 Zer0Life Run",
+                    web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
+                )
+            ), bot_loop)
+            menu_future.result(timeout=5)
+            logging.info(f"Webhook registered: {webhook_url}")
+        except Exception as e:
+            logging.error(f"Webhook setup error: {e}")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    if TOKEN:
+        setup_webhook_sync()
+    
+    port = int(os.environ.get("PORT", 10000))
+    api_app.run(host="0.0.0.0", port=port)
