@@ -58,8 +58,9 @@
 
         .balance-label {
             font-size: 11px;
-            color: #8a8d98;
+            color: #a8f07a;
             margin-bottom: 2px;
+            font-weight: 700;
         }
 
         .balance-amount {
@@ -691,7 +692,7 @@
             <div class="balance-section">
                 <div class="avatar"></div>
                 <div class="balance-info">
-                    <span class="balance-label" id="username-label">Player</span>
+                    <span class="balance-label" id="username-label">Runner</span>
                     <span class="balance-amount" id="total-balance">0.00</span>
                 </div>
             </div>
@@ -783,7 +784,9 @@
             <div class="podium-container" id="podium-container"></div>
 
             <!-- Full List -->
-            <div id="leaderboard-list"></div>
+            <div id="leaderboard-list">
+                <div style="text-align: center; color: #8a8d98; padding: 20px;">Loading real stats from server...</div>
+            </div>
         </div>
     </div>
 
@@ -802,7 +805,6 @@
                 </div>
 
                 <div id="crypto-assets-list">
-                    <!-- ZRL Token -->
                     <div class="crypto-asset-row">
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
@@ -816,7 +818,6 @@
                             <div class="asset-usd" id="asset-zrl-usd">$0.00</div>
                         </div>
                     </div>
-                    <!-- Solana -->
                     <div class="crypto-asset-row">
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
@@ -830,7 +831,6 @@
                             <div class="asset-usd" id="asset-sol-usd">$0.00</div>
                         </div>
                     </div>
-                    <!-- USDC -->
                     <div class="crypto-asset-row">
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(39,117,202,0.15); color: #2775ca;">U</div>
@@ -851,7 +851,6 @@
                     <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
                 </div>
 
-                <!-- Кнопка Выхода из аккаунта -->
                 <button class="logout-btn" id="logout-btn">🚪 Logout / Switch Profile</button>
             </div>
         </div>
@@ -1021,11 +1020,31 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
-            // Фиксируем текущее время как последнюю активность
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
+
+            // Синхронизируем статистику с реальным сервером на Render
+            syncStatsToServer();
         }
 
-        // Функция проверки неактивности (больше 5 часов)
+        async function syncStatsToServer() {
+            if (!username || !userWallet) return;
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/update-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegramId: telegramId,
+                        username: username,
+                        walletAddress: userWallet,
+                        distance: totalDistance,
+                        balance: totalBalance
+                    })
+                });
+            } catch(e) {
+                console.log("Stats sync error:", e);
+            }
+        }
+
         function checkInactivity() {
             const lastActive = localStorage.getItem(STORAGE_PREFIX + 'last_active_time');
             if (lastActive && username && userWallet) {
@@ -1042,6 +1061,7 @@
         }
 
         function updateWalletUI() {
+            // Исправлено: теперь выводится ваш сохраненный ник вместо слова 'Player'
             document.getElementById('username-label').innerText = username || 'Runner';
             if (userWallet && userWallet.length > 8) {
                 const shortAddr = userWallet.substring(0, 4) + '...' + userWallet.substring(userWallet.length - 4);
@@ -1059,7 +1079,7 @@
                 registerModal.style.display = 'none';
                 updateUI();
                 checkDepositAutomatically();
-                checkInactivity(); // Запуск проверки неактивности при старте
+                checkInactivity();
             }
         }
 
@@ -1078,7 +1098,7 @@
 
             username = inputName;
             userWallet = inputWallet;
-            saveData(); // Сохраняет профиль и записывает начальную метку времени
+            saveData();
 
             document.getElementById('register-modal').style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
@@ -1087,94 +1107,94 @@
             checkDepositAutomatically();
         };
 
-        // Моковые данные для глобального лидерборда
-        const MOCK_LEADERBOARD = {
-            daily: [
-                { rank: 1, name: "CyberRunner", dist: 24.5, zrl: 12250 },
-                { rank: 2, name: "SolanaSavage", dist: 19.2, zrl: 9600 },
-                { rank: 3, name: "NeonPace", dist: 15.0, zrl: 7500 },
-                { rank: 4, name: "SpeedDemon", dist: 12.8, zrl: 6400 },
-                { rank: 5, name: "CryptoJogger", dist: 10.4, zrl: 5200 },
-            ],
-            weekly: [
-                { rank: 1, name: "SolanaSavage", dist: 142.0, zrl: 71000 },
-                { rank: 2, name: "CyberRunner", dist: 128.5, zrl: 64250 },
-                { rank: 3, name: "SpeedDemon", dist: 110.2, zrl: 55100 },
-                { rank: 4, name: "NeonPace", dist: 95.4, zrl: 47700 },
-                { rank: 5, name: "ApeRunner", dist: 84.0, zrl: 42000 },
-            ],
-            all: [
-                { rank: 1, name: "CyberRunner", dist: 650.0, zrl: 325000 },
-                { rank: 2, name: "SolanaSavage", dist: 590.2, zrl: 295100 },
-                { rank: 3, name: "NeonPace", dist: 480.0, zrl: 240000 },
-                { rank: 4, name: "SpeedDemon", dist: 410.5, zrl: 205250 },
-                { rank: 5, name: "CryptoJogger", dist: 350.2, zrl: 175100 },
-            ]
-        };
-
+        // Загрузка реального лидерборда с вашего сервера на Render
         let currentLbTab = 'daily';
 
         window.switchLbTab = function(tab) {
             currentLbTab = tab;
             document.querySelectorAll('.lb-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            renderLeaderboard();
+            fetchLeaderboardFromBackend();
         };
 
-        function renderLeaderboard() {
-            const data = MOCK_LEADERBOARD[currentLbTab];
+        async function fetchLeaderboardFromBackend() {
             const podiumContainer = document.getElementById('podium-container');
             const listContainer = document.getElementById('leaderboard-list');
 
-            podiumContainer.innerHTML = '';
-            listContainer.innerHTML = '';
+            try {
+                const response = await fetch(`https://zer0life-ai-iz5n.onrender.com/leaderboard?period=${currentLbTab}`);
+                const data = await response.json();
 
-            const podiumOrder = [data[1], data[0], data[2]];
-            podiumOrder.forEach((user) => {
-                if (!user) return;
-                const isFirst = user.rank === 1;
-                const div = document.createElement('div');
-                div.className = `podium-item ${isFirst ? 'first' : ''}`;
-                div.innerHTML = `
-                    <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 4px;">#${user.rank}</div>
-                    <div class="podium-avatar">${user.name.substring(0, 2).toUpperCase()}</div>
-                    <div style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">${user.name}</div>
-                    <div style="font-size: 11px; color: #a8f07a; margin-top: 2px;">${user.dist} km</div>
-                `;
-                podiumContainer.appendChild(div);
-            });
+                if (!response.ok || !data.success || !data.leaderboard) {
+                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px;">No players on leaderboard yet. Start running!</div>`;
+                    podiumContainer.innerHTML = '';
+                    return;
+                }
 
-            data.slice(3).forEach(user => {
-                const row = document.createElement('div');
-                row.className = 'lb-user-row';
-                row.innerHTML = `
-                    <div class="lb-user-left">
-                        <div class="lb-rank">#${user.rank}</div>
-                        <div class="lb-name">${user.name}</div>
-                    </div>
-                    <div class="lb-stats">
-                        <div class="lb-dist">${user.dist} km</div>
-                        <div class="lb-zrl">${user.zrl.toLocaleString()} ZRL</div>
-                    </div>
-                `;
-                listContainer.appendChild(row);
-            });
+                const users = data.leaderboard; // Ожидается массив объектов [{rank, name, dist, zrl}, ...]
+                podiumContainer.innerHTML = '';
+                listContainer.innerHTML = '';
 
-            const myRow = document.createElement('div');
-            myRow.className = 'lb-user-row';
-            myRow.style.borderColor = '#a8f07a';
-            myRow.style.background = 'rgba(168, 240, 122, 0.03)';
-            myRow.innerHTML = `
-                <div class="lb-user-left">
-                    <div class="lb-rank" style="color: #a8f07a;">#42</div>
-                    <div class="lb-name">${username || 'You'} (You)</div>
-                </div>
-                <div class="lb-stats">
-                    <div class="lb-dist">${totalDistance.toFixed(1)} km</div>
-                    <div class="lb-zrl">${totalBalance.toFixed(0)} ZRL</div>
-                </div>
-            `;
-            listContainer.appendChild(myRow);
+                if (users.length === 0) {
+                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px;">Leaderboard is empty.</div>`;
+                    return;
+                }
+
+                // Рендер топ-3 на подиуме (2, 1, 3)
+                const topThree = [users[1], users[0], users[2]].filter(Boolean);
+                topThree.forEach((user) => {
+                    const isFirst = user.rank === 1;
+                    const div = document.createElement('div');
+                    div.className = `podium-item ${isFirst ? 'first' : ''}`;
+                    div.innerHTML = `
+                        <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 4px;">#${user.rank}</div>
+                        <div class="podium-avatar">${user.name.substring(0, 2).toUpperCase()}</div>
+                        <div style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">${user.name}</div>
+                        <div style="font-size: 11px; color: #a8f07a; margin-top: 2px;">${user.dist} km</div>
+                    `;
+                    podiumContainer.appendChild(div);
+                });
+
+                // Остальные участники с 4 места
+                users.slice(3).forEach(user => {
+                    const row = document.createElement('div');
+                    row.className = 'lb-user-row';
+                    row.innerHTML = `
+                        <div class="lb-user-left">
+                            <div class="lb-rank">#${user.rank}</div>
+                            <div class="lb-name">${user.name}</div>
+                        </div>
+                        <div class="lb-stats">
+                            <div class="lb-dist">${user.dist} km</div>
+                            <div class="lb-zrl">${user.zrl.toLocaleString()} ZRL</div>
+                        </div>
+                    `;
+                    listContainer.appendChild(row);
+                });
+
+                // Ваша строка внизу списка (если сервер вернул вашу позицию `myRank`)
+                if (data.myRank) {
+                    const myRow = document.createElement('div');
+                    myRow.className = 'lb-user-row';
+                    myRow.style.borderColor = '#a8f07a';
+                    myRow.style.background = 'rgba(168, 240, 122, 0.03)';
+                    myRow.innerHTML = `
+                        <div class="lb-user-left">
+                            <div class="lb-rank" style="color: #a8f07a;">#${data.myRank.rank}</div>
+                            <div class="lb-name">${username || 'You'} (You)</div>
+                        </div>
+                        <div class="lb-stats">
+                            <div class="lb-dist">${totalDistance.toFixed(1)} km</div>
+                            <div class="lb-zrl">${totalBalance.toFixed(0)} ZRL</div>
+                        </div>
+                    `;
+                    listContainer.appendChild(myRow);
+                }
+
+            } catch (e) {
+                console.log("Leaderboard fetch error:", e);
+                listContainer.innerHTML = `<div style="text-align: center; color: #ff4757; padding: 20px;">Failed to load real leaderboard from server.</div>`;
+            }
         }
 
         const depositModal = document.getElementById('deposit-modal');
@@ -1441,6 +1461,7 @@
             lastTime = currentTime;
         }
 
+        let lastMotionTime = 0;
         function handleMotion(event) {
             if (!isRunning) return;
 
@@ -1537,7 +1558,7 @@
 
         document.getElementById('nav-rewards').addEventListener('click', () => {
             tg.HapticFeedback.impactOccurred('light');
-            renderLeaderboard();
+            fetchLeaderboardFromBackend();
             leaderboardModal.style.display = 'flex';
         });
 
@@ -1562,6 +1583,58 @@
             tg.HapticFeedback.impactOccurred('light');
             boostersModal.style.display = 'flex';
         });
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
+
+        const LEVELS = [
+            { level: 1, targetKm: 5, reward: "Standard" },
+            { level: 2, targetKm: 20, reward: "Standard" },
+            { level: 3, targetKm: 50, reward: "Standard" },
+            { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
+            { level: 5, targetKm: 150, reward: "Elite Tier" },
+            { level: 6, targetKm: 200, reward: "Max Legend Tier" }
+        ];
+
+        function getCurrentLevelObj() {
+            let currentLevelObj = LEVELS[0];
+            for (let i = 0; i < LEVELS.length; i++) {
+                if (totalDistance < LEVELS[i].targetKm) {
+                    currentLevelObj = LEVELS[i];
+                    break;
+                }
+                if (i === LEVELS.length - 1) currentLevelObj = LEVELS[i]; 
+            }
+            return currentLevelObj;
+        }
+
+        function updateUI() {
+            balanceEl.innerText = totalBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
+            stepsEl.innerText = 'Steps: ' + todaySteps;
+            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
+
+            let currentLevelObj = getCurrentLevelObj();
+            let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
+            let kmInCurrentLevel = totalDistance - prevLevelKm;
+            let kmNeededForLevel = currentLevelObj.targetKm - prevLevelKm;
+            
+            let progressPercent = (kmInCurrentLevel / kmNeededForLevel) * 100;
+            if (progressPercent > 100) progressPercent = 100;
+
+            levelTextEl.innerText = 'Level ' + currentLevelObj.level;
+            progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
+            progressBarEl.style.width = `${progressPercent}%`;
+            updateWalletUI();
+        }
 
         checkRegistration();
     </script>
