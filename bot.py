@@ -259,7 +259,6 @@ def withdraw():
         recent_blockhash_resp = client.get_latest_blockhash()
         recent_blockhash = recent_blockhash_resp.value.blockhash
         
-        # Корректная сборка и подпись транзакции для актуальной версии solders
         tx = Transaction.new_signed_with_payer(
             instructions=[transfer_ix],
             payer=pool_keypair.pubkey(),
@@ -267,7 +266,8 @@ def withdraw():
             recent_blockhash=recent_blockhash
         )
         
-        result = client.send_transaction(tx)
+        # Отправка сырых байтов транзакции обходит несовместимость версий клиентских библиотек
+        result = client.send_raw_transaction(bytes(tx))
         tx_signature = str(result.value)
         
         if tg_id and bot:
