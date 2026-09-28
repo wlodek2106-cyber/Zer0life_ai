@@ -742,7 +742,10 @@
             <div class="modal-header">
                 <span class="modal-title">🚀 Welcome to Zer0life Run</span>
             </div>
-            <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 20px;">
+            <p style="font-size: 13px; color: #a8f07a; margin-top: -10px; margin-bottom: 15px; font-weight: 700;">
+                🎁 Bonus: Get 1,000 ZRL instantly on start for registration!
+            </p>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 20px;">
                 Enter your nickname and your personal Solana wallet address to create your decentralized player profile:
             </p>
             <div class="custom-input-group">
@@ -753,7 +756,44 @@
                 <input type="text" id="reg-wallet" class="custom-input-field" placeholder="e.g. Phantom address (Base58)..." />
             </div>
             <div style="margin-top: 25px;">
-                <button class="wallet-action-btn" id="reg-submit-btn" style="width: 100%; background: #a8f07a; color: #000; border: none; font-size: 16px;">Create Profile</button>
+                <button class="wallet-action-btn" id="reg-submit-btn" style="width: 100%; background: #a8f07a; color: #000; border: none; font-size: 16px;">Create Profile & Claim 1,000 ZRL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно реферальной программы с таблицей линий -->
+    <div class="modal-overlay" id="friends-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">👥 Referral Program (2 Lines)</span>
+                <button class="close-modal" id="close-friends">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #a8f07a; margin-top: -10px; margin-bottom: 10px; font-weight: 700;">
+                ⚡ Earn passive income from your network:
+            </p>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;">
+                • <b>1st Line:</b> 10% from your direct referrals' income.<br>
+                • <b>2nd Line:</b> 5% from referrals of your 1st line.<br>
+                New players get <b>1,000 ZRL</b> instantly on start!
+            </p>
+            
+            <div style="background: #181b24; padding: 12px; border-radius: 14px; font-size: 12px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 15px; text-align: center;" id="ref-link-box">
+                Generating link...
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <button class="wallet-action-btn" id="copy-ref-btn" style="background: #a8f07a; color: #000; border: none; font-size: 13px; padding: 10px;">📋 Copy Link</button>
+                <button class="wallet-action-btn" id="share-ref-btn" style="background: #181b24; border-color: #a8f07a; color: #a8f07a; font-size: 13px; padding: 10px;">🚀 Share TG</button>
+            </div>
+
+            <!-- Переключатели линий -->
+            <div class="leaderboard-tabs" style="margin-bottom: 12px;">
+                <button class="lb-tab active" onclick="switchRefTab('line1')">1st Line (10%)</button>
+                <button class="lb-tab" onclick="switchRefTab('line2')">2nd Line (5%)</button>
+            </div>
+
+            <!-- Список рефералов (Таблица) -->
+            <div id="ref-list-container" style="max-height: 200px; overflow-y: auto;">
+                <div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals yet. Share your link!</div>
             </div>
         </div>
     </div>
@@ -943,6 +983,10 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
+        <div class="nav-item" id="nav-friends">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Friends
+        </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosters
@@ -1102,6 +1146,7 @@
             }
         }
 
+        // Регистрация с начислением 1000 ZRL бонусных
         document.getElementById('reg-submit-btn').onclick = () => {
             const inputName = document.getElementById('reg-username').value.trim();
             const inputWallet = document.getElementById('reg-wallet').value.trim();
@@ -1117,20 +1162,100 @@
 
             username = inputName;
             userWallet = inputWallet;
+            
+            const isAlreadyRegistered = localStorage.getItem(STORAGE_PREFIX + 'registered_bonus');
+            if (!isAlreadyRegistered) {
+                totalBalance += 1000;
+                localStorage.setItem(STORAGE_PREFIX + 'registered_bonus', 'true');
+            }
+
             saveData();
 
             document.getElementById('register-modal').style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert(`🎉 Welcome, ${username}!\nYour profile has been created successfully.`);
+            tg.showAlert(`🎉 Welcome, ${username}!\n\n🎁 You received +1,000 ZRL registration bonus on start!`);
             updateUI();
             checkDepositAutomatically();
         };
+
+        // Логика реферальной программы и таблицы линий
+        const friendsModal = document.getElementById('friends-modal');
+        const botUsername = "zer0life_run_bot"; // Твой бот
+        const refLink = `https://t.me/${botUsername}/app?start=ref_${telegramId}`;
+        document.getElementById('ref-link-box').innerText = refLink;
+
+        let currentRefTab = 'line1';
+
+        window.switchRefTab = function(tab) {
+            currentRefTab = tab;
+            document.querySelectorAll('#friends-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderReferralTable();
+        };
+
+        function renderReferralTable() {
+            const container = document.getElementById('ref-list-container');
+            
+            // Имитация данных рефералов для первой и второй линии (можно заменить на реальный запрос к бэкенду)
+            const line1Mock = [
+                { name: "CryptoAlex", income: "+450 ZRL", percent: "10%" },
+                { name: "SatoshiRunner", income: "+1,200 ZRL", percent: "10%" }
+            ];
+            const line2Mock = [
+                { name: "SolanaKing", income: "+180 ZRL", percent: "5%" }
+            ];
+
+            const list = currentRefTab === 'line1' ? line1Mock : line2Mock;
+
+            if (list.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 15px; font-size: 13px;">No referrals in this line yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            list.forEach(ref => {
+                const row = document.createElement('div');
+                row.className = 'lb-user-row';
+                row.innerHTML = `
+                    <div class="lb-user-left">
+                        <div class="lb-name">${ref.name}</div>
+                    </div>
+                    <div class="lb-stats">
+                        <div class="lb-dist" style="color: #a8f07a;">${ref.income}</div>
+                        <div class="lb-zrl">Commission: ${ref.percent}</div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        document.getElementById('nav-friends').addEventListener('click', () => {
+            tg.HapticFeedback.impactOccurred('light');
+            renderReferralTable();
+            friendsModal.style.display = 'flex';
+        });
+
+        document.getElementById('close-friends').addEventListener('click', () => {
+            friendsModal.style.display = 'none';
+        });
+
+        document.getElementById('copy-ref-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(refLink);
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert('✅ Invite link copied to clipboard!');
+        });
+
+        document.getElementById('share-ref-btn').addEventListener('click', () => {
+            const shareText = encodeURIComponent("🚀 Join me in Zer0life Run! Get 1,000 ZRL free on start, run, and earn crypto tokens on Solana!");
+            const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${shareText}`;
+            window.open(shareUrl, '_blank');
+        });
 
         let currentLbTab = 'daily';
 
         window.switchLbTab = function(tab) {
             currentLbTab = tab;
-            document.querySelectorAll('.lb-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#leaderboard-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             fetchLeaderboardFromBackend();
         };
@@ -1455,6 +1580,7 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'today_steps');
                         localStorage.removeItem(STORAGE_PREFIX + 'booster_rate');
                         localStorage.removeItem(STORAGE_PREFIX + 'last_active_time');
+                        localStorage.removeItem(STORAGE_PREFIX + 'registered_bonus');
 
                         walletModal.style.display = 'none';
                         tg.HapticFeedback.notificationOccurred('success');
