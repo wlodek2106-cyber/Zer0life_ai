@@ -659,7 +659,6 @@
             </div>
         </div>
 
-        <!-- Шкала выносливости игрока -->
         <div class="energy-card">
             <div class="energy-header">
                 <span>⚡ ENERGY / STAMINA</span>
@@ -670,7 +669,6 @@
             </div>
         </div>
 
-        <!-- Шкала износа бутс / кроссовок (Boots Durability) -->
         <div class="energy-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #1a221e 100%);">
             <div class="energy-header" style="color: #a8f07a;">
                 <span>👟 SNEAKERS DURABILITY (HP)</span>
@@ -698,14 +696,12 @@
                 <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
 
-            <!-- ИНДИКАТОР АКТИВНОГО БУСТЕРА -->
             <div class="active-booster-badge" id="active-booster-badge">
                 <span>⚡ Active Booster: <strong id="booster-name-text">Standard (500 ZRL/km)</strong></span>
                 <span style="font-size: 10px; background: rgba(168,240,122,0.2); padding: 2px 6px; border-radius: 6px;" id="booster-tier-label">VIP</span>
             </div>
         </div>
 
-        <!-- Карточка ежедневных отметок (Daily Check-in) -->
         <div class="run-card" style="border-color: rgba(20, 241, 149, 0.3); background: linear-gradient(135deg, #15171e 0%, #161f22 100%);">
             <div class="run-header">
                 <span>📅 Daily Check-in</span>
@@ -748,7 +744,6 @@
             </button>
         </div>
 
-        <!-- Карточка ежедневных квестов (Daily Quests) -->
         <div class="run-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #18221c 100%);">
             <div class="run-header">
                 <span>🎯 Daily Quests</span>
@@ -796,7 +791,6 @@
         </button>
     </div>
 
-    <!-- Модалка для крипто-бокса -->
     <div class="modal-overlay" id="mystery-box-modal" style="align-items: center; justify-content: center;">
         <div class="modal-content" style="max-width: 320px; text-align: center; border-radius: 28px; background: linear-gradient(135deg, #1b241e 0%, #121816 100%); border: 1px solid #14f195;">
             <div style="font-size: 50px; margin-bottom: 10px;">🎁</div>
@@ -830,7 +824,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно социальной сети (Friends & Chat) -->
     <div class="modal-overlay" id="friends-modal">
         <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
             <div class="modal-header" style="margin-bottom: 16px;">
@@ -888,7 +881,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно Social Hub & Quests -->
     <div class="modal-overlay" id="social-hub-modal">
         <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
             <div class="modal-header" style="margin-bottom: 16px;">
@@ -900,7 +892,6 @@
             </p>
 
             <div style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
-                <!-- Telegram Channel -->
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(36,161,222,0.15); color: #24a1de; display: flex; align-items: center; justify-content: center; font-weight: 900;">TG</div>
@@ -912,7 +903,6 @@
                     <button class="claim-btn" id="soc-tg-btn" onclick="completeSocialTask('tg_official', 'https://t.me/zer0life_official', this)" style="padding: 8px 14px; font-size: 12px; background: #24a1de; color: #fff;">Subscribe</button>
                 </div>
 
-                <!-- Instagram -->
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(236,72,153,0.15); color: #ec4899; display: flex; align-items: center; justify-content: center; font-weight: 900;">IG</div>
@@ -924,7 +914,6 @@
                     <button class="claim-btn" id="soc-insta-btn" onclick="completeSocialTask('insta_prod', 'https://www.instagram.com/zer0life_production', this)" style="padding: 8px 14px; font-size: 12px; background: #ec4899; color: #fff;">Follow</button>
                 </div>
 
-                <!-- YouTube -->
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,0,0,0.15); color: #ff0000; display: flex; align-items: center; justify-content: center; font-weight: 900;">YT</div>
@@ -936,7 +925,6 @@
                     <button class="claim-btn" id="soc-yt-btn" onclick="completeSocialTask('youtube_official', 'https://youtube.com/@zer0life_official?si=AzjjJ1HcP6KLFtpm', this)" style="padding: 8px 14px; font-size: 12px; background: #ff0000; color: #fff;">Subscribe</button>
                 </div>
 
-                <!-- Twitch -->
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(145,70,255,0.15); color: #9146ff; display: flex; align-items: center; justify-content: center; font-weight: 900;">TW</div>
@@ -948,7 +936,6 @@
                     <button class="claim-btn" id="soc-twitch-btn" onclick="completeSocialTask('twitch_official', 'https://twitch.tv/zer0life_official/', this)" style="padding: 8px 14px; font-size: 12px; background: #9146ff; color: #fff;">Follow</button>
                 </div>
 
-                <!-- X / Twitter -->
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900;">𝕏</div>
@@ -1666,7 +1653,6 @@
             }
         };
 
-        // --- Social Hub ---
         const socialHubModal = document.getElementById('social-hub-modal');
 
         window.completeSocialTask = function(taskId, url, btnElement) {
@@ -1755,10 +1741,11 @@
             tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
 
-        // --- Социальная система: друзья и чат ---
+        // --- Социальная система: друзья и чат с автообновлением ---
         const friendsModal = document.getElementById('friends-modal');
         let currentFriendChatId = null;
         let chatInterval = null;
+        let friendsInterval = null;
 
         window.switchFriendsTab = function(tabName) {
             triggerHaptic('selection');
@@ -1772,9 +1759,11 @@
             document.getElementById('chat-box-section').style.display = 'none';
 
             if (chatInterval) clearInterval(chatInterval);
+            if (friendsInterval) clearInterval(friendsInterval);
 
             if (tabName === 'list' || tabName === 'requests') {
                 fetchFriendsData();
+                friendsInterval = setInterval(fetchFriendsData, 3000);
             }
         };
 
@@ -1848,9 +1837,7 @@
             }
             
             try {
-                // Пытаемся отправить на сервер, но даже если сервер вернет 404/ошибку, 
-                // клиент закроет форму с успехом и не покажет раздражающих модалок.
-                fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1859,8 +1846,10 @@
                         fromUsername: username || 'Runner', 
                         targetUsername: targetUsername 
                     })
-                }).catch(e => console.log(e));
-            } catch(e) {}
+                });
+            } catch(e) {
+                console.log(e);
+            }
 
             triggerHaptic('success');
             playSound('success');
@@ -1884,6 +1873,7 @@
         window.openChat = function(friendId, friendName) {
             triggerHaptic('light');
             playSound('click');
+            if (friendsInterval) clearInterval(friendsInterval);
             currentFriendChatId = friendId;
             document.getElementById('friends-tab-list').style.display = 'none';
             document.getElementById('friends-tab-requests').style.display = 'none';
@@ -1903,6 +1893,7 @@
             document.getElementById('chat-box-section').style.display = 'none';
             document.getElementById('friends-tab-list').style.display = 'block';
             fetchFriendsData();
+            friendsInterval = setInterval(fetchFriendsData, 3000);
         };
 
         async function loadChatMessages() {
@@ -1962,11 +1953,14 @@
             playSound('click');
             friendsModal.style.display = 'flex';
             fetchFriendsData();
+            if (friendsInterval) clearInterval(friendsInterval);
+            friendsInterval = setInterval(fetchFriendsData, 3000);
         });
 
         document.getElementById('close-friends').addEventListener('click', () => {
             triggerHaptic('light');
             if (chatInterval) clearInterval(chatInterval);
+            if (friendsInterval) clearInterval(friendsInterval);
             friendsModal.style.display = 'none';
         });
 
