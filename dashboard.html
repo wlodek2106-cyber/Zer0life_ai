@@ -1361,22 +1361,22 @@
         const startBtnText = document.getElementById('start-btn-text');
 
         const wheelSectors = [
-            { text: "0.1 SOL", color: "#14f195", textColor: "#000" },
-            { text: "Boots x2", color: "#3b82f6", textColor: "#fff" },
-            { text: "🎁 Box", color: "#ec4899", textColor: "#fff" },
-            { text: "Free Spin", color: "#eab308", textColor: "#000" },
-            { text: "0.01 SOL", color: "#10b981", textColor: "#000" },
-            { text: "600 ZRL", color: "#a855f7", textColor: "#fff" },
-            { text: "10k ZRL", color: "#ffffff", textColor: "#000" },
-            { text: "100 ZRL", color: "#38bdf8", textColor: "#fff" },
-            { text: "150 ZRL", color: "#f43f5e", textColor: "#fff" },
-            { text: "1000 ZRL", color: "#15803d", textColor: "#fff" },
-            { text: "200 ZRL", color: "#facc15", textColor: "#000" },
-            { text: "250 ZRL", color: "#9333ea", textColor: "#fff" },
-            { text: "2000 ZRL", color: "#16a34a", textColor: "#fff" },
-            { text: "300 ZRL", color: "#0284c7", textColor: "#fff" },
-            { text: "350 ZRL", color: "#db2777", textColor: "#fff" },
-            { text: "400 ZRL", color: "#7c3aed", textColor: "#fff" }
+            { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
+            { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
+            { text: "🎁 Box", color: "#ec4899", textColor: "#fff", type: "box", val: 150 },
+            { text: "Free Spin", color: "#eab308", textColor: "#000", type: "free_spin", val: 1 },
+            { text: "0.01 SOL", color: "#10b981", textColor: "#000", type: "sol", val: 0.01 },
+            { text: "600 ZRL", color: "#a855f7", textColor: "#fff", type: "zrl", val: 600 },
+            { text: "10k ZRL", color: "#ffffff", textColor: "#000", type: "zrl", val: 10000 },
+            { text: "100 ZRL", color: "#38bdf8", textColor: "#fff", type: "zrl", val: 100 },
+            { text: "150 ZRL", color: "#f43f5e", textColor: "#fff", type: "zrl", val: 150 },
+            { text: "1000 ZRL", color: "#15803d", textColor: "#fff", type: "zrl", val: 1000 },
+            { text: "200 ZRL", color: "#facc15", textColor: "#000", type: "zrl", val: 200 },
+            { text: "250 ZRL", color: "#9333ea", textColor: "#fff", type: "zrl", val: 250 },
+            { text: "2000 ZRL", color: "#16a34a", textColor: "#fff", type: "zrl", val: 2000 },
+            { text: "300 ZRL", color: "#0284c7", textColor: "#fff", type: "zrl", val: 300 },
+            { text: "350 ZRL", color: "#db2777", textColor: "#fff", type: "zrl", val: 350 },
+            { text: "400 ZRL", color: "#7c3aed", textColor: "#fff", type: "zrl", val: 400 }
         ];
 
         function drawWheel() {
@@ -1610,23 +1610,19 @@
                 triggerHaptic('success');
                 playSound('coin');
                 
-                const localRewards = [
-                    { name: '+100 ZRL', type: 'zrl', val: 100 },
-                    { name: '+250 ZRL', type: 'zrl', val: 250 },
-                    { name: '+500 ZRL', type: 'zrl', val: 500 },
-                    { name: '0.1 SOL', type: 'sol', val: 0.1 },
-                    { name: 'Free Spin', type: 'free_spin', val: 0 }
-                ];
-                const won = localRewards[Math.floor(Math.random() * localRewards.length)];
+                const winningIndex = Math.floor((360 - (currentWheelRotation % 360)) / (360 / wheelSectors.length)) % wheelSectors.length;
+                const won = wheelSectors[winningIndex];
                 
                 if (won.type === 'zrl') totalBalance += won.val;
                 else if (won.type === 'sol') solBalance += won.val;
                 else if (won.type === 'free_spin') freeSpins++;
+                else if (won.type === 'box') totalBalance += won.val;
+                else if (won.type === 'boots') bootsHP = 100;
 
                 saveData();
                 updateUI();
 
-                tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.name}!`);
+                tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
                 spinBtn.disabled = false;
                 spinBtn.style.opacity = '1';
                 openFortuneModal();
