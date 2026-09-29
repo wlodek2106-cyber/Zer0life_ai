@@ -11,25 +11,32 @@ CORS(app)
 # Подключаемся к сети Solana (Mainnet)
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-# Токен твоего Telegram-бота (нужно добавить в переменные окружения Render как TELEGRAM_BOT_TOKEN)
+# Токен твоего Telegram-бота
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # --- Система постоянного сохранения данных (JSON файл) ---
 DB_FILE = "database.json"
 
 def load_db():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print("Error loading DB:", e)
-    return {
+    default_data = {
         "FRIENDS_DB": {},
         "REQUESTS_DB": {},
         "USERS_MAP": {},
-        "USER_STATS": {}
+        "USER_STATS": {},
+        "CHAT_DB": []
     }
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                # Гарантируем наличие всех ключей
+                for k, v in default_data.items():
+                    if k not in data:
+                        data[k] = v
+                return data
+        except Exception as e:
+            print("Error loading DB:", e)
+    return default_data
 
 def save_db():
     try:
@@ -37,7 +44,8 @@ def save_db():
             "FRIENDS_DB": FRIENDS_DB,
             "REQUESTS_DB": REQUESTS_DB,
             "USERS_MAP": USERS_MAP,
-            "USER_STATS": USER_STATS
+            "USER_STATS": USER_STATS,
+            "CHAT_DB": CHAT_DB
         }
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -50,6 +58,7 @@ FRIENDS_DB = db.get("FRIENDS_DB", {})
 REQUESTS_DB = db.get("REQUESTS_DB", {})
 USERS_MAP = db.get("USERS_MAP", {})
 USER_STATS = db.get("USER_STATS", {})
+CHAT_DB = db.get("CHAT_DB", [])
 
 def send_telegram_message(chat_id, text):
     if not TELEGRAM_BOT_TOKEN or not chat_id:
@@ -65,6 +74,7 @@ def send_telegram_message(chat_id, text):
         print("TG Notification error:", e)
 
 @app.route('/register', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
 def register_user():
     data = request.json or {}
     telegram_id = str(data.get('telegramId'))
@@ -73,11 +83,15 @@ def register_user():
     
     if telegram_id and username:
         USERS_MAP[telegram_id] = username
+        if wallet_address:
+            # Можно сохранить кошелек при желании
+            pass
         save_db()
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Invalid data"}), 400
 
 @app.route('/update-stats', methods=['POST'])
+@app.route('/api/update-stats', methods=['POST'])
 def update_stats():
     data = request.json or {}
     telegram_id = str(data.get('telegramId'))
@@ -95,6 +109,7 @@ def update_stats():
     return jsonify({"success": False}), 400
 
 @app.route('/leaderboard', methods=['GET'])
+@app.route('/api/leaderboard', methods=['GET'])
 def get_leaderboard():
     users_list = []
     for uid, stats in USER_STATS.items():
@@ -138,16 +153,16 @@ def get_friends_list():
 @app.route('/api/friend/request', methods=['POST'])
 def send_friend_request():
     data = request.json or {}
-    from_id = str(data.get('fromId'))
+    from_id = str(data.get('fromId') or data.get('telegramId'))
     from_username = data.get('fromUsername')
     target_username = data.get('targetUsername', '').strip()
     
     if not target_username:
         return jsonify({"success": False, "error": "Введите никнейм"}), 400
         
-    USERS_MAP[from_id] = from_username
+    if from_id and from_username:
+        USERS_MAP[from_id] = from_username
     
-    # Ищем target по никнейму среди всех зарегистрированных
     target_id = None
     for uid, uname in USERS_MAP.items():
         if uname and uname.lower() == target_username.lower():
@@ -162,11 +177,10 @@ def send_friend_request():
         
     existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
     if not existing:
-        REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
+        REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username or "Runner"})
         save_db()
         
-        # Отправляем уведомление в Telegram пользователю
-        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
+        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username or 'Runner'}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
         send_telegram_message(target_id, msg_text)
         
     return jsonify({"success": True})
@@ -197,8 +211,8 @@ def get_chat_messages():
     
     messages = [
         m for m in CHAT_DB 
-        if (str(m['senderId']) == user1 and str(m['receiverId']) == user2) or 
-           (str(m['senderId']) == user2 and str(m['receiverId']) == user1)
+        if (str(m.get('senderId')) == user1 and str(m.get('receiverId')) == user2) or 
+           (str(m.get('senderId')) == user2 and str(m.get('receiverId')) == user1)
     ]
     return jsonify({"success": True, "messages": messages})
 
@@ -212,7 +226,6 @@ def send_chat_message():
         "timestamp": data.get('timestamp', 0)
     }
     CHAT_DB.append(msg)
-    # Ограничиваем историю чата последними 500 сообщениями, чтобы файл не раздувался
     if len(CHAT_DB) > 500:
         CHAT_DB.pop(0)
     save_db()
@@ -221,6 +234,7 @@ def send_chat_message():
 # --- Эндпоинты Кошелька и Вывода ---
 
 @app.route('/check-deposit', methods=['POST'])
+@app.route('/api/check-deposit', methods=['POST'])
 def check_deposit():
     return jsonify({
         "success": True,
