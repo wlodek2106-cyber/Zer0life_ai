@@ -1407,18 +1407,7 @@
         }, 30000);
 
         function checkInactivity() {
-            const lastActive = localStorage.getItem(STORAGE_PREFIX + 'last_active_time');
-            if (lastActive && username && userWallet) {
-                const now = Date.now();
-                const hoursPassed = (now - parseInt(lastActive)) / (1000 * 60 * 60);
-                
-                if (hoursPassed >= 5) {
-                    setTimeout(() => {
-                        triggerHaptic('warning');
-                        tg.showAlert("⚠️ Energy Warning!\n\nYour activity has dropped significantly. Return to the game, start running, and boost your ZRL mining speed before rewards decay!");
-                    }, 1000);
-                }
-            }
+            // Предупреждение об неактивности полностью отключено
         }
 
         function updateWalletUI() {
@@ -1439,7 +1428,6 @@
                 registerModal.style.display = 'none';
                 updateUI();
                 checkDepositAutomatically();
-                checkInactivity();
             }
         }
 
@@ -1741,7 +1729,6 @@
             tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
 
-        // --- Социальная система: друзья и чат с автообновлением ---
         const friendsModal = document.getElementById('friends-modal');
         let currentFriendChatId = null;
         let chatInterval = null;
@@ -1837,7 +1824,7 @@
             }
             
             try {
-                await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
+                const res = await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1847,14 +1834,20 @@
                         targetUsername: targetUsername 
                     })
                 });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    triggerHaptic('success');
+                    playSound('success');
+                    tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
+                    document.getElementById('add-friend-input').value = '';
+                } else {
+                    triggerHaptic('error');
+                    tg.showAlert(`❌ ${data.error || 'User not found'}`);
+                }
             } catch(e) {
-                console.log(e);
+                triggerHaptic('error');
+                tg.showAlert('❌ Network error. Check connection.');
             }
-
-            triggerHaptic('success');
-            playSound('success');
-            tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
-            document.getElementById('add-friend-input').value = '';
         };
 
         window.acceptFriend = async function(fromId) {
@@ -2216,7 +2209,7 @@
                                     if (amount > 0) {
                                         if (amount > totalBalance) {
                                             triggerHaptic('error');
-                                            tg.showAlert('⚠️ Insufficient ZRL balance for withdrawal.');
+                                            tg.showAlert('⚠️️ Insufficient ZRL balance for withdrawal.');
                                             return;
                                         }
                                         try {
