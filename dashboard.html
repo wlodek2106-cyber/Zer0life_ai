@@ -1194,6 +1194,8 @@
         tg.expand();
         tg.ready();
 
+        const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
+
         let audioCtx = null;
         function initAudio() {
             if (!audioCtx) {
@@ -1564,12 +1566,30 @@
             } else {
                 if (solBalance < 0.01) {
                     triggerHaptic('error');
-                    tg.showAlert('❌ Недостаточно SOL для прокрута (нужно 0.01 SOL)!');
+                    tg.showAlert('❌ Недостаточно SOL на балансе вашего кошелька в приложении (нужно 0.01 SOL)! Сделайте депозит в кошельке.');
                     spinBtn.disabled = false;
                     spinBtn.style.opacity = '1';
                     return;
                 }
+
+                // Списываем SOL с внутреннего баланса и отправляем на указанный адрес через бэкенд
                 solBalance -= 0.01;
+                saveData();
+
+                try {
+                    await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            telegramId: telegramId,
+                            walletAddress: MERCHANT_SOL_WALLET,
+                            amount: 0.01,
+                            currency: 'SOL'
+                        })
+                    });
+                } catch(e) {
+                    console.log("Automated payment dispatch note:", e);
+                }
             }
 
             const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
@@ -2438,7 +2458,7 @@
                                     if (amount > 0) {
                                         if (amount > totalBalance) {
                                             triggerHaptic('error');
-                                            tg.showAlert('⚠️ Insufficient ZRL balance for withdrawal.');
+                                            tg.showAlert('⚠️️ Insufficient ZRL balance for withdrawal.');
                                             return;
                                         }
                                         try {
