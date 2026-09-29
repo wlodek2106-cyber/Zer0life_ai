@@ -1858,22 +1858,15 @@
                     })
                 });
                 
-                const textResponse = await res.text();
-                let data = {};
-                try {
-                    data = JSON.parse(textResponse);
-                } catch (parseErr) {
-                    console.error("Non-JSON response:", textResponse);
-                }
-
-                if (res.ok && (data.success || data.success === undefined)) {
+                // Исправленная логика проверки успешного ответа сервера
+                if (res.status === 200 || res.ok) {
                     triggerHaptic('success');
                     playSound('success');
                     tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
                     document.getElementById('add-friend-input').value = '';
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert(`❌ ${data.error || 'User not found or network error'}`);
+                    tg.showAlert(`❌ Failed to send request. Server status: ${res.status}`);
                 }
             } catch(e) {
                 console.error("Fetch catch error:", e);
