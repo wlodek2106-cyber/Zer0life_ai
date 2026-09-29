@@ -791,7 +791,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ С CANVAS РИСОВАНИЕМ ПРИЗОВ -->
+    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ С УКАЗАТЕЛЕМ СВЕРХУ И 4K RETINA CANVAS -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 380px;">
             <div class="modal-header" style="margin-bottom: 5px;">
@@ -804,14 +804,14 @@
 
             <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 20px auto;">
                 
-                <!-- Стрелка-указатель СНИЗУ, указывающая ВВЕРХ на выигрышный сектор -->
-                <div style="position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));"></div>
+                <!-- Стрелка-указатель СВЕРХУ, указывающая ВНИЗ на призы -->
+                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
                 
                 <!-- Золотой обод колеса -->
                 <div style="position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 6px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 20;"></div>
 
-                <!-- Canvas Колесо Фортуны -->
-                <canvas id="fortune-canvas" width="280" height="280" style="width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;"></canvas>
+                <!-- 4K Retina Canvas Колесо Фортуны -->
+                <canvas id="fortune-canvas" width="1120" height="1120" style="width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;"></canvas>
 
                 <!-- Золотая кнопка SPIN в центре -->
                 <div onclick="spinFortuneWheel()" id="spin-center-btn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer; text-shadow: 0 1px 0 rgba(255,255,255,0.6);">
@@ -1367,7 +1367,7 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // РИСОВАНИЕ КОЛЕСА НА CANVAS
+        // РИСОВАНИЕ 4K CANVAS КОЛЕСА (СТРЕЛКА СВЕРХУ УКАЗЫВАЕТ ВНИЗ)
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000" },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff" },
@@ -1394,11 +1394,12 @@
             const numSectors = wheelSectors.length;
             const arcSize = (2 * Math.PI) / numSectors;
             const center = canvas.width / 2;
-            const radius = center - 5;
+            const radius = center - 15;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < numSectors; i++) {
+                // Смещаем на -Math.PI / 2 чтобы верхний сектор был под стрелкой
                 const angle = i * arcSize - Math.PI / 2;
                 
                 // Сектор
@@ -1408,16 +1409,18 @@
                 ctx.arc(center, center, radius, angle, angle + arcSize);
                 ctx.lineTo(center, center);
                 ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "rgba(0,0,0,0.2)";
                 ctx.stroke();
 
-                // Текст
+                // Текст высокого разрешения в 4K
                 ctx.save();
                 ctx.translate(center, center);
                 ctx.rotate(angle + arcSize / 2);
                 ctx.textAlign = "right";
                 ctx.fillStyle = wheelSectors[i].textColor;
-                ctx.font = "bold 11px sans-serif";
-                ctx.fillText(wheelSectors[i].text, radius - 16, 4);
+                ctx.font = "bold 34px sans-serif";
+                ctx.fillText(wheelSectors[i].text, radius - 50, 12);
                 ctx.restore();
             }
         }
@@ -2490,7 +2493,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️️ Invalid amount.');
+                                        tg.showAlert('⚠️ Invalid amount.');
                                     }
                                 }
                             );
