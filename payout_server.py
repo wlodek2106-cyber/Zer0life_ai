@@ -131,6 +131,14 @@ def get_friends_list():
     if request.method == 'OPTIONS':
         return '', 200
     telegram_id = str(request.args.get('telegramId'))
+    
+    # Автоматически подтягиваем никнейм из USER_STATS или USERS_MAP
+    current_uname = USERS_MAP.get(telegram_id)
+    if not current_uname and telegram_id in USER_STATS:
+        current_uname = USER_STATS[telegram_id].get("username")
+        if current_uname:
+            USERS_MAP[telegram_id] = current_uname
+
     friends_ids = FRIENDS_DB.get(telegram_id, [])
     friends = []
     for fid in friends_ids:
@@ -140,8 +148,14 @@ def get_friends_list():
             "username": st.get("username", USERS_MAP.get(fid, "Friend")), 
             "distance": st.get("distance", 0.0)
         })
-    username = USERS_MAP.get(telegram_id, '')
-    my_requests = REQUESTS_DB.get(username, [])
+    
+    # Собираем заявки регистронезависимо по текущему никнейму
+    my_requests = []
+    if current_uname:
+        for uname, reqs in REQUESTS_DB.items():
+            if uname.lower() == current_uname.lower():
+                my_requests.extend(reqs)
+                
     return jsonify({"success": True, "friends": friends, "requests": my_requests})
 
 @app.route('/friend/request', methods=['POST', 'OPTIONS'])
@@ -161,25 +175,30 @@ def send_friend_request():
         if from_id and from_username:
             USERS_MAP[from_id] = from_username
         
-        target_id = None
-        for uid, uname in USERS_MAP.items():
-            if uname and uname.lower() == target_username.lower():
-                target_id = uid
+        # Ищем точный ключ в REQUESTS_DB без учета регистра
+        found_key = None
+        for existing_uname in REQUESTS_DB.keys():
+            if existing_uname.lower() == target_username.lower():
+                found_key = existing_uname
                 break
-                
-        if not target_id:
-            target_id = "auto_user_" + target_username.lower()
-            USERS_MAP[target_id] = target_username
+        
+        if not found_key:
+            found_key = target_username
+            REQUESTS_DB[found_key] = []
             
-        if target_username not in REQUESTS_DB:
-            REQUESTS_DB[target_username] = []
-            
-        existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
+        existing = [r for r in REQUESTS_DB[found_key] if str(r['telegramId']) == str(from_id)]
         if not existing:
-            REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
+            REQUESTS_DB[found_key].append({"telegramId": from_id, "username": from_username})
             save_db()
             
-            if target_id.isdigit():
+            # Ищем ID целевого пользователя для отправки пуша в Telegram
+            target_id = None
+            for uid, uname in USERS_MAP.items():
+                if uname and uname.lower() == target_username.lower():
+                    target_id = uid
+                    break
+                    
+            if target_id and str(target_id).isdigit():
                 msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
                 send_telegram_message(target_id, msg_text)
             
@@ -204,9 +223,11 @@ def accept_friend_request():
         if friend_id not in FRIENDS_DB[user_id]: FRIENDS_DB[user_id].append(friend_id)
         if user_id not in FRIENDS_DB[friend_id]: FRIENDS_DB[friend_id].append(user_id)
         
+        # Очищаем заявку регистронезависимо
         my_username = USERS_MAP.get(user_id, '')
-        if my_username in REQUESTS_DB:
-            REQUESTS_DB[my_username] = [r for r in REQUESTS_DB[my_username] if str(r['telegramId']) != friend_id]
+        for uname in list(REQUESTS_DB.keys()):
+            if uname.lower() == my_username.lower():
+                REQUESTS_DB[uname] = [r for r in REQUESTS_DB[uname] if str(r['telegramId']) != friend_id]
             
         save_db()
         return jsonify({"success": True})
