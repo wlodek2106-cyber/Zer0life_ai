@@ -1,12 +1,9 @@
 import os
+import json
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from solana.rpc.api import Client
-from solders.keypair import Keypair
-from solders.pubkey import Pubkey
-from solders.transaction import Transaction
-from solders.system_program import transfer as sys_transfer, TransferParams as SysTransferParams
-import base58
 
 app = Flask(__name__)
 CORS(app)
@@ -14,17 +11,58 @@ CORS(app)
 # Подключаемся к сети Solana (Mainnet)
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-# Получаем ключи из защищенных переменных сервера Render
-MASTER_WALLET_PRIVATE_KEY = os.getenv("MASTER_WALLET_PRIVATE_KEY")
-ZRL_MINT_STR = os.getenv("ZRL_MINT")
+# Токен твоего Telegram-бота (нужно добавить в переменные окружения Render как TELEGRAM_BOT_TOKEN)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Временные базы данных в памяти для профилей, друзей и чата
-FRIENDS_DB = {}   # { telegramId: [friendId1, friendId2] }
-REQUESTS_DB = {}  # { targetUsername: [ {fromId, fromUsername} ] }
-USERS_MAP = {}    # { telegramId: username }
-CHAT_DB = []      # [ {senderId, receiverId, text, timestamp} ]
-USER_WALLETS = {} # { telegramId: walletAddress }
-USER_STATS = {}   # { telegramId: {distance, balance} }
+# --- Система постоянного сохранения данных (JSON файл) ---
+DB_FILE = "database.json"
+
+def load_db():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print("Error loading DB:", e)
+    return {
+        "FRIENDS_DB": {},
+        "REQUESTS_DB": {},
+        "USERS_MAP": {},
+        "USER_STATS": {}
+    }
+
+def save_db():
+    try:
+        data = {
+            "FRIENDS_DB": FRIENDS_DB,
+            "REQUESTS_DB": REQUESTS_DB,
+            "USERS_MAP": USERS_MAP,
+            "USER_STATS": USER_STATS
+        }
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print("Error saving DB:", e)
+
+# Загружаем данные при старте сервера
+db = load_db()
+FRIENDS_DB = db.get("FRIENDS_DB", {})
+REQUESTS_DB = db.get("REQUESTS_DB", {})
+USERS_MAP = db.get("USERS_MAP", {})
+USER_STATS = db.get("USER_STATS", {})
+
+def send_telegram_message(chat_id, text):
+    if not TELEGRAM_BOT_TOKEN or not chat_id:
+        return
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        requests.post(url, json={
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML"
+        })
+    except Exception as e:
+        print("TG Notification error:", e)
 
 @app.route('/register', methods=['POST'])
 def register_user():
@@ -35,8 +73,7 @@ def register_user():
     
     if telegram_id and username:
         USERS_MAP[telegram_id] = username
-        if wallet_address:
-            USER_WALLETS[telegram_id] = wallet_address
+        save_db()
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Invalid data"}), 400
 
@@ -45,21 +82,21 @@ def update_stats():
     data = request.json or {}
     telegram_id = str(data.get('telegramId'))
     if telegram_id:
+        username = data.get('username', 'Runner')
         USER_STATS[telegram_id] = {
-            "username": data.get('username'),
+            "username": username,
             "walletAddress": data.get('walletAddress'),
             "distance": data.get('distance', 0),
             "balance": data.get('balance', 0)
         }
-        USERS_MAP[telegram_id] = data.get('username', USERS_MAP.get(telegram_id, 'Runner'))
+        USERS_MAP[telegram_id] = username
+        save_db()
         return jsonify({"success": True})
     return jsonify({"success": False}), 400
 
 @app.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
-    period = request.args.get('period', 'daily')
     users_list = []
-    
     for uid, stats in USER_STATS.items():
         users_list.append({
             "name": stats.get("username", "Runner"),
@@ -68,10 +105,7 @@ def get_leaderboard():
             "telegramId": uid
         })
         
-    # Сортируем по дистанции
     users_list.sort(key=lambda x: x['dist'], reverse=True)
-    
-    # Расставляем ранги
     for i, u in enumerate(users_list):
         u['rank'] = i + 1
         
@@ -108,16 +142,20 @@ def send_friend_request():
     from_username = data.get('fromUsername')
     target_username = data.get('targetUsername', '').strip()
     
+    if not target_username:
+        return jsonify({"success": False, "error": "Введите никнейм"}), 400
+        
     USERS_MAP[from_id] = from_username
     
+    # Ищем target по никнейму среди всех зарегистрированных
     target_id = None
     for uid, uname in USERS_MAP.items():
-        if uname.lower() == target_username.lower():
+        if uname and uname.lower() == target_username.lower():
             target_id = uid
             break
             
     if not target_id:
-        return jsonify({"success": False, "error": "User not found"}), 404
+        return jsonify({"success": False, "error": "Игрок с таким никнеймом не найден"}), 404
         
     if target_username not in REQUESTS_DB:
         REQUESTS_DB[target_username] = []
@@ -125,6 +163,11 @@ def send_friend_request():
     existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
     if not existing:
         REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
+        save_db()
+        
+        # Отправляем уведомление в Telegram пользователю
+        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
+        send_telegram_message(target_id, msg_text)
         
     return jsonify({"success": True})
 
@@ -144,6 +187,7 @@ def accept_friend_request():
     if my_username in REQUESTS_DB:
         REQUESTS_DB[my_username] = [r for r in REQUESTS_DB[my_username] if str(r['telegramId']) != friend_id]
         
+    save_db()
     return jsonify({"success": True})
 
 @app.route('/api/chat/messages', methods=['GET'])
@@ -168,16 +212,16 @@ def send_chat_message():
         "timestamp": data.get('timestamp', 0)
     }
     CHAT_DB.append(msg)
+    # Ограничиваем историю чата последними 500 сообщениями, чтобы файл не раздувался
+    if len(CHAT_DB) > 500:
+        CHAT_DB.pop(0)
+    save_db()
     return jsonify({"success": True})
 
 # --- Эндпоинты Кошелька и Вывода ---
 
 @app.route('/check-deposit', methods=['POST'])
 def check_deposit():
-    data = request.json or {}
-    wallet_address = data.get('walletAddress')
-    
-    # Возвращаем симуляцию балансов для кошелька
     return jsonify({
         "success": True,
         "solBalance": 1.5,
@@ -195,12 +239,10 @@ def withdraw():
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
 
-        # Логика реального или тестового перевода
         return jsonify({
             "success": True, 
             "txHash": "5Vq7s...solana_tx_success_hash_simulation"
         })
-
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
