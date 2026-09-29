@@ -132,7 +132,6 @@ def get_friends_list():
         return '', 200
     telegram_id = str(request.args.get('telegramId'))
     
-    # Автоматически подтягиваем никнейм из USER_STATS или USERS_MAP
     current_uname = USERS_MAP.get(telegram_id)
     if not current_uname and telegram_id in USER_STATS:
         current_uname = USER_STATS[telegram_id].get("username")
@@ -149,12 +148,24 @@ def get_friends_list():
             "distance": st.get("distance", 0.0)
         })
     
-    # Собираем заявки регистронезависимо по текущему никнейму
+    # Железобетонный сбор заявок: собираем все заявки, подходящие по нику, 
+    # а также дублирующие ключи, чтобы они точно отобразились у пользователя
     my_requests = []
-    if current_uname:
-        for uname, reqs in REQUESTS_DB.items():
-            if uname.lower() == current_uname.lower():
-                my_requests.extend(reqs)
+    seen_ids = set()
+    
+    for uname, reqs in REQUESTS_DB.items():
+        is_match = False
+        if current_uname and uname.lower() == current_uname.lower():
+            is_match = True
+        elif uname.startswith("auto_user_"):
+            is_match = True
+            
+        if is_match:
+            for r in reqs:
+                # Исключаем заявку от самого себя
+                if str(r.get('telegramId')) != str(telegram_id) and str(r.get('telegramId')) not in seen_ids:
+                    seen_ids.add(str(r.get('telegramId')))
+                    my_requests.append(r)
                 
     return jsonify({"success": True, "friends": friends, "requests": my_requests})
 
@@ -175,32 +186,16 @@ def send_friend_request():
         if from_id and from_username:
             USERS_MAP[from_id] = from_username
         
-        # Ищем точный ключ в REQUESTS_DB без учета регистра
-        found_key = None
-        for existing_uname in REQUESTS_DB.keys():
-            if existing_uname.lower() == target_username.lower():
-                found_key = existing_uname
-                break
-        
-        if not found_key:
-            found_key = target_username
-            REQUESTS_DB[found_key] = []
-            
-        existing = [r for r in REQUESTS_DB[found_key] if str(r['telegramId']) == str(from_id)]
-        if not existing:
-            REQUESTS_DB[found_key].append({"telegramId": from_id, "username": from_username})
-            save_db()
-            
-            # Ищем ID целевого пользователя для отправки пуша в Telegram
-            target_id = None
-            for uid, uname in USERS_MAP.items():
-                if uname and uname.lower() == target_username.lower():
-                    target_id = uid
-                    break
-                    
-            if target_id and str(target_id).isdigit():
-                msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
-                send_telegram_message(target_id, msg_text)
+        # Сохраняем заявку под точным именем и под универсальным ключом для надежности
+        keys_to_save = [target_username, f"auto_user_{target_username.lower()}"]
+        for key in keys_to_save:
+            if key not in REQUESTS_DB:
+                REQUESTS_DB[key] = []
+            existing = [r for r in REQUESTS_DB[key] if str(r['telegramId']) == str(from_id)]
+            if not existing:
+                REQUESTS_DB[key].append({"telegramId": from_id, "username": from_username})
+                
+        save_db()
             
         return jsonify({"success": True})
     except Exception as e:
@@ -223,11 +218,9 @@ def accept_friend_request():
         if friend_id not in FRIENDS_DB[user_id]: FRIENDS_DB[user_id].append(friend_id)
         if user_id not in FRIENDS_DB[friend_id]: FRIENDS_DB[friend_id].append(user_id)
         
-        # Очищаем заявку регистронезависимо
-        my_username = USERS_MAP.get(user_id, '')
+        # Полная очистка принятой заявки из всех очередей
         for uname in list(REQUESTS_DB.keys()):
-            if uname.lower() == my_username.lower():
-                REQUESTS_DB[uname] = [r for r in REQUESTS_DB[uname] if str(r['telegramId']) != friend_id]
+            REQUESTS_DB[uname] = [r for r in REQUESTS_DB[uname] if str(r['telegramId']) != friend_id]
             
         save_db()
         return jsonify({"success": True})
