@@ -791,7 +791,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ С ПРИЗАМИ SOL, BOOTS x2, BOX И FREE SPIN -->
+    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ С ИСПРАВЛЕННЫМ УКАЗАТЕЛЕМ И ТЕКСТАМИ ПРИЗОВ СВЕРХУ -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 380px;">
             <div class="modal-header" style="margin-bottom: 5px;">
@@ -799,85 +799,76 @@
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
             <p style="font-size: 11px; color: #8a8d98; margin-bottom: 15px;" id="wheel-subtitle">
-                Цена прокрута: <strong style="color: #14f195;">0.01 SOL</strong>. (Внесите от 0.1 SOL в пул для разблокировки топ-призов: 0.1 SOL, Boots x2, Box!)
+                Цена прокрута: <strong style="color: #14f195;">0.01 SOL</strong>. (Внесите от 0.1 SOL в пул для разблокировки топ-призов!)
             </p>
 
             <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 20px auto;">
-                <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 26px solid #f59e0b; z-index: 30; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));"></div>
                 
+                <!-- Золотой обод с индикаторами -->
                 <div style="position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 6px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 20;"></div>
 
+                <!-- Вращающийся диск с цветными секторами (только цвета, без текста) -->
                 <div id="wheel-disk" style="width: 100%; height: 100%; border-radius: 50%; position: relative; overflow: hidden; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;">
-                    
-                    <!-- 16 Секторов с уникальными призами -->
-                    <!-- 1: 0.1 SOL (Джекпот SOL) -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #14f195; transform: rotate(0deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #000;">0.1 SOL 🌟</span>
-                    </div>
-                    <!-- 2: Boots x2 (1h) -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #3b82f6; transform: rotate(22.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #fff;">Boots x2</span>
-                    </div>
-                    <!-- 3: Mystery Box -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #ec4899; transform: rotate(45deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #fff;">🎁 Box</span>
-                    </div>
-                    <!-- 4: Free Spin -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #eab308; transform: rotate(67.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #000;">Free Spin</span>
-                    </div>
-                    <!-- 5: 0.01 SOL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #10b981; transform: rotate(90deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #000;">0.01 SOL</span>
-                    </div>
-                    <!-- 6: 600 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #a855f7; transform: rotate(112.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">600</span>
-                    </div>
-                    <!-- 7: 10000 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #ffffff; transform: rotate(135deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 9px; font-weight: 900; color: #000;">10000</span>
-                    </div>
-                    <!-- 8: 100 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #38bdf8; transform: rotate(157.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">100</span>
-                    </div>
-                    <!-- 9: 150 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #f43f5e; transform: rotate(180deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">150</span>
-                    </div>
-                    <!-- 10: 1000 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #15803d; transform: rotate(202.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">1000</span>
-                    </div>
-                    <!-- 11: 200 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #facc15; transform: rotate(225deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #000;">200</span>
-                    </div>
-                    <!-- 12: 250 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #9333ea; transform: rotate(247.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">250</span>
-                    </div>
-                    <!-- 13: 2000 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #16a34a; transform: rotate(270deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">2000</span>
-                    </div>
-                    <!-- 14: 300 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #0284c7; transform: rotate(292.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">300</span>
-                    </div>
-                    <!-- 15: 350 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #db2777; transform: rotate(315deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">350</span>
-                    </div>
-                    <!-- 16: 400 ZRL -->
-                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #7c3aed; transform: rotate(337.5deg) skewY(-67.5deg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 18px; padding-right: 14px; border-right: 1px solid rgba(0,0,0,0.2);">
-                        <span style="transform: skewY(67.5deg) rotate(67.5deg); font-size: 10px; font-weight: 900; color: #fff;">400</span>
-                    </div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #14f195; transform: rotate(0deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #3b82f6; transform: rotate(22.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #ec4899; transform: rotate(45deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #eab308; transform: rotate(67.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #10b981; transform: rotate(90deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #a855f7; transform: rotate(112.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #ffffff; transform: rotate(135deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #38bdf8; transform: rotate(157.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #f43f5e; transform: rotate(180deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #15803d; transform: rotate(202.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #facc15; transform: rotate(225deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #9333ea; transform: rotate(247.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #16a34a; transform: rotate(270deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #0284c7; transform: rotate(292.5deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #db2777; transform: rotate(315deg) skewY(-67.5deg);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: #7c3aed; transform: rotate(337.5deg) skewY(-67.5deg);"></div>
+                </div>
 
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); text-shadow: 0 1px 0 rgba(255,255,255,0.6);">
-                        SPIN
-                    </div>
+                <!-- Неподвижный слой с текстами призов поверх вращающегося колеса -->
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 22;">
+                    <!-- 1: 0.1 SOL (Сверху) -->
+                    <div style="position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: 900; color: #000; text-shadow: 0 1px 1px #fff;">0.1 SOL 🌟</div>
+                    <!-- 2 -->
+                    <div style="position: absolute; top: 28px; right: 72px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">Boots x2</div>
+                    <!-- 3 -->
+                    <div style="position: absolute; top: 72px; right: 28px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">🎁 Box</div>
+                    <!-- 4 -->
+                    <div style="position: absolute; top: 125px; right: 10px; font-size: 8px; font-weight: 900; color: #000; text-shadow: 0 1px 1px #fff;">Free Spin</div>
+                    <!-- 5 -->
+                    <div style="position: absolute; bottom: 125px; right: 10px; font-size: 8px; font-weight: 900; color: #000; text-shadow: 0 1px 1px #fff;">0.01 SOL</div>
+                    <!-- 6 -->
+                    <div style="position: absolute; bottom: 72px; right: 28px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">600</div>
+                    <!-- 7 -->
+                    <div style="position: absolute; bottom: 28px; right: 72px; font-size: 8px; font-weight: 900; color: #000; text-shadow: 0 1px 1px #fff;">10000</div>
+                    <!-- 8 -->
+                    <div style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">100</div>
+                    <!-- 9 -->
+                    <div style="position: absolute; bottom: 28px; left: 72px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">150</div>
+                    <!-- 10 -->
+                    <div style="position: absolute; bottom: 72px; left: 28px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">1000</div>
+                    <!-- 11 -->
+                    <div style="position: absolute; top: 125px; left: 10px; font-size: 8px; font-weight: 900; color: #000; text-shadow: 0 1px 1px #fff;">200</div>
+                    <!-- 12 -->
+                    <div style="position: absolute; top: 72px; left: 28px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">250</div>
+                    <!-- 13 -->
+                    <div style="position: absolute; top: 28px; left: 72px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">2000</div>
+                    <!-- 14 -->
+                    <div style="position: absolute; top: 45px; left: 110px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">300</div>
+                    <!-- 15 -->
+                    <div style="position: absolute; top: 110px; left: 45px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">350</div>
+                    <!-- 16 -->
+                    <div style="position: absolute; top: 85px; left: 70px; font-size: 8px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000;">400</div>
+                </div>
+
+                <!-- Стрелка-указатель (указывает СВЕРХУ ВНИЗ точно на верхний сектор) -->
+                <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 26px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
+
+                <!-- Золотая кнопка SPIN в центре -->
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); text-shadow: 0 1px 0 rgba(255,255,255,0.6);">
+                    SPIN
                 </div>
             </div>
 
@@ -1577,7 +1568,6 @@
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
 
-            // Если есть бесплатный прокрут
             if (freeSpins > 0) {
                 freeSpins--;
                 const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
@@ -1588,7 +1578,6 @@
                     triggerHaptic('success');
                     playSound('coin');
                     
-                    // Рандомный приз для бесплатного прокрута
                     const rewards = [
                         { name: '+300 ZRL', type: 'zrl', val: 300 },
                         { name: '+500 ZRL', type: 'zrl', val: 500 },
