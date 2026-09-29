@@ -16,7 +16,7 @@ DB_FILE = "database.json"
 def load_db():
     default_data = {
         "FRIENDS_DB": {},
-        "REQUESTS_DB": [], # Теперь это единый список заявок для максимальной надежности
+        "REQUESTS_DB": [],
         "USERS_MAP": {},
         "USER_STATS": {},
         "CHAT_DB": []
@@ -132,11 +132,8 @@ def get_friends_list():
         return '', 200
     telegram_id = str(request.args.get('telegramId'))
     
-    current_uname = USERS_MAP.get(telegram_id, '').lower()
-    if not current_uname and telegram_id in USER_STATS:
-        current_uname = USER_STATS[telegram_id].get("username", "").lower()
-        if current_uname:
-            USERS_MAP[telegram_id] = current_uname
+    if telegram_id not in USERS_MAP:
+        USERS_MAP[telegram_id] = "Runner"
 
     friends_ids = FRIENDS_DB.get(telegram_id, [])
     friends = []
@@ -144,34 +141,21 @@ def get_friends_list():
         st = USER_STATS.get(fid, {})
         friends.append({
             "telegramId": fid, 
-            "username": st.get("username", USERS_MAP.get(fid, "Friend")), 
+            "username": st.get("username", USERS_MAP.get(fid, "Runner")), 
             "distance": st.get("distance", 0.0)
         })
     
-    # Гибкий сбор заявок: проверяем частичное совпадение никнеймов либо отдаем всё для отладки
+    # Отдаем заявки, адресованные конкретно этому Telegram ID
     my_requests = []
-    seen_from = set()
-    
     for r in REQUESTS_DB:
-        target = r.get('target', '').lower()
-        sender_id = str(r.get('telegramId'))
-        
-        if sender_id == str(telegram_id):
-            continue
-            
-        matched = False
-        if current_uname and (target in current_uname or current_uname in target or target == current_uname):
-            matched = True
-        elif not current_uname:
-            matched = True # Если ник не зафиксирован, показываем для страховки
-            
-        if matched and sender_id not in seen_from:
-            seen_from.add(sender_id)
+        target_id = str(r.get('targetId', ''))
+        sender_id = str(r.get('telegramId', ''))
+        if target_id == telegram_id and sender_id != telegram_id:
             my_requests.append({
                 "telegramId": sender_id,
                 "username": r.get('username', 'Runner')
             })
-                
+            
     return jsonify({"success": True, "friends": friends, "requests": my_requests})
 
 @app.route('/friend/request', methods=['POST', 'OPTIONS'])
@@ -186,26 +170,36 @@ def send_friend_request():
         target_username = str(data.get('targetUsername', '')).strip().lower()
         
         if not target_username:
-            return jsonify({"success": True})
+            return jsonify({"success": False, "error": "Empty target"})
             
         if from_id and from_username:
             USERS_MAP[from_id] = from_username
-        
-        # Добавляем в глобальный список заявок
+
+        # Ищем ID целевого пользователя по никнейму
+        target_id = None
+        for uid, uname in USERS_MAP.items():
+            if uname and uname.lower() == target_username:
+                target_id = uid
+                break
+                
+        if not target_id:
+            for uid, stats in USER_STATS.items():
+                uname = stats.get("username", "")
+                if uname and uname.lower() == target_username:
+                    target_id = uid
+                    break
+
+        if not target_id:
+            return jsonify({"success": False, "error": f"User '{target_username}' not found. Make sure your friend has opened the app!"})
+
         global REQUESTS_DB
         if not isinstance(REQUESTS_DB, list):
             REQUESTS_DB = []
             
-        # Проверяем на дубликаты
-        exists = False
-        for r in REQUESTS_DB:
-            if str(r.get('telegramId')) == str(from_id) and r.get('target', '').lower() == target_username:
-                exists = True
-                break
-                
+        exists = any(str(r.get('telegramId')) == from_id and str(r.get('targetId')) == str(target_id) for r in REQUESTS_DB)
         if not exists:
             REQUESTS_DB.append({
-                "target": target_username,
+                "targetId": str(target_id),
                 "telegramId": from_id,
                 "username": from_username
             })
@@ -214,7 +208,7 @@ def send_friend_request():
         return jsonify({"success": True})
     except Exception as e:
         print("Friend request error:", e)
-        return jsonify({"success": True})
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route('/friend/accept', methods=['POST', 'OPTIONS'])
 @app.route('/api/friend/accept', methods=['POST', 'OPTIONS'])
@@ -232,10 +226,9 @@ def accept_friend_request():
         if friend_id not in FRIENDS_DB[user_id]: FRIENDS_DB[user_id].append(friend_id)
         if user_id not in FRIENDS_DB[friend_id]: FRIENDS_DB[friend_id].append(user_id)
         
-        # Удаляем принятую заявку из общего пула
         global REQUESTS_DB
         if isinstance(REQUESTS_DB, list):
-            REQUESTS_DB = [r for r in REQUESTS_DB if str(r.get('telegramId')) != str(friend_id)]
+            REQUESTS_DB = [r for r in REQUESTS_DB if not (str(r.get('targetId')) == user_id and str(r.get('telegramId')) == friend_id)]
             
         save_db()
         return jsonify({"success": True})
