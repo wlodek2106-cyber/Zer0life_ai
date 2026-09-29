@@ -791,6 +791,41 @@
         </button>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ -->
+    <div class="modal-overlay" id="fortune-modal">
+        <div class="modal-content" style="text-align: center; background: linear-gradient(135deg, #141721 0%, #0d0f17 100%); border-top: 2px solid #a8f07a;">
+            <div class="modal-header">
+                <span class="modal-title" style="color: #a8f07a;">🎡 Zer0life Fortune Wheel</span>
+                <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 16px;">
+                Стоимость прокрута: <strong style="color: #14f195;">0.01 SOL</strong> (списывается в пул).<br>
+                Крупные SOL-призы доступны при пополнении от 1 SOL в пул!
+            </p>
+
+            <div style="background: #181b24; border: 1px solid rgba(168,240,122,0.15); border-radius: 16px; padding: 10px; margin-bottom: 16px;">
+                <div style="font-size: 11px; color: #a8f07a; font-weight: 700; margin-bottom: 6px; text-transform: uppercase;">Призы в Колесе:</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 10px; color: #8a8d98; text-align: center;">
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🪙 ZRL (50 - 10k)</div>
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🎁 Mystery Box</div>
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">⚡ Booster x2</div>
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🔧 Ремонт HP</div>
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🟣 0.01 SOL</div>
+                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🟣 0.1 SOL</div>
+                </div>
+            </div>
+
+            <div id="wheel-container" style="position: relative; width: 180px; height: 180px; margin: 0 auto 20px auto; border-radius: 50%; border: 4px solid #a8f07a; background: radial-gradient(circle, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(168,240,122,0.2);">
+                <div id="wheel-pointer" style="position: absolute; top: -12px; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #ff4757; z-index: 10;"></div>
+                <div id="wheel-inner-text" style="font-size: 15px; font-weight: 800; color: #a8f07a; text-align: center; padding: 0 10px;">READY</div>
+            </div>
+
+            <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: #a8f07a; color: #000; font-size: 16px; padding: 14px; font-weight: 800;">
+                Spin Wheel (0.01 SOL) 🚀
+            </button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="mystery-box-modal" style="align-items: center; justify-content: center;">
         <div class="modal-content" style="max-width: 320px; text-align: center; border-radius: 28px; background: linear-gradient(135deg, #1b241e 0%, #121816 100%); border: 1px solid #14f195;">
             <div style="font-size: 50px; margin-bottom: 10px;">🎁</div>
@@ -1137,6 +1172,10 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
+        <div class="nav-item" id="nav-fortune" onclick="openFortuneModal()">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            Fortune
+        </div>
         <div class="nav-item" id="nav-friends">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Friends
@@ -1398,6 +1437,63 @@
             tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
         };
 
+        // --- ЛОГИКА КОЛЕСА ФОРТУНЫ ---
+        function openFortuneModal() {
+            triggerHaptic('light');
+            playSound('click');
+            document.getElementById('fortune-modal').style.display = 'flex';
+        }
+
+        function closeFortuneModal() {
+            triggerHaptic('light');
+            document.getElementById('fortune-modal').style.display = 'none';
+        }
+
+        async function spinFortuneWheel() {
+            triggerHaptic('medium');
+            playSound('click');
+            
+            const spinBtn = document.getElementById('spin-wheel-btn');
+            const wheelText = document.getElementById('wheel-inner-text');
+            spinBtn.disabled = true;
+            spinBtn.style.opacity = '0.5';
+            wheelText.innerText = "SPINNING...";
+
+            try {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/api/fortune/spin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId: telegramId })
+                });
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    triggerHaptic('success');
+                    playSound('coin');
+                    
+                    wheelText.innerText = data.reward.name;
+                    totalBalance = data.newZrlBalance;
+                    solBalance = data.newSolBalance;
+                    updateUI();
+
+                    setTimeout(() => {
+                        tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${data.reward.name}!`);
+                    }, 500);
+                } else {
+                    triggerHaptic('error');
+                    wheelText.innerText = "ERROR";
+                    tg.showAlert(`❌ ${data.error || 'Ошибка прокрута'}`);
+                }
+            } catch (e) {
+                triggerHaptic('error');
+                wheelText.innerText = "FAILED";
+                tg.showAlert('❌ Ошибка соединения с сервером.');
+            } finally {
+                spinBtn.disabled = false;
+                spinBtn.style.opacity = '1';
+            }
+        }
+
         setInterval(() => {
             if (!isRunning && currentEnergy < maxEnergy) {
                 currentEnergy = Math.min(maxEnergy, currentEnergy + 0.5);
@@ -1405,10 +1501,6 @@
                 saveData();
             }
         }, 30000);
-
-        function checkInactivity() {
-            // Предупреждение об неактивности полностью отключено
-        }
 
         function updateWalletUI() {
             document.getElementById('username-label').innerText = username || 'Runner';
@@ -2209,7 +2301,7 @@
                                     if (amount > 0) {
                                         if (amount > totalBalance) {
                                             triggerHaptic('error');
-                                            tg.showAlert('⚠️️ Insufficient ZRL balance for withdrawal.');
+                                            tg.showAlert('⚠ Insufficient ZRL balance for withdrawal.');
                                             return;
                                         }
                                         try {
