@@ -1850,21 +1850,35 @@
                 const res = await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fromId: telegramId, fromUsername: username, targetUsername })
+                    body: JSON.stringify({ 
+                        fromId: String(telegramId), 
+                        telegramId: String(telegramId),
+                        fromUsername: username || 'Runner', 
+                        targetUsername: targetUsername 
+                    })
                 });
-                const data = await res.json();
-                if (res.ok && data.success) {
+                
+                const textResponse = await res.text();
+                let data = {};
+                try {
+                    data = JSON.parse(textResponse);
+                } catch (parseErr) {
+                    console.error("Non-JSON response:", textResponse);
+                }
+
+                if (res.ok && (data.success || data.success === undefined)) {
                     triggerHaptic('success');
                     playSound('success');
                     tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
                     document.getElementById('add-friend-input').value = '';
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert(`❌ ${data.error || 'User not found'}`);
+                    tg.showAlert(`❌ ${data.error || 'User not found or network error'}`);
                 }
             } catch(e) {
+                console.error("Fetch catch error:", e);
                 triggerHaptic('error');
-                tg.showAlert('❌ Network error.');
+                tg.showAlert('❌ Network error. Please check connection.');
             }
         };
 
