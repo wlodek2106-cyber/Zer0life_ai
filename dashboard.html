@@ -793,31 +793,36 @@
 
     <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ -->
     <div class="modal-overlay" id="fortune-modal">
-        <div class="modal-content" style="text-align: center; background: linear-gradient(135deg, #141721 0%, #0d0f17 100%); border-top: 2px solid #a8f07a;">
-            <div class="modal-header">
+        <div class="modal-content" style="text-align: center; background: linear-gradient(135deg, #141721 0%, #0d0f17 100%); border-top: 2px solid #a8f07a; max-width: 360px;">
+            <div class="modal-header" style="margin-bottom: 10px;">
                 <span class="modal-title" style="color: #a8f07a;">🎡 Zer0life Fortune Wheel</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
-            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 16px;">
-                Стоимость прокрута: <strong style="color: #14f195;">0.01 SOL</strong> (списывается в пул).<br>
-                Крупные SOL-призы доступны при пополнении от 1 SOL в пул!
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 15px;">
+                Цена прокрута: <strong style="color: #14f195;">0.01 SOL</strong>. (Пул от 1 SOL открывает SOL-призы!)
             </p>
 
-            <div style="background: #181b24; border: 1px solid rgba(168,240,122,0.15); border-radius: 16px; padding: 10px; margin-bottom: 16px;">
-                <div style="font-size: 11px; color: #a8f07a; font-weight: 700; margin-bottom: 6px; text-transform: uppercase;">Призы в Колесе:</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 10px; color: #8a8d98; text-align: center;">
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🪙 ZRL (50 - 10k)</div>
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🎁 Mystery Box</div>
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">⚡ Booster x2</div>
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🔧 Ремонт HP</div>
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🟣 0.01 SOL</div>
-                    <div style="background: #12141c; padding: 6px; border-radius: 8px;">🟣 0.1 SOL</div>
-                </div>
-            </div>
+            <!-- Настоящее колесо с секторами -->
+            <div style="position: relative; width: 220px; height: 220px; margin: 0 auto 20px auto;">
+                <!-- Стрелка-указатель сверху -->
+                <div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 22px solid #ff4757; z-index: 20; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></div>
+                
+                <!-- Вращающийся диск с секторами -->
+                <div id="wheel-disk" style="width: 100%; height: 100%; border-radius: 50%; border: 4px solid #a8f07a; position: relative; overflow: hidden; transition: transform 3.5s cubic-bezier(0.15, 0.9, 0.2, 1); box-shadow: 0 0 25px rgba(168,240,122,0.25); background: #1a1e29;">
+                    
+                    <!-- Сектора колеса -->
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(168,240,122,0.15); transform: rotate(0deg) skewY(-30deg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #a8f07a; border-right: 1px solid rgba(255,255,255,0.1);">ZRL</div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(20,241,149,0.15); transform: rotate(60deg) skewY(-30deg); border-right: 1px solid rgba(255,255,255,0.1);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(168,240,122,0.2); transform: rotate(120deg) skewY(-30deg); border-right: 1px solid rgba(255,255,255,0.1);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(245,158,11,0.15); transform: rotate(180deg) skewY(-30deg); border-right: 1px solid rgba(255,255,255,0.1);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(59,130,246,0.15); transform: rotate(240deg) skewY(-30deg); border-right: 1px solid rgba(255,255,255,0.1);"></div>
+                    <div style="position: absolute; width: 50%; height: 50%; top: 0; left: 50%; transform-origin: 0% 100%; background: rgba(236,72,153,0.15); transform: rotate(300deg) skewY(-30deg); border-right: 1px solid rgba(255,255,255,0.1);"></div>
 
-            <div id="wheel-container" style="position: relative; width: 180px; height: 180px; margin: 0 auto 20px auto; border-radius: 50%; border: 4px solid #a8f07a; background: radial-gradient(circle, #1f2937 0%, #111827 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(168,240,122,0.2);">
-                <div id="wheel-pointer" style="position: absolute; top: -12px; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #ff4757; z-index: 10;"></div>
-                <div id="wheel-inner-text" style="font-size: 15px; font-weight: 800; color: #a8f07a; text-align: center; padding: 0 10px;">READY</div>
+                    <!-- Центральная кнопка-логотип внутри колеса -->
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 45px; height: 45px; background: #0b0c10; border: 3px solid #a8f07a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #a8f07a; z-index: 10; box-shadow: 0 0 10px rgba(0,0,0,0.8);">
+                        ZRL
+                    </div>
+                </div>
             </div>
 
             <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: #a8f07a; color: #000; font-size: 16px; padding: 14px; font-weight: 800;">
@@ -1449,15 +1454,16 @@
             document.getElementById('fortune-modal').style.display = 'none';
         }
 
+        let currentWheelRotation = 0;
+
         async function spinFortuneWheel() {
             triggerHaptic('medium');
             playSound('click');
             
             const spinBtn = document.getElementById('spin-wheel-btn');
-            const wheelText = document.getElementById('wheel-inner-text');
+            const wheelDisk = document.getElementById('wheel-disk');
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
-            wheelText.innerText = "SPINNING...";
 
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/api/fortune/spin', {
@@ -1468,27 +1474,32 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    triggerHaptic('success');
-                    playSound('coin');
-                    
-                    wheelText.innerText = data.reward.name;
-                    totalBalance = data.newZrlBalance;
-                    solBalance = data.newSolBalance;
-                    updateUI();
+                    const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
+                    currentWheelRotation += randomAdditionalDegrees;
+                    wheelDisk.style.transform = `rotate(${currentWheelRotation}deg)`;
 
                     setTimeout(() => {
+                        triggerHaptic('success');
+                        playSound('coin');
+                        
+                        totalBalance = data.newZrlBalance;
+                        solBalance = data.newSolBalance;
+                        updateUI();
+
                         tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${data.reward.name}!`);
-                    }, 500);
+                        spinBtn.disabled = false;
+                        spinBtn.style.opacity = '1';
+                    }, 3500);
+
                 } else {
                     triggerHaptic('error');
-                    wheelText.innerText = "ERROR";
                     tg.showAlert(`❌ ${data.error || 'Ошибка прокрута'}`);
+                    spinBtn.disabled = false;
+                    spinBtn.style.opacity = '1';
                 }
             } catch (e) {
                 triggerHaptic('error');
-                wheelText.innerText = "FAILED";
                 tg.showAlert('❌ Ошибка соединения с сервером.');
-            } finally {
                 spinBtn.disabled = false;
                 spinBtn.style.opacity = '1';
             }
