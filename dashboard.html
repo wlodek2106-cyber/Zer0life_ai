@@ -204,7 +204,6 @@
             font-weight: 600;
         }
 
-        /* Индикатор активного бустера */
         .active-booster-badge {
             background: rgba(168, 240, 122, 0.1);
             border: 1px dashed rgba(168, 240, 122, 0.4);
@@ -839,28 +838,24 @@
                 <button class="close-modal" id="close-friends" style="color: #8a8d98; font-size: 22px;">&times;</button>
             </div>
 
-            <!-- Вкладки управления друзьями -->
             <div class="leaderboard-tabs" style="background: #141721; padding: 4px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 16px;">
                 <button class="lb-tab active" onclick="switchFriendsTab('list')" style="border-radius: 12px; font-size: 12px; padding: 8px;">My Friends</button>
                 <button class="lb-tab" onclick="switchFriendsTab('requests')" style="border-radius: 12px; font-size: 12px; padding: 8px;">Requests (<span id="req-count">0</span>)</button>
                 <button class="lb-tab" onclick="switchFriendsTab('add')" style="border-radius: 12px; font-size: 12px; padding: 8px;">+ Add Friend</button>
             </div>
 
-            <!-- Секция: Список друзей -->
             <div id="friends-tab-list" class="friend-tab-content">
                 <div id="friends-list-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
                     <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Loading friends...</div>
                 </div>
             </div>
 
-            <!-- Секция: Входящие заявки -->
             <div id="friends-tab-requests" class="friend-tab-content" style="display: none;">
                 <div id="friend-requests-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;">
                     <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No pending requests.</div>
                 </div>
             </div>
 
-            <!-- Секция: Добавить друга -->
             <div id="friends-tab-add" class="friend-tab-content" style="display: none;">
                 <div style="background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px;">
                     <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #fff;">Add Friend by Nickname</div>
@@ -872,7 +867,6 @@
                 </div>
             </div>
 
-            <!-- Окно чата с другом (изначально скрыто) -->
             <div id="chat-box-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -889,6 +883,81 @@
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="chat-input-msg" class="custom-input-field" placeholder="Type a message..." style="margin-top: 0; padding: 10px 14px; font-size: 13px;" />
                     <button class="claim-btn" id="chat-send-btn" style="padding: 0 16px; background: #a8f07a; color: #000;">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно Social Hub & Quests -->
+    <div class="modal-overlay" id="social-hub-modal">
+        <div class="modal-content" style="background-color: #0e1017; border-top: 1px solid rgba(168, 240, 122, 0.3); border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 24px 16px 36px 16px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <span class="modal-title" style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">🌐 Zer0life Social Hub</span>
+                <button class="close-modal" id="close-social-hub" style="color: #8a8d98; font-size: 22px;">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 16px;">
+                Join our official community channels, follow updates, and claim <strong style="color: #a8f07a;">+250 ZRL</strong> for each subscription!
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
+                <!-- Telegram Channel -->
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(36,161,222,0.15); color: #24a1de; display: flex; align-items: center; justify-content: center; font-weight: 900;">TG</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">Telegram Official</div>
+                            <div style="font-size: 11px; color: #a8f07a;">+250 ZRL Reward</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" id="soc-tg-btn" onclick="completeSocialTask('tg_official', 'https://t.me/zer0life_official', this)" style="padding: 8px 14px; font-size: 12px; background: #24a1de; color: #fff;">Subscribe</button>
+                </div>
+
+                <!-- Instagram -->
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(236,72,153,0.15); color: #ec4899; display: flex; align-items: center; justify-content: center; font-weight: 900;">IG</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">Instagram Production</div>
+                            <div style="font-size: 11px; color: #a8f07a;">+250 ZRL Reward</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" id="soc-insta-btn" onclick="completeSocialTask('insta_prod', 'https://www.instagram.com/zer0life_production', this)" style="padding: 8px 14px; font-size: 12px; background: #ec4899; color: #fff;">Follow</button>
+                </div>
+
+                <!-- YouTube -->
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,0,0,0.15); color: #ff0000; display: flex; align-items: center; justify-content: center; font-weight: 900;">YT</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">YouTube Channel</div>
+                            <div style="font-size: 11px; color: #a8f07a;">+250 ZRL Reward</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" id="soc-yt-btn" onclick="completeSocialTask('youtube_official', 'https://youtube.com/@zer0life_official?si=AzjjJ1HcP6KLFtpm', this)" style="padding: 8px 14px; font-size: 12px; background: #ff0000; color: #fff;">Subscribe</button>
+                </div>
+
+                <!-- Twitch -->
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(145,70,255,0.15); color: #9146ff; display: flex; align-items: center; justify-content: center; font-weight: 900;">TW</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">Twitch Stream</div>
+                            <div style="font-size: 11px; color: #a8f07a;">+250 ZRL Reward</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" id="soc-twitch-btn" onclick="completeSocialTask('twitch_official', 'https://twitch.tv/zer0life_official/', this)" style="padding: 8px 14px; font-size: 12px; background: #9146ff; color: #fff;">Follow</button>
+                </div>
+
+                <!-- X / Twitter -->
+                <div style="background: #141721; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900;">𝕏</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">X (Twitter)</div>
+                            <div style="font-size: 11px; color: #a8f07a;">+250 ZRL Reward</div>
+                        </div>
+                    </div>
+                    <button class="claim-btn" id="soc-twitter-btn" onclick="completeSocialTask('twitter_isback', 'https://x.com/zer0life_isback?s=11', this)" style="padding: 8px 14px; font-size: 12px; background: #ffffff; color: #000;">Follow</button>
                 </div>
             </div>
         </div>
@@ -1084,6 +1153,10 @@
         <div class="nav-item" id="nav-friends">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Friends
+        </div>
+        <div class="nav-item" id="nav-social">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            Socials
         </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -1592,6 +1665,73 @@
                 tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
             }
         };
+
+        // --- Social Hub ---
+        const socialHubModal = document.getElementById('social-hub-modal');
+
+        window.completeSocialTask = function(taskId, url, btnElement) {
+            triggerHaptic('medium');
+            playSound('click');
+
+            const isCompleted = localStorage.getItem(STORAGE_PREFIX + 'social_' + taskId) === 'true';
+            
+            try {
+                tg.openTelegramLink(url);
+            } catch(e) {
+                window.open(url, '_blank');
+            }
+
+            if (!isCompleted) {
+                setTimeout(() => {
+                    localStorage.setItem(STORAGE_PREFIX + 'social_' + taskId, 'true');
+                    totalBalance += 250;
+                    saveData();
+                    updateUI();
+
+                    btnElement.innerText = "Claimed ✅";
+                    btnElement.style.background = "#2d303b";
+                    btnElement.style.color = "#8a8d98";
+                    btnElement.disabled = true;
+
+                    triggerHaptic('success');
+                    playSound('coin');
+                    tg.showAlert("🎉 Reward Claimed!\n\nYou received +250 ZRL for subscribing!");
+                }, 1500);
+            }
+        };
+
+        function checkSocialTasksUI() {
+            const tasks = [
+                { id: 'tg_official', btnId: 'soc-tg-btn' },
+                { id: 'insta_prod', btnId: 'soc-insta-btn' },
+                { id: 'youtube_official', btnId: 'soc-yt-btn' },
+                { id: 'twitch_official', btnId: 'soc-twitch-btn' },
+                { id: 'twitter_isback', btnId: 'soc-twitter-btn' }
+            ];
+
+            tasks.forEach(task => {
+                const isCompleted = localStorage.getItem(STORAGE_PREFIX + 'social_' + task.id) === 'true';
+                const btn = document.getElementById(task.btnId);
+                if (btn && isCompleted) {
+                    btn.innerText = "Claimed ✅";
+                    btn.style.background = "#2d303b";
+                    btn.style.color = "#8a8d98";
+                    btn.disabled = true;
+                }
+            });
+        }
+
+        document.getElementById('nav-social').addEventListener('click', () => {
+            triggerHaptic('light');
+            playSound('click');
+            checkSocialTasksUI();
+            socialHubModal.style.display = 'flex';
+        });
+
+        document.getElementById('close-social-hub').addEventListener('click', () => {
+            triggerHaptic('light');
+            socialHubModal.style.display = 'none';
+        });
 
         const mysteryBoxModal = document.getElementById('mystery-box-modal');
         let pendingBoxReward = 0;
