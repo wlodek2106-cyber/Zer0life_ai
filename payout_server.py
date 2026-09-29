@@ -55,7 +55,7 @@ USER_STATS = db.get("USER_STATS", {})
 CHAT_DB = db.get("CHAT_DB", [])
 
 def send_telegram_message(chat_id, text):
-    if not TELEGRAM_BOT_TOKEN or not chat_id:
+    if not TELEGRAM_BOT_TOKEN or not str(chat_id).isdigit():
         return
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -159,14 +159,16 @@ def send_friend_request():
         if from_id and from_username:
             USERS_MAP[from_id] = from_username
         
+        # Ищем target по никнейму (регистронезависимо)
         target_id = None
         for uid, uname in USERS_MAP.items():
             if uname and uname.lower() == target_username.lower():
                 target_id = uid
                 break
                 
+        # Если игрока с таким никнеймом нет в базе, создаем временную запись, чтобы избежать ошибок
         if not target_id:
-            target_id = "user_" + target_username.lower()
+            target_id = "auto_user_" + target_username.lower()
             USERS_MAP[target_id] = target_username
             
         if target_username not in REQUESTS_DB:
@@ -176,8 +178,11 @@ def send_friend_request():
         if not existing:
             REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
             save_db()
-            msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
-            send_telegram_message(target_id, msg_text)
+            
+            # Уведомление отправляется только если у целевого пользователя валидный цифровой Telegram ID
+            if target_id.isdigit():
+                msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
+                send_telegram_message(target_id, msg_text)
             
         return jsonify({"success": True})
     except Exception as e:
