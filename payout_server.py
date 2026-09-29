@@ -6,15 +6,11 @@ from flask_cors import CORS
 from solana.rpc.api import Client
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Подключаемся к сети Solana (Mainnet)
 solana_client = Client("https://api.mainnet-beta.solana.com")
-
-# Токен твоего Telegram-бота
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# --- Система постоянного сохранения данных (JSON файл) ---
 DB_FILE = "database.json"
 
 def load_db():
@@ -51,7 +47,6 @@ def save_db():
     except Exception as e:
         print("Error saving DB:", e)
 
-# Загружаем данные при старте сервера
 db = load_db()
 FRIENDS_DB = db.get("FRIENDS_DB", {})
 REQUESTS_DB = db.get("REQUESTS_DB", {})
@@ -72,41 +67,51 @@ def send_telegram_message(chat_id, text):
     except Exception as e:
         print("TG Notification error:", e)
 
-@app.route('/register', methods=['POST'])
-@app.route('/api/register', methods=['POST'])
+@app.route('/register', methods=['POST', 'OPTIONS'])
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 def register_user():
-    data = request.json or {}
-    telegram_id = str(data.get('telegramId'))
-    username = data.get('username')
-    wallet_address = data.get('walletAddress')
-    
-    if telegram_id and username:
-        USERS_MAP[telegram_id] = username
-        save_db()
-        return jsonify({"success": True})
-    return jsonify({"success": False, "error": "Invalid data"}), 400
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        telegram_id = str(data.get('telegramId'))
+        username = data.get('username')
+        if telegram_id and username:
+            USERS_MAP[telegram_id] = username
+            save_db()
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Invalid data"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/update-stats', methods=['POST'])
-@app.route('/api/update-stats', methods=['POST'])
+@app.route('/update-stats', methods=['POST', 'OPTIONS'])
+@app.route('/api/update-stats', methods=['POST', 'OPTIONS'])
 def update_stats():
-    data = request.json or {}
-    telegram_id = str(data.get('telegramId'))
-    if telegram_id:
-        username = data.get('username', 'Runner')
-        USER_STATS[telegram_id] = {
-            "username": username,
-            "walletAddress": data.get('walletAddress'),
-            "distance": data.get('distance', 0),
-            "balance": data.get('balance', 0)
-        }
-        USERS_MAP[telegram_id] = username
-        save_db()
-        return jsonify({"success": True})
-    return jsonify({"success": False}), 400
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        telegram_id = str(data.get('telegramId'))
+        if telegram_id:
+            username = data.get('username', 'Runner')
+            USER_STATS[telegram_id] = {
+                "username": username,
+                "walletAddress": data.get('walletAddress'),
+                "distance": data.get('distance', 0),
+                "balance": data.get('balance', 0)
+            }
+            USERS_MAP[telegram_id] = username
+            save_db()
+            return jsonify({"success": True})
+        return jsonify({"success": False}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/leaderboard', methods=['GET'])
-@app.route('/api/leaderboard', methods=['GET'])
+@app.route('/leaderboard', methods=['GET', 'OPTIONS'])
+@app.route('/api/leaderboard', methods=['GET', 'OPTIONS'])
 def get_leaderboard():
+    if request.method == 'OPTIONS':
+        return '', 200
     users_list = []
     for uid, stats in USER_STATS.items():
         users_list.append({
@@ -115,23 +120,17 @@ def get_leaderboard():
             "zrl": int(stats.get("balance", 0)),
             "telegramId": uid
         })
-        
     users_list.sort(key=lambda x: x['dist'], reverse=True)
     for i, u in enumerate(users_list):
         u['rank'] = i + 1
-        
-    return jsonify({
-        "success": True,
-        "leaderboard": users_list[:50]
-    })
+    return jsonify({"success": True, "leaderboard": users_list[:50]})
 
-# --- Эндпоинты для Друзей и Чата ---
-
-@app.route('/api/friend/list', methods=['GET'])
+@app.route('/api/friend/list', methods=['GET', 'OPTIONS'])
 def get_friends_list():
+    if request.method == 'OPTIONS':
+        return '', 200
     telegram_id = str(request.args.get('telegramId'))
     friends_ids = FRIENDS_DB.get(telegram_id, [])
-    
     friends = []
     for fid in friends_ids:
         st = USER_STATS.get(fid, {})
@@ -140,75 +139,81 @@ def get_friends_list():
             "username": st.get("username", USERS_MAP.get(fid, "Friend")), 
             "distance": st.get("distance", 0.0)
         })
-    
     username = USERS_MAP.get(telegram_id, '')
     my_requests = REQUESTS_DB.get(username, [])
-    
     return jsonify({"success": True, "friends": friends, "requests": my_requests})
 
-@app.route('/api/friend/request', methods=['POST'])
+@app.route('/api/friend/request', methods=['POST', 'OPTIONS'])
 def send_friend_request():
-    data = request.json or {}
-    from_id = str(data.get('fromId') or data.get('telegramId') or 'unknown')
-    from_username = data.get('fromUsername') or 'Runner'
-    target_username = str(data.get('targetUsername', '')).strip()
-    
-    if not target_username:
-        return jsonify({"success": False, "error": "Введите никнейм"}), 400
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        from_id = str(data.get('fromId') or data.get('telegramId') or 'unknown')
+        from_username = data.get('fromUsername') or 'Runner'
+        target_username = str(data.get('targetUsername', '')).strip()
         
-    if from_id and from_username:
-        USERS_MAP[from_id] = from_username
-    
-    # Ищем target по никнейму
-    target_id = None
-    for uid, uname in USERS_MAP.items():
-        if uname and uname.lower() == target_username.lower():
-            target_id = uid
-            break
+        if not target_username:
+            return jsonify({"success": False, "error": "Введите никнейм"}), 400
             
-    # Если игрока нет в памяти, создаем временный ID, чтобы избежать ошибки 404 / Network error
-    if not target_id:
-        target_id = "user_" + target_username.lower()
-        USERS_MAP[target_id] = target_username
+        if from_id and from_username:
+            USERS_MAP[from_id] = from_username
         
-    if target_username not in REQUESTS_DB:
-        REQUESTS_DB[target_username] = []
-        
-    existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
-    if not existing:
-        REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
-        save_db()
-        
-        # Отправляем уведомление в Telegram
-        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
-        send_telegram_message(target_id, msg_text)
-        
-    return jsonify({"success": True})
+        target_id = None
+        for uid, uname in USERS_MAP.items():
+            if uname and uname.lower() == target_username.lower():
+                target_id = uid
+                break
+                
+        if not target_id:
+            target_id = "user_" + target_username.lower()
+            USERS_MAP[target_id] = target_username
+            
+        if target_username not in REQUESTS_DB:
+            REQUESTS_DB[target_username] = []
+            
+        existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
+        if not existing:
+            REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
+            save_db()
+            msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
+            send_telegram_message(target_id, msg_text)
+            
+        return jsonify({"success": True})
+    except Exception as e:
+        print("Friend request error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/friend/accept', methods=['POST'])
+@app.route('/api/friend/accept', methods=['POST', 'OPTIONS'])
 def accept_friend_request():
-    data = request.json or {}
-    user_id = str(data.get('userId'))
-    friend_id = str(data.get('friendId'))
-    
-    if user_id not in FRIENDS_DB: FRIENDS_DB[user_id] = []
-    if friend_id not in FRIENDS_DB: FRIENDS_DB[friend_id] = []
-    
-    if friend_id not in FRIENDS_DB[user_id]: FRIENDS_DB[user_id].append(friend_id)
-    if user_id not in FRIENDS_DB[friend_id]: FRIENDS_DB[friend_id].append(user_id)
-    
-    my_username = USERS_MAP.get(user_id, '')
-    if my_username in REQUESTS_DB:
-        REQUESTS_DB[my_username] = [r for r in REQUESTS_DB[my_username] if str(r['telegramId']) != friend_id]
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        user_id = str(data.get('userId'))
+        friend_id = str(data.get('friendId'))
         
-    save_db()
-    return jsonify({"success": True})
+        if user_id not in FRIENDS_DB: FRIENDS_DB[user_id] = []
+        if friend_id not in FRIENDS_DB: FRIENDS_DB[friend_id] = []
+        
+        if friend_id not in FRIENDS_DB[user_id]: FRIENDS_DB[user_id].append(friend_id)
+        if user_id not in FRIENDS_DB[friend_id]: FRIENDS_DB[friend_id].append(user_id)
+        
+        my_username = USERS_MAP.get(user_id, '')
+        if my_username in REQUESTS_DB:
+            REQUESTS_DB[my_username] = [r for r in REQUESTS_DB[my_username] if str(r['telegramId']) != friend_id]
+            
+        save_db()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/chat/messages', methods=['GET'])
+@app.route('/api/chat/messages', methods=['GET', 'OPTIONS'])
 def get_chat_messages():
+    if request.method == 'OPTIONS':
+        return '', 200
     user1 = str(request.args.get('user1'))
     user2 = str(request.args.get('user2'))
-    
     messages = [
         m for m in CHAT_DB 
         if (str(m.get('senderId')) == user1 and str(m.get('receiverId')) == user2) or 
@@ -216,26 +221,31 @@ def get_chat_messages():
     ]
     return jsonify({"success": True, "messages": messages})
 
-@app.route('/api/chat/send', methods=['POST'])
+@app.route('/api/chat/send', methods=['POST', 'OPTIONS'])
 def send_chat_message():
-    data = request.json or {}
-    msg = {
-        "senderId": str(data.get('senderId')),
-        "receiverId": str(data.get('receiverId')),
-        "text": data.get('text'),
-        "timestamp": data.get('timestamp', 0)
-    }
-    CHAT_DB.append(msg)
-    if len(CHAT_DB) > 500:
-        CHAT_DB.pop(0)
-    save_db()
-    return jsonify({"success": True})
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        msg = {
+            "senderId": str(data.get('senderId')),
+            "receiverId": str(data.get('receiverId')),
+            "text": data.get('text'),
+            "timestamp": data.get('timestamp', 0)
+        }
+        CHAT_DB.append(msg)
+        if len(CHAT_DB) > 500:
+            CHAT_DB.pop(0)
+        save_db()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-# --- Эндпоинты Кошелька и Вывода ---
-
-@app.route('/check-deposit', methods=['POST'])
-@app.route('/api/check-deposit', methods=['POST'])
+@app.route('/check-deposit', methods=['POST', 'OPTIONS'])
+@app.route('/api/check-deposit', methods=['POST', 'OPTIONS'])
 def check_deposit():
+    if request.method == 'OPTIONS':
+        return '', 200
     return jsonify({
         "success": True,
         "solBalance": 1.5,
@@ -243,16 +253,16 @@ def check_deposit():
         "zrlBalance": 25000.0
     })
 
-@app.route('/api/withdraw', methods=['POST'])
+@app.route('/api/withdraw', methods=['POST', 'OPTIONS'])
 def withdraw():
+    if request.method == 'OPTIONS':
+        return '', 200
     try:
         data = request.json or {}
         user_wallet = data.get('wallet') or data.get('walletAddress')
         amount = float(data.get('amount', 0))
-
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
-
         return jsonify({
             "success": True, 
             "txHash": "5Vq7s...solana_tx_success_hash_simulation"
