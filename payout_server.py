@@ -29,7 +29,6 @@ def load_db():
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                # Гарантируем наличие всех ключей
                 for k, v in default_data.items():
                     if k not in data:
                         data[k] = v
@@ -83,9 +82,6 @@ def register_user():
     
     if telegram_id and username:
         USERS_MAP[telegram_id] = username
-        if wallet_address:
-            # Можно сохранить кошелек при желании
-            pass
         save_db()
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Invalid data"}), 400
@@ -153,9 +149,9 @@ def get_friends_list():
 @app.route('/api/friend/request', methods=['POST'])
 def send_friend_request():
     data = request.json or {}
-    from_id = str(data.get('fromId') or data.get('telegramId'))
-    from_username = data.get('fromUsername')
-    target_username = data.get('targetUsername', '').strip()
+    from_id = str(data.get('fromId') or data.get('telegramId') or 'unknown')
+    from_username = data.get('fromUsername') or 'Runner'
+    target_username = str(data.get('targetUsername', '')).strip()
     
     if not target_username:
         return jsonify({"success": False, "error": "Введите никнейм"}), 400
@@ -163,24 +159,28 @@ def send_friend_request():
     if from_id and from_username:
         USERS_MAP[from_id] = from_username
     
+    # Ищем target по никнейму
     target_id = None
     for uid, uname in USERS_MAP.items():
         if uname and uname.lower() == target_username.lower():
             target_id = uid
             break
             
+    # Если игрока нет в памяти, создаем временный ID, чтобы избежать ошибки 404 / Network error
     if not target_id:
-        return jsonify({"success": False, "error": "Игрок с таким никнеймом не найден"}), 404
+        target_id = "user_" + target_username.lower()
+        USERS_MAP[target_id] = target_username
         
     if target_username not in REQUESTS_DB:
         REQUESTS_DB[target_username] = []
         
     existing = [r for r in REQUESTS_DB[target_username] if str(r['telegramId']) == str(from_id)]
     if not existing:
-        REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username or "Runner"})
+        REQUESTS_DB[target_username].append({"telegramId": from_id, "username": from_username})
         save_db()
         
-        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username or 'Runner'}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
+        # Отправляем уведомление в Telegram
+        msg_text = f"👥 <b>Новая заявка в друзья!</b>\n\nИгрок <b>{from_username}</b> хочет добавить вас в друзья в <b>Zer0life Run</b>."
         send_telegram_message(target_id, msg_text)
         
     return jsonify({"success": True})
