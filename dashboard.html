@@ -791,16 +791,13 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ С УКАЗАТЕЛЕМ СВЕРХУ И 4K RETINA CANVAS -->
+    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ (БЕЗ ЛИШНЕГО ТЕКСТА ПОД ЗАГОЛОВКОМ) -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 380px;">
-            <div class="modal-header" style="margin-bottom: 5px;">
+            <div class="modal-header" style="margin-bottom: 10px;">
                 <span class="modal-title" style="color: #f59e0b;">🎡 Zer0life Fortune Wheel</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
-            <p style="font-size: 11px; color: #8a8d98; margin-bottom: 15px;" id="wheel-subtitle">
-                Цена прокрута: <strong style="color: #14f195;">0.01 SOL</strong>. (Внесите от 0.1 SOL в пул для разблокировки топ-призов!)
-            </p>
 
             <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 20px auto;">
                 
@@ -1399,10 +1396,8 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < numSectors; i++) {
-                // Смещаем на -Math.PI / 2 чтобы верхний сектор был под стрелкой
                 const angle = i * arcSize - Math.PI / 2;
                 
-                // Сектор
                 ctx.beginPath();
                 ctx.fillStyle = wheelSectors[i].color;
                 ctx.moveTo(center, center);
@@ -1413,7 +1408,6 @@
                 ctx.strokeStyle = "rgba(0,0,0,0.2)";
                 ctx.stroke();
 
-                // Текст высокого разрешения в 4K
                 ctx.save();
                 ctx.translate(center, center);
                 ctx.rotate(angle + arcSize / 2);
@@ -1545,12 +1539,6 @@
             triggerHaptic('light');
             playSound('click');
             drawWheel();
-            const subText = document.getElementById('wheel-subtitle');
-            if (solBalance >= 0.1 || poolZrlBalance > 0) {
-                subText.innerHTML = `Пул разблокирован! Топ-призы (0.1 SOL, Boots x2, Box) активны. Прокрут: <strong style="color: #14f195;">${freeSpins > 0 ? 'БЕСПЛАТНО (' + freeSpins + ')' : '0.01 SOL'}</strong>`;
-            } else {
-                subText.innerHTML = `Внесите от 0.1 SOL в пул для разблокировки топ-призов. Цена прокрута: <strong style="color: #14f195;">${freeSpins > 0 ? 'БЕСПЛАТНО (' + freeSpins + ')' : '0.01 SOL'}</strong>`;
-            }
             const spinBtn = document.getElementById('spin-wheel-btn');
             if (freeSpins > 0) {
                 spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
