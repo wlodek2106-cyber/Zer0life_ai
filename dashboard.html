@@ -791,7 +791,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ (БЕЗ ЛИШНЕГО ТЕКСТА ПОД ЗАГОЛОВКОМ) -->
+    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 380px;">
             <div class="modal-header" style="margin-bottom: 10px;">
@@ -801,16 +801,12 @@
 
             <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 20px auto;">
                 
-                <!-- Стрелка-указатель СВЕРХУ, указывающая ВНИЗ на призы -->
                 <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
                 
-                <!-- Золотой обод колеса -->
                 <div style="position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 6px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 20;"></div>
 
-                <!-- 4K Retina Canvas Колесо Фортуны -->
                 <canvas id="fortune-canvas" width="1120" height="1120" style="width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;"></canvas>
 
-                <!-- Золотая кнопка SPIN в центре -->
                 <div onclick="spinFortuneWheel()" id="spin-center-btn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer; text-shadow: 0 1px 0 rgba(255,255,255,0.6);">
                     SPIN
                 </div>
@@ -1364,7 +1360,6 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // РИСОВАНИЕ 4K CANVAS КОЛЕСА (СТРЕЛКА СВЕРХУ УКАЗЫВАЕТ ВНИЗ)
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000" },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff" },
@@ -1566,34 +1561,20 @@
 
             if (freeSpins > 0) {
                 freeSpins--;
-                const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
-                currentWheelRotation += randomAdditionalDegrees;
-                canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
-
-                setTimeout(() => {
-                    triggerHaptic('success');
-                    playSound('coin');
-                    
-                    const rewards = [
-                        { name: '+300 ZRL', type: 'zrl', val: 300 },
-                        { name: '+500 ZRL', type: 'zrl', val: 500 },
-                        { name: 'Mystery Box 🎁', type: 'box', val: 150 },
-                        { name: '+1000 ZRL', type: 'zrl', val: 1000 }
-                    ];
-                    const won = rewards[Math.floor(Math.random() * rewards.length)];
-                    if (won.type === 'zrl') totalBalance += won.val;
-                    else if (won.type === 'box') totalBalance += won.val;
-
-                    saveData();
-                    updateUI();
-
-                    tg.showAlert(`🎉 Бесплатный прокрут!\n\nВы выиграли: ${won.name}!`);
+            } else {
+                if (solBalance < 0.01) {
+                    triggerHaptic('error');
+                    tg.showAlert('❌ Недостаточно SOL для прокрута (нужно 0.01 SOL)!');
                     spinBtn.disabled = false;
                     spinBtn.style.opacity = '1';
-                    openFortuneModal();
-                }, 3500);
-                return;
+                    return;
+                }
+                solBalance -= 0.01;
             }
+
+            const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
+            currentWheelRotation += randomAdditionalDegrees;
+            canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
 
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/api/fortune/spin', {
@@ -1604,14 +1585,9 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
-                    currentWheelRotation += randomAdditionalDegrees;
-                    canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
-
                     setTimeout(() => {
                         triggerHaptic('success');
                         playSound('coin');
-                        
                         totalBalance = data.newZrlBalance;
                         solBalance = data.newSolBalance;
                         if (data.reward && data.reward.type === 'free_spin') {
@@ -1619,25 +1595,42 @@
                         }
                         saveData();
                         updateUI();
-
                         tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${data.reward.name}!`);
                         spinBtn.disabled = false;
                         spinBtn.style.opacity = '1';
                         openFortuneModal();
                     }, 4000);
-
-                } else {
-                    triggerHaptic('error');
-                    tg.showAlert(`❌ ${data.error || 'Ошибка прокрута'}`);
-                    spinBtn.disabled = false;
-                    spinBtn.style.opacity = '1';
+                    return;
                 }
             } catch (e) {
-                triggerHaptic('error');
-                tg.showAlert('❌ Ошибка соединения с сервером.');
+                console.log("Сервер недоступен, используем локальный режим награды:", e);
+            }
+
+            setTimeout(() => {
+                triggerHaptic('success');
+                playSound('coin');
+                
+                const localRewards = [
+                    { name: '+100 ZRL', type: 'zrl', val: 100 },
+                    { name: '+250 ZRL', type: 'zrl', val: 250 },
+                    { name: '+500 ZRL', type: 'zrl', val: 500 },
+                    { name: '0.1 SOL', type: 'sol', val: 0.1 },
+                    { name: 'Free Spin', type: 'free_spin', val: 0 }
+                ];
+                const won = localRewards[Math.floor(Math.random() * localRewards.length)];
+                
+                if (won.type === 'zrl') totalBalance += won.val;
+                else if (won.type === 'sol') solBalance += won.val;
+                else if (won.type === 'free_spin') freeSpins++;
+
+                saveData();
+                updateUI();
+
+                tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.name}!`);
                 spinBtn.disabled = false;
                 spinBtn.style.opacity = '1';
-            }
+                openFortuneModal();
+            }, 4000);
         }
 
         setInterval(() => {
