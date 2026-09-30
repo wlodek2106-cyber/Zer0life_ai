@@ -847,7 +847,7 @@
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
             <div class="modal-header" style="margin-bottom: 12px;">
-                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino (Казино -> HWkraa...)</span>
+                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
@@ -1032,8 +1032,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Solana (Казино-поток / HWkraa...)</div>
-                                <div class="asset-sub">Депозиты и Выигрыши</div>
+                                <div class="asset-name">Solana (Личный / Депозит)</div>
+                                <div class="asset-sub">Личные средства и выигрыши</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1057,7 +1057,7 @@
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Deposit Crypto (Casino Flow)</span>
+                <span class="modal-title">Deposit Crypto</span>
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
@@ -1330,6 +1330,10 @@
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance')) || 0.00;
 
+        // Строгое разделение для личных и заработанных средств
+        let userRealDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'user_real_deposit')) || 0.00;
+        let earnedZrlBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'earned_zrl')) || 0.00;
+
         const currentMonthKey = new Date().getFullYear() + '-' + new Date().getMonth();
         let savedMonthKey = localStorage.getItem('slots_jackpot_month_key');
         let jackpotWinsThisMonth = parseInt(localStorage.getItem('slots_jackpot_wins_month')) || 0;
@@ -1477,8 +1481,10 @@
 
             if (currentFarmingAsset === 'sol') {
                 solBalance -= amount;
+                userRealDeposit = Math.max(0, userRealDeposit - amount);
             } else {
                 totalBalance -= amount;
+                earnedZrlBalance = Math.max(0, earnedZrlBalance - amount);
             }
 
             let dailyRate = 0.001; 
@@ -1595,14 +1601,17 @@
 
             if (currentReward > 0) {
                 totalBalance += currentReward;
+                earnedZrlBalance += currentReward;
                 farm.claimedReward += currentReward;
             }
 
             if (isUnlocked) {
                 if (farm.asset === 'sol') {
                     solBalance += farm.amount;
+                    userRealDeposit += farm.amount;
                 } else {
                     totalBalance += farm.amount;
+                    earnedZrlBalance += farm.amount;
                 }
                 activeFarms.splice(farmIndex, 1);
                 tg.showAlert(`🎉 Пакет разблокирован!\n\nДепозит (${farm.amount} ${farm.asset.toUpperCase()}) и проценты зачислены!`);
@@ -1682,6 +1691,8 @@
             localStorage.setItem(STORAGE_PREFIX + 'pool_deposit', poolDeposit);
             localStorage.setItem(STORAGE_PREFIX + 'sol_balance', solBalance);
             localStorage.setItem(STORAGE_PREFIX + 'usdc_balance', usdcBalance);
+            localStorage.setItem(STORAGE_PREFIX + 'user_real_deposit', userRealDeposit);
+            localStorage.setItem(STORAGE_PREFIX + 'earned_zrl', earnedZrlBalance);
             localStorage.setItem(STORAGE_PREFIX + 'free_spins', freeSpins);
             localStorage.setItem(STORAGE_PREFIX + 'today_distance', todayDistance);
             localStorage.setItem(STORAGE_PREFIX + 'total_distance', totalDistance);
@@ -1781,6 +1792,7 @@
             }
 
             totalBalance -= repairCost;
+            earnedZrlBalance = Math.max(0, earnedZrlBalance - repairCost);
             bootsHP = 100.0;
             saveData();
             updateUI();
@@ -1857,6 +1869,17 @@
                 freeSpins--;
             } else {
                 solBalance -= 0.01;
+                userRealDeposit = Math.max(0, userRealDeposit - 0.01);
+                
+                // Ставка уходит на адрес мерчанта
+                try {
+                    fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0.01, currency: 'WHEEL_BET' })
+                    });
+                } catch(e) {}
+
                 saveData();
                 updateUI();
                 updateEnergyUI();
@@ -1919,8 +1942,10 @@
                 } else {
                     if (won.type === 'zrl') {
                         totalBalance += won.val;
+                        earnedZrlBalance += won.val;
                     } else if (won.type === 'sol') {
                         solBalance += won.val;
+                        userRealDeposit += won.val; // Выигрыш зачисляется к личным средствам
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1936,7 +1961,7 @@
                     updateUI();
                     updateEnergyUI();
 
-                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text} (Выплата через казино-пул)!`);
+                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
                     
                     if (freeSpins > 0) {
                         spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
@@ -1968,10 +1993,20 @@
             }
 
             solBalance -= betSOL; 
+            userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             totalSlotsTurnoverSol += betSOL; 
             saveData();
             updateUI();
             updateEnergyUI();
+
+            // Ставка уходит на мерчант
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SLOTS_BET' })
+                });
+            } catch(e) {}
 
             const spinBtn = document.getElementById('spin-slots-btn');
             spinBtn.disabled = true;
@@ -2018,6 +2053,7 @@
 
                 if (winSOL > 0) {
                     solBalance += winSOL; 
+                    userRealDeposit += winSOL;
                     saveData();
                     updateUI();
                     updateEnergyUI();
@@ -2025,12 +2061,13 @@
                     playSound('coin');
 
                     if (isJackpot) {
-                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! (Выплата из казино-пула HWkraa...) 🚀`);
+                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! 🚀`);
                     } else {
                         tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL!`);
                     }
                 } else if (winZRL > 0) {
                     totalBalance += winZRL;
+                    earnedZrlBalance += winZRL;
                     saveData();
                     updateUI();
                     updateEnergyUI();
@@ -2091,7 +2128,17 @@
             }
 
             solBalance -= bjActiveBet; 
+            userRealDeposit = Math.max(0, userRealDeposit - bjActiveBet);
             saveData(); updateUI(); updateEnergyUI();
+
+            // Ставка на мерчант
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: bjActiveBet, currency: 'BJ_BET' })
+                });
+            } catch(e) {}
 
             bjDeck = createDeck();
             playerHand = [bjDeck.pop(), bjDeck.pop()];
@@ -2156,11 +2203,13 @@
         function bjFinish(multiplier, msg) {
             if (multiplier === 'return') {
                 solBalance += bjActiveBet; 
+                userRealDeposit += bjActiveBet;
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
                 const solWon = bjActiveBet * multiplier;
                 solBalance += solWon; 
+                userRealDeposit += solWon;
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
             } else {
@@ -2216,7 +2265,17 @@
             }
 
             solBalance -= betSOL; 
+            userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             saveData(); updateUI(); updateEnergyUI();
+
+            // Ставка на мерчант
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'ROULETTE_BET' })
+                });
+            } catch(e) {}
 
             const ballEl = document.getElementById('roulette-ball-display');
             let timer = setInterval(() => {
@@ -2243,9 +2302,10 @@
                 if (won) {
                     const winSOL = betSOL * 2;
                     solBalance += winSOL; 
+                    userRealDeposit += winSOL;
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен из казино-пула!`);
+                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен!`);
                 } else {
                     triggerHaptic('error');
                     tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
@@ -2291,6 +2351,7 @@
 
             username = inputName;
             totalBalance += 1000;
+            earnedZrlBalance += 1000;
             saveData();
 
             try {
@@ -2369,6 +2430,7 @@
 
             const reward = REWARD_AMOUNTS[currentDay - 1];
             totalBalance += reward;
+            earnedZrlBalance += reward;
             
             lastCheckinDate = todayStr;
             localStorage.setItem(STORAGE_PREFIX + 'last_checkin_date', lastCheckinDate);
@@ -2405,6 +2467,7 @@
             triggerHaptic('success');
             playSound('coin');
             totalBalance += pendingBoxReward;
+            earnedZrlBalance += pendingBoxReward;
             saveData();
             updateUI();
             mysteryBoxModal.style.display = 'none';
@@ -2589,6 +2652,7 @@
                         if (newDepositFound > 0) {
                             poolDeposit += newDepositFound; 
                             solBalance += newDepositFound;  
+                            userRealDeposit += newDepositFound; // Пополнение засчитывается как личный депозит
                         }
                     }
                 }
@@ -2605,27 +2669,28 @@
                 playSound('click');
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
-                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit/casino address (HWkraa...):`;
+                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit address (HWkraa...):`;
                 document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
 
+            // Вывод Solana строго по личным средствам (депозиты + выигрыши)
             document.getElementById('withdraw-btn').onclick = () => {
                 triggerHaptic('medium');
                 playSound('click');
                 walletModal.style.display = 'none';
                 
-                const maxWithdrawable = solBalance;
+                const maxWithdrawable = Math.min(solBalance, userRealDeposit + (solBalance - poolDeposit));
 
                 if (maxWithdrawable <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("❌ У вас нет доступных SOL для вывода.");
+                    tg.showAlert("❌ У вас нет доступных личных средств для вывода. Общий пул заблокирован.");
                     return;
                 }
 
                 showCustomPrompt(
-                    "Withdraw Funds (Casino/Deposit Flow)", 
-                    `Enter target wallet address to withdraw (${maxWithdrawable.toFixed(4)} SOL available):`, 
+                    "Withdraw Funds (Personal Balance Only)", 
+                    `Доступно к выводу вашим личным средствам: ${maxWithdrawable.toFixed(4)} SOL`, 
                     "Solana wallet address...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
@@ -2644,21 +2709,19 @@
                                                     telegramId: telegramId,
                                                     walletAddress: targetAddr,
                                                     amount: amount,
-                                                    currency: 'SOL'
+                                                    currency: 'SOL_PERSONAL'
                                                 })
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
                                                 solBalance -= amount; 
-                                                if (poolDeposit > 0) {
-                                                    poolDeposit = Math.max(0, poolDeposit - amount);
-                                                }
+                                                userRealDeposit = Math.max(0, userRealDeposit - amount);
                                                 saveData();
                                                 updateUI();
 
                                                 triggerHaptic('success');
                                                 playSound('success');
-                                                tg.showAlert(`✅ Вывод через пул ${FIXED_DEPOSIT_WALLET.substring(0,6)}... успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
+                                                tg.showAlert(`✅ Успешно выведено ${amount} SOL на ваш кошелек!`);
                                             } else {
                                                 triggerHaptic('error');
                                                 tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
@@ -2669,13 +2732,13 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️ Неверная сумма или недостаточно средств.');
+                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваши личные средства.');
                                     }
                                 }
                             );
                         } else if (targetAddr !== null) {
                             triggerHaptic('error');
-                            tg.showAlert('⚠️ Неверный адрес кошелька.');
+                            tg.showAlert('⚠️️ Неверный адрес кошелька.');
                         }
                     }
                 );
@@ -2697,11 +2760,12 @@
                         const diff = result.solBalance - trackedTotal;
                         poolDeposit += diff; 
                         solBalance += diff;  
+                        userRealDeposit += diff;
                         saveData();
                         updateUI();
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит в казино-пул успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
+                        tg.showAlert(`🎉 Депозит успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
                     }
                 }
             } catch (e) {}
@@ -2758,6 +2822,7 @@
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
                         solBalance -= solPrice;
+                        userRealDeposit = Math.max(0, userRealDeposit - solPrice);
                         ZRL_PER_KM = zrlRatePerKm;
                         activeBoosterName = boosterName;
                         boosterExpiryTime = 0; 
@@ -2813,6 +2878,7 @@
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
                         solBalance -= solPrice;
+                        userRealDeposit = Math.max(0, userRealDeposit - solPrice);
                         ZRL_PER_KM = zrlRatePerKm;
                         activeBoosterName = boosterName;
                         boosterExpiryTime = Date.now() + (hoursDuration * 60 * 60 * 1000);
@@ -3001,6 +3067,7 @@
                 triggerHaptic('success');
                 playSound('coin');
                 totalBalance += unclaimedZRL;
+                earnedZrlBalance += unclaimedZRL;
                 unclaimedZRL = 0;
                 
                 updateUI();
@@ -3013,7 +3080,6 @@
             }
         });
 
-        // ИСПРАВЛЕННЫЙ ОБХОД КНОПОК НАВИГАЦИИ (Leaderboard, Wallet, Boosters)
         document.getElementById('nav-rewards').addEventListener('click', () => {
             triggerHaptic('light');
             playSound('click');
