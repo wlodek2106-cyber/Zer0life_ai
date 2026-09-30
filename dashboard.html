@@ -64,7 +64,7 @@
 
         .balance-label {
             font-size: 11px;
-            color: #14f195;
+            color: #a8f07a;
             margin-bottom: 2px;
             font-weight: 700;
         }
@@ -635,8 +635,8 @@
             <div class="balance-section">
                 <div class="avatar" id="user-avatar" title="Нажмите, чтобы сменить фото профиля"></div>
                 <div class="balance-info">
-                    <span class="balance-label">SOL Balance</span>
-                    <span class="balance-amount" id="header-sol-balance">0.00 SOL</span>
+                    <span class="balance-label" id="header-username-label">Player</span>
+                    <span class="balance-amount" id="header-zrl-balance">0.00 ZRL</span>
                 </div>
             </div>
             <div class="wallet-btn" id="wallet-btn">
@@ -997,7 +997,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОШЕЛЬКА (Только личные средства) -->
+    <!-- МОДАЛЬНОЕ ОКНО КОШЕЛЬКА -->
     <div class="modal-overlay" id="wallet-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1315,7 +1315,6 @@
 
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         
-        // Личный баланс пользователя (пополненный в приложении)
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance'));
         if (isNaN(solBalance)) {
             solBalance = 0.00; 
@@ -1347,7 +1346,8 @@
         let lastLon = null;
         let lastTime = null;
 
-        const headerSolBalanceEl = document.getElementById('header-sol-balance');
+        const headerUsernameLabel = document.getElementById('header-username-label');
+        const headerZrlBalanceEl = document.getElementById('header-zrl-balance');
         const todayDistEl = document.getElementById('today-distance');
         const stepsEl = document.getElementById('steps-display');
         const todayEarnedEl = document.getElementById('today-earned');
@@ -2172,7 +2172,8 @@
         }, 30000);
 
         function updateWalletUI() {
-            headerSolBalanceEl.innerText = solBalance.toFixed(4) + " SOL";
+            headerUsernameLabel.innerText = username || 'Player';
+            headerZrlBalanceEl.innerText = totalBalance.toFixed(2) + " ZRL";
             document.getElementById('wallet-btn-text').innerText = solBalance.toFixed(2) + " SOL";
         }
 
@@ -3097,7 +3098,7 @@
             if (progressPercent > 100) progressPercent = 100;
 
             levelTextEl.innerText = 'Level ' + currentLevelObj.level;
-            progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
+            progressTextEl.innerText = `${totalDistance.Distance ? totalDistance.toFixed(2) : totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
             progressBarEl.style.width = `${progressPercent}%`;
             updateWalletUI();
             updateEnergyUI();
