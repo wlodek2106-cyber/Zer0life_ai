@@ -682,54 +682,6 @@
             </div>
         </div>
 
-        <!-- ZER0LIFE DUAL FARMING HUB (SOLANA & ZRL) -->
-        <div style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border: 1px solid rgba(20, 241, 149, 0.3); border-radius: 20px; padding: 20px; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 16px; font-weight: 800; color: #14f195;" id="farming-hub-title">🌾 Solana & ZRL Farming</span>
-                <span style="font-size: 11px; background: rgba(20,241,149,0.15); color: #14f195; padding: 4px 8px; border-radius: 6px;" id="farming-badge">Lock Asset → Earn ZRL</span>
-            </div>
-            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;" id="farming-desc">
-                Lock your assets in the farming pool. Principal remains secure, earn daily ZRL rewards.
-            </p>
-
-            <!-- Переключатель пулов Фарминга: Solana vs ZRL -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 14px; border: 1px solid #2d3748;">
-                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 8px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
-                <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 8px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
-            </div>
-
-            <!-- Сетка пакетов фарминга -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(1)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-1m">0.1% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
-                </div>
-
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(3)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-3m">0.4% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
-                </div>
-
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(6)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-6m">0.7% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
-                </div>
-
-                <div style="background: linear-gradient(135deg, #1f2a24 0%, #15171e 100%); border: 1px solid #14f195; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(12)">
-                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #14f195; margin: 4px 0;" id="rate-12m">1.3% <span style="font-size: 11px; color: #fff;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Max ZRL Yield</div>
-                </div>
-            </div>
-
-            <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800;" onclick="openFarmingDepositModal()">
-                Deposit & Start Farming 🚀
-            </button>
-        </div>
-
         <div class="run-card">
             <div class="run-header">
                 Today's Run
@@ -839,6 +791,71 @@
         </button>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА С ПАКЕТАМИ И ТАЙМЕРАМИ ВНИЗУ -->
+    <div class="modal-overlay" id="farming-modal">
+        <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
+            <div class="modal-header" style="margin-bottom: 12px;">
+                <span class="modal-title" id="farming-hub-title" style="color: #14f195; font-size: 18px;">🌾 Solana & ZRL Farming</span>
+                <button class="close-modal" onclick="closeFarmingModal()">&times;</button>
+            </div>
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;" id="farming-desc">
+                Lock your assets in the farming pool. Principal remains secure, earn daily ZRL rewards.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 14px; border: 1px solid #2d3748;">
+                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 8px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
+                <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 8px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(1)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-1m">0.1% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(3)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-3m">0.4% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(6)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-6m">0.7% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #1f2a24 0%, #15171e 100%); border: 1px solid #14f195; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(12)">
+                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #14f195; margin: 4px 0;" id="rate-12m">1.3% <span style="font-size: 11px; color: #fff;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Max ZRL Yield</div>
+                </div>
+            </div>
+
+            <!-- Ввод суммы для отправки (например, 40 000 ZRL) -->
+            <div class="custom-input-group" style="margin-bottom: 14px;">
+                <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="1" />
+            </div>
+
+            <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 20px;" onclick="confirmFarmingDeposit()">
+                Deposit & Start Farming 🚀
+            </button>
+
+            <!-- БЛОК АКТИВНЫХ ПАКЕТОВ ФАРМИНГА В САМОМ НИЗУ -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                <div style="font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>📦 Active Farming Deposits</span>
+                    <span style="font-size: 11px; color: #14f195;" id="active-farms-count">0 active</span>
+                </div>
+                <div id="farming-deposits-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto;">
+                    <div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- МОДАЛЬНОЕ ОКНО ZER0LIFE CASINO HUB -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
@@ -936,26 +953,6 @@
                 <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); color: #fff; font-size: 15px; padding: 12px; font-weight: 900;">
                     Запустить Рулетку 🎯
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно депозита для фарминга -->
-    <div class="modal-overlay" id="farming-deposit-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title" id="farming-modal-title">🌾 Lock Solana for Farming</span>
-                <button class="close-modal" onclick="document.getElementById('farming-deposit-modal').style.display='none'">&times;</button>
-            </div>
-            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="farming-modal-desc">
-                Select amount to lock in pool for selected period:
-            </p>
-            <div class="custom-input-group">
-                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="Enter amount..." step="0.1" />
-            </div>
-            <div class="custom-modal-actions" style="margin-top: 20px;">
-                <button class="custom-btn-cancel" onclick="document.getElementById('farming-deposit-modal').style.display='none'">Cancel</button>
-                <button class="custom-btn-confirm" onclick="confirmFarmingDeposit()">Confirm Lock</button>
             </div>
         </div>
     </div>
@@ -1301,6 +1298,7 @@
         </div>
     </div>
 
+    <!-- НИЖНЯЯ ПАНЕЛЬ С КНОПКОЙ FARMING -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
@@ -1310,6 +1308,10 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
+        <div class="nav-item" id="nav-farming" onclick="openFarmingModal()">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            Farming
+        </div>
         <div class="nav-item" id="nav-fortune" onclick="openFortuneModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             Casino
@@ -1317,10 +1319,6 @@
         <div class="nav-item" id="nav-friends">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Friends
-        </div>
-        <div class="nav-item" id="nav-social">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-            Socials
         </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -1482,6 +1480,9 @@
         let bootsHP = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'boots_hp'));
         if (isNaN(bootsHP)) bootsHP = 100.0;
 
+        // Список активных пакетов фарминга
+        let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
+
         let isRunning = false;
         let watchId = null;
         let currentSpeedKmh = 0;
@@ -1500,9 +1501,21 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // --- ЛОГИКА ФАРМИНГА (SOLANA / ZRL) ---
+        // --- УПРАВЛЕНИЕ ФАРМИНГОМ И ПАКЕТАМИ ---
         let currentFarmingAsset = 'sol'; // 'sol' или 'zrl'
         let selectedFarmingMonths = 1;
+
+        window.openFarmingModal = function() {
+            triggerHaptic('light');
+            playSound('click');
+            renderFarmingDeposits();
+            document.getElementById('farming-modal').style.display = 'flex';
+        }
+
+        window.closeFarmingModal = function() {
+            triggerHaptic('light');
+            document.getElementById('farming-modal').style.display = 'none';
+        }
 
         window.switchFarmingAsset = function(asset) {
             triggerHaptic('selection');
@@ -1512,9 +1525,7 @@
             const btnSol = document.getElementById('farm-tab-sol');
             const btnZrl = document.getElementById('farm-tab-zrl');
             const titleEl = document.getElementById('farming-hub-title');
-            const badgeEl = document.getElementById('farming-badge');
             const descEl = document.getElementById('farming-desc');
-            const modalTitle = document.getElementById('farming-modal-title');
 
             if (asset === 'sol') {
                 btnSol.style.background = '#14f195';
@@ -1526,9 +1537,7 @@
                 btnZrl.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 Solana Staking & Farming';
-                badgeEl.innerText = 'Lock SOL → Earn ZRL';
                 descEl.innerText = 'Lock Solana in the pool to earn high daily ZRL rewards. Principal remains secure.';
-                modalTitle.innerText = '🌾 Lock Solana for Farming';
 
                 document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 11px; color: #14f195;">/day</span>';
                 document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 11px; color: #14f195;">/day</span>';
@@ -1544,9 +1553,7 @@
                 btnSol.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
-                badgeEl.innerText = 'Lock ZRL → Earn ZRL';
-                descEl.innerText = 'Lock ZRL tokens in the pool. Standard yields are halved (0.5x) compared to Solana.';
-                modalTitle.innerText = '🌾 Lock ZRL for Farming';
+                descEl.innerText = 'Lock ZRL tokens in the pool (e.g. 40,000 ZRL). Standard yields are halved (0.5x) compared to Solana.';
 
                 document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
                 document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
@@ -1559,12 +1566,7 @@
             triggerHaptic('light');
             playSound('click');
             selectedFarmingMonths = months;
-            document.getElementById('farming-deposit-modal').style.display = 'flex';
             document.getElementById('farming-amount-input').focus();
-        }
-
-        window.openFarmingDepositModal = function() {
-            selectFarmingPlan(1);
         }
 
         window.confirmFarmingDeposit = function() {
@@ -1573,7 +1575,7 @@
 
             if (isNaN(amount) || amount <= 0) {
                 triggerHaptic('error');
-                tg.showAlert('⚠️ Please enter a valid amount to lock.');
+                tg.showAlert('⚠️️ Please enter a valid amount to lock.');
                 return;
             }
 
@@ -1589,21 +1591,159 @@
                 return;
             }
 
+            // Списание средств
             if (currentFarmingAsset === 'sol') {
                 solBalance -= amount;
             } else {
-                totalBalance -= amount;
+                totalBalance -= amount; // Например, ваши 40 000 ZRL
             }
 
+            // Расчет дневной ставки процента
+            let dailyRate = 0.001; // 1M: 0.1%
+            if (selectedFarmingMonths === 3) dailyRate = 0.004;
+            else if (selectedFarmingMonths === 6) dailyRate = 0.007;
+            else if (selectedFarmingMonths === 12) dailyRate = 0.013;
+
+            if (currentFarmingAsset === 'zrl') dailyRate *= 0.5; // 0.5x для ZRL пула
+
+            const durationMs = selectedFarmingMonths * 30 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            const newDeposit = {
+                id: 'farm_' + Date.now(),
+                asset: currentFarmingAsset,
+                amount: amount,
+                months: selectedFarmingMonths,
+                dailyRate: dailyRate,
+                startTime: now,
+                endTime: now + durationMs,
+                claimedReward: 0
+            };
+
+            activeFarms.push(newDeposit);
+            saveFarms();
             saveData();
             updateUI();
-            document.getElementById('farming-deposit-modal').style.display = 'none';
+            renderFarmingDeposits();
             amountInput.value = '';
 
             triggerHaptic('success');
             playSound('success');
             tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} for ${selectedFarmingMonths} month(s) in Farming Pool!`);
         }
+
+        function saveFarms() {
+            localStorage.setItem(STORAGE_PREFIX + 'active_farms', JSON.stringify(activeFarms));
+        }
+
+        // Расчет заработанных токенов по пакету фарминга на текущий момент
+        function calculateFarmRewards(farm) {
+            const now = Date.now();
+            const elapsedMs = Math.max(0, Math.min(now, farm.endTime) - farm.startTime);
+            const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
+            const totalEarned = farm.amount * farm.dailyRate * elapsedDays;
+            return Math.max(0, totalEarned - farm.claimedReward);
+        }
+
+        window.renderFarmingDeposits = function() {
+            const container = document.getElementById('farming-deposits-list');
+            const countEl = document.getElementById('active-farms-count');
+            
+            countEl.innerText = `${activeFarms.length} active`;
+
+            if (activeFarms.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            activeFarms.forEach((farm, index) => {
+                const now = Date.now();
+                const timeLeft = farm.endTime - now;
+                const isUnlocked = timeLeft <= 0;
+                const currentReward = calculateFarmRewards(farm);
+
+                let timeStr = "";
+                if (isUnlocked) {
+                    timeStr = "<span style='color: #14f195; font-weight: 800;'>Unlocked ✅</span>";
+                } else {
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    timeStr = `<span style='color: #f59e0b;'>⏳ ${days}d ${hours}h ${mins}m ${secs}s</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: #181b24;
+                    border: 1px solid ${isUnlocked ? '#14f195' : '#282d3d'};
+                    border-radius: 14px;
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                `;
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
+                        <span style="font-size: 11px;">${timeStr}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #8a8d98;">
+                        <span>Earned: <strong style="color: #a8f07a;">+${currentReward.toFixed(2)} ZRL</strong></span>
+                        <button class="claim-btn" onclick="claimOrWithdrawFarm('${farm.id}')" style="padding: 6px 12px; font-size: 11px; background: ${isUnlocked ? '#14f195' : '#a8f07a'}; color: #000; font-weight: 800;">
+                            ${isUnlocked ? 'Claim & Withdraw 🚀' : 'Claim Yield'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.claimOrWithdrawFarm = function(farmId) {
+            triggerHaptic('medium');
+            playSound('coin');
+
+            const farmIndex = activeFarms.findIndex(f => f.id === farmId);
+            if (farmIndex === -1) return;
+
+            const farm = activeFarms[farmIndex];
+            const now = Date.now();
+            const isUnlocked = now >= farm.endTime;
+            const currentReward = calculateFarmRewards(farm);
+
+            // Начисляем награду за фарминг на основной баланс
+            if (currentReward > 0) {
+                totalBalance += currentReward;
+                farm.claimedReward += currentReward;
+            }
+
+            if (isUnlocked) {
+                // Пакет разблокирован — возвращаем тело депозита обратно на баланс
+                if (farm.asset === 'sol') {
+                    solBalance += farm.amount;
+                } else {
+                    totalBalance += farm.amount;
+                }
+                activeFarms.splice(farmIndex, 1);
+                tg.showAlert(`🎉 Пакет фарминга разблокирован!\n\nТело депозита (${farm.amount} ${farm.asset.toUpperCase()}) и проценты успешно зачислены на ваш баланс!`);
+            } else {
+                tg.showAlert(`🎁 Награда собрана!\n\n+${currentReward.toFixed(2)} ZRL зачислено на ваш баланс. Тело депозита заблокировано до окончания таймера.`);
+            }
+
+            saveFarms();
+            saveData();
+            updateUI();
+            renderFarmingDeposits();
+        }
+
+        // Обновляем таймеры и доход в реальном времени каждую секунду, если открыто окно фарминга
+        setInterval(() => {
+            const modal = document.getElementById('farming-modal');
+            if (modal && modal.style.display === 'flex') {
+                renderFarmingDeposits();
+            }
+        }, 1000);
 
         // --- ДАННЫЕ ДЛЯ КОЛЕСА ФОРТУНЫ ---
         const wheelSectors = [
@@ -2385,72 +2525,6 @@
             }
         };
 
-        const socialHubModal = document.getElementById('social-hub-modal');
-
-        window.completeSocialTask = function(taskId, url, btnElement) {
-            triggerHaptic('medium');
-            playSound('click');
-
-            const isCompleted = localStorage.getItem(STORAGE_PREFIX + 'social_' + taskId) === 'true';
-            
-            try {
-                tg.openTelegramLink(url);
-            } catch(e) {
-                window.open(url, '_blank');
-            }
-
-            if (!isCompleted) {
-                setTimeout(() => {
-                    localStorage.setItem(STORAGE_PREFIX + 'social_' + taskId, 'true');
-                    totalBalance += 250;
-                    saveData();
-                    updateUI();
-
-                    btnElement.innerText = "Claimed ✅";
-                    btnElement.style.background = "#2d303b";
-                    btnElement.style.color = "#8a8d98";
-                    btnElement.disabled = true;
-
-                    triggerHaptic('success');
-                    playSound('coin');
-                    tg.showAlert("🎉 Reward Claimed!\n\nYou received +250 ZRL for subscribing!");
-                }, 1500);
-            }
-        };
-
-        function checkSocialTasksUI() {
-            const tasks = [
-                { id: 'tg_official', btnId: 'soc-tg-btn' },
-                { id: 'insta_prod', btnId: 'soc-insta-btn' },
-                { id: 'youtube_official', btnId: 'soc-yt-btn' },
-                { id: 'twitch_official', btnId: 'soc-twitch-btn' },
-                { id: 'twitter_isback', btnId: 'soc-twitter-btn' }
-            ];
-
-            tasks.forEach(task => {
-                const isCompleted = localStorage.getItem(STORAGE_PREFIX + 'social_' + task.id) === 'true';
-                const btn = document.getElementById(task.btnId);
-                if (btn && isCompleted) {
-                    btn.innerText = "Claimed ✅";
-                    btn.style.background = "#2d303b";
-                    btn.style.color = "#8a8d98";
-                    btn.disabled = true;
-                }
-            });
-        }
-
-        document.getElementById('nav-social').addEventListener('click', () => {
-            triggerHaptic('light');
-            playSound('click');
-            checkSocialTasksUI();
-            socialHubModal.style.display = 'flex';
-        });
-
-        document.getElementById('close-social-hub').addEventListener('click', () => {
-            triggerHaptic('light');
-            socialHubModal.style.display = 'none';
-        });
-
         const mysteryBoxModal = document.getElementById('mystery-box-modal');
         let pendingBoxReward = 0;
 
@@ -2472,232 +2546,6 @@
             mysteryBoxModal.style.display = 'none';
             tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
         };
-
-        const friendsModal = document.getElementById('friends-modal');
-        let currentFriendChatId = null;
-        let chatInterval = null;
-        let friendsInterval = null;
-
-        window.switchFriendsTab = function(tabName) {
-            triggerHaptic('selection');
-            playSound('click');
-            document.querySelectorAll('#friends-modal .lb-tab').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-
-            document.getElementById('friends-tab-list').style.display = (tabName === 'list') ? 'block' : 'none';
-            document.getElementById('friends-tab-requests').style.display = (tabName === 'requests') ? 'block' : 'none';
-            document.getElementById('friends-tab-add').style.display = (tabName === 'add') ? 'block' : 'none';
-            document.getElementById('chat-box-section').style.display = 'none';
-
-            if (chatInterval) clearInterval(chatInterval);
-            if (friendsInterval) clearInterval(friendsInterval);
-
-            if (tabName === 'list' || tabName === 'requests') {
-                fetchFriendsData();
-                friendsInterval = setInterval(fetchFriendsData, 3000);
-            }
-        };
-
-        async function fetchFriendsData() {
-            try {
-                const res = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/friend/list?telegramId=${telegramId}`);
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    renderFriendsList(data.friends || []);
-                    renderRequestsList(data.requests || []);
-                    document.getElementById('req-count').innerText = (data.requests || []).length;
-                }
-            } catch(e) {}
-        }
-
-        function renderFriendsList(friends) {
-            const container = document.getElementById('friends-list-container');
-            if (friends.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No friends added yet. Go to + Add Friend!</div>`;
-                return;
-            }
-            container.innerHTML = '';
-            friends.forEach(f => {
-                const row = document.createElement('div');
-                row.style.cssText = `background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;`;
-                row.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #1f2a24; border: 1px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${f.username.substring(0,2).toUpperCase()}</div>
-                        <div>
-                            <div style="font-size: 14px; font-weight: 700; color: #fff;">${f.username}</div>
-                            <div style="font-size: 11px; color: #14f195;">${f.distance ? f.distance.toFixed(1) : '0.0'} km run</div>
-                        </div>
-                    </div>
-                    <button class="claim-btn" onclick="openChat('${f.telegramId}', '${f.username}')" style="padding: 6px 14px; font-size: 12px; background: #a8f07a; color: #000;">💬 Chat</button>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        function renderRequestsList(requests) {
-            const container = document.getElementById('friend-requests-container');
-            if (requests.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No pending requests.</div>`;
-                return;
-            }
-            container.innerHTML = '';
-            requests.forEach(r => {
-                const row = document.createElement('div');
-                row.style.cssText = `background: #141721; border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;`;
-                row.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff;">${r.username.substring(0,2).toUpperCase()}</div>
-                        <div style="font-size: 14px; font-weight: 700; color: #fff;">${r.username}</div>
-                    </div>
-                    <button class="claim-btn" onclick="acceptFriend('${r.telegramId}')" style="padding: 6px 14px; font-size: 12px; background: #14f195; color: #000;">Accept ✅</button>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        document.getElementById('send-friend-req-btn').onclick = async () => {
-            triggerHaptic('medium');
-            playSound('click');
-            const targetUsername = document.getElementById('add-friend-input').value.trim();
-            if (!targetUsername) {
-                triggerHaptic('error');
-                tg.showAlert('⚠ Please enter a nickname.');
-                return;
-            }
-            
-            try {
-                const res = await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        fromId: String(telegramId), 
-                        telegramId: String(telegramId),
-                        fromUsername: username || 'Runner', 
-                        targetUsername: targetUsername 
-                    })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    triggerHaptic('success');
-                    playSound('success');
-                    tg.showAlert(`✅ Friend request sent to ${targetUsername}!`);
-                    document.getElementById('add-friend-input').value = '';
-                } else {
-                    triggerHaptic('error');
-                    tg.showAlert(`❌ ${data.error || 'User not found'}`);
-                }
-            } catch(e) {
-                triggerHaptic('error');
-                tg.showAlert('❌ Network error. Check connection.');
-            }
-        };
-
-        window.acceptFriend = async function(fromId) {
-            triggerHaptic('success');
-            playSound('coin');
-            try {
-                await fetch('https://zer0life-ai-iz5n.onrender.com/api/friend/accept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: telegramId, friendId: fromId })
-                });
-                fetchFriendsData();
-            } catch(e) {}
-        };
-
-        window.openChat = function(friendId, friendName) {
-            triggerHaptic('light');
-            playSound('click');
-            if (friendsInterval) clearInterval(friendsInterval);
-            currentFriendChatId = friendId;
-            document.getElementById('friends-tab-list').style.display = 'none';
-            document.getElementById('friends-tab-requests').style.display = 'none';
-            document.getElementById('friends-tab-add').style.display = 'none';
-            document.getElementById('chat-with-title').innerText = friendName;
-            document.getElementById('chat-box-section').style.display = 'block';
-
-            loadChatMessages();
-            if (chatInterval) clearInterval(chatInterval);
-            chatInterval = setInterval(loadChatMessages, 3000);
-        };
-
-        window.closeChat = function() {
-            triggerHaptic('light');
-            if (chatInterval) clearInterval(chatInterval);
-            currentFriendChatId = null;
-            document.getElementById('chat-box-section').style.display = 'none';
-            document.getElementById('friends-tab-list').style.display = 'block';
-            fetchFriendsData();
-            friendsInterval = setInterval(fetchFriendsData, 3000);
-        };
-
-        async function loadChatMessages() {
-            if (!currentFriendChatId) return;
-            try {
-                const res = await fetch(`https://zer0life-ai-iz5n.onrender.com/api/chat/messages?user1=${telegramId}&user2=${currentFriendChatId}`);
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    const list = document.getElementById('chat-messages-list');
-                    list.innerHTML = '';
-                    if (data.messages.length === 0) {
-                        list.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; margin: auto;">No messages yet. Say hello!</div>`;
-                        return;
-                    }
-                    data.messages.forEach(m => {
-                        const isMe = String(m.senderId) === String(telegramId);
-                        const bubble = document.createElement('div');
-                        bubble.style.cssText = `
-                            max-width: 75%;
-                            padding: 8px 12px;
-                            border-radius: 12px;
-                            font-size: 13px;
-                            word-break: break-word;
-                            align-self: ${isMe ? 'flex-end' : 'flex-start'};
-                            background: ${isMe ? '#a8f07a' : '#1f2430'};
-                            color: ${isMe ? '#000' : '#fff'};
-                        `;
-                        bubble.innerText = m.text;
-                        list.appendChild(bubble);
-                    });
-                    list.scrollTop = list.scrollHeight;
-                }
-            } catch(e) {}
-        }
-
-        document.getElementById('chat-send-btn').onclick = async () => {
-            const input = document.getElementById('chat-input-msg');
-            const text = input.value.trim();
-            if (!text || !currentFriendChatId) return;
-            
-            triggerHaptic('light');
-            playSound('click');
-            input.value = '';
-
-            try {
-                await fetch('https://zer0life-ai-iz5n.onrender.com/api/chat/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ senderId: telegramId, receiverId: currentFriendChatId, text })
-                });
-                loadChatMessages();
-            } catch(e) {}
-        };
-
-        document.getElementById('nav-friends').addEventListener('click', () => {
-            triggerHaptic('light');
-            playSound('click');
-            friendsModal.style.display = 'flex';
-            fetchFriendsData();
-            if (friendsInterval) clearInterval(friendsInterval);
-            friendsInterval = setInterval(fetchFriendsData, 3000);
-        });
-
-        document.getElementById('close-friends').addEventListener('click', () => {
-            triggerHaptic('light');
-            if (chatInterval) clearInterval(chatInterval);
-            if (friendsInterval) clearInterval(friendsInterval);
-            friendsModal.style.display = 'none';
-        });
 
         let currentLbTab = 'daily';
 
@@ -3052,6 +2900,7 @@
                         localStorage.removeItem(STORAGE_PREFIX + 'registered_bonus');
                         localStorage.removeItem(STORAGE_PREFIX + 'checkin_day');
                         localStorage.removeItem(STORAGE_PREFIX + 'last_checkin_date');
+                        localStorage.removeItem(STORAGE_PREFIX + 'active_farms');
 
                         walletModal.style.display = 'none';
                         triggerHaptic('success');
