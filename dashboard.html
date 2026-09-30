@@ -351,33 +351,19 @@
             cursor: pointer;
         }
 
-        .leaderboard-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            background: #15171e;
-            padding: 4px;
+        .farm-plan-card {
+            background: #1c212b;
+            border: 2px solid #2d303b;
             border-radius: 14px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(168, 240, 122, 0.1);
-        }
-
-        .lb-tab {
-            background: transparent;
-            border: none;
-            color: #8a8d98;
-            padding: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: 0.2s;
+            padding: 12px;
             text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
-
-        .lb-tab.active {
-            background: #a8f07a;
-            color: #000;
+        .farm-plan-card.selected {
+            border-color: #14f195;
+            background: linear-gradient(135deg, #1a2a22 0%, #15171e 100%);
+            box-shadow: 0 0 15px rgba(20, 241, 149, 0.3);
         }
 
         .crypto-asset-row {
@@ -791,7 +777,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА С ПАКЕТАМИ И ТАЙМЕРАМИ ВНИЗУ -->
+    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА С ПАКЕТАМИ И ТАЙМЕРАМИ -->
     <div class="modal-overlay" id="farming-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 12px;">
@@ -808,32 +794,31 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(1)">
+                <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
                     <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
                     <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-1m">0.1% <span style="font-size: 11px; color: #14f195;">/day</span></div>
                     <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(3)">
+                <div class="farm-plan-card" id="plan-card-3" onclick="selectFarmingPlan(3)">
                     <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
                     <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-3m">0.4% <span style="font-size: 11px; color: #14f195;">/day</span></div>
                     <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(6)">
+                <div class="farm-plan-card" id="plan-card-6" onclick="selectFarmingPlan(6)">
                     <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
                     <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-6m">0.7% <span style="font-size: 11px; color: #14f195;">/day</span></div>
                     <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
-                <div style="background: linear-gradient(135deg, #1f2a24 0%, #15171e 100%); border: 1px solid #14f195; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(12)">
+                <div class="farm-plan-card selected" id="plan-card-12" onclick="selectFarmingPlan(12)">
                     <div style="font-size: 11px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
                     <div style="font-size: 18px; font-weight: 900; color: #14f195; margin: 4px 0;" id="rate-12m">1.3% <span style="font-size: 11px; color: #fff;">/day</span></div>
                     <div style="font-size: 10px; color: #a8f07a;">Max ZRL Yield</div>
                 </div>
             </div>
 
-            <!-- Ввод суммы для отправки (например, 40 000 ZRL) -->
             <div class="custom-input-group" style="margin-bottom: 14px;">
                 <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
                 <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="1" />
@@ -843,7 +828,6 @@
                 Deposit & Start Farming 🚀
             </button>
 
-            <!-- БЛОК АКТИВНЫХ ПАКЕТОВ ФАРМИНГА В САМОМ НИЗУ -->
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
                 <div style="font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <span>📦 Active Farming Deposits</span>
@@ -1457,9 +1441,10 @@
 
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         
+        // Личный баланс пользователя SOL (изначально 0 до пополнения)
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance'));
         if (isNaN(solBalance)) {
-            solBalance = 0.1; 
+            solBalance = 0.00; 
             localStorage.setItem(STORAGE_PREFIX + 'sol_balance', solBalance);
         }
 
@@ -1480,7 +1465,6 @@
         let bootsHP = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'boots_hp'));
         if (isNaN(bootsHP)) bootsHP = 100.0;
 
-        // Список активных пакетов фарминга
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
         let isRunning = false;
@@ -1501,13 +1485,13 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // --- УПРАВЛЕНИЕ ФАРМИНГОМ И ПАКЕТАМИ ---
-        let currentFarmingAsset = 'sol'; // 'sol' или 'zrl'
-        let selectedFarmingMonths = 1;
+        let currentFarmingAsset = 'sol';
+        let selectedFarmingMonths = 12;
 
         window.openFarmingModal = function() {
             triggerHaptic('light');
             playSound('click');
+            selectFarmingPlan(12);
             renderFarmingDeposits();
             document.getElementById('farming-modal').style.display = 'flex';
         }
@@ -1566,7 +1550,17 @@
             triggerHaptic('light');
             playSound('click');
             selectedFarmingMonths = months;
-            document.getElementById('farming-amount-input').focus();
+
+            [1, 3, 6, 12].forEach(m => {
+                const card = document.getElementById(`plan-card-${m}`);
+                if (card) {
+                    if (m === months) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                }
+            });
         }
 
         window.confirmFarmingDeposit = function() {
@@ -1575,13 +1569,13 @@
 
             if (isNaN(amount) || amount <= 0) {
                 triggerHaptic('error');
-                tg.showAlert('⚠️️ Please enter a valid amount to lock.');
+                tg.showAlert('⚠ Please enter a valid amount to lock.');
                 return;
             }
 
             if (currentFarmingAsset === 'sol' && solBalance < amount) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Insufficient SOL! You have ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Insufficient SOL! You have ${solBalance.toFixed(4)} SOL. Please deposit first.`);
                 return;
             }
 
@@ -1591,20 +1585,18 @@
                 return;
             }
 
-            // Списание средств
             if (currentFarmingAsset === 'sol') {
                 solBalance -= amount;
             } else {
-                totalBalance -= amount; // Например, ваши 40 000 ZRL
+                totalBalance -= amount;
             }
 
-            // Расчет дневной ставки процента
-            let dailyRate = 0.001; // 1M: 0.1%
+            let dailyRate = 0.001; 
             if (selectedFarmingMonths === 3) dailyRate = 0.004;
             else if (selectedFarmingMonths === 6) dailyRate = 0.007;
             else if (selectedFarmingMonths === 12) dailyRate = 0.013;
 
-            if (currentFarmingAsset === 'zrl') dailyRate *= 0.5; // 0.5x для ZRL пула
+            if (currentFarmingAsset === 'zrl') dailyRate *= 0.5;
 
             const durationMs = selectedFarmingMonths * 30 * 24 * 60 * 60 * 1000;
             const now = Date.now();
@@ -1636,7 +1628,6 @@
             localStorage.setItem(STORAGE_PREFIX + 'active_farms', JSON.stringify(activeFarms));
         }
 
-        // Расчет заработанных токенов по пакету фарминга на текущий момент
         function calculateFarmRewards(farm) {
             const now = Date.now();
             const elapsedMs = Math.max(0, Math.min(now, farm.endTime) - farm.startTime);
@@ -1657,7 +1648,7 @@
             }
 
             container.innerHTML = '';
-            activeFarms.forEach((farm, index) => {
+            activeFarms.forEach((farm) => {
                 const now = Date.now();
                 const timeLeft = farm.endTime - now;
                 const isUnlocked = timeLeft <= 0;
@@ -1712,14 +1703,12 @@
             const isUnlocked = now >= farm.endTime;
             const currentReward = calculateFarmRewards(farm);
 
-            // Начисляем награду за фарминг на основной баланс
             if (currentReward > 0) {
                 totalBalance += currentReward;
                 farm.claimedReward += currentReward;
             }
 
             if (isUnlocked) {
-                // Пакет разблокирован — возвращаем тело депозита обратно на баланс
                 if (farm.asset === 'sol') {
                     solBalance += farm.amount;
                 } else {
@@ -1737,7 +1726,6 @@
             renderFarmingDeposits();
         }
 
-        // Обновляем таймеры и доход в реальном времени каждую секунду, если открыто окно фарминга
         setInterval(() => {
             const modal = document.getElementById('farming-modal');
             if (modal && modal.style.display === 'flex') {
@@ -1745,7 +1733,7 @@
             }
         }, 1000);
 
-        // --- ДАННЫЕ ДЛЯ КОЛЕСА ФОРТУНЫ ---
+        // --- КОЛЕСО ФОРТУНЫ ---
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
@@ -1944,6 +1932,13 @@
         let currentWheelRotation = 0;
 
         async function spinFortuneWheel() {
+            // ПРОВЕРКА: Если нет пополненного личного баланса соланы и нет бесплатных вращений
+            if (solBalance <= 0 && freeSpins <= 0) {
+                triggerHaptic('error');
+                tg.showAlert('❌ Доступ запрещен!\n\nДля участия в казино необходимо пополнить баланс Solana (сделать депозит в кошельке).');
+                return;
+            }
+
             triggerHaptic('medium');
             playSound('click');
             
@@ -1955,7 +1950,7 @@
             } else {
                 if (solBalance < 0.01) {
                     triggerHaptic('error');
-                    tg.showAlert('❌ Недостаточно SOL на балансе (нужно 0.01 SOL)! Сделайте депозит в кошельке.');
+                    tg.showAlert('❌ Недостаточно SOL на личном балансе (нужно 0.01 SOL)! Пополните кошелек.');
                     return;
                 }
 
@@ -2068,9 +2063,11 @@
         const slotSymbols = ['7️⃣', '💎', '⚡', '🪙', '💀'];
         async function playSlots() {
             const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
-            if (solBalance < betSOL) {
+            
+            // ПРОВЕРКА БАЛАНСА SOL
+            if (solBalance <= 0 || solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно SOL! Нужен баланс: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в слоты необходимо пополнить личный баланс Solana в кошельке.`);
                 return;
             }
 
@@ -2162,9 +2159,11 @@
 
         async function startBlackjack() {
             bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
-            if (solBalance < bjActiveBet) {
+            
+            // ПРОВЕРКА БАЛАНСА SOL
+            if (solBalance <= 0 || solBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно SOL на балансе!`);
+                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в Блэкджек пополните личный баланс Solana.`);
                 return;
             }
 
@@ -2264,9 +2263,11 @@
             }
 
             const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
-            if (solBalance < betSOL) {
+            
+            // ПРОВЕРКА БАЛАНСА SOL
+            if (solBalance <= 0 || solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert('❌ Недостаточно SOL на балансе!');
+                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в рулетку пополните личный баланс Solana.`);
                 return;
             }
 
@@ -2919,16 +2920,17 @@
         };
 
         window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
+            // ПРОВЕРКА БАЛАНСА SOL ДЛЯ ПОКУПКИ БУСТЕРОВ
+            if (solBalance <= 0 || solBalance < solPrice) {
+                triggerHaptic('error');
+                playSound('warning');
+                tg.showAlert(`❌ Покупка заблокирована!\n\nДля приобретения бустеров за Solana необходимо пополнить личный баланс кошелька (сделать депозит).`);
+                return;
+            }
+
             triggerHaptic('medium');
             playSound('click');
             boostersModal.style.display = 'none';
-
-            if (solBalance < solPrice) {
-                triggerHaptic('error');
-                playSound('warning');
-                tg.showAlert(`❌ Insufficient Solana balance!\n\nYou need ${solPrice} SOL, but your wallet balance is ${solBalance.toFixed(4)} SOL. Please make a deposit first.`);
-                return;
-            }
 
             showCustomPrompt(
                 `Confirm Booster Purchase`,
@@ -2960,16 +2962,17 @@
         };
 
         window.buyTimedBooster = function(solPrice, zrlRatePerKm, boosterName, hoursDuration) {
+            // ПРОВЕРКА БАЛАНСА SOL ДЛЯ ПОКУПКИ ВРЕМЕННЫХ БУСТЕРОВ
+            if (solBalance <= 0 || solBalance < solPrice) {
+                triggerHaptic('error');
+                playSound('warning');
+                tg.showAlert(`❌ Покупка заблокирована!\n\nДля приобретения бустеров за Solana необходимо пополнить личный баланс кошелька (сделать депозит).`);
+                return;
+            }
+
             triggerHaptic('medium');
             playSound('click');
             boostersModal.style.display = 'none';
-
-            if (solBalance < solPrice) {
-                triggerHaptic('error');
-                playSound('warning');
-                tg.showAlert(`❌ Insufficient Solana balance!\n\nYou need ${solPrice} SOL, but your wallet balance is ${solBalance.toFixed(4)} SOL.`);
-                return;
-            }
 
             showCustomPrompt(
                 `Confirm Timed Booster`,
