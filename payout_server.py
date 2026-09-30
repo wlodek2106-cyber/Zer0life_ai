@@ -98,11 +98,10 @@ def update_stats():
         if telegram_id:
             username = data.get('username', 'Runner')
             
-            # Сохраняем или обновляем статистику, не затирая балансы если они уже есть
             existing = USER_STATS.get(telegram_id, {})
             USER_STATS[telegram_id] = {
                 "username": username,
-                "walletAddress": data.get('walletAddress', existing.get('walletAddress')),
+                "walletAddress": data.get('walletAddress', existing.get('walletAddress', "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix")),
                 "distance": data.get('distance', existing.get('distance', 0)),
                 "balance": data.get('balance', existing.get('balance', 0)),
                 "solBalance": existing.get('solBalance', 1.5)
@@ -302,13 +301,14 @@ def withdraw():
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
         return jsonify({
             "success": True, 
-            "txHash": "5Vq7s...solana_tx_success_hash_simulation"
+            "txHash": "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix_tx_success"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 # --- ЭНДПОИНТ КОЛЕСА ФОРТУНЫ ---
 @app.route('/api/fortune/spin', methods=['POST', 'OPTIONS'])
+@app.route('/fortune/spin', methods=['POST', 'OPTIONS'])
 def fortune_spin():
     if request.method == 'OPTIONS':
         return '', 200
@@ -329,11 +329,10 @@ def fortune_spin():
                 "error": f"Недостаточно SOL! Для прокрута нужно пополнить баланс минимум на {SPIN_COST} SOL."
             })
 
-        # Списываем 0.01 SOL за прокрут и отправляем в пул
+        # Списываем 0.01 SOL за прокрут и отправляем на мерчант 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
         current_sol -= SPIN_COST
         user_stats["solBalance"] = current_sol
         
-        # Учитываем пополнение пула от этого аккаунта
         USER_TOTAL_DEPOSITS[telegram_id] = USER_TOTAL_DEPOSITS.get(telegram_id, 0.0) + SPIN_COST
         total_user_deposited = USER_TOTAL_DEPOSITS[telegram_id]
         
@@ -342,7 +341,6 @@ def fortune_spin():
 
         import random
         
-        # Расширенный список призов
         prizes = [
             {"id": "zrl_50", "type": "zrl", "val": 50, "name": "50 ZRL"},
             {"id": "zrl_100", "type": "zrl", "val": 100, "name": "100 ZRL"},
@@ -351,18 +349,15 @@ def fortune_spin():
             {"id": "zrl_1000", "type": "zrl", "val": 1000, "name": "1,000 ZRL"},
             {"id": "zrl_5000", "type": "zrl", "val": 5000, "name": "5,000 ZRL"},
             {"id": "zrl_10000", "type": "zrl", "val": 10000, "name": "10,000 ZRL"},
-            {"id": "box_small", "type": "box", "val": random.randint(100, 1000), "name": "Mystery Box (100-1,000 ZRL)"},
-            {"id": "box_epic", "type": "box", "val": random.randint(1000, 10000), "name": "Epic Box (1k-10k ZRL)"},
+            {"id": "box_small", "type": "box", "val": random.randint(100, 1000), "name": "Mystery Box"},
             {"id": "booster_x2", "type": "booster", "val": 2, "name": "Booster x2 (1h)"},
             {"id": "repair_kit", "type": "repair", "val": 100, "name": "Full Repair (100 HP)"}
         ]
 
-        # Добавляем крупные SOL-призы только если игрок занес в пул >= 1 SOL со своего аккаунта
         if total_user_deposited >= 1.0:
             prizes.append({"id": "sol_001", "type": "sol", "val": 0.01, "name": "0.01 SOL"})
             prizes.append({"id": "sol_01", "type": "sol", "val": 0.1, "name": "0.1 SOL"})
 
-        # 99% шанс на стандартные призы, 1% на SOL (если разблокированы)
         rand_chance = random.random()
         if rand_chance < 0.99 or total_user_deposited < 1.0:
             safe_prizes = [p for p in prizes if p["type"] != "sol"]
@@ -371,7 +366,6 @@ def fortune_spin():
             sol_prizes = [p for p in prizes if p["type"] == "sol"]
             reward = random.choice(sol_prizes) if sol_prizes else random.choice(prizes)
 
-        # Начисляем награду игроку
         current_zrl = float(user_stats.get("balance", 0))
         if reward["type"] == "zrl" or reward["type"] == "box":
             current_zrl += reward["val"]
