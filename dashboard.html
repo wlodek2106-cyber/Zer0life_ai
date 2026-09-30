@@ -320,10 +320,10 @@
         .modal-content {
             background-color: #12141c;
             width: 100%;
-            max-height: 85vh;
+            max-height: 90vh;
             border-top-left-radius: 28px;
             border-top-right-radius: 28px;
-            padding: 24px 20px 40px 20px;
+            padding: 20px 16px 30px 16px;
             overflow-y: auto;
             border-top: 1px solid rgba(20, 241, 149, 0.2);
             box-sizing: border-box;
@@ -334,11 +334,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         .modal-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             color: #ffffff;
         }
@@ -527,15 +527,15 @@
         .custom-input-group {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 8px;
         }
 
         .custom-input-field {
             background: #181b24;
             border: 1px solid #282d3d;
             border-radius: 14px;
-            padding: 14px;
+            padding: 12px;
             color: #fff;
             font-size: 15px;
             outline: none;
@@ -574,6 +574,25 @@
             font-weight: 700;
             cursor: pointer;
             text-align: center;
+        }
+
+        /* Стили карточек сроков фарминга в сетке 2х2 */
+        .farm-plan-card {
+            background: #181b24;
+            border: 1px solid #282d3d;
+            border-radius: 14px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .farm-plan-card:hover {
+            border-color: #14f195;
+        }
+        .farm-plan-card.selected {
+            background: rgba(20, 241, 149, 0.08);
+            border: 1.5px solid #14f195;
+            box-shadow: 0 0 15px rgba(20, 241, 149, 0.15);
         }
 
         .bottom-nav {
@@ -762,63 +781,64 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА -->
+    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА (КОМПАКТНОЕ И УДОБНОЕ) -->
     <div class="modal-overlay" id="farming-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
-            <div class="modal-header" style="margin-bottom: 12px;">
-                <span class="modal-title" id="farming-hub-title" style="color: #14f195; font-size: 18px;">🌾 Solana & ZRL Farming</span>
+            <div class="modal-header" style="margin-bottom: 8px;">
+                <span class="modal-title" id="farming-hub-title" style="color: #14f195; font-size: 17px;">🌾 Solana & ZRL Farming</span>
                 <button class="close-modal" onclick="closeFarmingModal()">&times;</button>
             </div>
-            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;" id="farming-desc">
-                Lock your deposited assets in the farming pool. Principal remains secure, earn daily ZRL rewards.
-            </p>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 14px; border: 1px solid #2d3748;">
-                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 8px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
-                <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 8px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
+            <!-- Переключатель пулов -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #2d3748;">
+                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 7px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
+                <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 7px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+            <!-- Сетка выбора сроков (2х2, компактная) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-1m">0.1% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">0.1% <span style="font-size: 10px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-3" onclick="selectFarmingPlan(3)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-3m">0.4% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">0.4% <span style="font-size: 10px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-6" onclick="selectFarmingPlan(6)">
-                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-6m">0.7% <span style="font-size: 11px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">0.7% <span style="font-size: 10px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card selected" id="plan-card-12" onclick="selectFarmingPlan(12)">
-                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
-                    <div style="font-size: 18px; font-weight: 900; color: #14f195; margin: 4px 0;" id="rate-12m">1.3% <span style="font-size: 11px; color: #fff;">/day</span></div>
-                    <div style="font-size: 10px; color: #a8f07a;">Max ZRL Yield</div>
+                    <div style="font-size: 10px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">1.3% <span style="font-size: 10px; color: #fff;">/day</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Max ZRL Yield</div>
                 </div>
             </div>
 
-            <div class="custom-input-group" style="margin-bottom: 14px;">
+            <!-- Поле ввода суммы и кнопка депозита -->
+            <div class="custom-input-group" style="margin-bottom: 10px;">
                 <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
-                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 1.5" step="0.01" />
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="0.01" />
             </div>
 
-            <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 20px;" onclick="confirmFarmingDeposit()">
+            <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 14px;" onclick="confirmFarmingDeposit()">
                 Deposit & Start Farming 🚀
             </button>
 
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
-                <div style="font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <!-- Список активных депозитов -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+                <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <span>📦 Active Farming Deposits</span>
                     <span style="font-size: 11px; color: #14f195;" id="active-farms-count">0 active</span>
                 </div>
-                <div id="farming-deposits-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto;">
+                <div id="farming-deposits-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
                     <div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>
                 </div>
             </div>
@@ -1316,7 +1336,6 @@
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance'));
         if (isNaN(usdcBalance)) usdcBalance = 1.99;
 
-        // Логика лимитов джекпота (максимум 2 раза в месяц, порог 50 SOL -> затем 75 SOL и т.д.)
         const currentMonthKey = new Date().getFullYear() + '-' + new Date().getMonth();
         let savedMonthKey = localStorage.getItem('slots_jackpot_month_key');
         let jackpotWinsThisMonth = parseInt(localStorage.getItem('slots_jackpot_wins_month')) || 0;
@@ -1398,7 +1417,6 @@
             const btnSol = document.getElementById('farm-tab-sol');
             const btnZrl = document.getElementById('farm-tab-zrl');
             const titleEl = document.getElementById('farming-hub-title');
-            const descEl = document.getElementById('farming-desc');
 
             if (asset === 'sol') {
                 btnSol.style.background = '#14f195';
@@ -1409,13 +1427,12 @@
                 btnZrl.style.color = '#8a8d98';
                 btnZrl.style.fontWeight = '700';
 
-                titleEl.innerText = '🌾 Solana Staking & Farming';
-                descEl.innerText = 'Lock deposited Solana to earn high daily ZRL rewards. Principal remains secure.';
+                titleEl.innerText = '🌾 Solana & ZRL Farming';
 
-                document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 11px; color: #14f195;">/day</span>';
-                document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 11px; color: #14f195;">/day</span>';
-                document.getElementById('rate-6m').innerHTML = '0.7% <span style="font-size: 11px; color: #14f195;">/day</span>';
-                document.getElementById('rate-12m').innerHTML = '1.3% <span style="font-size: 11px; color: #fff;">/day</span>';
+                document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.7% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '1.3% <span style="font-size: 10px; color: #fff;">/day</span>';
             } else {
                 btnZrl.style.background = '#a8f07a';
                 btnZrl.style.color = '#000';
@@ -1426,12 +1443,11 @@
                 btnSol.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
-                descEl.innerText = 'Lock ZRL tokens in the pool. Standard yields are halved (0.5x) compared to Solana.';
 
-                document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-6m').innerHTML = '0.35% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-12m').innerHTML = '0.65% <span style="font-size: 11px; color: #fff;">/day</span>';
+                document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.35% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '0.65% <span style="font-size: 10px; color: #fff;">/day</span>';
             }
         }
 
@@ -1559,19 +1575,19 @@
                     background: #181b24;
                     border: 1px solid ${isUnlocked ? '#14f195' : '#282d3d'};
                     border-radius: 14px;
-                    padding: 12px;
+                    padding: 10px 12px;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 6px;
                 `;
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m)</span>
+                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
                         <span style="font-size: 11px;">${timeStr}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #8a8d98;">
                         <span>Earned: <strong style="color: #a8f07a;">+${currentReward.toFixed(2)} ZRL</strong></span>
-                        <button class="claim-btn" onclick="claimOrWithdrawFarm('${farm.id}')" style="padding: 6px 12px; font-size: 11px; background: ${isUnlocked ? '#14f195' : '#a8f07a'}; color: #000; font-weight: 800;">
+                        <button class="claim-btn" onclick="claimOrWithdrawFarm('${farm.id}')" style="padding: 5px 10px; font-size: 11px; background: ${isUnlocked ? '#14f195' : '#a8f07a'}; color: #000; font-weight: 800;">
                             ${isUnlocked ? 'Claim & Withdraw 🚀' : 'Claim Yield'}
                         </button>
                     </div>
@@ -1622,7 +1638,6 @@
             }
         }, 1000);
 
-        // --- КОЛЕСО ФОРТУНЫ ---
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
@@ -1981,11 +1996,9 @@
                 const rand = Math.random();
                 let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
 
-                // Проверяем условия джекпота: баланс выше порога И лимит (максимум 2 раза в месяц) не исчерпан
                 const canHitJackpot = (totalSlotsTurnoverSol >= currentJackpotThreshold) && (jackpotWinsThisMonth < 2);
 
                 if (canHitJackpot && rand < 0.015) { 
-                    // Главный Джекпот: ровно 1 SOL
                     r1 = r2 = r3 = '7️⃣';
                     winSOL = 1.0;
                     isJackpot = true;
@@ -1996,9 +2009,8 @@
                     r1 = r2 = r3 = '🍉';
                     winSOL = betSOL * 10;
                 } else if (rand < 0.25) { 
-                    // Рандомный мелкий выигрыш ZRL от 100 до 1000 ZRL
                     r1 = '🍇'; r2 = '🍇'; r3 = '🍇';
-                    winZRL = Math.floor(Math.random() * 901) + 100; // от 100 до 1000
+                    winZRL = Math.floor(Math.random() * 901) + 100; 
                 } else if (rand < 0.45) { 
                     r1 = '🍊'; r2 = '🍊'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; winSOL = betSOL * 1.5;
                 } else { 
@@ -2244,7 +2256,7 @@
 
             if (!inputName || inputName.length < 2) {
                 triggerHaptic('error');
-                tg.showAlert('⚠️️ Please enter a valid player nickname.');
+                tg.showAlert('⚠ Please enter a valid player nickname.');
                 return;
             }
 
