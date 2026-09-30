@@ -576,7 +576,6 @@
             text-align: center;
         }
 
-        /* Стили карточек сроков фарминга в сетке 2х2 */
         .farm-plan-card {
             background: #181b24;
             border: 1px solid #282d3d;
@@ -781,7 +780,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА (КОМПАКТНОЕ И УДОБНОЕ) -->
+    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА -->
     <div class="modal-overlay" id="farming-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 8px;">
@@ -789,13 +788,11 @@
                 <button class="close-modal" onclick="closeFarmingModal()">&times;</button>
             </div>
 
-            <!-- Переключатель пулов -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #2d3748;">
                 <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 7px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
                 <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 7px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
             </div>
 
-            <!-- Сетка выбора сроков (2х2, компактная) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
@@ -822,7 +819,6 @@
                 </div>
             </div>
 
-            <!-- Поле ввода суммы и кнопка депозита -->
             <div class="custom-input-group" style="margin-bottom: 10px;">
                 <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
                 <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="0.01" />
@@ -832,7 +828,6 @@
                 Deposit & Start Farming 🚀
             </button>
 
-            <!-- Список активных депозитов -->
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
                 <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <span>📦 Active Farming Deposits</span>
@@ -856,8 +851,8 @@
 
             <div class="leaderboard-tabs" style="grid-template-columns: repeat(4, 1fr); gap: 4px; background: #11141d; padding: 3px; margin-bottom: 16px; border-radius: 12px;">
                 <button class="lb-tab" onclick="switchArcadeGame('wheel')" id="tab-game-wheel" style="font-size: 10px; padding: 8px 2px;">🎡 Wheel</button>
-                <button class="lb-tab active" onclick="switchArcadeGame('slots')" id="tab-game-slots" style="font-size: 10px; padding: 8px 2px;">🎰 Slots</button>
-                <button class="lb-tab" onclick="switchArcadeGame('bj')" id="tab-game-bj" style="font-size: 10px; padding: 8px 2px;">🃏 21 (BJ)</button>
+                <button class="lb-tab" onclick="switchArcadeGame('slots')" id="tab-game-slots" style="font-size: 10px; padding: 8px 2px;">🎰 Slots</button>
+                <button class="lb-tab active" onclick="switchArcadeGame('bj')" id="tab-game-bj" style="font-size: 10px; padding: 8px 2px;">🃏 21 (BJ)</button>
                 <button class="lb-tab" onclick="switchArcadeGame('roulette')" id="tab-game-roulette" style="font-size: 10px; padding: 8px 2px;">🎯 Roulette</button>
             </div>
 
@@ -875,10 +870,8 @@
                 </button>
             </div>
 
-            <!-- ИНТЕРФЕЙС СЛОТОВ БЕЗ ОТОБРАЖЕНИЯ БАЛАНСА -->
-            <div id="arcade-game-slots" class="arcade-game-container" style="display: block;">
+            <div id="arcade-game-slots" class="arcade-game-container" style="display: none;">
                 <div style="background: linear-gradient(135deg, #181124 0%, #0d0a14 100%); border: 2px solid #a855f7; border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 0 25px rgba(168, 85, 247, 0.3); position: relative; overflow: hidden;">
-                    
                     <div style="display: flex; justify-content: space-around; background: #07060a; border-radius: 14px; padding: 14px 6px; border: 2px solid #3b82f6; font-size: 38px; font-weight: 900; box-shadow: inset 0 0 15px rgba(0,0,0,0.9);" id="slot-reels-display">
                         <span id="reel1" style="background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 8px rgba(234,179,8,0.5);">7️⃣</span>
                         <span id="reel2" style="filter: drop-shadow(0 2px 6px rgba(59,130,246,0.6));">🍇</span>
@@ -894,7 +887,6 @@
                         </select>
                     </div>
 
-                    <!-- Стопки монет снизу -->
                     <div style="display: flex; justify-content: center; gap: 4px; margin-top: 12px; opacity: 0.85; font-size: 14px;">
                         🪙🪙🪙🪙🪙🪙🪙🪙🪙🪙🪙
                     </div>
@@ -905,29 +897,45 @@
                 </button>
             </div>
 
-            <div id="arcade-game-bj" class="arcade-game-container" style="display: none;">
-                <div style="background: #0a1f18; border: 2px solid #14f195; border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: left;">
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Дилер: <span id="dealer-score" style="color: #fff; font-weight: 700;">?</span></div>
-                        <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
+            <!-- ИНТЕРФЕЙС БЛЕКДЖЕКА В СТИЛЕ НАСТОЯЩЕГО ЗЕЛЕНОГО СУКНО-СТОЛА -->
+            <div id="arcade-game-bj" class="arcade-game-container" style="display: block;">
+                <div style="background: linear-gradient(180deg, #134e32 0%, #0a331f 100%); border: 3px solid #d4af37; border-radius: 18px; padding: 14px; margin-bottom: 14px; text-align: left; box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 0 15px rgba(212, 175, 55, 0.2); position: relative;">
+                    
+                    <!-- Золотая надпись на сукне стола -->
+                    <div style="text-align: center; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: #facc15; opacity: 0.8; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">BLACKJACK PAYS 3 TO 2</div>
+
+                    <!-- Зона дилера -->
+                    <div style="margin-bottom: 12px; background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px dashed rgba(212,175,55,0.3);">
+                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Дилер: <span id="dealer-score" style="color: #facc15;">?</span></div>
+                        <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
                     </div>
-                    <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0;"></div>
-                    <div>
-                        <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Вы: <span id="player-score" style="color: #14f195; font-weight: 700;">0</span></div>
-                        <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
+
+                    <div style="height: 1px; background: rgba(212, 175, 55, 0.2); margin: 8px 0;"></div>
+
+                    <!-- Зона игрока -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.4);">
+                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Вы: <span id="player-score" style="color: #4ade80;">0</span></div>
+                        <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
+                    </div>
+
+                    <!-- Стопка фишек снизу справа для декора -->
+                    <div style="position: absolute; bottom: 10px; right: 12px; font-size: 14px; opacity: 0.85;">
+                        🔴⚪🔵⚫
                     </div>
                 </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;" id="bj-controls-play">
-                    <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5;">Еще (Hit)</button>
-                    <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5;">Хватит (Stand)</button>
+                    <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5; font-weight: 800;">Еще (Hit)</button>
+                    <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5; font-weight: 800;">Хватит (Stand)</button>
                 </div>
+
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <select id="bj-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #2d3748; border-radius: 10px; padding: 10px; font-weight: 700; width: 40%;">
+                    <select id="bj-bet-select" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 10px; padding: 10px; font-weight: 700; width: 40%; outline: none;">
                         <option value="0.01">0.01 SOL</option>
                         <option value="0.05">0.05 SOL</option>
                         <option value="0.10">0.10 SOL</option>
                     </select>
-                    <button class="claim-btn" id="start-bj-btn" onclick="startBlackjack()" style="width: 60%; background: #14f195; color: #000; font-weight: 800;">
+                    <button class="claim-btn" id="start-bj-btn" onclick="startBlackjack()" style="width: 60%; background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(250,204,21,0.3);">
                         Раздать (21) 🃏
                     </button>
                 </div>
@@ -1821,7 +1829,7 @@
             triggerHaptic('light');
             playSound('click');
             document.getElementById('fortune-modal').style.display = 'flex';
-            switchArcadeGame('slots'); 
+            switchArcadeGame('bj'); 
             updateEnergyUI();
         }
 
@@ -2114,13 +2122,13 @@
         function renderBJ() {
             const pCardsEl = document.getElementById('player-cards');
             const dCardsEl = document.getElementById('dealer-cards');
-            pCardsEl.innerHTML = playerHand.map(c => `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${c.val}${c.suit}</div>`).join('');
+            pCardsEl.innerHTML = playerHand.map(c => `<div style="background:#ffffff; color:${['♥','♦'].includes(c.suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${c.val}${c.suit}</div>`).join('');
             
             if (document.getElementById('start-bj-btn').disabled) {
-                dCardsEl.innerHTML = `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${dealerHand[0].val}${dealerHand[0].suit}</div><div style="background:#2d3748; color:#fff; padding:6px 10px; border-radius:6px;">❓</div>`;
+                dCardsEl.innerHTML = `<div style="background:#ffffff; color:${['♥','♦'].includes(dealerHand[0].suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${dealerHand[0].val}${dealerHand[0].suit}</div><div style="background:#1e293b; color:#facc15; padding:6px 10px; border-radius:6px; border:1px dashed #d4af37;">🎴</div>`;
                 document.getElementById('dealer-score').innerText = getCardValue(dealerHand[0]);
             } else {
-                dCardsEl.innerHTML = dealerHand.map(c => `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${c.val}${c.suit}</div>`).join('');
+                dCardsEl.innerHTML = dealerHand.map(c => `<div style="background:#ffffff; color:${['♥','♦'].includes(c.suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${c.val}${c.suit}</div>`).join('');
                 document.getElementById('dealer-score').innerText = calcHandScore(dealerHand);
             }
 
