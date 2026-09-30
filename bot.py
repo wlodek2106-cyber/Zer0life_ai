@@ -19,6 +19,8 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from solders.message import Message
 from solders.hash import Hash
+# ДОБАВЛЕН ИМПОРТ ДЛЯ ТРАНЗАКЦИЙ SOL:
+from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
 api_app = Flask(__name__)
@@ -214,63 +216,73 @@ def check_deposit():
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
     try:
-        zrl_mint_address = os.getenv('ZRL_MINT')
-        private_key_base58 = os.getenv('PRIVATE_KEY')
-        
-        missing = []
-        if not zrl_mint_address: missing.append('ZRL_MINT')
-        if not private_key_base58: missing.append('PRIVATE_KEY')
-        
-        if missing:
-            return jsonify({"error": f"Server config error: missing env vars: {', '.join(missing)}"}), 500
-
         data = request.json
         if not data or 'walletAddress' not in data or 'amount' not in data:
             return jsonify({"error": "Invalid request data"}), 400
 
         user_wallet_str = data['walletAddress']
         amount = float(data['amount'])
+        currency = data.get('currency', 'ZRL').upper()
         tg_id = data.get('telegramId')
         
         if tg_id:
             save_user(tg_id)
 
-        user_pubkey = Pubkey.from_string(user_wallet_str)
-        zrl_mint = Pubkey.from_string(zrl_mint_address)
+        private_key_base58 = os.getenv('PRIVATE_KEY')
+        if not private_key_base58:
+            return jsonify({"error": "Server config error: missing PRIVATE_KEY"}), 500
+            
         pool_keypair = Keypair.from_bytes(base58.b58decode(private_key_base58))
-        
-        pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
-        user_ata = get_associated_token_address(user_pubkey, zrl_mint)
-        
+        user_pubkey = Pubkey.from_string(user_wallet_str)
         client = Client("https://api.mainnet-beta.solana.com")
         
         instructions = []
         
-        try:
-            account_info = client.get_account_info(user_ata)
-            if account_info.value is None:
-                instructions.append(
-                    create_associated_token_account(
-                        payer=pool_keypair.pubkey(),
-                        owner=user_pubkey,
-                        mint=zrl_mint
-                    )
+        # РАЗДЕЛЕНИЕ ЛОГИКИ ТРАНЗАКЦИЙ (SOL vs ZRL)
+        if currency == 'SOL':
+            lamports = int(amount * (10**9))
+            transfer_ix = transfer(
+                TransferParams(
+                    from_pubkey=pool_keypair.pubkey(),
+                    to_pubkey=user_pubkey,
+                    lamports=lamports
                 )
-        except Exception as e:
-            print("ATA check/creation notice:", e)
-
-        transfer_ix = transfer_checked(
-            TransferCheckedParams(
-                program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-                source=pool_ata,
-                mint=zrl_mint,
-                dest=user_ata,
-                owner=pool_keypair.pubkey(),
-                amount=int(amount * (10**6)), 
-                decimals=6
             )
-        )
-        instructions.append(transfer_ix)
+            instructions.append(transfer_ix)
+        else:
+            zrl_mint_address = os.getenv('ZRL_MINT')
+            if not zrl_mint_address:
+                return jsonify({"error": "Server config error: missing ZRL_MINT"}), 500
+                
+            zrl_mint = Pubkey.from_string(zrl_mint_address)
+            pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
+            user_ata = get_associated_token_address(user_pubkey, zrl_mint)
+            
+            try:
+                account_info = client.get_account_info(user_ata)
+                if account_info.value is None:
+                    instructions.append(
+                        create_associated_token_account(
+                            payer=pool_keypair.pubkey(),
+                            owner=user_pubkey,
+                            mint=zrl_mint
+                        )
+                    )
+            except Exception as e:
+                print("ATA check/creation notice:", e)
+
+            transfer_ix = transfer_checked(
+                TransferCheckedParams(
+                    program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                    source=pool_ata,
+                    mint=zrl_mint,
+                    dest=user_ata,
+                    owner=pool_keypair.pubkey(),
+                    amount=int(amount * (10**6)), 
+                    decimals=6
+                )
+            )
+            instructions.append(transfer_ix)
         
         recent_blockhash_resp = client.get_latest_blockhash()
         recent_blockhash = recent_blockhash_resp.value.blockhash
@@ -286,14 +298,18 @@ def withdraw():
         tx_signature = str(result.value)
         
         if tg_id and bot:
+            msg_text = (
+                f"✅ Вывод успешно завершен!\n\n"
+                f"Сумма: {amount} {currency}\n"
+                f"Кошелек: {user_wallet_str[:6]}...{user_wallet_str[-4:]}\n\n"
+                f"🔗 Просмотреть транзакцию на Solscan\n"
+                f"https://solscan.io/tx/{tx_signature}"
+            )
             asyncio.run_coroutine_threadsafe(
                 bot.send_message(
                     chat_id=int(tg_id),
-                    text=f"✅ **Withdrawal Successful!**\n\n"
-                         f"Amount: `{amount} ZRL`\n"
-                         f"Wallet: `{user_wallet_str[:6]}...{user_wallet_str[-4:]}`\n\n"
-                         f"🔗 [View transaction on Solscan](https://solscan.io/tx/{tx_signature})",
-                    parse_mode="Markdown"
+                    text=msg_text,
+                    disable_web_page_preview=True
                 ),
                 bot_loop
             )
