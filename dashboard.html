@@ -594,6 +594,33 @@
             box-shadow: 0 0 15px rgba(20, 241, 149, 0.15);
         }
 
+        .leaderboard-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            background: #181b24;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid #282d3d;
+        }
+
+        .lb-tab {
+            background: transparent;
+            border: none;
+            color: #8a8d98;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .lb-tab.active {
+            background: #14f195;
+            color: #000;
+        }
+
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -645,16 +672,6 @@
             <div class="wallet-btn" id="wallet-btn">
                 <div class="sol-icon">S</div>
                 <span id="wallet-btn-text">0.01 SOL (Pool)</span>
-            </div>
-        </div>
-
-        <div class="energy-card" style="border-color: rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, #15171e 0%, #1c1812 100%);">
-            <div class="energy-header" style="color: #f59e0b;">
-                <span>💼 РАЗДЕЛЬНЫЕ БАЛАНСЫ КАЗИНО</span>
-            </div>
-            <div style="font-size: 11px; color: #8a8d98; display: flex; justify-content: space-between; margin-top: 6px;">
-                <span>Депозитный Пуль: <strong id="pool-bal-ui" style="color: #fff;">0.00 SOL</strong></span>
-                <span>Выигрыши (К выводу): <strong id="win-bal-ui" style="color: #a8f07a;">0.00 SOL</strong></span>
             </div>
         </div>
 
@@ -847,6 +864,30 @@
                     <div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА -->
+    <div class="modal-overlay" id="leaderboard-modal">
+        <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #11141d 100%); border-top: 2px solid #a8f07a;">
+            <div class="modal-header">
+                <span class="modal-title" style="color: #a8f07a;">🏆 Leaderboard</span>
+                <button class="close-modal" id="close-leaderboard">&times;</button>
+            </div>
+            
+            <div class="leaderboard-tabs" style="margin-bottom: 14px;">
+                <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
+                <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
+                <button class="lb-tab" onclick="switchLbTab('all')">All Time</button>
+            </div>
+
+            <div id="podium-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;"></div>
+
+            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; margin-bottom: 10px;">
+                <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Loading leaderboard...</div>
+            </div>
+
+            <div id="my-rank-sticky-container"></div>
         </div>
     </div>
 
@@ -1317,12 +1358,11 @@
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance'));
         if (isNaN(totalBalance)) totalBalance = 3110.86;
         
-        // РАЗДЕЛЬНЫЕ БАЛАНСЫ
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit'));
-        if (isNaN(poolDeposit)) poolDeposit = 0.05; // пополненные для игры средства
+        if (isNaN(poolDeposit)) poolDeposit = 0.05; 
 
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance'));
-        if (isNaN(solBalance)) solBalance = 0.00;     // чистые выигрыши к выводу
+        if (isNaN(solBalance)) solBalance = 0.00;     
 
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance'));
         if (isNaN(usdcBalance)) usdcBalance = 1.99;
@@ -1840,7 +1880,7 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                poolDeposit -= 0.01; // Списываем строго из пула пополнений
+                poolDeposit -= 0.01; 
                 saveData();
                 updateUI();
                 updateEnergyUI();
@@ -1917,7 +1957,7 @@
                     if (won.type === 'zrl') {
                         totalBalance += won.val;
                     } else if (won.type === 'sol') {
-                        solBalance += won.val; // Победные приходят на баланс выигрышей
+                        solBalance += won.val; 
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1958,7 +1998,7 @@
                 return;
             }
 
-            poolDeposit -= betSOL; // Списываем ставку из пула
+            poolDeposit -= betSOL; 
             totalSlotsTurnoverSol += betSOL; 
             saveData();
             updateUI();
@@ -2016,7 +2056,7 @@
                 spinBtn.disabled = false;
 
                 if (winSOL > 0) {
-                    solBalance += winSOL; // Выигрыш идет на солевой баланс к выводу
+                    solBalance += winSOL; 
                     saveData();
                     updateUI();
                     updateEnergyUI();
@@ -2083,7 +2123,7 @@
                 return;
             }
 
-            poolDeposit -= bjActiveBet; // Списываем ставку из пула
+            poolDeposit -= bjActiveBet; 
             saveData(); updateUI(); updateEnergyUI();
 
             bjDeck = createDeck();
@@ -2148,12 +2188,12 @@
 
         function bjFinish(multiplier, msg) {
             if (multiplier === 'return') {
-                poolDeposit += bjActiveBet; // Возврат ставки обратно в пул
+                poolDeposit += bjActiveBet; 
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
                 const solWon = bjActiveBet * multiplier;
-                solBalance += solWon; // Выигрыш идет на солевой баланс к выводу
+                solBalance += solWon; 
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
             } else {
@@ -2202,7 +2242,7 @@
                 return;
             }
 
-            poolDeposit -= betSOL; // Списываем ставку из депозитного пула
+            poolDeposit -= betSOL; 
             saveData(); updateUI(); updateEnergyUI();
 
             const ballEl = document.getElementById('roulette-ball-display');
@@ -2229,7 +2269,7 @@
 
                 if (won) {
                     const winSOL = betSOL * 2;
-                    solBalance += winSOL; // Выигрыш зачисляется на баланс к выводу
+                    solBalance += winSOL; 
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
                     tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен на баланс выигрышей!`);
@@ -2659,7 +2699,7 @@
                 const result = await response.json();
                 if (response.ok && result.success) {
                     if (result.solBalance !== undefined) {
-                        poolDeposit += Math.max(0, result.solBalance - poolDeposit); // Автозачисление в пул
+                        poolDeposit += Math.max(0, result.solBalance - poolDeposit); 
                     }
                 }
             } catch(e) {}
@@ -2669,8 +2709,6 @@
             
             document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
-
-            const totalPortfolioUsd = (poolDeposit + solBalance) * 140 + (totalBalance * 0.001);
 
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
@@ -2713,7 +2751,7 @@
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
-                                                solBalance -= amount; // Списываем с выигрышного баланса
+                                                solBalance -= amount; 
                                                 saveData();
                                                 updateUI();
 
@@ -2827,7 +2865,7 @@
                         tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted from winnings.\nActive booster: ${boosterName}!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
-                        tg.showAlert('⚠️️ Purchase cancelled.');
+                        tg.showAlert('⚠ Purchase cancelled.');
                     }
                 }
             );
