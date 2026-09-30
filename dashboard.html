@@ -1153,6 +1153,28 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА -->
+    <div class="modal-overlay" id="leaderboard-modal">
+        <div class="modal-content" style="max-height: 85vh;">
+            <div class="modal-header">
+                <span class="modal-title">🏆 Leaderboard</span>
+                <button class="close-modal" id="close-leaderboard">&times;</button>
+            </div>
+            
+            <div class="leaderboard-tabs" style="margin-bottom: 14px;">
+                <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
+                <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
+                <button class="lb-tab" onclick="switchLbTab('all')">All Time</button>
+            </div>
+
+            <div id="podium-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;"></div>
+
+            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; margin-bottom: 12px;"></div>
+
+            <div id="my-rank-sticky-container"></div>
+        </div>
+    </div>
+
     <!-- НИЖНЯЯ ПАНЕЛЬ -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
@@ -1185,9 +1207,7 @@
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
-        // 1. ПОТОК КАЗИНО И ДЕПОЗИТОВ
         const FIXED_DEPOSIT_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
-        // 2. ПОТОК МЕРЧАНТА (ПОКУПКИ И БУСТЕРЫ)
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
         let audioCtx = null;
@@ -1305,7 +1325,6 @@
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = FIXED_DEPOSIT_WALLET;
 
-        // 3. ИЗОЛИРОВАННЫЕ БАЛАНСЫ ИГРОКА
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit')) || 0.00; 
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
@@ -1747,7 +1766,6 @@
             if (boosterExpiryTime > 0) updateEnergyUI();
         }, 1000);
 
-        // РЕМОНТ БУТСОВ (ПОТОК МЕРЧАНТА -> MERCHANT_SOL_WALLET при списании через баланс ZRL или SOL)
         document.getElementById('repair-boots-btn').onclick = () => {
             triggerHaptic('medium');
             playSound('click');
@@ -1768,7 +1786,6 @@
             updateUI();
             updateEnergyUI();
 
-            // Автоматическая отправка отчета мерчанту о списании по ремонту
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
@@ -1817,7 +1834,6 @@
 
         let currentWheelRotation = 0;
 
-        // КОЛЕСО ФОРТУНЫ (ЗАВЯЗАНО НА ДЕПОЗИТ И КАЗИНО ПОТОК HWkraa...)
         async function spinFortuneWheel() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -1840,7 +1856,7 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                solBalance -= 0.01; // Списание ставки казино
+                solBalance -= 0.01;
                 saveData();
                 updateUI();
                 updateEnergyUI();
@@ -1904,7 +1920,7 @@
                     if (won.type === 'zrl') {
                         totalBalance += won.val;
                     } else if (won.type === 'sol') {
-                        solBalance += won.val; // Выигрыш казино выплачивается через общий кошелек
+                        solBalance += won.val;
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1936,7 +1952,6 @@
 
         const slotSymbols = ['7️⃣', '🍇', '🍉', '🍊', '🍒'];
         
-        // СЛОТЫ (КАЗИНО ПОТОК)
         async function playSlots() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2060,7 +2075,6 @@
             return deck.sort(() => Math.random() - 0.5);
         }
 
-        // БЛЭКДЖЕК (КАЗИНО ПОТОК)
         async function startBlackjack() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2180,7 +2194,6 @@
             });
         }
 
-        // РУЛЕТКА (КАЗИНО ПОТОК)
         async function spinRoulette() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2375,90 +2388,6 @@
             playSound('coin');
             tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
-
-        let quest1Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString()) === 'true';
-        let quest2Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString()) === 'true';
-
-        function updateQuestsUI() {
-            const q1Prog = document.getElementById('quest-1-progress');
-            const q1Btn = document.getElementById('quest-1-btn');
-            const q2Prog = document.getElementById('quest-2-progress');
-            const q2Btn = document.getElementById('quest-2-btn');
-
-            q1Prog.innerText = `Progress: ${Math.min(todayDistance, 1.0).toFixed(2)} / 1.0 km`;
-            if (quest1Claimed) {
-                q1Btn.innerText = "Claimed ✅";
-                q1Btn.style.background = "#2d303b";
-                q1Btn.style.color = "#8a8d98";
-                q1Btn.style.cursor = "not-allowed";
-                q1Btn.disabled = true;
-            } else if (todayDistance >= 1.0) {
-                q1Btn.innerText = "Claim +50 ZRL";
-                q1Btn.style.background = "#14f195";
-                q1Btn.style.color = "#000";
-                q1Btn.style.cursor = "pointer";
-                q1Btn.disabled = false;
-            } else {
-                q1Btn.innerText = "+50 ZRL";
-                q1Btn.style.background = "#2d303b";
-                q1Btn.style.color = "#8a8d98";
-                q1Btn.style.cursor = "not-allowed";
-                q1Btn.disabled = true;
-            }
-
-            q2Prog.innerText = `Progress: ${Math.min(todaySteps, 1000)} / 1,000`;
-            if (quest2Claimed) {
-                q2Btn.innerText = "Claimed ✅";
-                q2Btn.style.background = "#2d303b";
-                q2Btn.style.color = "#8a8d98";
-                q2Btn.style.cursor = "not-allowed";
-                q2Btn.disabled = true;
-            } else if (todaySteps >= 1000) {
-                q2Btn.innerText = "Claim +30 ZRL";
-                q2Btn.style.background = "#14f195";
-                q2Btn.style.color = "#000";
-                q2Btn.style.cursor = "pointer";
-                q2Btn.disabled = false;
-            } else {
-                q2Btn.innerText = "+30 ZRL";
-                q2Btn.style.background = "#2d303b";
-                q2Btn.style.color = "#8a8d98";
-                q2Btn.style.cursor = "not-allowed";
-                q2Btn.disabled = true;
-            }
-        }
-
-        document.getElementById('quest-1-btn').onclick = () => {
-            triggerHaptic('medium');
-            playSound('click');
-            if (!quest1Claimed && todayDistance >= 1.0) {
-                quest1Claimed = true;
-                localStorage.setItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString(), 'true');
-                totalBalance += 50;
-                saveData();
-                updateUI();
-                updateQuestsUI();
-                triggerHaptic('success');
-                playSound('coin');
-                tg.showAlert('🎉 Quest completed! You received +50 ZRL.');
-            }
-        };
-
-        document.getElementById('quest-2-btn').onclick = () => {
-            triggerHaptic('medium');
-            playSound('click');
-            if (!quest2Claimed && todaySteps >= 1000) {
-                quest2Claimed = true;
-                localStorage.setItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString(), 'true');
-                totalBalance += 30;
-                saveData();
-                updateUI();
-                updateQuestsUI();
-                triggerHaptic('success');
-                playSound('coin');
-                tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
-            }
-        };
 
         const mysteryBoxModal = document.getElementById('mystery-box-modal');
         let pendingBoxReward = 0;
@@ -2671,7 +2600,6 @@
             document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
 
-            // Кнопка депозита использует кошелек казино/депозитов
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
                 playSound('click');
@@ -2682,7 +2610,6 @@
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
 
-            // Кнопка вывода (строго изолированный баланс игрока)
             document.getElementById('withdraw-btn').onclick = () => {
                 triggerHaptic('medium');
                 playSound('click');
@@ -2806,7 +2733,6 @@
             );
         };
 
-        // ПОКУПКА БУСТЕРОВ (АВТОМАТИЧЕСКИ ОТПРАВЛЯЕТ SOL НА КОШЕЛЕК МЕРЧАНТА: 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db)
         window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2843,7 +2769,6 @@
                         updateUI();
                         updateEnergyUI();
 
-                        // Автоматический запрос на бэкенд для перевода средств мерчанту
                         try {
                             fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
@@ -3004,7 +2929,6 @@
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
                 updateUI();
-                updateQuestsUI();
                 updateEnergyUI();
                 checkRandomMysteryBox();
                 saveData();
@@ -3089,6 +3013,7 @@
             }
         });
 
+        // ИСПРАВЛЕННЫЙ ОБХОД КНОПОК НАВИГАЦИИ (Leaderboard, Wallet, Boosters)
         document.getElementById('nav-rewards').addEventListener('click', () => {
             triggerHaptic('light');
             playSound('click');
@@ -3176,8 +3101,8 @@
 
         checkRegistration();
         updateCheckinUI();
-        updateQuestsUI();
         updateEnergyUI();
+        updateUI();
     </script>
 </body>
 </html>
