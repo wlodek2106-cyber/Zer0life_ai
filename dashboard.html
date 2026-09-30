@@ -1330,7 +1330,6 @@
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance')) || 0.00;
 
-        // Строгое разделение для личных и заработанных средств
         let userRealDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'user_real_deposit')) || 0.00;
         let earnedZrlBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'earned_zrl')) || 0.00;
 
@@ -1849,13 +1848,13 @@
         async function spinFortuneWheel() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит на адрес казино/депозитов.");
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana.");
                 return;
             }
 
             if (freeSpins <= 0 && solBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе казино!\n\nДоступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Требуется: 0.01 SOL.`);
                 return;
             }
 
@@ -1871,12 +1870,12 @@
                 solBalance -= 0.01;
                 userRealDeposit = Math.max(0, userRealDeposit - 0.01);
                 
-                // Ставка уходит на адрес мерчанта
+                // Ставка уходит на адрес мерчанта с корректной валютой SOL
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0.01, currency: 'WHEEL_BET' })
+                        body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0.01, currency: 'SOL' })
                     });
                 } catch(e) {}
 
@@ -1945,7 +1944,7 @@
                         earnedZrlBalance += won.val;
                     } else if (won.type === 'sol') {
                         solBalance += won.val;
-                        userRealDeposit += won.val; // Выигрыш зачисляется к личным средствам
+                        userRealDeposit += won.val; 
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1980,7 +1979,7 @@
         async function playSlots() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в слоты необходимо внести депозит в Solana.");
                 return;
             }
 
@@ -1988,7 +1987,7 @@
             
             if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
@@ -1999,12 +1998,12 @@
             updateUI();
             updateEnergyUI();
 
-            // Ставка уходит на мерчант
+            // Ставка уходит на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SLOTS_BET' })
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SOL' })
                 });
             } catch(e) {}
 
@@ -2115,7 +2114,7 @@
         async function startBlackjack() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в Blackjack необходимо внести депозит в Solana.");
                 return;
             }
 
@@ -2123,7 +2122,7 @@
             
             if (solBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
                 return;
             }
 
@@ -2131,12 +2130,12 @@
             userRealDeposit = Math.max(0, userRealDeposit - bjActiveBet);
             saveData(); updateUI(); updateEnergyUI();
 
-            // Ставка на мерчант
+            // Ставка на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: bjActiveBet, currency: 'BJ_BET' })
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: bjActiveBet, currency: 'SOL' })
                 });
             } catch(e) {}
 
@@ -2246,7 +2245,7 @@
         async function spinRoulette() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в рулетку необходимо внести депозит в Solana.");
                 return;
             }
 
@@ -2260,7 +2259,7 @@
             
             if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
@@ -2268,12 +2267,12 @@
             userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             saveData(); updateUI(); updateEnergyUI();
 
-            // Ставка на мерчант
+            // Ставка на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'ROULETTE_BET' })
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SOL' })
                 });
             } catch(e) {}
 
@@ -2652,7 +2651,7 @@
                         if (newDepositFound > 0) {
                             poolDeposit += newDepositFound; 
                             solBalance += newDepositFound;  
-                            userRealDeposit += newDepositFound; // Пополнение засчитывается как личный депозит
+                            userRealDeposit += newDepositFound; 
                         }
                     }
                 }
@@ -2674,7 +2673,6 @@
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
 
-            // Вывод Solana строго по личным средствам (депозиты + выигрыши)
             document.getElementById('withdraw-btn').onclick = () => {
                 triggerHaptic('medium');
                 playSound('click');
@@ -2738,7 +2736,7 @@
                             );
                         } else if (targetAddr !== null) {
                             triggerHaptic('error');
-                            tg.showAlert('⚠️️ Неверный адрес кошелька.');
+                            tg.showAlert('⚠ Неверный адрес кошелька.');
                         }
                     }
                 );
@@ -2807,7 +2805,7 @@
             if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -2838,13 +2836,13 @@
                             fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL_MERCHANT' })
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
                             });
                         } catch(e) {}
 
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL отправлено мерчанту (${MERCHANT_SOL_WALLET.substring(0,6)}...). Активен бустер: ${boosterName}!`);
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL отправлено мерчанту. Активен бустер: ${boosterName}!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
                         tg.showAlert('⚠ Purchase cancelled.');
@@ -2863,7 +2861,7 @@
             if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -2893,7 +2891,7 @@
                             fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL_MERCHANT' })
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
                             });
                         } catch(e) {}
 
