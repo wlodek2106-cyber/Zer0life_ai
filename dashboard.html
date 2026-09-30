@@ -1234,9 +1234,8 @@
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
-        // Персональный адрес пополнения на основе Telegram ID
-        const personalWalletAddr = "SOL" + telegramId.toString().padEnd(40, 'x').substring(0, 40);
-        const FIXED_DEPOSIT_WALLET = personalWalletAddr;
+        // Единый адрес депозита для всех пользователей
+        const FIXED_DEPOSIT_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
 
         let audioCtx = null;
@@ -1354,7 +1353,6 @@
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = FIXED_DEPOSIT_WALLET;
 
-        // Строго нулевые значения по умолчанию для новых пользователей
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit')) || 0.00; 
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
@@ -1838,7 +1836,6 @@
             triggerHaptic('light');
             playSound('click');
             
-            // Проверка депозита перед открытием казино
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
                 tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana через ваш кошелек.");
@@ -2702,7 +2699,7 @@
         }
 
         async function initWalletModalEvents() {
-            document.getElementById('wallet-short-addr').innerText = personalWalletAddr.substring(0, 6) + '...' + personalWalletAddr.slice(-6);
+            document.getElementById('wallet-short-addr').innerText = FIXED_DEPOSIT_WALLET.substring(0, 6) + '...' + FIXED_DEPOSIT_WALLET.slice(-6);
 
             try {
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
