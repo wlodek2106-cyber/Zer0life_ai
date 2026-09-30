@@ -23,151 +23,90 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            padding: 20px 16px 90px 16px;
+            padding: 20px 20px 90px 20px;
             overflow-y: auto;
         }
 
-        /* Новый дизайн кошелька (Web3 / Phantom style) */
-        .wallet-top-bar {
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
 
-        .wallet-profile-pill {
-            background: #181b24;
-            border: 1px solid #282d3d;
-            border-radius: 20px;
-            padding: 6px 12px;
+        .balance-section {
             display: flex;
             align-items: center;
-            gap: 8px;
-            cursor: pointer;
+            gap: 12px;
         }
 
-        .wallet-avatar-mini {
-            width: 24px;
-            height: 24px;
+        .avatar {
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             background-image: url('https://i.postimg.cc/J00FbBRZ/IMG-8899.jpg');
             background-size: cover;
             background-position: center;
+            border: 2px solid #2d303b;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s;
         }
 
-        .wallet-top-icons {
-            display: flex;
-            gap: 12px;
-            color: #8a8d98;
+        .avatar:active {
+            transform: scale(0.92);
         }
 
-        .wallet-main-balance-card {
-            margin-bottom: 20px;
-        }
-
-        .total-usd-amount {
-            font-size: 36px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            margin-bottom: 4px;
-        }
-
-        .balance-change-sub {
-            font-size: 13px;
-            color: #8a8d98;
-        }
-
-        /* Сетка быстрых действий (4 колонки) */
-        .quick-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 24px;
-        }
-
-        .action-icon-btn {
+        .balance-info {
             display: flex;
             flex-direction: column;
+        }
+
+        .balance-label {
+            font-size: 11px;
+            color: #a8f07a;
+            margin-bottom: 2px;
+            font-weight: 700;
+        }
+
+        .balance-amount {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .wallet-btn {
+            background: linear-gradient(135deg, #15171e 0%, #1f2330 100%);
+            border: 1px solid rgba(20, 241, 149, 0.3);
+            border-radius: 14px;
+            height: 44px;
+            padding: 0 14px;
+            display: flex;
+            justify-content: center;
             align-items: center;
             gap: 8px;
-            background: transparent;
-            border: none;
             cursor: pointer;
-            color: #ffffff;
-            padding: 0;
-        }
-
-        .action-circle {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            background: #181b24;
-            border: 1px solid #282d3d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
             transition: all 0.2s;
-        }
-
-        .action-circle:hover, .action-circle:active {
-            border-color: #14f195;
-            background: rgba(20, 241, 149, 0.08);
-            transform: scale(0.96);
-        }
-
-        .action-label {
-            font-size: 11px;
-            color: #8a8d98;
+            font-size: 13px;
             font-weight: 600;
+            color: #14f195;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
-        /* Блоки Watchlist / Portfolio */
-        .section-box {
-            background: #15171e;
-            border: 1px solid #222736;
-            border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 16px;
+        .wallet-btn:active {
+            transform: scale(0.95);
         }
 
-        .section-box-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-
-        .portfolio-token-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-
-        .portfolio-token-row:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .token-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .token-logo {
-            width: 36px;
-            height: 36px;
+        .sol-icon {
+            width: 16px;
+            height: 16px;
+            background: #14f195;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 14px;
+            font-size: 10px;
+            font-weight: 900;
+            color: #000;
         }
 
         .energy-card {
@@ -423,6 +362,47 @@
             margin-bottom: 10px;
         }
 
+        .asset-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .asset-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .asset-name {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .asset-sub {
+            font-size: 12px;
+            color: #8a8d98;
+        }
+
+        .asset-right {
+            text-align: right;
+        }
+
+        .asset-balance {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .asset-usd {
+            font-size: 12px;
+            color: #8a8d98;
+        }
+
         .wallet-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -443,6 +423,11 @@
             text-align: center;
         }
 
+        .wallet-action-btn:hover {
+            border-color: #14f195;
+            background-color: rgba(20, 241, 149, 0.05);
+        }
+
         .logout-btn {
             background: rgba(255, 71, 87, 0.1);
             border: 1px solid rgba(255, 71, 87, 0.3);
@@ -456,6 +441,10 @@
             margin-top: 12px;
             transition: 0.2s;
             text-align: center;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 71, 87, 0.2);
         }
 
         .booster-grid {
@@ -477,6 +466,12 @@
             overflow: hidden;
             transition: all 0.3s ease;
             cursor: pointer;
+        }
+
+        .booster-card:hover {
+            border-color: #a8f07a;
+            box-shadow: 0 0 20px rgba(168, 240, 122, 0.15);
+            transform: translateY(-2px);
         }
 
         .booster-card.featured {
@@ -524,6 +519,11 @@
             transition: 0.2s;
         }
 
+        .booster-card:hover .booster-price-btn {
+            background: #a8f07a;
+            color: #000;
+        }
+
         .custom-input-group {
             display: flex;
             flex-direction: column;
@@ -541,6 +541,10 @@
             outline: none;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .custom-input-field:focus {
+            border-color: #14f195;
         }
 
         .custom-modal-actions {
@@ -580,6 +584,9 @@
             cursor: pointer;
             transition: all 0.2s;
             text-align: left;
+        }
+        .farm-plan-card:hover {
+            border-color: #14f195;
         }
         .farm-plan-card.selected {
             background: rgba(20, 241, 149, 0.08);
@@ -654,121 +661,17 @@
     <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" />
 
     <div class="dashboard-container">
-        
-        <!-- ШАПКА В НОВОМ ДИЗАЙНЕ КОШЕЛЬКА -->
-        <div class="wallet-top-bar">
-            <div class="wallet-profile-pill" id="wallet-profile-pill">
-                <div class="wallet-avatar-mini" id="user-avatar-mini"></div>
-                <span id="header-username-label" style="font-size: 13px; font-weight: 700;">Zer0LifeRun</span>
-                <span style="font-size: 11px; color: #8a8d98;">▼</span>
-            </div>
-            <div class="wallet-top-icons">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path></svg>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            </div>
-        </div>
-
-        <!-- ГЛАВНЫЙ БАЛАНС USD -->
-        <div class="wallet-main-balance-card">
-            <div class="total-usd-amount" id="total-usd-balance">$0,00</div>
-            <div class="balance-change-sub">+$0,00 (+0%) 1D &gt;</div>
-        </div>
-
-        <!-- СЕТКА БЫСТРЫХ ДЕЙСТВИЙ (4 КОЛОНКИ) -->
-        <div class="quick-actions-grid">
-            <button class="action-icon-btn" onclick="openWalletModal()">
-                <div class="action-circle">↑</div>
-                <span class="action-label">Send</span>
-            </button>
-            <button class="action-icon-btn" onclick="openDepositModal()">
-                <div class="action-circle">↓</div>
-                <span class="action-label">Deposit</span>
-            </button>
-            <button class="action-icon-btn" onclick="openWalletModal()">
-                <div class="action-circle">🔲</div>
-                <span class="action-label">Scan</span>
-            </button>
-            <button class="action-icon-btn" onclick="openWalletModal()">
-                <div class="action-circle">⇄</div>
-                <span class="action-label">Swap</span>
-            </button>
-            <button class="action-icon-btn" onclick="openFarmingModal()">
-                <div class="action-circle">🌾</div>
-                <span class="action-label">Earn</span>
-            </button>
-            <button class="action-icon-btn" onclick="openFortuneModal()">
-                <div class="action-circle">🎰</div>
-                <span class="action-label">Gacha</span>
-            </button>
-            <button class="action-icon-btn" onclick="openFortuneModal()">
-                <div class="action-circle">📈</div>
-                <span class="action-label">Perps</span>
-            </button>
-            <button class="action-icon-btn" onclick="openBoostersModal()">
-                <div class="action-circle">•••</div>
-                <span class="action-label">More</span>
-            </button>
-        </div>
-
-        <!-- WATCHLIST БЛОК -->
-        <div class="section-box">
-            <div class="section-box-header">
-                <span>Watchlist</span>
-                <span style="color: #8a8d98; font-size: 14px;">&gt;</span>
-            </div>
-            <div style="text-align: center; padding: 12px 0;">
-                <div style="font-size: 13px; color: #8a8d98; margin-bottom: 10px;">Add tokens to track their prices here</div>
-                <button class="claim-btn" style="background: #1c212b; color: #fff; border: 1px solid #2d303b; font-size: 12px; padding: 8px 16px;">Add to watchlist</button>
-            </div>
-        </div>
-
-        <!-- PORTFOLIO БЛОК -->
-        <div class="section-box">
-            <div class="section-box-header">
-                <span>Portfolio</span>
-                <span style="color: #8a8d98; font-size: 14px;">&gt;</span>
-            </div>
-            
-            <div class="portfolio-token-row">
-                <div class="token-left">
-                    <div class="token-logo" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
-                    <div>
-                        <div style="font-size: 14px; font-weight: 700;">SOL <span style="font-size: 10px; background: rgba(20,241,149,0.2); color: #14f195; padding: 1px 4px; border-radius: 4px;">✓</span></div>
-                        <div style="font-size: 11px; color: #8a8d98;">$119,00 <span style="color: #14f195;">+1,31%</span></div>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: 700;" id="portfolio-sol-usd">$0,00</div>
-                    <div style="font-size: 11px; color: #8a8d98;" id="portfolio-sol-amount">0,0000</div>
+        <div class="header">
+            <div class="balance-section">
+                <div class="avatar" id="user-avatar" title="Нажмите, чтобы сменить фото профиля"></div>
+                <div class="balance-info">
+                    <span class="balance-label" id="header-username-label">Player</span>
+                    <span class="balance-amount" id="header-zrl-balance">0.00 ZRL</span>
                 </div>
             </div>
-
-            <div class="portfolio-token-row">
-                <div class="token-left">
-                    <div class="token-logo" style="background: rgba(59,130,246,0.15); color: #3b82f6;">$</div>
-                    <div>
-                        <div style="font-size: 14px; font-weight: 700;">USDC <span style="font-size: 10px; background: rgba(59,130,246,0.2); color: #3b82f6; padding: 1px 4px; border-radius: 4px;">✓</span></div>
-                        <div style="font-size: 11px; color: #8a8d98;">$1 <span style="color: #ff4757;">-0,01%</span></div>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: 700;">$0,00</div>
-                    <div style="font-size: 11px; color: #8a8d98;">0,00</div>
-                </div>
-            </div>
-
-            <div class="portfolio-token-row">
-                <div class="token-left">
-                    <div class="token-logo" style="background-image: url('https://i.postimg.cc/J00FbBRZ/IMG-8899.jpg'); background-size: cover;"></div>
-                    <div>
-                        <div style="font-size: 14px; font-weight: 700;">Zer0life</div>
-                        <div style="font-size: 11px; color: #ff4757;">-100%</div>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: 700;" id="portfolio-zrl-amount">0,00</div>
-                </div>
+            <div class="wallet-btn" id="wallet-btn">
+                <div class="sol-icon">S</div>
+                <span id="wallet-btn-text">0.0000 SOL</span>
             </div>
         </div>
 
@@ -904,11 +807,11 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА (EARN) -->
+    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА -->
     <div class="modal-overlay" id="farming-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 8px;">
-                <span class="modal-title" id="farming-hub-title" style="color: #14f195; font-size: 17px;">🌾 Earn & Farming Hub</span>
+                <span class="modal-title" id="farming-hub-title" style="color: #14f195; font-size: 17px;">🌾 Solana & ZRL Farming</span>
                 <button class="close-modal" onclick="closeFarmingModal()">&times;</button>
             </div>
 
@@ -921,31 +824,31 @@
                 <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
                     <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">0.1% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily Return</div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-3" onclick="selectFarmingPlan(3)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
                     <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">0.4% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily Return</div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-6" onclick="selectFarmingPlan(6)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
                     <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">0.7% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily Return</div>
+                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
                 </div>
 
                 <div class="farm-plan-card selected" id="plan-card-12" onclick="selectFarmingPlan(12)">
                     <div style="font-size: 10px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
                     <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">1.3% <span style="font-size: 10px; color: #fff;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Max Yield</div>
+                    <div style="font-size: 9px; color: #a8f07a;">Max ZRL Yield</div>
                 </div>
             </div>
 
             <div class="custom-input-group" style="margin-bottom: 10px;">
-                <label style="font-size: 11px; color: #14f195; font-weight: 700;">Amount to Lock:</label>
-                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 0.05" step="0.01" />
+                <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="0.01" />
             </div>
 
             <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 14px;" onclick="confirmFarmingDeposit()">
@@ -1162,29 +1065,29 @@
 
                 <div id="crypto-assets-list">
                     <div class="crypto-asset-row">
-                        <div class="token-left">
-                            <div class="token-logo" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
                             <div>
-                                <div style="font-size: 15px; font-weight: 700;">ZRL Token</div>
-                                <div style="font-size: 12px; color: #8a8d98;">Earned / Reward Balance</div>
+                                <div class="asset-name">ZRL Token</div>
+                                <div class="asset-sub">Earned / Reward Balance</div>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 15px; font-weight: 700;" id="asset-zrl-bal">0.00</div>
-                            <div style="font-size: 12px; color: #8a8d98;" id="asset-zrl-usd">$0.00</div>
+                        <div class="asset-right">
+                            <div class="asset-balance" id="asset-zrl-bal">0.00</div>
+                            <div class="asset-usd" id="asset-zrl-usd">$0.00</div>
                         </div>
                     </div>
                     <div class="crypto-asset-row">
-                        <div class="token-left">
-                            <div class="token-logo" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div style="font-size: 15px; font-weight: 700;">Solana (Баланс / Доступно)</div>
-                                <div style="font-size: 12px; color: #8a8d98;">Депозит + Выигрыши</div>
+                                <div class="asset-name">Solana (Баланс / Доступно)</div>
+                                <div class="asset-sub">Депозит + Выигрыши</div>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 15px; font-weight: 700;" id="asset-sol-bal">0.0000</div>
-                            <div style="font-size: 12px; color: #8a8d98;" id="asset-sol-usd">$0.00</div>
+                        <div class="asset-right">
+                            <div class="asset-balance" id="asset-sol-bal">0.0000</div>
+                            <div class="asset-usd" id="asset-sol-usd">$0.00</div>
                         </div>
                     </div>
                 </div>
@@ -1301,23 +1204,23 @@
 
     <!-- НИЖНЯЯ ПАНЕЛЬ -->
     <div class="bottom-nav">
-        <div class="nav-item" id="nav-home" onclick="openWalletModal()">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            Home
+        <div class="nav-item" id="nav-rewards">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
+            Leaderboard
         </div>
-        <div class="nav-item" id="nav-earn" onclick="openFarmingModal()">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-            Earn
-        </div>
-        <div class="nav-item" id="nav-casino" onclick="openFortuneModal()">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-            Casino
-        </div>
-        <div class="nav-item active" id="nav-wallet" onclick="openWalletModal()">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path></svg>
+        <div class="nav-item active" id="nav-wallet">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
-        <div class="nav-item" id="nav-boosters" onclick="openBoostersModal()">
+        <div class="nav-item" id="nav-farming" onclick="openFarmingModal()">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            Farming
+        </div>
+        <div class="nav-item" id="nav-fortune" onclick="openFortuneModal()">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            Casino
+        </div>
+        <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosters
         </div>
@@ -1328,11 +1231,13 @@
         tg.expand();
         tg.ready();
 
-        const FIXED_DEPOSIT_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
-        const MERCHANT_SOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
-
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
+
+        // Персональный адрес пополнения на основе Telegram ID
+        const personalWalletAddr = "SOL" + telegramId.toString().padEnd(40, 'x').substring(0, 40);
+        const FIXED_DEPOSIT_WALLET = personalWalletAddr;
+        const MERCHANT_SOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
 
         let audioCtx = null;
         function initAudio() {
@@ -1395,11 +1300,41 @@
             } catch(e) {}
         }
 
-        const avatarElement = document.getElementById('user-avatar-mini');
+        const avatarElement = document.getElementById('user-avatar');
+        const fileInput = document.getElementById('avatar-file-input');
+
         const savedAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar');
         if (savedAvatar) {
             avatarElement.style.backgroundImage = `url('${savedAvatar}')`;
         }
+
+        avatarElement.addEventListener('click', () => {
+            triggerHaptic('light');
+            playSound('click');
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    triggerHaptic('error');
+                    tg.showAlert('⚠️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    avatarElement.style.backgroundImage = `url('${base64Image}')`;
+                    localStorage.setItem(STORAGE_PREFIX + 'custom_avatar', base64Image);
+                    triggerHaptic('success');
+                    playSound('success');
+                    tg.showAlert('✅ Аватарка успешно обновлена!');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
         let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (500 ZRL/km)';
@@ -1419,6 +1354,7 @@
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = FIXED_DEPOSIT_WALLET;
 
+        // Строго нулевые значения по умолчанию для новых пользователей
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit')) || 0.00; 
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
@@ -1438,6 +1374,7 @@
         }
 
         let totalSlotsTurnoverSol = parseFloat(localStorage.getItem('total_slots_turnover_sol')) || 0.0;
+
         let freeSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'free_spins')) || 0;
         
         let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
@@ -1456,12 +1393,18 @@
         let isRunning = false;
         let watchId = null;
         let currentSpeedKmh = 0;
-        let lastLat = null, lastLon = null, lastTime = null;
+        let lastLat = null;
+        let lastLon = null;
+        let lastTime = null;
 
         const headerUsernameLabel = document.getElementById('header-username-label');
+        const headerZrlBalanceEl = document.getElementById('header-zrl-balance');
         const todayDistEl = document.getElementById('today-distance');
         const stepsEl = document.getElementById('steps-display');
         const todayEarnedEl = document.getElementById('today-earned');
+        const levelTextEl = document.getElementById('current-level-text');
+        const progressTextEl = document.getElementById('level-progress-text');
+        const progressBarEl = document.getElementById('level-progress-bar');
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
@@ -1482,12 +1425,6 @@
             document.getElementById('farming-modal').style.display = 'none';
         }
 
-        window.openBoostersModal = function() {
-            triggerHaptic('light');
-            playSound('click');
-            document.getElementById('boosters-modal').style.display = 'flex';
-        }
-
         window.switchFarmingAsset = function(asset) {
             triggerHaptic('selection');
             playSound('click');
@@ -1498,13 +1435,35 @@
             const titleEl = document.getElementById('farming-hub-title');
 
             if (asset === 'sol') {
-                btnSol.style.background = '#14f195'; btnSol.style.color = '#000'; btnSol.style.fontWeight = '800';
-                btnZrl.style.background = 'transparent'; btnZrl.style.color = '#8a8d98'; btnZrl.style.fontWeight = '700';
+                btnSol.style.background = '#14f195';
+                btnSol.style.color = '#000';
+                btnSol.style.fontWeight = '800';
+
+                btnZrl.style.background = 'transparent';
+                btnZrl.style.color = '#8a8d98';
+                btnZrl.style.fontWeight = '700';
+
                 titleEl.innerText = '🌾 Solana & ZRL Farming';
+
+                document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.7% <span style="font-size: 10px; color: #14f195;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '1.3% <span style="font-size: 10px; color: #fff;">/day</span>';
             } else {
-                btnZrl.style.background = '#a8f07a'; btnZrl.style.color = '#000'; btnZrl.style.fontWeight = '800';
-                btnSol.style.background = 'transparent'; btnSol.style.color = '#8a8d98'; btnSol.style.fontWeight = '700';
+                btnZrl.style.background = '#a8f07a';
+                btnZrl.style.color = '#000';
+                btnZrl.style.fontWeight = '800';
+
+                btnSol.style.background = 'transparent';
+                btnSol.style.color = '#8a8d98';
+                btnSol.style.fontWeight = '700';
+
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
+
+                document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.35% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '0.65% <span style="font-size: 10px; color: #fff;">/day</span>';
             }
         }
 
@@ -1512,11 +1471,15 @@
             triggerHaptic('light');
             playSound('click');
             selectedFarmingMonths = months;
+
             [1, 3, 6, 12].forEach(m => {
                 const card = document.getElementById(`plan-card-${m}`);
                 if (card) {
-                    if (m === months) card.classList.add('selected');
-                    else card.classList.remove('selected');
+                    if (m === months) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
                 }
             });
         }
@@ -1543,8 +1506,11 @@
                 return;
             }
 
-            if (currentFarmingAsset === 'sol') solBalance -= amount;
-            else totalBalance -= amount;
+            if (currentFarmingAsset === 'sol') {
+                solBalance -= amount;
+            } else {
+                totalBalance -= amount;
+            }
 
             let dailyRate = 0.001; 
             if (selectedFarmingMonths === 3) dailyRate = 0.004;
@@ -1556,7 +1522,7 @@
             const durationMs = selectedFarmingMonths * 30 * 24 * 60 * 60 * 1000;
             const now = Date.now();
 
-            activeFarms.push({
+            const newDeposit = {
                 id: 'farm_' + Date.now(),
                 asset: currentFarmingAsset,
                 amount: amount,
@@ -1565,8 +1531,9 @@
                 startTime: now,
                 endTime: now + durationMs,
                 claimedReward: 0
-            });
+            };
 
+            activeFarms.push(newDeposit);
             saveFarms();
             saveData();
             updateUI();
@@ -1586,12 +1553,15 @@
             const now = Date.now();
             const elapsedMs = Math.max(0, Math.min(now, farm.endTime) - farm.startTime);
             const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
-            return Math.max(0, (farm.amount * farm.dailyRate * elapsedDays) - farm.claimedReward);
+            const totalEarned = farm.amount * farm.dailyRate * elapsedDays;
+            return Math.max(0, totalEarned - farm.claimedReward);
         }
 
         window.renderFarmingDeposits = function() {
             const container = document.getElementById('farming-deposits-list');
-            document.getElementById('active-farms-count').innerText = `${activeFarms.length} active`;
+            const countEl = document.getElementById('active-farms-count');
+            
+            countEl.innerText = `${activeFarms.length} active`;
 
             if (activeFarms.length === 0) {
                 container.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>`;
@@ -1601,15 +1571,35 @@
             container.innerHTML = '';
             activeFarms.forEach((farm) => {
                 const now = Date.now();
-                const isUnlocked = now >= farm.endTime;
+                const timeLeft = farm.endTime - now;
+                const isUnlocked = timeLeft <= 0;
                 const currentReward = calculateFarmRewards(farm);
 
+                let timeStr = "";
+                if (isUnlocked) {
+                    timeStr = "<span style='color: #14f195; font-weight: 800;'>Unlocked ✅</span>";
+                } else {
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    timeStr = `<span style='color: #f59e0b;'>⏳ ${days}d ${hours}h ${mins}m ${secs}s</span>`;
+                }
+
                 const card = document.createElement('div');
-                card.style.cssText = `background: #181b24; border: 1px solid ${isUnlocked ? '#14f195' : '#282d3d'}; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;`;
+                card.style.cssText = `
+                    background: #181b24;
+                    border: 1px solid ${isUnlocked ? '#14f195' : '#282d3d'};
+                    border-radius: 14px;
+                    padding: 10px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                `;
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
-                        <span style="font-size: 11px; color: ${isUnlocked ? '#14f195' : '#f59e0b'};">${isUnlocked ? 'Unlocked ✅' : 'Active ⏳'}</span>
+                        <span style="font-size: 11px;">${timeStr}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #8a8d98;">
                         <span>Earned: <strong style="color: #a8f07a;">+${currentReward.toFixed(2)} ZRL</strong></span>
@@ -1625,10 +1615,13 @@
         window.claimOrWithdrawFarm = function(farmId) {
             triggerHaptic('medium');
             playSound('coin');
+
             const farmIndex = activeFarms.findIndex(f => f.id === farmId);
             if (farmIndex === -1) return;
 
             const farm = activeFarms[farmIndex];
+            const now = Date.now();
+            const isUnlocked = now >= farm.endTime;
             const currentReward = calculateFarmRewards(farm);
 
             if (currentReward > 0) {
@@ -1636,17 +1629,30 @@
                 farm.claimedReward += currentReward;
             }
 
-            if (Date.now() >= farm.endTime) {
-                if (farm.asset === 'sol') solBalance += farm.amount;
-                else totalBalance += farm.amount;
+            if (isUnlocked) {
+                if (farm.asset === 'sol') {
+                    solBalance += farm.amount;
+                } else {
+                    totalBalance += farm.amount;
+                }
                 activeFarms.splice(farmIndex, 1);
-                tg.showAlert(`🎉 Пакет разблокирован!\nДепозит зачислен на баланс.`);
+                tg.showAlert(`🎉 Пакет разблокирован!\n\nДепозит (${farm.amount} ${farm.asset.toUpperCase()}) и проценты зачислены!`);
             } else {
-                tg.showAlert(`🎁 Награда +${currentReward.toFixed(2)} ZRL собрана!`);
+                tg.showAlert(`🎁 Награда собрана!\n\n+${currentReward.toFixed(2)} ZRL зачислено на баланс.`);
             }
 
-            saveFarms(); saveData(); updateUI(); renderFarmingDeposits();
+            saveFarms();
+            saveData();
+            updateUI();
+            renderFarmingDeposits();
         }
+
+        setInterval(() => {
+            const modal = document.getElementById('farming-modal');
+            if (modal && modal.style.display === 'flex') {
+                renderFarmingDeposits();
+            }
+        }, 1000);
 
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
@@ -1656,8 +1662,51 @@
             { text: "0.01 SOL", color: "#10b981", textColor: "#000", type: "sol", val: 0.01 },
             { text: "600 ZRL", color: "#a855f7", textColor: "#fff", type: "zrl", val: 600 },
             { text: "10k ZRL", color: "#ffffff", textColor: "#000", type: "zrl", val: 10000 },
-            { text: "100 ZRL", color: "#38bdf8", textColor: "#fff", type: "zrl", val: 100 }
+            { text: "100 ZRL", color: "#38bdf8", textColor: "#fff", type: "zrl", val: 100 },
+            { text: "150 ZRL", color: "#f43f5e", textColor: "#fff", type: "zrl", val: 150 },
+            { text: "1000 ZRL", color: "#15803d", textColor: "#fff", type: "zrl", val: 1000 },
+            { text: "200 ZRL", color: "#facc15", textColor: "#000", type: "zrl", val: 200 },
+            { text: "250 ZRL", color: "#9333ea", textColor: "#fff", type: "zrl", val: 250 },
+            { text: "2000 ZRL", color: "#16a34a", textColor: "#fff", type: "zrl", val: 2000 },
+            { text: "300 ZRL", color: "#0284c7", textColor: "#fff", type: "zrl", val: 300 },
+            { text: "350 ZRL", color: "#db2777", textColor: "#fff", type: "zrl", val: 350 },
+            { text: "400 ZRL", color: "#7c3aed", textColor: "#fff", type: "zrl", val: 400 }
         ];
+
+        function drawWheel() {
+            const canvas = document.getElementById('fortune-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const numSectors = wheelSectors.length;
+            const arcSize = (2 * Math.PI) / numSectors;
+            const center = canvas.width / 2;
+            const radius = center - 15;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < numSectors; i++) {
+                const angle = i * arcSize - Math.PI / 2;
+                
+                ctx.beginPath();
+                ctx.fillStyle = wheelSectors[i].color;
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, angle, angle + arcSize);
+                ctx.lineTo(center, center);
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "rgba(0,0,0,0.2)";
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = wheelSectors[i].textColor;
+                ctx.font = "bold 34px sans-serif";
+                ctx.fillText(wheelSectors[i].text, radius - 50, 12);
+                ctx.restore();
+            }
+        }
 
         function saveData() {
             localStorage.setItem(STORAGE_PREFIX + 'total_balance', totalBalance);
@@ -1675,54 +1724,599 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
+            localStorage.setItem('total_slots_turnover_sol', totalSlotsTurnoverSol);
+            localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
+            localStorage.setItem('slots_jackpot_threshold', currentJackpotThreshold);
+            localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
+
+            syncStatsToServer();
+        }
+
+        async function syncStatsToServer() {
+            if (!username) return;
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/update-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegramId: telegramId,
+                        username: username,
+                        walletAddress: userWallet,
+                        distance: totalDistance,
+                        balance: totalBalance
+                    })
+                });
+            } catch(e) {}
         }
 
         function updateEnergyUI() {
             const energyText = document.getElementById('energy-text');
             const energyBarFill = document.getElementById('energy-bar-fill');
-            if(energyText && energyBarFill) {
-                energyText.innerText = `${currentEnergy.toFixed(1)} / ${maxEnergy}h`;
-                energyBarFill.style.width = `${(currentEnergy / maxEnergy) * 100}%`;
+            
+            energyText.innerText = `${currentEnergy.toFixed(1)} / ${maxEnergy}h`;
+            const percent = (currentEnergy / maxEnergy) * 100;
+            energyBarFill.style.width = `${percent}%`;
+
+            if (currentEnergy <= 0) {
+                energyBarFill.style.background = '#ff4757';
+            } else {
+                energyBarFill.style.background = 'linear-gradient(90deg, #10b981 0%, #14f195 100%)';
             }
 
             const bootsText = document.getElementById('boots-durability-text');
             const bootsBarFill = document.getElementById('boots-bar-fill');
-            if(bootsText && bootsBarFill) {
-                bootsText.innerText = `${bootsHP.toFixed(1)} / ${maxBootsHP} HP`;
-                bootsBarFill.style.width = `${(bootsHP / maxBootsHP) * 100}%`;
+            bootsText.innerText = `${bootsHP.toFixed(1)} / ${maxBootsHP} HP`;
+            const bootsPercent = (bootsHP / maxBootsHP) * 100;
+            bootsBarFill.style.width = `${bootsPercent}%`;
+
+            if (bootsHP <= 20) {
+                bootsBarFill.style.background = '#ff4757';
+            } else {
+                bootsBarFill.style.background = 'linear-gradient(90deg, #ca8a04 0%, #a8f07a 100%)';
+            }
+
+            if (boosterExpiryTime > 0) {
+                const timeLeft = Math.max(0, Math.floor((boosterExpiryTime - Date.now()) / 1000));
+                if (timeLeft > 0) {
+                    const mins = Math.floor(timeLeft / 60);
+                    const secs = timeLeft % 60;
+                    document.getElementById('booster-name-text').innerText = `${activeBoosterName} (${mins}m ${secs}s left)`;
+                } else {
+                    ZRL_PER_KM = 500;
+                    activeBoosterName = 'Standard (500 ZRL/km)';
+                    boosterExpiryTime = 0;
+                    localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
+                    document.getElementById('booster-name-text').innerText = activeBoosterName;
+                }
+            } else {
+                document.getElementById('booster-name-text').innerText = activeBoosterName;
             }
         }
 
-        function updateWalletUI() {
-            if(headerUsernameLabel) headerUsernameLabel.innerText = username || 'Zer0LifeRun';
+        setInterval(() => {
+            if (boosterExpiryTime > 0) updateEnergyUI();
+        }, 1000);
+
+        document.getElementById('repair-boots-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
+            if (bootsHP >= 100) {
+                tg.showAlert("✅ Your sneakers are already at 100% durability!");
+                return;
+            }
+            const repairCost = 50;
+            if (totalBalance < repairCost) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient ZRL balance! You need ${repairCost} ZRL to repair your sneakers.`);
+                return;
+            }
+
+            totalBalance -= repairCost;
+            bootsHP = 100.0;
+            saveData();
+            updateUI();
+            updateEnergyUI();
+            triggerHaptic('success');
+            playSound('success');
+            tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
+        };
+
+        function switchArcadeGame(gameKey) {
+            triggerHaptic('selection');
+            playSound('click');
             
-            // Расчет общей стоимости USD и обновление элементов интерфейса нового дизайна кошелька
-            const totalUSD = (solBalance * 140) + (totalBalance * 0.001);
-            const totalUsdEl = document.getElementById('total-usd-balance');
-            if(totalUsdEl) totalUsdEl.innerText = `$${totalUSD.toFixed(2)}`;
+            document.querySelectorAll('#fortune-modal .lb-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.arcade-game-container').forEach(c => c.style.display = 'none');
 
-            const portfolioSolUsd = document.getElementById('portfolio-sol-usd');
-            if(portfolioSolUsd) portfolioSolUsd.innerText = `$${(solBalance * 140).toFixed(2)}`;
+            document.getElementById(`tab-game-${gameKey}`).classList.add('active');
+            document.getElementById(`arcade-game-${gameKey}`).style.display = 'block';
 
-            const portfolioSolAmount = document.getElementById('portfolio-sol-amount');
-            if(portfolioSolAmount) portfolioSolAmount.innerText = solBalance.toFixed(4);
+            if (gameKey === 'wheel') drawWheel();
+        }
 
-            const portfolioZrlAmount = document.getElementById('portfolio-zrl-amount');
-            if(portfolioZrlAmount) portfolioZrlAmount.innerText = totalBalance.toLocaleString('ru-RU', {maximumFractionDigits: 2});
+        function openFortuneModal() {
+            triggerHaptic('light');
+            playSound('click');
+            
+            // Проверка депозита перед открытием казино
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana через ваш кошелек.");
+                return;
+            }
 
-            const assetZrlBal = document.getElementById('asset-zrl-bal');
-            if(assetZrlBal) assetZrlBal.innerText = totalBalance.toFixed(2);
+            document.getElementById('fortune-modal').style.display = 'flex';
+            switchArcadeGame('roulette'); 
+            updateEnergyUI();
+        }
 
-            const assetSolBal = document.getElementById('asset-sol-bal');
-            if(assetSolBal) assetSolBal.innerText = solBalance.toFixed(4);
+        function closeFortuneModal() {
+            triggerHaptic('light');
+            document.getElementById('fortune-modal').style.display = 'none';
+        }
+
+        let currentWheelRotation = 0;
+
+        async function spinFortuneWheel() {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                return;
+            }
+
+            if (freeSpins <= 0 && solBalance < 0.01) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL.`);
+                return;
+            }
+
+            triggerHaptic('medium');
+            playSound('click');
+            
+            const spinBtn = document.getElementById('spin-wheel-btn');
+            const canvasEl = document.getElementById('fortune-canvas');
+
+            if (freeSpins > 0) {
+                freeSpins--;
+            } else {
+                solBalance -= 0.01; 
+                saveData();
+                updateUI();
+                updateEnergyUI();
+
+                try {
+                    await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            telegramId: telegramId,
+                            walletAddress: MERCHANT_SOL_WALLET,
+                            amount: 0.01,
+                            currency: 'SOL'
+                        })
+                    });
+                } catch(e) {}
+            }
+
+            spinBtn.disabled = true;
+            spinBtn.style.opacity = '0.5';
+
+            let totalSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'total_spins')) || 0;
+            totalSpins++;
+            localStorage.setItem(STORAGE_PREFIX + 'total_spins', totalSpins);
+
+            let weightedIndices = [];
+            for (let i = 0; i < wheelSectors.length; i++) {
+                const sector = wheelSectors[i];
+                let weight = 0;
+
+                if (sector.type === 'sol' && sector.val === 0.1) {
+                    weight = (totalSpins >= 50) ? 1 : 0; 
+                } else if (sector.type === 'sol' && sector.val === 0.01) {
+                    weight = (totalSpins >= 10) ? 4 : 0; 
+                } else if (sector.type === 'box') {
+                    weight = 8; 
+                } else if (sector.type === 'free_spin' || sector.type === 'boots') {
+                    weight = 5; 
+                } else {
+                    weight = 12; 
+                }
+
+                for (let w = 0; w < weight; w++) {
+                    weightedIndices.push(i);
+                }
+            }
+
+            const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
+            const won = wheelSectors[winningIndex];
+
+            if (won.type === 'box') {
+                won.val = Math.floor(Math.random() * 91) + 10; 
+            }
+
+            const arcSize = 360 / wheelSectors.length;
+            const drift = Math.random() * (arcSize - 4) + 2; 
+            let targetAngle = 360 - (winningIndex * arcSize) - drift;
+            if (targetAngle < 0) targetAngle += 360;
+
+            const extraSpins = 360 * 5; 
+            currentWheelRotation = currentWheelRotation - (currentWheelRotation % 360) + extraSpins + targetAngle;
+            
+            canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
+
+            setTimeout(() => {
+                triggerHaptic('success');
+                playSound('coin');
+                
+                if (won.type === 'box') {
+                    closeFortuneModal();
+                    pendingBoxReward = won.val;
+                    document.getElementById('mystery-box-modal').style.display = 'flex';
+                } else {
+                    if (won.type === 'zrl') {
+                        totalBalance += won.val;
+                    } else if (won.type === 'sol') {
+                        solBalance += won.val; 
+                    } else if (won.type === 'free_spin') {
+                        freeSpins++;
+                    } else if (won.type === 'boots') {
+                        ZRL_PER_KM = 1500;
+                        activeBoosterName = 'Boots x2 (1,500 ZRL/km)';
+                        boosterExpiryTime = Date.now() + (60 * 60 * 1000);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
+                    }
+
+                    saveData();
+                    updateUI();
+                    updateEnergyUI();
+
+                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
+                    
+                    if (freeSpins > 0) {
+                        spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
+                    } else {
+                        spinBtn.innerText = `Spin Wheel (0.01 SOL) 🚀`;
+                    }
+                }
+                
+                spinBtn.disabled = false;
+                spinBtn.style.opacity = '1';
+            }, 4000);
+        }
+
+        const slotSymbols = ['7️⃣', '🍇', '🍉', '🍊', '🍒'];
+        
+        async function playSlots() {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                return;
+            }
+
+            const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
+            
+            if (solBalance < betSOL) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                return;
+            }
+
+            solBalance -= betSOL; 
+            totalSlotsTurnoverSol += betSOL; 
+            saveData();
+            updateUI();
+            updateEnergyUI();
+
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SOL' })
+                });
+            } catch(e) {}
+
+            const spinBtn = document.getElementById('spin-slots-btn');
+            spinBtn.disabled = true;
+
+            let interval = setInterval(() => {
+                document.getElementById('reel1').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                document.getElementById('reel2').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                document.getElementById('reel3').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                playSound('click');
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                
+                const rand = Math.random();
+                let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
+
+                const canHitJackpot = (totalSlotsTurnoverSol >= currentJackpotThreshold) && (jackpotWinsThisMonth < 2);
+
+                if (canHitJackpot && rand < 0.015) { 
+                    r1 = r2 = r3 = '7️⃣';
+                    winSOL = 1.0;
+                    isJackpot = true;
+                    
+                    jackpotWinsThisMonth++;
+                    currentJackpotThreshold += 25.0;
+                } else if (canHitJackpot && rand < 0.08) { 
+                    r1 = r2 = r3 = '🍉';
+                    winSOL = betSOL * 10;
+                } else if (rand < 0.25) { 
+                    r1 = '🍇'; r2 = '🍇'; r3 = '🍇';
+                    winZRL = Math.floor(Math.random() * 901) + 100; 
+                } else if (rand < 0.45) { 
+                    r1 = '🍊'; r2 = '🍊'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; winSOL = betSOL * 1.5;
+                } else { 
+                    r1 = '🍒'; r2 = slotSymbols[Math.floor(Math.random() * 4)]; r3 = '🍉';
+                }
+
+                document.getElementById('reel1').innerText = r1;
+                document.getElementById('reel2').innerText = r2;
+                document.getElementById('reel3').innerText = r3;
+
+                spinBtn.disabled = false;
+
+                if (winSOL > 0) {
+                    solBalance += winSOL; 
+                    saveData();
+                    updateUI();
+                    updateEnergyUI();
+                    triggerHaptic('success');
+                    playSound('coin');
+
+                    if (isJackpot) {
+                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! 🚀`);
+                    } else {
+                        tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL!`);
+                    }
+                } else if (winZRL > 0) {
+                    totalBalance += winZRL;
+                    saveData();
+                    updateUI();
+                    updateEnergyUI();
+                    triggerHaptic('success');
+                    playSound('coin');
+                    tg.showAlert(`🎁 ВЫИГРЫШ!\n\nВы выиграли: ${winZRL} ZRL!`);
+                } else {
+                    triggerHaptic('error');
+                    if (jackpotWinsThisMonth >= 2) {
+                        tg.showAlert(`🔒 Лимит джекпотов на этот месяц исчерпан (2/2).`);
+                    } else if (totalSlotsTurnoverSol < currentJackpotThreshold) {
+                        tg.showAlert(`💀 Увы! Джекпот заблокирован. Сделайте больше оборота.`);
+                    } else {
+                        tg.showAlert('💀 Увы! Повезет в следующий раз.');
+                    }
+                }
+            }, 2000);
+        }
+
+        let bjDeck = [], playerHand = [], dealerHand = [], bjActiveBet = 0;
+
+        function getCardValue(card) {
+            if (['J','Q','K'].includes(card.val)) return 10;
+            if (card.val === 'A') return 11;
+            return parseInt(card.val);
+        }
+
+        function calcHandScore(hand) {
+            let score = 0, aces = 0;
+            hand.forEach(c => {
+                score += getCardValue(c);
+                if (c.val === 'A') aces++;
+            });
+            while (score > 21 && aces > 0) { score -= 10; aces--; }
+            return score;
+        }
+
+        function createDeck() {
+            const suits = ['♠','♥','♦','♣'], values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+            let deck = [];
+            suits.forEach(s => values.forEach(v => deck.push({ suit: s, val: v })));
+            return deck.sort(() => Math.random() - 0.5);
+        }
+
+        async function startBlackjack() {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                return;
+            }
+
+            bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
+            
+            if (solBalance < bjActiveBet) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
+                return;
+            }
+
+            solBalance -= bjActiveBet; 
+            saveData(); updateUI(); updateEnergyUI();
+
+            bjDeck = createDeck();
+            playerHand = [bjDeck.pop(), bjDeck.pop()];
+            dealerHand = [bjDeck.pop(), bjDeck.pop()];
+
+            document.getElementById('bj-hit-btn').disabled = false;
+            document.getElementById('bj-hit-btn').style.opacity = '1';
+            document.getElementById('bj-stand-btn').disabled = false;
+            document.getElementById('bj-stand-btn').style.opacity = '1';
+            document.getElementById('start-bj-btn').disabled = true;
+
+            renderBJ();
+
+            if (calcHandScore(playerHand) === 21) {
+                bjFinish(2.5, "🎉 БЛЭКДЖЕК! Выиграли x2.5 SOL!");
+            }
+        }
+
+        function renderBJ() {
+            const pCardsEl = document.getElementById('player-cards');
+            const dCardsEl = document.getElementById('dealer-cards');
+            pCardsEl.innerHTML = playerHand.map(c => `<div style="background:#ffffff; color:${['♥','♦'].includes(c.suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${c.val}${c.suit}</div>`).join('');
+            
+            if (document.getElementById('start-bj-btn').disabled) {
+                dCardsEl.innerHTML = `<div style="background:#ffffff; color:${['♥','♦'].includes(dealerHand[0].suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${dealerHand[0].val}${dealerHand[0].suit}</div><div style="background:#1e293b; color:#facc15; padding:6px 10px; border-radius:6px; border:1px dashed #d4af37;">🎴</div>`;
+                document.getElementById('dealer-score').innerText = getCardValue(dealerHand[0]);
+            } else {
+                dCardsEl.innerHTML = dealerHand.map(c => `<div style="background:#ffffff; color:${['♥','♦'].includes(c.suit)?'#dc2626':'#000000'}; padding:6px 10px; border-radius:6px; font-weight:900; box-shadow:0 2px 6px rgba(0,0,0,0.4);">${c.val}${c.suit}</div>`).join('');
+                document.getElementById('dealer-score').innerText = calcHandScore(dealerHand);
+            }
+
+            document.getElementById('player-score').innerText = calcHandScore(playerHand);
+        }
+
+        function bjHit() {
+            triggerHaptic('light');
+            playerHand.push(bjDeck.pop());
+            renderBJ();
+            if (calcHandScore(playerHand) > 21) {
+                bjFinish(0, "💥 Перебор! Вы проиграли ставку.");
+            }
+        }
+
+        function bjStand() {
+            while (calcHandScore(dealerHand) < 17) {
+                dealerHand.push(bjDeck.pop());
+            }
+            renderBJ();
+
+            const pScore = calcHandScore(playerHand);
+            const dScore = calcHandScore(dealerHand);
+
+            if (dScore > 21 || pScore > dScore) {
+                bjFinish(2, "🎉 Вы победили дилера!");
+            } else if (pScore === dScore) {
+                bjFinish('return', "🤝 Ничья! Ставка возвращена на баланс.");
+            } else {
+                bjFinish(0, "💀 Дилер выиграл.");
+            }
+        }
+
+        function bjFinish(multiplier, msg) {
+            if (multiplier === 'return') {
+                solBalance += bjActiveBet; 
+                saveData(); updateUI(); updateEnergyUI();
+                triggerHaptic('selection');
+            } else if (multiplier > 0) {
+                const solWon = bjActiveBet * multiplier;
+                solBalance += solWon; 
+                saveData(); updateUI(); updateEnergyUI();
+                triggerHaptic('success'); playSound('coin');
+            } else {
+                triggerHaptic('error');
+            }
+            tg.showAlert(msg);
+            document.getElementById('bj-hit-btn').disabled = true;
+            document.getElementById('bj-hit-btn').style.opacity = '0.5';
+            document.getElementById('bj-stand-btn').disabled = true;
+            document.getElementById('bj-stand-btn').style.opacity = '0.5';
+            document.getElementById('start-bj-btn').disabled = false;
+        }
+
+        let selectedRouletteBetType = null;
+
+        function setRouletteBet(betType) {
+            triggerHaptic('light');
+            selectedRouletteBetType = betType;
+            
+            ['red', 'black', 'even', 'odd'].forEach(t => {
+                const btn = document.getElementById(`roulette-btn-${t}`);
+                if (btn) {
+                    if (t === betType) {
+                        btn.style.borderColor = '#facc15';
+                        btn.style.boxShadow = '0 0 15px rgba(250,204,21,0.6)';
+                    } else {
+                        btn.style.borderColor = 'transparent';
+                        btn.style.boxShadow = 'none';
+                    }
+                }
+            });
+        }
+
+        async function spinRoulette() {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                return;
+            }
+
+            if (!selectedRouletteBetType) {
+                triggerHaptic('warning');
+                tg.showAlert('⚠ Сделайте ставку (выберите Красное, Черное, Чёт или Нечёт)!');
+                return;
+            }
+
+            const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
+            
+            if (solBalance < betSOL) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                return;
+            }
+
+            solBalance -= betSOL; 
+            saveData(); updateUI(); updateEnergyUI();
+
+            const ballEl = document.getElementById('roulette-ball-display');
+            let timer = setInterval(() => {
+                const randomNum = Math.floor(Math.random() * 37);
+                ballEl.innerText = `🎯 [ ${randomNum} ]`;
+                playSound('click');
+            }, 80);
+
+            setTimeout(() => {
+                clearInterval(timer);
+                const winningNum = Math.floor(Math.random() * 37);
+                const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNum);
+                const winningColor = (winningNum === 0) ? 'green' : (isRed ? 'red' : 'black');
+                const isEven = (winningNum !== 0 && winningNum % 2 === 0);
+
+                ballEl.innerText = `🎯 [ ${winningNum} ${winningColor === 'red' ? '🔴' : (winningColor === 'black' ? '⚫' : '🟢')} ]`;
+
+                let won = false;
+                if (selectedRouletteBetType === 'red' && winningColor === 'red') won = true;
+                else if (selectedRouletteBetType === 'black' && winningColor === 'black') won = true;
+                else if (selectedRouletteBetType === 'even' && isEven) won = true;
+                else if (selectedRouletteBetType === 'odd' && !isEven && winningNum !== 0) won = true;
+
+                if (won) {
+                    const winSOL = betSOL * 2;
+                    solBalance += winSOL; 
+                    saveData(); updateUI(); updateEnergyUI();
+                    triggerHaptic('success'); playSound('coin');
+                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен на баланс!`);
+                } else {
+                    triggerHaptic('error');
+                    tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
+                }
+            }, 2500);
+        }
+
+        setInterval(() => {
+            if (!isRunning && currentEnergy < maxEnergy) {
+                currentEnergy = Math.min(maxEnergy, currentEnergy + 0.5);
+                updateEnergyUI();
+                saveData();
+            }
+        }, 30000);
+
+        function updateWalletUI() {
+            headerUsernameLabel.innerText = username || 'Player';
+            headerZrlBalanceEl.innerText = totalBalance.toFixed(2) + " ZRL";
+            document.getElementById('wallet-btn-text').innerText = solBalance.toFixed(4) + " SOL";
         }
 
         function checkRegistration() {
             const registerModal = document.getElementById('register-modal');
             if (!username) {
-                if(registerModal) registerModal.style.display = 'flex';
+                registerModal.style.display = 'flex';
             } else {
-                if(registerModal) registerModal.style.display = 'none';
+                registerModal.style.display = 'none';
                 updateUI();
                 checkDepositAutomatically();
             }
@@ -1740,21 +2334,25 @@
             }
 
             username = inputName;
-            totalBalance += 1000; // Бонус 1000 ZRL
+            totalBalance += 1000; // Регистрационный бонус 1000 ZRL
             saveData();
 
             try {
                 await fetch('https://zer0life-ai-iz5n.onrender.com/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegramId: telegramId, username: username, walletAddress: FIXED_DEPOSIT_WALLET })
+                    body: JSON.stringify({
+                        telegramId: telegramId,
+                        username: username,
+                        walletAddress: FIXED_DEPOSIT_WALLET
+                    })
                 });
             } catch(e) {}
 
             document.getElementById('register-modal').style.display = 'none';
             triggerHaptic('success');
             playSound('success');
-            tg.showAlert(`🎉 Welcome, ${username}!\n🎁 +1,000 ZRL registration bonus claimed!`);
+            tg.showAlert(`🎉 Welcome, ${username}!\n\n🎁 +1,000 ZRL registration bonus claimed!`);
             updateUI();
             checkDepositAutomatically();
         };
@@ -1767,72 +2365,450 @@
             const todayStr = new Date().toDateString();
             const btn = document.getElementById('checkin-btn');
             const label = document.getElementById('streak-day-label');
-            if(!label || !btn) return;
 
             label.innerText = `Day ${currentDay} of 7`;
+
+            for (let i = 1; i <= 7; i++) {
+                const box = document.getElementById(`day-box-${i}`);
+                if (!box) continue;
+                
+                if (i < currentDay || (i === currentDay && lastCheckinDate === todayStr)) {
+                    box.style.background = 'rgba(20, 241, 149, 0.15)';
+                    box.style.borderColor = '#14f195';
+                    box.style.opacity = '0.7';
+                } else if (i === currentDay) {
+                    box.style.background = '#1f2937';
+                    box.style.borderColor = '#a8f07a';
+                    box.style.opacity = '1';
+                } else {
+                    box.style.background = '#1c212b';
+                    box.style.borderColor = '#2d303b';
+                    box.style.opacity = '0.5';
+                }
+            }
+
             if (lastCheckinDate === todayStr) {
                 btn.innerText = "Claimed Today ✅";
                 btn.style.background = "#2d303b";
                 btn.style.color = "#8a8d98";
+                btn.style.cursor = "not-allowed";
             } else {
                 btn.innerText = `Claim Day ${currentDay} (${REWARD_AMOUNTS[currentDay - 1]} ZRL)`;
+                btn.style.background = "#14f195";
+                btn.style.color = "#000";
+                btn.style.cursor = "pointer";
             }
         }
 
         document.getElementById('checkin-btn').addEventListener('click', () => {
             triggerHaptic('medium');
+            playSound('click');
             const todayStr = new Date().toDateString();
-            if (lastCheckinDate === todayStr) return;
+            
+            if (lastCheckinDate === todayStr) {
+                triggerHaptic('warning');
+                tg.showAlert("⏳ You have already claimed today's reward! Come back tomorrow.");
+                return;
+            }
 
             const reward = REWARD_AMOUNTS[currentDay - 1];
             totalBalance += reward;
+            
             lastCheckinDate = todayStr;
             localStorage.setItem(STORAGE_PREFIX + 'last_checkin_date', lastCheckinDate);
-            currentDay = currentDay < 7 ? currentDay + 1 : 1;
+
+            if (currentDay < 7) {
+                currentDay++;
+            } else {
+                currentDay = 1; 
+            }
             localStorage.setItem(STORAGE_PREFIX + 'checkin_day', currentDay);
 
-            saveData(); updateUI(); updateCheckinUI();
-            triggerHaptic('success'); playSound('coin');
-            tg.showAlert(`🎉 Получено +${reward} ZRL за Daily Check-in!`);
+            saveData();
+            updateUI();
+            updateCheckinUI();
+
+            triggerHaptic('success');
+            playSound('coin');
+            tg.showAlert(`🎉 Success!\n\nYou received +${reward} ZRL for Daily Check-in!`);
         });
 
-        // Работа модалок кошелька и депозита
-        const walletModal = document.getElementById('wallet-modal');
-        const depositModal = document.getElementById('deposit-modal');
-        const boostersModal = document.getElementById('boosters-modal');
-        const fortuneModal = document.getElementById('fortune-modal');
+        let quest1Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString()) === 'true';
+        let quest2Claimed = localStorage.getItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString()) === 'true';
 
-        window.openWalletModal = function() {
-            triggerHaptic('light');
-            playSound('click');
-            document.getElementById('wallet-short-addr').innerText = FIXED_DEPOSIT_WALLET.substring(0, 6) + '...' + FIXED_DEPOSIT_WALLET.slice(-6);
-            updateWalletUI();
-            walletModal.style.display = 'flex';
-        };
+        function updateQuestsUI() {
+            const q1Prog = document.getElementById('quest-1-progress');
+            const q1Btn = document.getElementById('quest-1-btn');
+            const q2Prog = document.getElementById('quest-2-progress');
+            const q2Btn = document.getElementById('quest-2-btn');
 
-        window.openDepositModal = function() {
-            triggerHaptic('light');
-            playSound('click');
-            depositModal.style.display = 'flex';
-            document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
-            document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
-        };
-
-        window.openFortuneModal = function() {
-            if (poolDeposit <= 0) {
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры необходим депозит в Solana.");
-                return;
+            q1Prog.innerText = `Progress: ${Math.min(todayDistance, 1.0).toFixed(2)} / 1.0 km`;
+            if (quest1Claimed) {
+                q1Btn.innerText = "Claimed ✅";
+                q1Btn.style.background = "#2d303b";
+                q1Btn.style.color = "#8a8d98";
+                q1Btn.style.cursor = "not-allowed";
+                q1Btn.disabled = true;
+            } else if (todayDistance >= 1.0) {
+                q1Btn.innerText = "Claim +50 ZRL";
+                q1Btn.style.background = "#14f195";
+                q1Btn.style.color = "#000";
+                q1Btn.style.cursor = "pointer";
+                q1Btn.disabled = false;
+            } else {
+                q1Btn.innerText = "+50 ZRL";
+                q1Btn.style.background = "#2d303b";
+                q1Btn.style.color = "#8a8d98";
+                q1Btn.style.cursor = "not-allowed";
+                q1Btn.disabled = true;
             }
-            fortuneModal.style.display = 'flex';
+
+            q2Prog.innerText = `Progress: ${Math.min(todaySteps, 1000)} / 1,000`;
+            if (quest2Claimed) {
+                q2Btn.innerText = "Claimed ✅";
+                q2Btn.style.background = "#2d303b";
+                q2Btn.style.color = "#8a8d98";
+                q2Btn.style.cursor = "not-allowed";
+                q2Btn.disabled = true;
+            } else if (todaySteps >= 1000) {
+                q2Btn.innerText = "Claim +30 ZRL";
+                q2Btn.style.background = "#14f195";
+                q2Btn.style.color = "#000";
+                q2Btn.style.cursor = "pointer";
+                q2Btn.disabled = false;
+            } else {
+                q2Btn.innerText = "+30 ZRL";
+                q2Btn.style.background = "#2d303b";
+                q2Btn.style.color = "#8a8d98";
+                q2Btn.style.cursor = "not-allowed";
+                q2Btn.disabled = true;
+            }
+        }
+
+        document.getElementById('quest-1-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
+            if (!quest1Claimed && todayDistance >= 1.0) {
+                quest1Claimed = true;
+                localStorage.setItem(STORAGE_PREFIX + 'quest_1_claimed_' + new Date().toDateString(), 'true');
+                totalBalance += 50;
+                saveData();
+                updateUI();
+                updateQuestsUI();
+                triggerHaptic('success');
+                playSound('coin');
+                tg.showAlert('🎉 Quest completed! You received +50 ZRL.');
+            }
         };
 
-        document.getElementById('close-wallet').onclick = () => walletModal.style.display = 'none';
-        document.getElementById('close-deposit').onclick = () => depositModal.style.display = 'none';
-        document.getElementById('deposit-btn').onclick = () => { walletModal.style.display = 'none'; openDepositModal(); };
-        document.getElementById('copy-addr-btn').onclick = () => {
-            navigator.clipboard.writeText(FIXED_DEPOSIT_WALLET);
-            tg.showAlert('✅ Адрес скопирован в буфер обмена!');
+        document.getElementById('quest-2-btn').onclick = () => {
+            triggerHaptic('medium');
+            playSound('click');
+            if (!quest2Claimed && todaySteps >= 1000) {
+                quest2Claimed = true;
+                localStorage.setItem(STORAGE_PREFIX + 'quest_2_claimed_' + new Date().toDateString(), 'true');
+                totalBalance += 30;
+                saveData();
+                updateUI();
+                updateQuestsUI();
+                triggerHaptic('success');
+                playSound('coin');
+                tg.showAlert('🎉 Quest completed! You received +30 ZRL.');
+            }
         };
+
+        const mysteryBoxModal = document.getElementById('mystery-box-modal');
+        let pendingBoxReward = 0;
+
+        function checkRandomMysteryBox() {
+            if (Math.random() < 0.02) {
+                pendingBoxReward = Math.floor(Math.random() * 131) + 20; 
+                triggerHaptic('success');
+                playSound('success');
+                mysteryBoxModal.style.display = 'flex';
+            }
+        }
+
+        document.getElementById('open-box-btn').onclick = () => {
+            triggerHaptic('success');
+            playSound('coin');
+            totalBalance += pendingBoxReward;
+            saveData();
+            updateUI();
+            mysteryBoxModal.style.display = 'none';
+            tg.showAlert(`🎁 Mystery Box Opened!\n\nYou won +${pendingBoxReward} ZRL directly to your balance!`);
+        };
+
+        let currentLbTab = 'daily';
+
+        window.switchLbTab = function(tab) {
+            triggerHaptic('selection');
+            playSound('click');
+            currentLbTab = tab;
+            document.querySelectorAll('#leaderboard-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchLeaderboardFromBackend();
+        };
+
+        async function fetchLeaderboardFromBackend() {
+            const podiumContainer = document.getElementById('podium-container');
+            const listContainer = document.getElementById('leaderboard-list');
+            const stickyContainer = document.getElementById('my-rank-sticky-container');
+
+            try {
+                const response = await fetch(`https://zer0life-ai-iz5n.onrender.com/leaderboard?period=${currentLbTab}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.success || !data.leaderboard) {
+                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No players on leaderboard yet. Start running!</div>`;
+                    podiumContainer.innerHTML = '';
+                    stickyContainer.innerHTML = '';
+                    return;
+                }
+
+                const users = data.leaderboard;
+                podiumContainer.innerHTML = '';
+                listContainer.innerHTML = '';
+                stickyContainer.innerHTML = '';
+
+                if (users.length === 0) {
+                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Leaderboard is empty.</div>`;
+                    return;
+                }
+
+                const topThree = [users[1], users[0], users[2]].filter(Boolean);
+                topThree.forEach((user) => {
+                    const isFirst = user.rank === 1;
+                    const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
+                    const div = document.createElement('div');
+                    div.style.cssText = `
+                        background: ${isFirst ? 'linear-gradient(135deg, #1b241e 0%, #121816 100%)' : '#141721'};
+                        border: 1px solid ${isFirst ? '#f59e0b' : 'rgba(255,255,255,0.08)'};
+                        border-radius: 20px;
+                        padding: 14px 8px;
+                        text-align: center;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        position: relative;
+                        ${isFirst ? 'transform: translateY(-6px); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);' : ''}
+                    `;
+                    div.innerHTML = `
+                        <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 6px;">#${user.rank}</div>
+                        <div style="width: 44px; height: 44px; border-radius: 50%; background: #222736; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #a8f07a; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">${initials}</div>
+                        <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; margin-bottom: 2px;">${user.name}</div>
+                        <div style="font-size: 11px; color: #a8f07a; font-weight: 600;">${user.dist} km</div>
+                    `;
+                    podiumContainer.appendChild(div);
+                });
+
+                users.slice(3).forEach(user => {
+                    const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
+                    const row = document.createElement('div');
+                    row.style.cssText = `
+                        background: #141721;
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 16px;
+                        padding: 12px 14px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 8px;
+                    `;
+                    row.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 13px; font-weight: 800; color: #8a8d98; width: 20px; text-align: center;">${user.rank}</div>
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #fff;">${user.name}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 13px; font-weight: 700; color: #fff;">${user.dist} km</div>
+                            <div style="font-size: 11px; color: #a8f07a; font-weight: 600;">+${user.zrl.toLocaleString()} ZRL</div>
+                        </div>
+                    `;
+                    listContainer.appendChild(row);
+                });
+
+                if (data.myRank) {
+                    const myInitials = username ? username.substring(0, 2).toUpperCase() : 'PL';
+                    stickyContainer.innerHTML = `
+                        <div style="background: #141721; border: 1.5px solid #a8f07a; border-radius: 18px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 20px rgba(168, 240, 122, 0.15); margin-top: 4px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="font-size: 14px; font-weight: 800; color: #a8f07a; width: 20px; text-align: center;">${data.myRank.rank}</div>
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: #1f2a24; border: 1.5px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${myInitials}</div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 800; color: #fff;">${username || 'Player'} (You)</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 14px; font-weight: 800; color: #fff;">${totalDistance.toFixed(1)} km</div>
+                                <div style="font-size: 11px; color: #a8f07a; font-weight: 700;">+${totalBalance.toFixed(0)} ZRL</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+            } catch (e) {}
+        }
+
+        const depositModal = document.getElementById('deposit-modal');
+        const customPromptModal = document.getElementById('custom-prompt-modal');
+        const boostersModal = document.getElementById('boosters-modal');
+        const walletModal = document.getElementById('wallet-modal');
+        const leaderboardModal = document.getElementById('leaderboard-modal');
+
+        function showCustomPrompt(title, description, placeholder, callback) {
+            triggerHaptic('light');
+            playSound('click');
+            document.getElementById('custom-prompt-title').innerText = title;
+            document.getElementById('custom-prompt-desc').innerText = description;
+            const inputField = document.getElementById('custom-prompt-input');
+            inputField.value = '';
+            inputField.placeholder = placeholder;
+            
+            customPromptModal.style.display = 'flex';
+            inputField.focus();
+
+            const confirmBtn = document.getElementById('custom-prompt-confirm');
+            const cancelBtn = document.getElementById('custom-prompt-cancel');
+            const closeBtn = document.getElementById('close-custom-prompt');
+
+            const cleanUp = () => {
+                confirmBtn.onclick = null;
+                cancelBtn.onclick = null;
+                closeBtn.onclick = null;
+                customPromptModal.style.display = 'none';
+            };
+
+            confirmBtn.onclick = () => {
+                triggerHaptic('medium');
+                playSound('click');
+                const val = inputField.value.trim();
+                cleanUp();
+                callback(val);
+            };
+
+            cancelBtn.onclick = () => {
+                triggerHaptic('light');
+                cleanUp();
+                callback(null);
+            };
+
+            closeBtn.onclick = () => {
+                triggerHaptic('light');
+                cleanUp();
+                callback(null);
+            };
+        }
+
+        async function initWalletModalEvents() {
+            document.getElementById('wallet-short-addr').innerText = personalWalletAddr.substring(0, 6) + '...' + personalWalletAddr.slice(-6);
+
+            try {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress: FIXED_DEPOSIT_WALLET, telegramId: telegramId })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    if (result.solBalance !== undefined) {
+                        const newDepositFound = Math.max(0, result.solBalance - (poolDeposit + (solBalance - poolDeposit)));
+                        if (newDepositFound > 0) {
+                            poolDeposit += newDepositFound; 
+                            solBalance += newDepositFound;  
+                        }
+                    }
+                }
+            } catch(e) {}
+            
+            document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
+            document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
+            
+            document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
+            document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
+
+            document.getElementById('deposit-btn').onclick = () => {
+                triggerHaptic('light');
+                playSound('click');
+                walletModal.style.display = 'none';
+                depositModal.style.display = 'flex';
+                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit address below:`;
+                document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
+            };
+
+            document.getElementById('withdraw-btn').onclick = () => {
+                triggerHaptic('medium');
+                playSound('click');
+                walletModal.style.display = 'none';
+                
+                const maxWithdrawable = solBalance;
+
+                if (maxWithdrawable <= 0) {
+                    triggerHaptic('error');
+                    tg.showAlert("❌ У вас нет доступных SOL для вывода.");
+                    return;
+                }
+
+                showCustomPrompt(
+                    "Withdraw Funds", 
+                    `Enter target wallet address to withdraw (${maxWithdrawable.toFixed(4)} SOL available):`, 
+                    "Solana wallet address...", 
+                    async (targetAddr) => {
+                        if (targetAddr && targetAddr.length > 30) {
+                            showCustomPrompt(
+                                `Withdraw Amount (SOL)`, 
+                                `How many SOL to withdraw?`, 
+                                "Enter amount...", 
+                                async (amountStr) => {
+                                    const amount = parseFloat(amountStr);
+                                    if (amount > 0 && amount <= maxWithdrawable) {
+                                        try {
+                                            const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    telegramId: telegramId,
+                                                    walletAddress: targetAddr,
+                                                    amount: amount,
+                                                    currency: 'SOL'
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (res.ok && data.success) {
+                                                solBalance -= amount; 
+                                                if (poolDeposit > 0) {
+                                                    poolDeposit = Math.max(0, poolDeposit - amount);
+                                                }
+                                                saveData();
+                                                updateUI();
+
+                                                triggerHaptic('success');
+                                                playSound('success');
+                                                tg.showAlert(`✅ Вывод успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
+                                            } else {
+                                                triggerHaptic('error');
+                                                tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
+                                            }
+                                        } catch (err) {
+                                            triggerHaptic('error');
+                                            tg.showAlert(`❌ Ошибка сети при запросе вывода.`);
+                                        }
+                                    } else {
+                                        triggerHaptic('error');
+                                        tg.showAlert('⚠️ Неверная сумма или недостаточно средств.');
+                                    }
+                                }
+                            );
+                        } else if (targetAddr !== null) {
+                            triggerHaptic('error');
+                            tg.showAlert('⚠️ Неверный адрес кошелька.');
+                        }
+                    }
+                );
+            };
+        }
 
         async function checkDepositAutomatically() {
             try {
@@ -1841,31 +2817,403 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ walletAddress: FIXED_DEPOSIT_WALLET, telegramId: telegramId })
                 });
+                
                 const result = await response.json();
                 if (response.ok && result.success && result.solBalance !== undefined) {
-                    const trackedTotal = poolDeposit + (solBalance - poolDeposit);
+                    const trackedTotal = poolDeposit + (solBalance - poolDeposit); 
                     if (result.solBalance > trackedTotal) {
                         const diff = result.solBalance - trackedTotal;
-                        poolDeposit += diff;
-                        solBalance += diff;
-                        saveData(); updateUI();
-                        tg.showAlert(`🎉 Депозит зачислен!\n\n+${diff.toFixed(4)} SOL`);
+                        poolDeposit += diff; 
+                        solBalance += diff;  
+                        saveData();
+                        updateUI();
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert(`🎉 Депозит успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
                     }
                 }
             } catch (e) {}
         }
+
         setInterval(checkDepositAutomatically, 10000);
 
+        document.getElementById('logout-btn').onclick = () => {
+            triggerHaptic('heavy');
+            playSound('click');
+            
+            showCustomPrompt(
+                "Logout Profile",
+                "Are you sure you want to log out? Type YES to confirm clearing your profile data:",
+                "Type YES...",
+                (val) => {
+                    if (val && val.toUpperCase() === 'YES') {
+                        localStorage.clear();
+                        walletModal.style.display = 'none';
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert('🚪 Logged out successfully. Restarting session...');
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else if (val !== null) {
+                        triggerHaptic('warning');
+                        tg.showAlert('⚠️ Action cancelled. Type YES to log out.');
+                    }
+                }
+            );
+        };
+
+        window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nДля покупки бустеров внесите депозит в Solana.");
+                return;
+            }
+
+            if (solBalance < solPrice) {
+                triggerHaptic('error');
+                playSound('warning');
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
+                return;
+            }
+
+            triggerHaptic('medium');
+            playSound('click');
+            boostersModal.style.display = 'none';
+
+            showCustomPrompt(
+                `Confirm Booster Purchase`,
+                `Buy ${boosterName} booster for ${solPrice} SOL?`,
+                "Type YES to confirm...",
+                async (confirmation) => {
+                    if (confirmation && confirmation.toUpperCase() === 'YES') {
+                        solBalance -= solPrice;
+                        ZRL_PER_KM = zrlRatePerKm;
+                        activeBoosterName = boosterName;
+                        boosterExpiryTime = 0; 
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
+                        bootsHP = 100.0; 
+                        
+                        saveData();
+                        initWalletModalEvents();
+                        updateUI();
+                        updateEnergyUI();
+
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nActive booster: ${boosterName}!`);
+                    } else if (confirmation !== null) {
+                        triggerHaptic('warning');
+                        tg.showAlert('⚠ Purchase cancelled.');
+                    }
+                }
+            );
+        };
+
+        window.buyTimedBooster = function(solPrice, zrlRatePerKm, boosterName, hoursDuration) {
+            if (poolDeposit <= 0) {
+                triggerHaptic('error');
+                tg.showAlert("❌ Доступ заблокирован!\n\nДля покупки бустеров внесите депозит в Solana.");
+                return;
+            }
+
+            if (solBalance < solPrice) {
+                triggerHaptic('error');
+                playSound('warning');
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL.`);
+                return;
+            }
+
+            triggerHaptic('medium');
+            playSound('click');
+            boostersModal.style.display = 'none';
+
+            showCustomPrompt(
+                `Confirm Timed Booster`,
+                `Buy ${boosterName} for ${solPrice} SOL? Active for ${hoursDuration} hour(s).`,
+                "Type YES to confirm...",
+                async (confirmation) => {
+                    if (confirmation && confirmation.toUpperCase() === 'YES') {
+                        solBalance -= solPrice;
+                        ZRL_PER_KM = zrlRatePerKm;
+                        activeBoosterName = boosterName;
+                        boosterExpiryTime = Date.now() + (hoursDuration * 60 * 60 * 1000);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
+                        
+                        saveData();
+                        initWalletModalEvents();
+                        updateUI();
+                        updateEnergyUI();
+
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert(`🚀 Success!\n\nBooster activated for 1 hour (${zrlRatePerKm} ZRL/km)!`);
+                    } else if (confirmation !== null) {
+                        triggerHaptic('warning');
+                        tg.showAlert('⚠ Purchase cancelled.');
+                    }
+                }
+            );
+        };
+
+        document.getElementById('close-deposit').onclick = () => {
+            triggerHaptic('light');
+            depositModal.style.display = 'none';
+        };
+
+        document.getElementById('close-boosters').onclick = () => {
+            triggerHaptic('light');
+            boostersModal.style.display = 'none';
+        };
+
+        document.getElementById('copy-addr-btn').onclick = () => {
+            triggerHaptic('success');
+            playSound('click');
+            navigator.clipboard.writeText(document.getElementById('deposit-full-addr').innerText);
+            tg.showAlert('✅ Address copied to clipboard!');
+        };
+
+        function handlePositionUpdate(position) {
+            const currentLat = position.coords.latitude;
+            const currentLon = position.coords.longitude;
+            const currentTime = position.timestamp;
+
+            if (lastLat !== null && lastLon !== null && lastTime !== null) {
+                const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
+                const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
+
+                if (timeDiffHours > 0) {
+                    currentSpeedKmh = distanceKm / timeDiffHours;
+                    if (currentSpeedKmh > MAX_SPEED_KMH) {
+                        warningEl.style.display = 'block';
+                    } else {
+                        warningEl.style.display = 'none';
+                    }
+                }
+            }
+
+            lastLat = currentLat;
+            lastLon = currentLon;
+            lastTime = currentTime;
+        }
+
+        let lastMotionTime = 0;
+        function handleMotion(event) {
+            if (!isRunning) return;
+
+            if (currentEnergy <= 0) {
+                stopRunning();
+                triggerHaptic('error');
+                tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge before continuing.");
+                return;
+            }
+
+            if (bootsHP <= 0) {
+                stopRunning();
+                triggerHaptic('error');
+                tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers to continue earning tokens.");
+                return;
+            }
+
+            if (currentSpeedKmh > MAX_SPEED_KMH) {
+                warningEl.style.display = 'block';
+                return;
+            } else {
+                warningEl.style.display = 'none';
+            }
+
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            const totalAcc = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+            const now = Date.now();
+
+            if (totalAcc > 13.5 && (now - lastMotionTime) > 300) {
+                lastMotionTime = now;
+                todaySteps++;
+
+                triggerHaptic('light');
+
+                const stepKm = METERS_PER_STEP;
+                todayDistance += stepKm;
+                totalDistance += stepKm;
+                unclaimedZRL += (stepKm * ZRL_PER_KM);
+                
+                currentEnergy = Math.max(0, currentEnergy - 0.05);
+                bootsHP = Math.max(0, bootsHP - 0.02);
+
+                updateUI();
+                updateQuestsUI();
+                updateEnergyUI();
+                checkRandomMysteryBox();
+                saveData();
+            }
+        }
+
+        function stopRunning() {
+            isRunning = false;
+            startBtn.classList.remove('active-run');
+            startBtnText.innerText = 'Start Run';
+            window.removeEventListener('devicemotion', handleMotion);
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            warningEl.style.display = 'none';
+        }
+
+        startBtn.addEventListener('click', async () => {
+            triggerHaptic('heavy');
+            playSound('click');
+            
+            if (!isRunning) {
+                if (currentEnergy <= 0) {
+                    triggerHaptic('error');
+                    tg.showAlert("⚡ Your energy is depleted! Wait for it to recover.");
+                    return;
+                }
+                if (bootsHP <= 0) {
+                    triggerHaptic('error');
+                    tg.showAlert("👟 Sneakers are broken (0 HP)! Repair them first.");
+                    return;
+                }
+
+                if ("geolocation" in navigator) {
+                    watchId = navigator.geolocation.watchPosition(
+                        handlePositionUpdate, 
+                        (err) => console.log(err), 
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                    );
+                }
+
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try {
+                        const response = await DeviceMotionEvent.requestPermission();
+                        if (response === 'granted') {
+                            window.addEventListener('devicemotion', handleMotion);
+                            isRunning = true;
+                            startBtn.classList.add('active-run');
+                            startBtnText.innerText = 'Stop Run';
+                        } else {
+                            triggerHaptic('error');
+                            tg.showAlert("Motion permission is required to track your run.");
+                        }
+                    } catch (e) {}
+                } else {
+                    window.addEventListener('devicemotion', handleMotion);
+                    isRunning = true;
+                    startBtn.classList.add('active-run');
+                    startBtnText.innerText = 'Stop Run';
+                }
+            } else {
+                stopRunning();
+            }
+        });
+
+        document.getElementById('claim-btn').addEventListener('click', () => {
+            triggerHaptic('medium');
+            if (unclaimedZRL > 0) {
+                triggerHaptic('success');
+                playSound('coin');
+                totalBalance += unclaimedZRL;
+                unclaimedZRL = 0;
+                
+                updateUI();
+                saveData();
+                
+                tg.showAlert('Tokens successfully claimed to your balance!');
+            } else {
+                triggerHaptic('warning');
+                tg.showAlert('No tokens to claim yet. Make some steps!');
+            }
+        });
+
+        document.getElementById('nav-rewards').addEventListener('click', () => {
+            triggerHaptic('light');
+            playSound('click');
+            fetchLeaderboardFromBackend();
+            leaderboardModal.style.display = 'flex';
+        });
+
+        document.getElementById('close-leaderboard').addEventListener('click', () => {
+            triggerHaptic('light');
+            leaderboardModal.style.display = 'none';
+        });
+
+        const openWalletModal = () => {
+            triggerHaptic('light');
+            playSound('click');
+            initWalletModalEvents();
+            walletModal.style.display = 'flex';
+        };
+
+        document.getElementById('wallet-btn').addEventListener('click', openWalletModal);
+        document.getElementById('nav-wallet').addEventListener('click', openWalletModal);
+
+        document.getElementById('close-wallet').addEventListener('click', () => {
+            triggerHaptic('light');
+            walletModal.style.display = 'none';
+        });
+
+        document.getElementById('nav-more').addEventListener('click', () => {
+            triggerHaptic('light');
+            playSound('click');
+            boostersModal.style.display = 'flex';
+        });
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
+
+        const LEVELS = [
+            { level: 1, targetKm: 5, reward: "Standard" },
+            { level: 2, targetKm: 20, reward: "Standard" },
+            { level: 3, targetKm: 50, reward: "Standard" },
+            { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
+            { level: 5, targetKm: 150, reward: "Elite Tier" },
+            { level: 6, targetKm: 200, reward: "Max Legend Tier" }
+        ];
+
+        function getCurrentLevelObj() {
+            let currentLevelObj = LEVELS[0];
+            for (let i = 0; i < LEVELS.length; i++) {
+                if (totalDistance < LEVELS[i].targetKm) {
+                    currentLevelObj = LEVELS[i];
+                    break;
+                }
+                if (i === LEVELS.length - 1) currentLevelObj = LEVELS[i]; 
+            }
+            return currentLevelObj;
+        }
+
         function updateUI() {
-            if(todayDistEl) todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
-            if(stepsEl) stepsEl.innerText = 'Steps: ' + todaySteps;
-            if(todayEarnedEl) todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
+            todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
+            stepsEl.innerText = 'Steps: ' + todaySteps;
+            todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
+
+            let currentLevelObj = getCurrentLevelObj();
+            let prevLevelKm = currentLevelObj.level === 1 ? 0 : LEVELS[currentLevelObj.level - 2].targetKm;
+            let kmInCurrentLevel = totalDistance - prevLevelKm;
+            let kmNeededForLevel = currentLevelObj.targetKm - prevLevelKm;
+            
+            let progressPercent = (kmInCurrentLevel / kmNeededForLevel) * 100;
+            if (progressPercent > 100) progressPercent = 100;
+
+            levelTextEl.innerText = 'Level ' + currentLevelObj.level;
+            progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
+            progressBarEl.style.width = `${progressPercent}%`;
             updateWalletUI();
             updateEnergyUI();
         }
 
         checkRegistration();
         updateCheckinUI();
+        updateQuestsUI();
         updateEnergyUI();
     </script>
 </body>
