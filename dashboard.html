@@ -791,30 +791,121 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОЛЕСА ФОРТУНЫ -->
+    <!-- МОДАЛЬНОЕ ОКНО ZER0LIFE ARCADE HUB -->
     <div class="modal-overlay" id="fortune-modal">
-        <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 380px;">
-            <div class="modal-header" style="margin-bottom: 10px;">
-                <span class="modal-title" style="color: #f59e0b;">🎡 Zer0life Fortune Wheel</span>
+        <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
+            
+            <!-- Хедер с закрытием -->
+            <div class="modal-header" style="margin-bottom: 12px;">
+                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎮 Zer0life Arcade</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
-            <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 20px auto;">
-                
-                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
-                
-                <div style="position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 6px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 20;"></div>
+            <!-- Вкладки переключения игр -->
+            <div class="leaderboard-tabs" style="grid-template-columns: repeat(4, 1fr); gap: 4px; background: #11141d; padding: 3px; margin-bottom: 16px; border-radius: 12px;">
+                <button class="lb-tab active" onclick="switchArcadeGame('wheel')" id="tab-game-wheel" style="font-size: 10px; padding: 8px 2px;">🎡 Wheel</button>
+                <button class="lb-tab" onclick="switchArcadeGame('slots')" id="tab-game-slots" style="font-size: 10px; padding: 8px 2px;">🎰 Slots</button>
+                <button class="lb-tab" onclick="switchArcadeGame('bj')" id="tab-game-bj" style="font-size: 10px; padding: 8px 2px;">🃏 21 (BJ)</button>
+                <button class="lb-tab" onclick="switchArcadeGame('roulette')" id="tab-game-roulette" style="font-size: 10px; padding: 8px 2px;">🎯 Roulette</button>
+            </div>
 
-                <canvas id="fortune-canvas" width="1120" height="1120" style="width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;"></canvas>
+            <!-- 1. КОЛЕСО ФОРТУНЫ -->
+            <div id="arcade-game-wheel" class="arcade-game-container">
+                <div style="position: relative; width: 260px; height: 260px; margin: 0 auto 16px auto;">
+                    <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
+                    <div style="position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px; border-radius: 50%; border: 6px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 20;"></div>
+                    <canvas id="fortune-canvas" width="1120" height="1120" style="width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.15, 0.85, 0.15, 1); background: #111;"></canvas>
+                    <div onclick="spinFortuneWheel()" id="spin-center-btn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer;">
+                        SPIN
+                    </div>
+                </div>
+                <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: linear-gradient(135deg, #fef08a 0%, #eab308 100%); color: #000; font-size: 15px; padding: 12px; font-weight: 900;">
+                    Spin Wheel (0.01 SOL) 🚀
+                </button>
+            </div>
 
-                <div onclick="spinFortuneWheel()" id="spin-center-btn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%); border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #000; z-index: 25; box-shadow: 0 0 20px rgba(0,0,0,0.8); cursor: pointer; text-shadow: 0 1px 0 rgba(255,255,255,0.6);">
-                    SPIN
+            <!-- 2. СЛОТЫ / АВТОМАТЫ -->
+            <div id="arcade-game-slots" class="arcade-game-container" style="display: none;">
+                <div style="background: #090a0f; border: 2px solid #3b82f6; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);">
+                    <div style="display: flex; justify-content: space-around; background: #141721; border-radius: 12px; padding: 14px 8px; border: 1px solid #2d3748; font-size: 42px; font-weight: 800;" id="slot-reels-display">
+                        <span id="reel1">7️⃣</span>
+                        <span id="reel2">💎</span>
+                        <span id="reel3">⚡</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+                        <span style="font-size: 12px; color: #8a8d98;">Ставка SOL:</span>
+                        <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #2d3748; border-radius: 8px; padding: 6px 10px; font-weight: 700; outline: none;">
+                            <option value="0.01">0.01 SOL</option>
+                            <option value="0.05">0.05 SOL</option>
+                            <option value="0.10">0.10 SOL</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="claim-btn" id="spin-slots-btn" onclick="playSlots()" style="width: 100%; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: #fff; font-size: 15px; padding: 12px; font-weight: 900;">
+                    Крутить Слоты 🎰
+                </button>
+            </div>
+
+            <!-- 3. БЛЭКДЖЕК / 21 -->
+            <div id="arcade-game-bj" class="arcade-game-container" style="display: none;">
+                <div style="background: #0a1f18; border: 2px solid #14f195; border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: left;">
+                    
+                    <!-- Рука Дилера -->
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Дилер: <span id="dealer-score" style="color: #fff; font-weight: 700;">?</span></div>
+                        <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
+                    </div>
+
+                    <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0;"></div>
+
+                    <!-- Рука Игрока -->
+                    <div>
+                        <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Вы: <span id="player-score" style="color: #14f195; font-weight: 700;">0</span></div>
+                        <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;" id="bj-controls-play">
+                    <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5;">Еще (Hit)</button>
+                    <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5;">Хватит (Stand)</button>
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="bj-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #2d3748; border-radius: 10px; padding: 10px; font-weight: 700; width: 40%;">
+                        <option value="0.01">0.01 SOL</option>
+                        <option value="0.05">0.05 SOL</option>
+                        <option value="0.10">0.10 SOL</option>
+                    </select>
+                    <button class="claim-btn" id="start-bj-btn" onclick="startBlackjack()" style="width: 60%; background: #14f195; color: #000; font-weight: 800;">
+                        Раздать (21) 🃏
+                    </button>
                 </div>
             </div>
 
-            <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: linear-gradient(135deg, #fef08a 0%, #eab308 100%); color: #000; font-size: 16px; padding: 14px; font-weight: 900; box-shadow: 0 4px 15px rgba(234,179,8,0.4);">
-                Spin Wheel (0.01 SOL) 🚀
-            </button>
+            <!-- 4. РУЛЕТКА (SOL ROULETTE) -->
+            <div id="arcade-game-roulette" class="arcade-game-container" style="display: none;">
+                <div style="background: #18111f; border: 2px solid #a855f7; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
+                    <div id="roulette-ball-display" style="font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px;">🎯 [ ? ]</div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #ef4444; color: #fff; border: 2px solid transparent;">🔴 Красное (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #1f2937; color: #fff; border: 2px solid transparent;">⚫ Черное (x2)</button>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: #8a8d98;">Ставка:</span>
+                        <select id="roulette-bet-amount" style="background: #1a202c; color: #a855f7; border: 1px solid #2d3748; border-radius: 8px; padding: 6px 8px; font-weight: 700;">
+                            <option value="0.01">0.01 SOL</option>
+                            <option value="0.05">0.05 SOL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); color: #fff; font-size: 15px; padding: 12px; font-weight: 900;">
+                    Запустить Рулетку 🎯
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -1170,7 +1261,7 @@
         </div>
         <div class="nav-item" id="nav-fortune" onclick="openFortuneModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            Fortune
+            Arcade
         </div>
         <div class="nav-item" id="nav-friends">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -1240,9 +1331,7 @@
                     osc.start(now);
                     osc.stop(now + 0.35);
                 }
-            } catch(e) {
-                console.log("Audio play error:", e);
-            }
+            } catch(e) {}
         }
 
         function triggerHaptic(style) {
@@ -1360,6 +1449,7 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
+        // --- ДАННЫЕ ДЛЯ КОЛЕСА ФОРТУНЫ ---
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
@@ -1414,8 +1504,7 @@
             }
         }
 
-        setTimeout(drawWheel, 100);
-
+        // --- СОХРАНЕНИЕ ДАННЫХ И СИНХРОНИЗАЦИЯ ---
         function saveData() {
             localStorage.setItem(STORAGE_PREFIX + 'total_balance', totalBalance);
             localStorage.setItem(STORAGE_PREFIX + 'sol_balance', solBalance);
@@ -1451,9 +1540,7 @@
                         balance: totalBalance
                     })
                 });
-            } catch(e) {
-                console.log("Stats sync error:", e);
-            }
+            } catch(e) {}
         }
 
         function updateEnergyUI() {
@@ -1501,9 +1588,7 @@
         }
 
         setInterval(() => {
-            if (boosterExpiryTime > 0) {
-                updateEnergyUI();
-            }
+            if (boosterExpiryTime > 0) updateEnergyUI();
         }, 1000);
 
         document.getElementById('repair-boots-btn').onclick = () => {
@@ -1530,17 +1615,32 @@
             tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
         };
 
+
+        // --- ПЕРЕКЛЮЧЕНИЕ ИГР В АРКАДЕ ---
+        function switchArcadeGame(gameKey) {
+            triggerHaptic('selection');
+            playSound('click');
+            
+            document.querySelectorAll('#fortune-modal .lb-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.arcade-game-container').forEach(c => c.style.display = 'none');
+
+            document.getElementById(`tab-game-${gameKey}`).classList.add('active');
+            document.getElementById(`arcade-game-${gameKey}`).style.display = 'block';
+
+            if (gameKey === 'wheel') drawWheel();
+        }
+
         function openFortuneModal() {
             triggerHaptic('light');
             playSound('click');
-            drawWheel();
+            document.getElementById('fortune-modal').style.display = 'flex';
+            switchArcadeGame('wheel');
             const spinBtn = document.getElementById('spin-wheel-btn');
             if (freeSpins > 0) {
                 spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
             } else {
                 spinBtn.innerText = `Spin Wheel (0.01 SOL) 🚀`;
             }
-            document.getElementById('fortune-modal').style.display = 'flex';
         }
 
         function closeFortuneModal() {
@@ -1581,15 +1681,12 @@
                             currency: 'SOL'
                         })
                     });
-                } catch(e) {
-                    console.log("Payment dispatch error:", e);
-                }
+                } catch(e) {}
             }
 
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
 
-            // --- 1. ЛОГИКА ШАНСОВ И ЗАЩИТА ОТ РАЗОРЕНИЯ ---
             let totalSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'total_spins')) || 0;
             totalSpins++;
             localStorage.setItem(STORAGE_PREFIX + 'total_spins', totalSpins);
@@ -1599,17 +1696,16 @@
                 const sector = wheelSectors[i];
                 let weight = 0;
 
-                // Блокировки для джекпотов SOL
                 if (sector.type === 'sol' && sector.val === 0.1) {
-                    weight = (totalSpins >= 50) ? 1 : 0; // 1% шанс, только если крутил минимум 50 раз
+                    weight = (totalSpins >= 50) ? 1 : 0; 
                 } else if (sector.type === 'sol' && sector.val === 0.01) {
-                    weight = (totalSpins >= 10) ? 4 : 0; // 4% шанс, только если крутил минимум 10 раз
+                    weight = (totalSpins >= 10) ? 4 : 0; 
                 } else if (sector.type === 'box') {
-                    weight = 8; // 8% шанс выбить коробку
+                    weight = 8; 
                 } else if (sector.type === 'free_spin' || sector.type === 'boots') {
                     weight = 5; 
                 } else {
-                    weight = 12; // Обычные сектора ZRL падают чаще всего
+                    weight = 12; 
                 }
 
                 for (let w = 0; w < weight; w++) {
@@ -1617,16 +1713,13 @@
                 }
             }
 
-            // Математика определяет выигрыш ДО остановки колеса
             const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
             const won = wheelSectors[winningIndex];
 
-            // Если выпала коробка - генерируем рандом
             if (won.type === 'box') {
                 won.val = Math.floor(Math.random() * 91) + 10; 
             }
 
-            // --- 2. ВЫЧИСЛЕНИЕ УГЛА ДЛЯ ОСТАНОВКИ КОЛЕСА ---
             const arcSize = 360 / wheelSectors.length;
             const drift = Math.random() * (arcSize - 4) + 2; 
             let targetAngle = 360 - (winningIndex * arcSize) - drift;
@@ -1637,7 +1730,6 @@
             
             canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
 
-            // --- 3. ВЫДАЧА ПРИЗА ---
             setTimeout(() => {
                 triggerHaptic('success');
                 playSound('coin');
@@ -1678,6 +1770,244 @@
                 spinBtn.disabled = false;
                 spinBtn.style.opacity = '1';
             }, 4000);
+        }
+
+        // --- 1. ЛОГИКА СЛОТОВ (ZRL SLOTS) ---
+        const slotSymbols = ['7️⃣', '💎', '⚡', '🪙', '💀'];
+        async function playSlots() {
+            const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
+            if (solBalance < betSOL) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно SOL! Нужен баланс: ${betSOL} SOL.`);
+                return;
+            }
+
+            solBalance -= betSOL;
+            saveData();
+            updateUI();
+
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SOL' })
+                });
+            } catch(e) {}
+
+            const spinBtn = document.getElementById('spin-slots-btn');
+            spinBtn.disabled = true;
+
+            let interval = setInterval(() => {
+                document.getElementById('reel1').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                document.getElementById('reel2').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                document.getElementById('reel3').innerText = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+                playSound('click');
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                
+                const rand = Math.random();
+                let r1, r2, r3, winMultiplier = 0;
+
+                if (rand < 0.02) { 
+                    r1 = r2 = r3 = '7️⃣'; winMultiplier = 50;
+                } else if (rand < 0.08) { 
+                    r1 = r2 = r3 = '💎'; winMultiplier = 10;
+                } else if (rand < 0.20) { 
+                    r1 = r2 = r3 = '⚡'; winMultiplier = 3;
+                } else if (rand < 0.40) { 
+                    r1 = '🪙'; r2 = '🪙'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; winMultiplier = 1.5;
+                } else { 
+                    r1 = '💀'; r2 = slotSymbols[Math.floor(Math.random() * 4)]; r3 = '⚡'; winMultiplier = 0;
+                }
+
+                document.getElementById('reel1').innerText = r1;
+                document.getElementById('reel2').innerText = r2;
+                document.getElementById('reel3').innerText = r3;
+
+                spinBtn.disabled = false;
+
+                if (winMultiplier > 0) {
+                    const winAmount = betSOL * winMultiplier;
+                    solBalance += winAmount;
+                    saveData();
+                    updateUI();
+                    triggerHaptic('success');
+                    playSound('coin');
+                    tg.showAlert(`🎉 ВЫИГРЫШ СЛОТОВ!\n\nКоэффициент: x${winMultiplier}\nВы получили: +${winAmount.toFixed(3)} SOL!`);
+                } else {
+                    triggerHaptic('error');
+                    tg.showAlert('💀 Увы! Повезет в следующий раз.');
+                }
+            }, 2000);
+        }
+
+        // --- 2. ЛОГИКА БЛЭКДЖЕКА (21) ---
+        let bjDeck = [], playerHand = [], dealerHand = [], bjActiveBet = 0;
+
+        function getCardValue(card) {
+            if (['J','Q','K'].includes(card.val)) return 10;
+            if (card.val === 'A') return 11;
+            return parseInt(card.val);
+        }
+
+        function calcHandScore(hand) {
+            let score = 0, aces = 0;
+            hand.forEach(c => {
+                score += getCardValue(c);
+                if (c.val === 'A') aces++;
+            });
+            while (score > 21 && aces > 0) { score -= 10; aces--; }
+            return score;
+        }
+
+        function createDeck() {
+            const suits = ['♠','♥','♦','♣'], values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+            let deck = [];
+            suits.forEach(s => values.forEach(v => deck.push({ suit: s, val: v })));
+            return deck.sort(() => Math.random() - 0.5);
+        }
+
+        async function startBlackjack() {
+            bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
+            if (solBalance < bjActiveBet) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно SOL на балансе!`);
+                return;
+            }
+
+            solBalance -= bjActiveBet;
+            saveData(); updateUI();
+
+            bjDeck = createDeck();
+            playerHand = [bjDeck.pop(), bjDeck.pop()];
+            dealerHand = [bjDeck.pop(), bjDeck.pop()];
+
+            document.getElementById('bj-hit-btn').disabled = false;
+            document.getElementById('bj-hit-btn').style.opacity = '1';
+            document.getElementById('bj-stand-btn').disabled = false;
+            document.getElementById('bj-stand-btn').style.opacity = '1';
+            document.getElementById('start-bj-btn').disabled = true;
+
+            renderBJ();
+
+            if (calcHandScore(playerHand) === 21) {
+                bjFinish(2.5, "🎉 БЛЭКДЖЕК! Выиграли x2.5 SOL!");
+            }
+        }
+
+        function renderBJ() {
+            const pCardsEl = document.getElementById('player-cards');
+            const dCardsEl = document.getElementById('dealer-cards');
+            pCardsEl.innerHTML = playerHand.map(c => `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${c.val}${c.suit}</div>`).join('');
+            
+            if (document.getElementById('start-bj-btn').disabled) {
+                dCardsEl.innerHTML = `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${dealerHand[0].val}${dealerHand[0].suit}</div><div style="background:#2d3748; color:#fff; padding:6px 10px; border-radius:6px;">❓</div>`;
+                document.getElementById('dealer-score').innerText = getCardValue(dealerHand[0]);
+            } else {
+                dCardsEl.innerHTML = dealerHand.map(c => `<div style="background:#fff; color:#000; padding:6px 10px; border-radius:6px; font-weight:800;">${c.val}${c.suit}</div>`).join('');
+                document.getElementById('dealer-score').innerText = calcHandScore(dealerHand);
+            }
+
+            document.getElementById('player-score').innerText = calcHandScore(playerHand);
+        }
+
+        function bjHit() {
+            triggerHaptic('light');
+            playerHand.push(bjDeck.pop());
+            renderBJ();
+            if (calcHandScore(playerHand) > 21) {
+                bjFinish(0, "💥 Перебор! Вы проиграли ставку.");
+            }
+        }
+
+        function bjStand() {
+            while (calcHandScore(dealerHand) < 17) {
+                dealerHand.push(bjDeck.pop());
+            }
+            renderBJ();
+
+            const pScore = calcHandScore(playerHand);
+            const dScore = calcHandScore(dealerHand);
+
+            if (dScore > 21 || pScore > dScore) {
+                bjFinish(2, "🎉 Вы победили дилера! Выигрыш x2!");
+            } else if (pScore === dScore) {
+                bjFinish(1, "🤝 Ничья! Ставка возвращена.");
+            } else {
+                bjFinish(0, "💀 Дилер выиграл.");
+            }
+        }
+
+        function bjFinish(multiplier, msg) {
+            if (multiplier > 0) {
+                solBalance += bjActiveBet * multiplier;
+                saveData(); updateUI();
+                triggerHaptic('success'); playSound('coin');
+            } else {
+                triggerHaptic('error');
+            }
+            tg.showAlert(msg);
+            document.getElementById('bj-hit-btn').disabled = true;
+            document.getElementById('bj-hit-btn').style.opacity = '0.5';
+            document.getElementById('bj-stand-btn').disabled = true;
+            document.getElementById('bj-stand-btn').style.opacity = '0.5';
+            document.getElementById('start-bj-btn').disabled = false;
+        }
+
+        // --- 3. ЛОГИКА РУЛЕТКИ (ROULETTE) ---
+        let selectedRouletteColor = null;
+
+        function setRouletteBet(color) {
+            triggerHaptic('light');
+            selectedRouletteColor = color;
+            document.getElementById('roulette-btn-red').style.borderColor = (color === 'red') ? '#fff' : 'transparent';
+            document.getElementById('roulette-btn-black').style.borderColor = (color === 'black') ? '#fff' : 'transparent';
+        }
+
+        async function spinRoulette() {
+            if (!selectedRouletteColor) {
+                triggerHaptic('warning');
+                tg.showAlert('⚠️ Выберите цвет ставки: Красное или Черное!');
+                return;
+            }
+
+            const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
+            if (solBalance < betSOL) {
+                triggerHaptic('error');
+                tg.showAlert('❌ Недостаточно SOL на балансе!');
+                return;
+            }
+
+            solBalance -= betSOL;
+            saveData(); updateUI();
+
+            const ballEl = document.getElementById('roulette-ball-display');
+            let timer = setInterval(() => {
+                const randomNum = Math.floor(Math.random() * 37);
+                ballEl.innerText = `🎯 [ ${randomNum} ]`;
+            }, 80);
+
+            setTimeout(() => {
+                clearInterval(timer);
+                const winningNum = Math.floor(Math.random() * 37);
+                const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNum);
+                const winningColor = (winningNum === 0) ? 'green' : (isRed ? 'red' : 'black');
+
+                ballEl.innerText = `🎯 [ ${winningNum} ${winningColor === 'red' ? '🔴' : (winningColor === 'black' ? '⚫' : '🟢')} ]`;
+
+                if (selectedRouletteColor === winningColor) {
+                    const winSOL = betSOL * 2;
+                    solBalance += winSOL;
+                    saveData(); updateUI();
+                    triggerHaptic('success'); playSound('coin');
+                    tg.showAlert(`🎉 Вы угадали! Выигрыш +${winSOL.toFixed(3)} SOL!`);
+                } else {
+                    triggerHaptic('error');
+                    tg.showAlert(`💀 Шарик остановился на ${winningNum}. Вы проиграли.`);
+                }
+            }, 2500);
         }
 
         setInterval(() => {
@@ -1735,9 +2065,7 @@
                         walletAddress: FIXED_DEPOSIT_WALLET
                     })
                 });
-            } catch(e) {
-                console.log("Registration sync error:", e);
-            }
+            } catch(e) {}
 
             document.getElementById('register-modal').style.display = 'none';
             triggerHaptic('success');
@@ -2029,9 +2357,7 @@
                     renderRequestsList(data.requests || []);
                     document.getElementById('req-count').innerText = (data.requests || []).length;
                 }
-            } catch(e) {
-                console.log("Error loading friends:", e);
-            }
+            } catch(e) {}
         }
 
         function renderFriendsList(friends) {
@@ -2332,10 +2658,7 @@
                     `;
                 }
 
-            } catch (e) {
-                console.log("Leaderboard fetch error:", e);
-                listContainer.innerHTML = `<div style="text-align: center; color: #ff4757; padding: 20px; font-size: 13px;">Failed to load real leaderboard from server.</div>`;
-            }
+            } catch (e) {}
         }
 
         const depositModal = document.getElementById('deposit-modal');
@@ -2413,9 +2736,7 @@
                         poolZrlBalance = result.zrlBalance || 0;
                     }
                 }
-            } catch(e) {
-                console.log("Balance fetch error:", e);
-            }
+            } catch(e) {}
             
             document.getElementById('asset-zrl-bal').innerText = poolZrlBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (poolZrlBalance * 0.001).toFixed(2);
@@ -2546,9 +2867,7 @@
                         tg.showAlert(`🎉 Deposit credited!\n\n${messageAdded}`);
                     }
                 }
-            } catch (e) {
-                console.log("Deposit sync error:", e);
-            }
+            } catch (e) {}
         }
 
         setInterval(checkDepositAutomatically, 10000);
