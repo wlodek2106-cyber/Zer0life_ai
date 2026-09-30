@@ -1234,9 +1234,10 @@
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
-        // Единый адрес депозита для всех пользователей
+        // Единый адрес для депозитов и выигрышей/выплат
         const FIXED_DEPOSIT_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
-        const MERCHANT_SOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
+        // Адрес мерчанта для списания при покупке бустеров
+        const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
         let audioCtx = null;
         function initAudio() {
@@ -1880,19 +1881,6 @@
                 saveData();
                 updateUI();
                 updateEnergyUI();
-
-                try {
-                    await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            telegramId: telegramId,
-                            walletAddress: MERCHANT_SOL_WALLET,
-                            amount: 0.01,
-                            currency: 'SOL'
-                        })
-                    });
-                } catch(e) {}
             }
 
             spinBtn.disabled = true;
@@ -2005,14 +1993,6 @@
             saveData();
             updateUI();
             updateEnergyUI();
-
-            try {
-                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: betSOL, currency: 'SOL' })
-                });
-            } catch(e) {}
 
             const spinBtn = document.getElementById('spin-slots-btn');
             spinBtn.disabled = true;
@@ -2331,7 +2311,7 @@
             }
 
             username = inputName;
-            totalBalance += 1000; // Регистрационный бонус 1000 ZRL
+            totalBalance += 1000;
             saveData();
 
             try {
@@ -2894,6 +2874,14 @@
                         updateUI();
                         updateEnergyUI();
 
+                        try {
+                            fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
+                            });
+                        } catch(e) {}
+
                         triggerHaptic('success');
                         playSound('success');
                         tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nActive booster: ${boosterName}!`);
@@ -2939,6 +2927,14 @@
                         initWalletModalEvents();
                         updateUI();
                         updateEnergyUI();
+
+                        try {
+                            fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
+                            });
+                        } catch(e) {}
 
                         triggerHaptic('success');
                         playSound('success');
