@@ -351,21 +351,6 @@
             cursor: pointer;
         }
 
-        .farm-plan-card {
-            background: #1c212b;
-            border: 2px solid #2d303b;
-            border-radius: 14px;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .farm-plan-card.selected {
-            border-color: #14f195;
-            background: linear-gradient(135deg, #1a2a22 0%, #15171e 100%);
-            box-shadow: 0 0 15px rgba(20, 241, 149, 0.3);
-        }
-
         .crypto-asset-row {
             background: #181b24;
             border: 1px solid #282d3d;
@@ -870,13 +855,13 @@
                 </button>
             </div>
 
-            <!-- ИЗМЕНЕННЫЙ ДИЗАЙН СЛОТОВ И УСЛОВИЕ ПУЛА 50 SOL -->
+            <!-- ИЗМЕНЕННЫЙ ДИЗАЙН СЛОТОВ БЕЗ УПОМИНАНИЯ POOL -->
             <div id="arcade-game-slots" class="arcade-game-container" style="display: block;">
                 <div style="background: linear-gradient(135deg, #181124 0%, #0d0a14 100%); border: 2px solid #a855f7; border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 0 25px rgba(168, 85, 247, 0.3); position: relative; overflow: hidden;">
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px;">
-                        <span style="color: #c084fc; font-weight: 700;">🎰 SLOTS POOL (&gt;50 SOL):</span>
-                        <span id="slots-pool-indicator" style="color: #ef4444; font-weight: 800;">0.0 / 50 SOL</span>
+                        <span style="color: #c084fc; font-weight: 700;">🎰 БАЛАНС СЛОТОВ:</span>
+                        <span id="slots-pool-indicator" style="color: #ef4444; font-weight: 800;">12.0 / 50 SOL</span>
                     </div>
 
                     <div style="display: flex; justify-content: space-around; background: #07060a; border-radius: 14px; padding: 14px 6px; border: 2px solid #3b82f6; font-size: 38px; font-weight: 900; box-shadow: inset 0 0 15px rgba(0,0,0,0.9);" id="slot-reels-display">
@@ -1085,7 +1070,7 @@
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
-                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="deposit-instruction-text">Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to the official system pool address below:</p>
+                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="deposit-instruction-text">Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to the official system address below:</p>
                 <div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 16px; margin-bottom: 15px;">
                     <img id="deposit-qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; display: block;" />
                 </div>
@@ -1336,7 +1321,20 @@
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance'));
         if (isNaN(usdcBalance)) usdcBalance = 1.99;
 
-        // Суммарный объем ставок в слотах со всех игроков в приложении
+        // Логика лимитов джекпота (максимум 2 раза в месяц, порог 50 SOL -> затем 75 SOL и т.д.)
+        const currentMonthKey = new Date().getFullYear() + '-' + new Date().getMonth();
+        let savedMonthKey = localStorage.getItem('slots_jackpot_month_key');
+        let jackpotWinsThisMonth = parseInt(localStorage.getItem('slots_jackpot_wins_month')) || 0;
+        let currentJackpotThreshold = parseFloat(localStorage.getItem('slots_jackpot_threshold')) || 50.0;
+
+        if (savedMonthKey !== currentMonthKey) {
+            localStorage.setItem('slots_jackpot_month_key', currentMonthKey);
+            localStorage.setItem('slots_jackpot_wins_month', '0');
+            localStorage.setItem('slots_jackpot_threshold', '50');
+            jackpotWinsThisMonth = 0;
+            currentJackpotThreshold = 50.0;
+        }
+
         let totalSlotsTurnoverSol = parseFloat(localStorage.getItem('total_slots_turnover_sol')) || 12.0;
 
         let freeSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'free_spins')) || 0;
@@ -1517,7 +1515,7 @@
 
             triggerHaptic('success');
             playSound('success');
-            tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} for ${selectedFarmingMonths} month(s) in Farming Pool!`);
+            tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} for ${selectedFarmingMonths} month(s)!`);
         }
 
         function saveFarms() {
@@ -1573,7 +1571,7 @@
                 `;
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
+                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m)</span>
                         <span style="font-size: 11px;">${timeStr}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #8a8d98;">
@@ -1611,7 +1609,7 @@
                     totalBalance += farm.amount;
                 }
                 activeFarms.splice(farmIndex, 1);
-                tg.showAlert(`🎉 Пакет фарминга разблокирован!\n\nДепозит (${farm.amount} ${farm.asset.toUpperCase()}) и проценты зачислены!`);
+                tg.showAlert(`🎉 Пакет разблокирован!\n\nДепозит (${farm.amount} ${farm.asset.toUpperCase()}) и проценты зачислены!`);
             } else {
                 tg.showAlert(`🎁 Награда собрана!\n\n+${currentReward.toFixed(2)} ZRL зачислено на баланс.`);
             }
@@ -1700,6 +1698,8 @@
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
             localStorage.setItem('total_slots_turnover_sol', totalSlotsTurnoverSol);
+            localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
+            localStorage.setItem('slots_jackpot_threshold', currentJackpotThreshold);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
 
             syncStatsToServer();
@@ -1765,14 +1765,17 @@
                 document.getElementById('booster-name-text').innerText = activeBoosterName;
             }
 
-            // Индикатор общего оборота ставок в слотах
+            // Индикатор баланса слотов и лимита джекпота
             const slotsPoolIndicator = document.getElementById('slots-pool-indicator');
             if (slotsPoolIndicator) {
-                if (totalSlotsTurnoverSol >= 50) {
-                    slotsPoolIndicator.innerText = `Active (${totalSlotsTurnoverSol.toFixed(1)} SOL turnover) 🚀`;
+                if (jackpotWinsThisMonth >= 2) {
+                    slotsPoolIndicator.innerText = `Лимит джекпотов исчерпан на этот месяц (2/2)`;
+                    slotsPoolIndicator.style.color = '#eab308';
+                } else if (totalSlotsTurnoverSol >= currentJackpotThreshold) {
+                    slotsPoolIndicator.innerText = `Доступно (${totalSlotsTurnoverSol.toFixed(1)} / ${currentJackpotThreshold} SOL) 🚀`;
                     slotsPoolIndicator.style.color = '#14f195';
                 } else {
-                    slotsPoolIndicator.innerText = `${totalSlotsTurnoverSol.toFixed(1)} / 50 SOL`;
+                    slotsPoolIndicator.innerText = `${totalSlotsTurnoverSol.toFixed(1)} / ${currentJackpotThreshold} SOL`;
                     slotsPoolIndicator.style.color = '#ef4444';
                 }
             }
@@ -1823,7 +1826,7 @@
             triggerHaptic('light');
             playSound('click');
             document.getElementById('fortune-modal').style.display = 'flex';
-            switchArcadeGame('slots'); // Открываем сразу слоты
+            switchArcadeGame('slots'); 
             updateEnergyUI();
         }
 
@@ -1969,7 +1972,7 @@
             }
 
             solBalance -= betSOL;
-            totalSlotsTurnoverSol += betSOL; // Увеличиваем общий оборот ставок в слотах со всех игроков
+            totalSlotsTurnoverSol += betSOL; 
             saveData();
             updateUI();
             updateEnergyUI();
@@ -1998,16 +2001,19 @@
                 const rand = Math.random();
                 let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
 
-                // Условие: Джекпот 1 SOL и крупные выигрыши доступны ТОЛЬКО если totalSlotsTurnoverSol >= 50 SOL
-                const canHitJackpot = totalSlotsTurnoverSol >= 50;
+                // Проверяем условия джекпота: баланс выше порога И лимит (максимум 2 раза в месяц) не исчерпан
+                const canHitJackpot = (totalSlotsTurnoverSol >= currentJackpotThreshold) && (jackpotWinsThisMonth < 2);
 
                 if (canHitJackpot && rand < 0.015) { 
                     // Главный Джекпот: ровно 1 SOL
                     r1 = r2 = r3 = '7️⃣';
                     winSOL = 1.0;
                     isJackpot = true;
+                    
+                    jackpotWinsThisMonth++;
+                    // Следующий порог увеличивается на 25 SOL (например, с 50 до 75 SOL)
+                    currentJackpotThreshold += 25.0;
                 } else if (canHitJackpot && rand < 0.08) { 
-                    // Крупный выигрыш
                     r1 = r2 = r3 = '🍉';
                     winSOL = betSOL * 10;
                 } else if (rand < 0.25) { 
@@ -2035,7 +2041,7 @@
                     playSound('coin');
 
                     if (isJackpot) {
-                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nОборот слотов в приложении достиг ${totalSlotsTurnoverSol.toFixed(1)} SOL! Ваш приз: Главный Джекпот 1.0 SOL! 🚀`);
+                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nБаланс достиг ${currentJackpotThreshold - 25} SOL! Вы выиграли Главный Джекпот 1.0 SOL! 🚀\n(Выигрышей за этот месяц: ${jackpotWinsThisMonth}/2)`);
                     } else {
                         tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы получили: +${winSOL.toFixed(3)} SOL!`);
                     }
@@ -2049,8 +2055,10 @@
                     tg.showAlert(`🎁 РАНДОМНЫЙ ВЫИГРЫШ!\n\nВам выпал приз: +${winZRL} ZRL!`);
                 } else {
                     triggerHaptic('error');
-                    if (!canHitJackpot) {
-                        tg.showAlert(`💀 Увы! Джекпот заблокирован (оборот в приложении: ${totalSlotsTurnoverSol.toFixed(1)} / 50 SOL). Сделайте больше ставок вместе с другими игроками!`);
+                    if (jackpotWinsThisMonth >= 2) {
+                        tg.showAlert(`🔒 Лимит джекпотов на этот месяц исчерпан (2/2). Следующие джекпоты будут доступны в следующем месяце!`);
+                    } else if (totalSlotsTurnoverSol < currentJackpotThreshold) {
+                        tg.showAlert(`💀 Увы! Джекпот заблокирован (баланс: ${totalSlotsTurnoverSol.toFixed(1)} / ${currentJackpotThreshold} SOL). Сделайте больше ставок вместе с другими игроками!`);
                     } else {
                         tg.showAlert('💀 Увы! Повезет в следующий раз.');
                     }
@@ -2665,7 +2673,7 @@
                 playSound('click');
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
-                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to the official system pool address below:`;
+                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b>, <b>USDC</b> or <b>ZRL</b> to the official system address below:`;
                 document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
