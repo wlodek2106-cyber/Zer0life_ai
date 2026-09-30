@@ -822,7 +822,7 @@
         <div class="modal-content" style="max-width: 320px; text-align: center; border-radius: 28px; background: linear-gradient(135deg, #1b241e 0%, #121816 100%); border: 1px solid #14f195;">
             <div style="font-size: 50px; margin-bottom: 10px;">🎁</div>
             <div style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px;">Mystery Box Found!</div>
-            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 20px;">You discovered a secret crypto box during your run. Open it to claim instant ZRL tokens!</p>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 20px;">You discovered a secret crypto box! Open it to claim instant ZRL tokens!</p>
             <button class="claim-btn" id="open-box-btn" style="width: 100%; background: #14f195; color: #000; font-size: 16px; padding: 14px;">Open Box 🚀</button>
         </div>
     </div>
@@ -1578,7 +1578,7 @@
                             telegramId: telegramId,
                             walletAddress: MERCHANT_SOL_WALLET,
                             amount: 0.01,
-                            currency: 'SOL' // ИСПРАВЛЕНО: теперь сервер знает, что это SOL, а не ZRL!
+                            currency: 'SOL'
                         })
                     });
                 } catch(e) {
@@ -1589,42 +1589,94 @@
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
 
-            const randomAdditionalDegrees = Math.floor(Math.random() * 360) + 1800;
-            currentWheelRotation += randomAdditionalDegrees;
+            // --- 1. ЛОГИКА ШАНСОВ И ЗАЩИТА ОТ РАЗОРЕНИЯ ---
+            let totalSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'total_spins')) || 0;
+            totalSpins++;
+            localStorage.setItem(STORAGE_PREFIX + 'total_spins', totalSpins);
+
+            let weightedIndices = [];
+            for (let i = 0; i < wheelSectors.length; i++) {
+                const sector = wheelSectors[i];
+                let weight = 0;
+
+                // Блокировки для джекпотов SOL
+                if (sector.type === 'sol' && sector.val === 0.1) {
+                    weight = (totalSpins >= 50) ? 1 : 0; // 1% шанс, только если крутил минимум 50 раз
+                } else if (sector.type === 'sol' && sector.val === 0.01) {
+                    weight = (totalSpins >= 10) ? 4 : 0; // 4% шанс, только если крутил минимум 10 раз
+                } else if (sector.type === 'box') {
+                    weight = 8; // 8% шанс выбить коробку
+                } else if (sector.type === 'free_spin' || sector.type === 'boots') {
+                    weight = 5; 
+                } else {
+                    weight = 12; // Обычные сектора ZRL падают чаще всего
+                }
+
+                for (let w = 0; w < weight; w++) {
+                    weightedIndices.push(i);
+                }
+            }
+
+            // Математика определяет выигрыш ДО остановки колеса
+            const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
+            const won = wheelSectors[winningIndex];
+
+            // Если выпала коробка - генерируем рандом
+            if (won.type === 'box') {
+                won.val = Math.floor(Math.random() * 91) + 10; 
+            }
+
+            // --- 2. ВЫЧИСЛЕНИЕ УГЛА ДЛЯ ОСТАНОВКИ КОЛЕСА ---
+            const arcSize = 360 / wheelSectors.length;
+            const drift = Math.random() * (arcSize - 4) + 2; 
+            let targetAngle = 360 - (winningIndex * arcSize) - drift;
+            if (targetAngle < 0) targetAngle += 360;
+
+            const extraSpins = 360 * 5; 
+            currentWheelRotation = currentWheelRotation - (currentWheelRotation % 360) + extraSpins + targetAngle;
+            
             canvasEl.style.transform = `rotate(${currentWheelRotation}deg)`;
 
+            // --- 3. ВЫДАЧА ПРИЗА ---
             setTimeout(() => {
                 triggerHaptic('success');
                 playSound('coin');
                 
-                const winningIndex = Math.floor((360 - (currentWheelRotation % 360)) / (360 / wheelSectors.length)) % wheelSectors.length;
-                const won = wheelSectors[winningIndex];
-                
-                if (won.type === 'zrl') {
-                    totalBalance += won.val;
-                } else if (won.type === 'sol') {
-                    solBalance += won.val;
-                } else if (won.type === 'free_spin') {
-                    freeSpins++;
-                } else if (won.type === 'box') {
-                    totalBalance += won.val;
-                } else if (won.type === 'boots') {
-                    ZRL_PER_KM = 1500;
-                    activeBoosterName = 'Boots x2 (1,500 ZRL/km)';
-                    boosterExpiryTime = Date.now() + (60 * 60 * 1000);
-                    localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
-                    localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
-                    localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
+                if (won.type === 'box') {
+                    closeFortuneModal();
+                    pendingBoxReward = won.val;
+                    document.getElementById('mystery-box-modal').style.display = 'flex';
+                } else {
+                    if (won.type === 'zrl') {
+                        totalBalance += won.val;
+                    } else if (won.type === 'sol') {
+                        solBalance += won.val;
+                    } else if (won.type === 'free_spin') {
+                        freeSpins++;
+                    } else if (won.type === 'boots') {
+                        ZRL_PER_KM = 1500;
+                        activeBoosterName = 'Boots x2 (1,500 ZRL/km)';
+                        boosterExpiryTime = Date.now() + (60 * 60 * 1000);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
+                        localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
+                    }
+
+                    saveData();
+                    updateUI();
+                    updateEnergyUI();
+
+                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
+                    
+                    if (freeSpins > 0) {
+                        spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
+                    } else {
+                        spinBtn.innerText = `Spin Wheel (0.01 SOL) 🚀`;
+                    }
                 }
-
-                saveData();
-                updateUI();
-                updateEnergyUI();
-
-                tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
+                
                 spinBtn.disabled = false;
                 spinBtn.style.opacity = '1';
-                openFortuneModal();
             }, 4000);
         }
 
@@ -2896,4 +2948,3 @@
     </script>
 </body>
 </html>
-
