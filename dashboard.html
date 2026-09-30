@@ -1441,7 +1441,7 @@
 
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         
-        // Личный баланс пользователя SOL (изначально 0 до пополнения)
+        // Личный баланс пользователя SOL (строго то, что пополнил, изначально 0)
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance'));
         if (isNaN(solBalance)) {
             solBalance = 0.00; 
@@ -1575,7 +1575,7 @@
 
             if (currentFarmingAsset === 'sol' && solBalance < amount) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Insufficient SOL! You have ${solBalance.toFixed(4)} SOL. Please deposit first.`);
+                tg.showAlert(`❌ Недостаточно средств! Вы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}.`);
                 return;
             }
 
@@ -1932,10 +1932,10 @@
         let currentWheelRotation = 0;
 
         async function spinFortuneWheel() {
-            // ПРОВЕРКА: Если нет пополненного личного баланса соланы и нет бесплатных вращений
-            if (solBalance <= 0 && freeSpins <= 0) {
+            // ЖЕСТКАЯ ПРОВЕРКА: нельзя потратить больше, чем пополнил пользователь
+            if (freeSpins <= 0 && solBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert('❌ Доступ запрещен!\n\nДля участия в казино необходимо пополнить баланс Solana (сделать депозит в кошельке).');
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс: ${solBalance.toFixed(4)} SOL. Сделайте депозит.`);
                 return;
             }
 
@@ -1948,12 +1948,6 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                if (solBalance < 0.01) {
-                    triggerHaptic('error');
-                    tg.showAlert('❌ Недостаточно SOL на личном балансе (нужно 0.01 SOL)! Пополните кошелек.');
-                    return;
-                }
-
                 solBalance -= 0.01;
                 saveData();
                 updateUI();
@@ -2064,10 +2058,10 @@
         async function playSlots() {
             const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
             
-            // ПРОВЕРКА БАЛАНСА SOL
-            if (solBalance <= 0 || solBalance < betSOL) {
+            // ПРОВЕРКА ЛИЧНОГО БАЛАНСА SOL (нельзя потратить больше пополненного)
+            if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в слоты необходимо пополнить личный баланс Solana в кошельке.`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
@@ -2160,10 +2154,10 @@
         async function startBlackjack() {
             bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
             
-            // ПРОВЕРКА БАЛАНСА SOL
-            if (solBalance <= 0 || solBalance < bjActiveBet) {
+            // ПРОВЕРКА ЛИЧНОГО БАЛАНСА SOL
+            if (solBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в Блэкджек пополните личный баланс Solana.`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}. Ставка: ${bjActiveBet} SOL.`);
                 return;
             }
 
@@ -2264,10 +2258,10 @@
 
             const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
             
-            // ПРОВЕРКА БАЛАНСА SOL
-            if (solBalance <= 0 || solBalance < betSOL) {
+            // ПРОВЕРКА ЛИЧНОГО БАЛАНСА SOL
+            if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Доступ заблокирован!\n\nДля игры в рулетку пополните личный баланс Solana.`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
@@ -2920,11 +2914,11 @@
         };
 
         window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
-            // ПРОВЕРКА БАЛАНСА SOL ДЛЯ ПОКУПКИ БУСТЕРОВ
-            if (solBalance <= 0 || solBalance < solPrice) {
+            // ЖЕСТКАЯ ПРОВЕРКА: Нельзя купить бустер на сумму больше, чем пополнил пользователь
+            if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Покупка заблокирована!\n\nДля приобретения бустеров за Solana необходимо пополнить личный баланс кошелька (сделать депозит).`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}. Цена бустера: ${solPrice} SOL.`);
                 return;
             }
 
@@ -2962,11 +2956,11 @@
         };
 
         window.buyTimedBooster = function(solPrice, zrlRatePerKm, boosterName, hoursDuration) {
-            // ПРОВЕРКА БАЛАНСА SOL ДЛЯ ПОКУПКИ ВРЕМЕННЫХ БУСТЕРОВ
-            if (solBalance <= 0 || solBalance < solPrice) {
+            // ЖЕСТКАЯ ПРОВЕРКА: Нельзя купить временный бустер на сумму больше, чем пополнил пользователь
+            if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Покупка заблокирована!\n\nДля приобретения бустеров за Solana необходимо пополнить личный баланс кошелька (сделать депозит).`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nВы можете потратить не больше, чем пополнили. Ваш баланс SOL: ${solBalance.toFixed(4)}. Цена: ${solPrice} SOL.`);
                 return;
             }
 
