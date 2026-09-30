@@ -671,7 +671,7 @@
             </div>
             <div class="wallet-btn" id="wallet-btn">
                 <div class="sol-icon">S</div>
-                <span id="wallet-btn-text">0.01 SOL (Pool)</span>
+                <span id="wallet-btn-text">0.077 SOL</span>
             </div>
         </div>
 
@@ -816,7 +816,7 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #2d3748;">
-                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 7px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
+                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 7px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Balance</button>
                 <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 7px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
             </div>
 
@@ -896,7 +896,7 @@
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
             <div class="modal-header" style="margin-bottom: 12px;">
-                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino (Pool Stakes)</span>
+                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
@@ -917,7 +917,7 @@
                     </div>
                 </div>
                 <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: linear-gradient(135deg, #fef08a 0%, #eab308 100%); color: #000; font-size: 15px; padding: 12px; font-weight: 900;">
-                    Spin Wheel (0.01 SOL Pool) 🚀
+                    Spin Wheel (0.01 SOL) 🚀
                 </button>
             </div>
 
@@ -933,7 +933,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка из Pool:</span>
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
                         <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #c084fc; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
@@ -986,7 +986,7 @@
             <div id="arcade-game-roulette" class="arcade-game-container" style="display: block;">
                 <div style="background: linear-gradient(180deg, #134e32 0%, #0a331f 100%); border: 3px solid #d4af37; border-radius: 18px; padding: 14px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 0 15px rgba(212, 175, 55, 0.2); position: relative;">
                     
-                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #facc15; opacity: 0.9; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">EUROPEAN ROULETTE (STAKES FROM POOL)</div>
+                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #facc15; opacity: 0.9; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">EUROPEAN ROULETTE</div>
 
                     <div id="roulette-ball-display" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.4); border-radius: 12px; padding: 10px; font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);">
                         🎯 [ ? ]
@@ -1003,7 +1003,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка из Pool:</span>
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
                         <select id="roulette-bet-amount" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
@@ -1060,9 +1060,6 @@
             </div>
             <div id="wallet-modal-body">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <span style="font-size: 13px; color: #8a8d98;">Раздельные балансы игрока</span>
-                    <div style="font-size: 14px; font-weight: 700; margin-top: 6px; color: #fff;">Pool (Депозиты): <span id="modal-pool-sol" style="color: #14f195;">0.00 SOL</span></div>
-                    <div style="font-size: 14px; font-weight: 700; margin-top: 2px; color: #fff;">Выигрыши (К выводу): <span id="modal-win-sol" style="color: #a8f07a;">0.00 SOL</span></div>
                     <div style="font-size: 12px; color: #8a8d98; margin-top: 6px;" id="wallet-short-addr">HWkraaCqG3...8VAix</div>
                 </div>
 
@@ -1084,20 +1081,20 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Solana (Выигрыши)</div>
-                                <div class="asset-sub">Доступно для вывода</div>
+                                <div class="asset-name">Solana (Баланс / Доступно)</div>
+                                <div class="asset-sub">Депозит + Выигрыши</div>
                             </div>
                         </div>
                         <div class="asset-right">
-                            <div class="asset-balance" id="asset-sol-bal">0.00</div>
-                            <div class="asset-usd" id="asset-sol-usd">$0.00</div>
+                            <div class="asset-balance" id="asset-sol-bal">0.0770</div>
+                            <div class="asset-usd" id="asset-sol-usd">$10.79</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="wallet-actions" id="wallet-actions-div">
-                    <button class="wallet-action-btn" id="deposit-btn">📥 Deposit to Pool</button>
-                    <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw Wins</button>
+                    <button class="wallet-action-btn" id="deposit-btn">📥 Deposit SOL</button>
+                    <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
                 </div>
 
                 <button class="logout-btn" id="logout-btn">🚪 Logout / Switch Profile</button>
@@ -1109,11 +1106,11 @@
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Deposit Crypto to Pool</span>
+                <span class="modal-title">Deposit Crypto</span>
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
-                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="deposit-instruction-text">Send <b>SOL</b> or <b>USDC</b> to populate your gameplay pool:</p>
+                <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="deposit-instruction-text">Send <b>SOL</b> to your personal deposit address below:</p>
                 <div style="background: #ffffff; padding: 12px; display: inline-block; border-radius: 16px; margin-bottom: 15px;">
                     <img id="deposit-qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; display: block;" />
                 </div>
@@ -1134,7 +1131,7 @@
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 15px;">
-                Boost your ZRL mining speed per kilometer by activating a VIP package via your winnings balance.
+                Boost your ZRL mining speed per kilometer by activating a VIP package via your balance.
             </p>
             
             <div class="booster-grid">
@@ -1358,11 +1355,13 @@
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance'));
         if (isNaN(totalBalance)) totalBalance = 3110.86;
         
+        // Личный депозит (Pool) — неприкасаемый сейф
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit'));
-        if (isNaN(poolDeposit)) poolDeposit = 0.05; 
+        if (isNaN(poolDeposit)) poolDeposit = 0.00; 
 
+        // Единый игровой баланс (выигрыши/доступные средства для ставок)
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance'));
-        if (isNaN(solBalance)) solBalance = 0.00;     
+        if (isNaN(solBalance)) solBalance = 0.0770;     
 
         let usdcBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'usdc_balance'));
         if (isNaN(usdcBalance)) usdcBalance = 1.99;
@@ -1509,9 +1508,9 @@
                 return;
             }
 
-            if (currentFarmingAsset === 'sol' && poolDeposit < amount) {
+            if (currentFarmingAsset === 'sol' && solBalance < amount) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в Pool! Ваш пул: ${poolDeposit.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств! Доступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -1522,7 +1521,7 @@
             }
 
             if (currentFarmingAsset === 'sol') {
-                poolDeposit -= amount;
+                solBalance -= amount;
             } else {
                 totalBalance -= amount;
             }
@@ -1646,7 +1645,7 @@
 
             if (isUnlocked) {
                 if (farm.asset === 'sol') {
-                    poolDeposit += farm.amount;
+                    solBalance += farm.amount;
                 } else {
                     totalBalance += farm.amount;
                 }
@@ -1865,9 +1864,9 @@
         let currentWheelRotation = 0;
 
         async function spinFortuneWheel() {
-            if (freeSpins <= 0 && poolDeposit < 0.01) {
+            if (freeSpins <= 0 && solBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в Pool!\n\nВаш пул: ${poolDeposit.toFixed(4)} SOL. Пополните счет.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -1880,7 +1879,7 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                poolDeposit -= 0.01; 
+                solBalance -= 0.01; // Списание со счета
                 saveData();
                 updateUI();
                 updateEnergyUI();
@@ -1973,12 +1972,12 @@
                     updateUI();
                     updateEnergyUI();
 
-                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}! Выигрыш зачислен на баланс к выводу.`);
+                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
                     
                     if (freeSpins > 0) {
                         spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
                     } else {
-                        spinBtn.innerText = `Spin Wheel (0.01 SOL Pool) 🚀`;
+                        spinBtn.innerText = `Spin Wheel (0.01 SOL) 🚀`;
                     }
                 }
                 
@@ -1992,13 +1991,13 @@
         async function playSlots() {
             const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
             
-            if (poolDeposit < betSOL) {
+            if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в Pool!\n\nВаш пул: ${poolDeposit.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
-            poolDeposit -= betSOL; 
+            solBalance -= betSOL; // Списание со счета
             totalSlotsTurnoverSol += betSOL; 
             saveData();
             updateUI();
@@ -2064,9 +2063,9 @@
                     playSound('coin');
 
                     if (isJackpot) {
-                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! Зачислено на выигрышный баланс! 🚀`);
+                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! 🚀`);
                     } else {
-                        tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL! Зачислено на баланс выигрышей.`);
+                        tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL!`);
                     }
                 } else if (winZRL > 0) {
                     totalBalance += winZRL;
@@ -2081,9 +2080,9 @@
                     if (jackpotWinsThisMonth >= 2) {
                         tg.showAlert(`🔒 Лимит джекпотов на этот месяц исчерпан (2/2).`);
                     } else if (totalSlotsTurnoverSol < currentJackpotThreshold) {
-                        tg.showAlert(`💀 Увы! Джекпот заблокирован. Сделайте больше ставок.`);
+                        tg.showAlert(`💀 Увы! Джекпот заблокирован. Сделайте больше оборота.`);
                     } else {
-                        tg.showAlert('💀 Увы! Повезет в следующий раз. Ставка списана из Pool.');
+                        tg.showAlert('💀 Увы! Повезет в следующий раз.');
                     }
                 }
             }, 2000);
@@ -2117,13 +2116,13 @@
         async function startBlackjack() {
             bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
             
-            if (poolDeposit < bjActiveBet) {
+            if (solBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в Pool!\n\nВаш пул: ${poolDeposit.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
                 return;
             }
 
-            poolDeposit -= bjActiveBet; 
+            solBalance -= bjActiveBet; // Списание со счета
             saveData(); updateUI(); updateEnergyUI();
 
             bjDeck = createDeck();
@@ -2164,7 +2163,7 @@
             playerHand.push(bjDeck.pop());
             renderBJ();
             if (calcHandScore(playerHand) > 21) {
-                bjFinish(0, "💥 Перебор! Вы проиграли ставку из Pool.");
+                bjFinish(0, "💥 Перебор! Вы проиграли ставку.");
             }
         }
 
@@ -2178,17 +2177,17 @@
             const dScore = calcHandScore(dealerHand);
 
             if (dScore > 21 || pScore > dScore) {
-                bjFinish(2, "🎉 Вы победили дилера! Выигрыш зачислен к выводу!");
+                bjFinish(2, "🎉 Вы победили дилера!");
             } else if (pScore === dScore) {
-                bjFinish('return', "🤝 Ничья! Ставка возвращена в Pool.");
+                bjFinish('return', "🤝 Ничья! Ставка возвращена на баланс.");
             } else {
-                bjFinish(0, "💀 Дилер выиграл. Ставка списана из Pool.");
+                bjFinish(0, "💀 Дилер выиграл.");
             }
         }
 
         function bjFinish(multiplier, msg) {
             if (multiplier === 'return') {
-                poolDeposit += bjActiveBet; 
+                solBalance += bjActiveBet; // Возврат на счет
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
@@ -2236,13 +2235,13 @@
 
             const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
             
-            if (poolDeposit < betSOL) {
+            if (solBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в Pool!\n\nВаш пул: ${poolDeposit.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
-            poolDeposit -= betSOL; 
+            solBalance -= betSOL; // Списание со счета
             saveData(); updateUI(); updateEnergyUI();
 
             const ballEl = document.getElementById('roulette-ball-display');
@@ -2272,10 +2271,10 @@
                     solBalance += winSOL; 
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен на баланс выигрышей!`);
+                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен на баланс!`);
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли. Ставка списана из Pool.`);
+                    tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
                 }
             }, 2500);
         }
@@ -2291,11 +2290,7 @@
         function updateWalletUI() {
             headerUsernameLabel.innerText = username || 'CryptoWlodek';
             headerZrlBalanceEl.innerText = totalBalance.toFixed(2) + " ZRL";
-            document.getElementById('wallet-btn-text').innerText = poolDeposit.toFixed(3) + " SOL (Pool)";
-            document.getElementById('pool-bal-ui').innerText = poolDeposit.toFixed(4) + " SOL";
-            document.getElementById('win-bal-ui').innerText = solBalance.toFixed(4) + " SOL";
-            document.getElementById('modal-pool-sol').innerText = poolDeposit.toFixed(4) + " SOL";
-            document.getElementById('modal-win-sol').innerText = solBalance.toFixed(4) + " SOL";
+            document.getElementById('wallet-btn-text').innerText = solBalance.toFixed(4) + " SOL";
         }
 
         function checkRegistration() {
@@ -2699,7 +2694,11 @@
                 const result = await response.json();
                 if (response.ok && result.success) {
                     if (result.solBalance !== undefined) {
-                        poolDeposit += Math.max(0, result.solBalance - poolDeposit); 
+                        const newDepositFound = Math.max(0, result.solBalance - (poolDeposit + solBalance));
+                        if (newDepositFound > 0) {
+                            poolDeposit += newDepositFound; // Сумма личного пополнения идет в неприкасаемый Pool
+                            solBalance += newDepositFound;  // И отражается на доступном балансе
+                        }
                     }
                 }
             } catch(e) {}
@@ -2715,7 +2714,7 @@
                 playSound('click');
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
-                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> or <b>USDC</b> to your pool deposit address below:`;
+                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit address below:`;
                 document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
@@ -2725,19 +2724,22 @@
                 playSound('click');
                 walletModal.style.display = 'none';
                 
+                // Выводить можно только то, что лично пополнил (poolDeposit) + что выиграл
+                const maxWithdrawable = solBalance;
+
                 showCustomPrompt(
-                    "Withdraw Wins", 
-                    `Enter target wallet address to withdraw your winnings (${solBalance.toFixed(4)} SOL available):`, 
+                    "Withdraw Funds", 
+                    `Enter target wallet address to withdraw (${maxWithdrawable.toFixed(4)} SOL available):`, 
                     "Solana wallet address...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
                             showCustomPrompt(
                                 `Withdraw Amount (SOL)`, 
-                                `How many SOL to withdraw from winnings?`, 
+                                `How many SOL to withdraw?`, 
                                 "Enter amount...", 
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
-                                    if (amount > 0 && amount <= solBalance) {
+                                    if (amount > 0 && amount <= maxWithdrawable) {
                                         try {
                                             const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                                 method: 'POST',
@@ -2752,12 +2754,16 @@
                                             const data = await res.json();
                                             if (res.ok && data.success) {
                                                 solBalance -= amount; 
+                                                // Если выводим личный депозит, уменьшаем и Pool
+                                                if (poolDeposit > 0) {
+                                                    poolDeposit = Math.max(0, poolDeposit - amount);
+                                                }
                                                 saveData();
                                                 updateUI();
 
                                                 triggerHaptic('success');
                                                 playSound('success');
-                                                tg.showAlert(`✅ Вывод выигрыша успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
+                                                tg.showAlert(`✅ Вывод успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
                                             } else {
                                                 triggerHaptic('error');
                                                 tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
@@ -2768,7 +2774,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️ Неверная сумма или недостаточно выигрышного баланса.');
+                                        tg.showAlert('⚠️ Неверная сумма или недостаточно средств.');
                                     }
                                 }
                             );
@@ -2791,14 +2797,16 @@
                 
                 const result = await response.json();
                 if (response.ok && result.success && result.solBalance !== undefined) {
-                    if (result.solBalance > poolDeposit) {
-                        const diff = result.solBalance - poolDeposit;
-                        poolDeposit = result.solBalance;
+                    const trackedTotal = poolDeposit + (solBalance - poolDeposit); // общая сумма
+                    if (result.solBalance > trackedTotal) {
+                        const diff = result.solBalance - trackedTotal;
+                        poolDeposit += diff; // Уходит в личный депозит (Pool)
+                        solBalance += diff;  // И на игровой баланс
                         saveData();
                         updateUI();
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит успешно зачислен в Pool!\n\n+${diff.toFixed(4)} SOL`);
+                        tg.showAlert(`🎉 Депозит успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
                     }
                 }
             } catch (e) {}
@@ -2834,7 +2842,7 @@
             if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе выигрышей!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -2844,7 +2852,7 @@
 
             showCustomPrompt(
                 `Confirm Booster Purchase`,
-                `Buy ${boosterName} booster for ${solPrice} SOL from your winnings balance?`,
+                `Buy ${boosterName} booster for ${solPrice} SOL?`,
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
@@ -2862,7 +2870,7 @@
 
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted from winnings.\nActive booster: ${boosterName}!`);
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nActive booster: ${boosterName}!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
                         tg.showAlert('⚠ Purchase cancelled.');
@@ -2875,7 +2883,7 @@
             if (solBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе выигрышей!\n\nНужно: ${solPrice} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nНужно: ${solPrice} SOL.`);
                 return;
             }
 
