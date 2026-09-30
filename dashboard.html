@@ -694,7 +694,7 @@
                 <div class="energy-bar-fill" id="boots-bar-fill" style="background: linear-gradient(90deg, #ca8a04 0%, #a8f07a 100%);"></div>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-                <button class="claim-btn" id="repair-boots-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(168,240,122,0.15); color: #a8f07a; border: 1px solid rgba(168,240,122,0.3);">🔧 Repair Boots (50 ZRL)</button>
+                <button class="claim-btn" id="repair-boots-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(168,240,122,0.15); color: #a8f07a; border: 1px solid rgba(168,240,122,0.3);">🔧 Repair Boots (50 ZRL / Мерчант)</button>
             </div>
         </div>
 
@@ -758,31 +758,6 @@
             <button class="claim-btn" id="checkin-btn" style="width: 100%; background: #14f195; color: #000; margin-top: 4px;">
                 Claim Daily Reward
             </button>
-        </div>
-
-        <div class="run-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #18221c 100%);">
-            <div class="run-header">
-                <span>🎯 Daily Quests</span>
-                <span style="color: #a8f07a; font-weight: 700; font-size: 12px;">Resets in 24h</span>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 13px; font-weight: 700; color: #fff;">Run 1.0 km today</div>
-                        <div style="font-size: 11px; color: #8a8d98; margin-top: 2px;" id="quest-1-progress">Progress: 0.00 / 1.0 km</div>
-                    </div>
-                    <button class="claim-btn" id="quest-1-btn" style="padding: 6px 14px; font-size: 12px; background: #14f195; color: #000;">+50 ZRL</button>
-                </div>
-
-                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 13px; font-weight: 700; color: #fff;">Complete 1,000 steps</div>
-                        <div style="font-size: 11px; color: #8a8d98; margin-top: 2px;" id="quest-2-progress">Progress: 0 / 1,000</div>
-                    </div>
-                    <button class="claim-btn" id="quest-2-btn" style="padding: 6px 14px; font-size: 12px; background: #14f195; color: #000;">+30 ZRL</button>
-                </div>
-            </div>
         </div>
 
         <div class="level-section">
@@ -867,36 +842,12 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА -->
-    <div class="modal-overlay" id="leaderboard-modal">
-        <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #11141d 100%); border-top: 2px solid #a8f07a;">
-            <div class="modal-header">
-                <span class="modal-title" style="color: #a8f07a;">🏆 Leaderboard</span>
-                <button class="close-modal" id="close-leaderboard">&times;</button>
-            </div>
-            
-            <div class="leaderboard-tabs" style="margin-bottom: 14px;">
-                <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
-                <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
-                <button class="lb-tab" onclick="switchLbTab('all')">All Time</button>
-            </div>
-
-            <div id="podium-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;"></div>
-
-            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; margin-bottom: 10px;">
-                <div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Loading leaderboard...</div>
-            </div>
-
-            <div id="my-rank-sticky-container"></div>
-        </div>
-    </div>
-
     <!-- МОДАЛЬНОЕ ОКНО КАЗИНО -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
             <div class="modal-header" style="margin-bottom: 12px;">
-                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino</span>
+                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino (Казино -> HWkraa...)</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
@@ -1081,8 +1032,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Solana (Баланс / Доступно)</div>
-                                <div class="asset-sub">Депозит + Выигрыши</div>
+                                <div class="asset-name">Solana (Казино-поток / HWkraa...)</div>
+                                <div class="asset-sub">Депозиты и Выигрыши</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1106,7 +1057,7 @@
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Deposit Crypto</span>
+                <span class="modal-title">Deposit Crypto (Casino Flow)</span>
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
@@ -1127,11 +1078,11 @@
     <div class="modal-overlay" id="boosters-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">⚡ VIP Boosters Store</span>
+                <span class="modal-title">⚡ VIP Boosters Store (Мерчант-поток)</span>
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 15px;">
-                Boost your ZRL mining speed per kilometer by activating a VIP package via your balance.
+                Boost your ZRL mining speed per kilometer by activating a VIP package. Funds automatically route to Merchant wallet.
             </p>
             
             <div class="booster-grid">
@@ -1234,9 +1185,9 @@
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
 
-        // Единый адрес для депозитов и выигрышей/выплат
+        // 1. ПОТОК КАЗИНО И ДЕПОЗИТОВ
         const FIXED_DEPOSIT_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
-        // Адрес мерчанта для списания при покупке бустеров
+        // 2. ПОТОК МЕРЧАНТА (ПОКУПКИ И БУСТЕРЫ)
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
         let audioCtx = null;
@@ -1354,6 +1305,7 @@
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = FIXED_DEPOSIT_WALLET;
 
+        // 3. ИЗОЛИРОВАННЫЕ БАЛАНСЫ ИГРОКА
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
         let poolDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'pool_deposit')) || 0.00; 
         let solBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'sol_balance')) || 0.00;     
@@ -1373,7 +1325,6 @@
         }
 
         let totalSlotsTurnoverSol = parseFloat(localStorage.getItem('total_slots_turnover_sol')) || 0.0;
-
         let freeSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'free_spins')) || 0;
         
         let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
@@ -1796,6 +1747,7 @@
             if (boosterExpiryTime > 0) updateEnergyUI();
         }, 1000);
 
+        // РЕМОНТ БУТСОВ (ПОТОК МЕРЧАНТА -> MERCHANT_SOL_WALLET при списании через баланс ZRL или SOL)
         document.getElementById('repair-boots-btn').onclick = () => {
             triggerHaptic('medium');
             playSound('click');
@@ -1815,9 +1767,19 @@
             saveData();
             updateUI();
             updateEnergyUI();
+
+            // Автоматическая отправка отчета мерчанту о списании по ремонту
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0, currency: 'ZRL_REPAIR' })
+                });
+            } catch(e) {}
+
             triggerHaptic('success');
             playSound('success');
-            tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
+            tg.showAlert("🔧 Sneakers successfully repaired to 100 HP! (Merchant flow applied)");
         };
 
         function switchArcadeGame(gameKey) {
@@ -1839,7 +1801,7 @@
             
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana через ваш кошелек.");
+                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana через ваш кошелек на адрес депо/казино: HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix");
                 return;
             }
 
@@ -1855,16 +1817,17 @@
 
         let currentWheelRotation = 0;
 
+        // КОЛЕСО ФОРТУНЫ (ЗАВЯЗАНО НА ДЕПОЗИТ И КАЗИНО ПОТОК HWkraa...)
         async function spinFortuneWheel() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит для игры.");
+                tg.showAlert("❌ Доступ заблокирован!\n\nСделайте депозит на адрес казино/депозитов.");
                 return;
             }
 
             if (freeSpins <= 0 && solBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе!\n\nДоступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе казино!\n\nДоступно: ${solBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -1877,7 +1840,7 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                solBalance -= 0.01; 
+                solBalance -= 0.01; // Списание ставки казино
                 saveData();
                 updateUI();
                 updateEnergyUI();
@@ -1941,7 +1904,7 @@
                     if (won.type === 'zrl') {
                         totalBalance += won.val;
                     } else if (won.type === 'sol') {
-                        solBalance += won.val; 
+                        solBalance += won.val; // Выигрыш казино выплачивается через общий кошелек
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1957,7 +1920,7 @@
                     updateUI();
                     updateEnergyUI();
 
-                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
+                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text} (Выплата через казино-пул)!`);
                     
                     if (freeSpins > 0) {
                         spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
@@ -1973,6 +1936,7 @@
 
         const slotSymbols = ['7️⃣', '🍇', '🍉', '🍊', '🍒'];
         
+        // СЛОТЫ (КАЗИНО ПОТОК)
         async function playSlots() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2046,7 +2010,7 @@
                     playSound('coin');
 
                     if (isJackpot) {
-                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! 🚀`);
+                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! (Выплата из казино-пула HWkraa...) 🚀`);
                     } else {
                         tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL!`);
                     }
@@ -2096,6 +2060,7 @@
             return deck.sort(() => Math.random() - 0.5);
         }
 
+        // БЛЭКДЖЕК (КАЗИНО ПОТОК)
         async function startBlackjack() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2215,6 +2180,7 @@
             });
         }
 
+        // РУЛЕТКА (КАЗИНО ПОТОК)
         async function spinRoulette() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2266,7 +2232,7 @@
                     solBalance += winSOL; 
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен на баланс!`);
+                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен из казино-пула!`);
                 } else {
                     triggerHaptic('error');
                     tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
@@ -2705,16 +2671,18 @@
             document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
 
+            // Кнопка депозита использует кошелек казино/депозитов
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
                 playSound('click');
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
-                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit address below:`;
+                document.getElementById('deposit-instruction-text').innerHTML = `Send <b>SOL</b> to your personal deposit/casino address (HWkraa...):`;
                 document.getElementById('deposit-full-addr').innerText = FIXED_DEPOSIT_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(FIXED_DEPOSIT_WALLET)}`;
             };
 
+            // Кнопка вывода (строго изолированный баланс игрока)
             document.getElementById('withdraw-btn').onclick = () => {
                 triggerHaptic('medium');
                 playSound('click');
@@ -2729,7 +2697,7 @@
                 }
 
                 showCustomPrompt(
-                    "Withdraw Funds", 
+                    "Withdraw Funds (Casino/Deposit Flow)", 
                     `Enter target wallet address to withdraw (${maxWithdrawable.toFixed(4)} SOL available):`, 
                     "Solana wallet address...", 
                     async (targetAddr) => {
@@ -2763,7 +2731,7 @@
 
                                                 triggerHaptic('success');
                                                 playSound('success');
-                                                tg.showAlert(`✅ Вывод успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
+                                                tg.showAlert(`✅ Вывод через пул ${FIXED_DEPOSIT_WALLET.substring(0,6)}... успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
                                             } else {
                                                 triggerHaptic('error');
                                                 tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
@@ -2806,7 +2774,7 @@
                         updateUI();
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
+                        tg.showAlert(`🎉 Депозит в казино-пул успешно зачислен!\n\n+${diff.toFixed(4)} SOL`);
                     }
                 }
             } catch (e) {}
@@ -2838,6 +2806,7 @@
             );
         };
 
+        // ПОКУПКА БУСТЕРОВ (АВТОМАТИЧЕСКИ ОТПРАВЛЯЕТ SOL НА КОШЕЛЕК МЕРЧАНТА: 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db)
         window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
@@ -2857,8 +2826,8 @@
             boostersModal.style.display = 'none';
 
             showCustomPrompt(
-                `Confirm Booster Purchase`,
-                `Buy ${boosterName} booster for ${solPrice} SOL?`,
+                `Confirm Booster Purchase (Merchant Flow)`,
+                `Buy ${boosterName} booster for ${solPrice} SOL? Funds will route to Merchant: ${MERCHANT_SOL_WALLET.substring(0,6)}...`,
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
@@ -2874,17 +2843,18 @@
                         updateUI();
                         updateEnergyUI();
 
+                        // Автоматический запрос на бэкенд для перевода средств мерчанту
                         try {
                             fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL_MERCHANT' })
                             });
                         } catch(e) {}
 
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nActive booster: ${boosterName}!`);
+                        tg.showAlert(`🚀 Success!\n\n${solPrice} SOL отправлено мерчанту (${MERCHANT_SOL_WALLET.substring(0,6)}...). Активен бустер: ${boosterName}!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
                         tg.showAlert('⚠ Purchase cancelled.');
@@ -2912,8 +2882,8 @@
             boostersModal.style.display = 'none';
 
             showCustomPrompt(
-                `Confirm Timed Booster`,
-                `Buy ${boosterName} for ${solPrice} SOL? Active for ${hoursDuration} hour(s).`,
+                `Confirm Timed Booster (Merchant Flow)`,
+                `Buy ${boosterName} for ${solPrice} SOL? Active for ${hoursDuration} hour(s). Funds route to Merchant.`,
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
@@ -2932,13 +2902,13 @@
                             fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL' })
+                                body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: solPrice, currency: 'SOL_MERCHANT' })
                             });
                         } catch(e) {}
 
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🚀 Success!\n\nBooster activated for 1 hour (${zrlRatePerKm} ZRL/km)!`);
+                        tg.showAlert(`🚀 Success!\n\nBooster activated for 1 hour (${zrlRatePerKm} ZRL/km)! Отправлено мерчанту.`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
                         tg.showAlert('⚠ Purchase cancelled.');
