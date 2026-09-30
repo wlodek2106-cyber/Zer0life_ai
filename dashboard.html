@@ -1578,7 +1578,7 @@
                             telegramId: telegramId,
                             walletAddress: MERCHANT_SOL_WALLET,
                             amount: 0.01,
-                            currency: 'SOL'
+                            currency: 'SOL' // ИСПРАВЛЕНО: теперь сервер знает, что это SOL, а не ZRL!
                         })
                     });
                 } catch(e) {
@@ -2896,3 +2896,4 @@
     </script>
 </body>
 </html>
+
