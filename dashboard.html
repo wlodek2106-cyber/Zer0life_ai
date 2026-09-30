@@ -852,8 +852,8 @@
             <div class="leaderboard-tabs" style="grid-template-columns: repeat(4, 1fr); gap: 4px; background: #11141d; padding: 3px; margin-bottom: 16px; border-radius: 12px;">
                 <button class="lb-tab" onclick="switchArcadeGame('wheel')" id="tab-game-wheel" style="font-size: 10px; padding: 8px 2px;">🎡 Wheel</button>
                 <button class="lb-tab" onclick="switchArcadeGame('slots')" id="tab-game-slots" style="font-size: 10px; padding: 8px 2px;">🎰 Slots</button>
-                <button class="lb-tab active" onclick="switchArcadeGame('bj')" id="tab-game-bj" style="font-size: 10px; padding: 8px 2px;">🃏 21 (BJ)</button>
-                <button class="lb-tab" onclick="switchArcadeGame('roulette')" id="tab-game-roulette" style="font-size: 10px; padding: 8px 2px;">🎯 Roulette</button>
+                <button class="lb-tab" onclick="switchArcadeGame('bj')" id="tab-game-bj" style="font-size: 10px; padding: 8px 2px;">🃏 21 (BJ)</button>
+                <button class="lb-tab active" onclick="switchArcadeGame('roulette')" id="tab-game-roulette" style="font-size: 10px; padding: 8px 2px;">🎯 Roulette</button>
             </div>
 
             <div id="arcade-game-wheel" class="arcade-game-container" style="display: none;">
@@ -871,24 +871,23 @@
             </div>
 
             <div id="arcade-game-slots" class="arcade-game-container" style="display: none;">
-                <div style="background: linear-gradient(135deg, #181124 0%, #0d0a14 100%); border: 2px solid #a855f7; border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 0 25px rgba(168, 85, 247, 0.3); position: relative; overflow: hidden;">
-                    <div style="display: flex; justify-content: space-around; background: #07060a; border-radius: 14px; padding: 14px 6px; border: 2px solid #3b82f6; font-size: 38px; font-weight: 900; box-shadow: inset 0 0 15px rgba(0,0,0,0.9);" id="slot-reels-display">
+                <div style="background: linear-gradient(135deg, #1e1b2e 0%, #0d0b14 100%); border: 3px solid #c084fc; border-radius: 20px; padding: 18px; margin-bottom: 14px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 25px rgba(192, 132, 252, 0.25); position: relative; overflow: hidden;">
+                    
+                    <div style="text-align: center; font-size: 11px; font-weight: 900; letter-spacing: 2px; color: #e879f9; opacity: 0.9; margin-bottom: 10px; text-shadow: 0 0 10px rgba(232,121,249,0.5);">ZER0LIFE VIP SLOTS MACHINE</div>
+
+                    <div style="display: flex; justify-content: space-around; background: #07050b; border-radius: 14px; padding: 16px 8px; border: 2px solid #3b82f6; font-size: 36px; font-weight: 900; box-shadow: inset 0 0 15px rgba(0,0,0,0.9);" id="slot-reels-display">
                         <span id="reel1" style="background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 8px rgba(234,179,8,0.5);">7️⃣</span>
                         <span id="reel2" style="filter: drop-shadow(0 2px 6px rgba(59,130,246,0.6));">🍇</span>
                         <span id="reel3" style="filter: drop-shadow(0 2px 6px rgba(239,68,68,0.6));">🍉</span>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 12px;">
-                        <span style="font-size: 12px; color: #a8d98a; font-weight: 700;">Ставка SOL:</span>
-                        <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #2d3748; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка SOL:</span>
+                        <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #c084fc; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
                             <option value="0.10">0.10 SOL</option>
                         </select>
-                    </div>
-
-                    <div style="display: flex; justify-content: center; gap: 4px; margin-top: 12px; opacity: 0.85; font-size: 14px;">
-                        🪙🪙🪙🪙🪙🪙🪙🪙🪙🪙🪙
                     </div>
                 </div>
 
@@ -897,14 +896,11 @@
                 </button>
             </div>
 
-            <!-- ИНТЕРФЕЙС БЛЕКДЖЕКА В СТИЛЕ НАСТОЯЩЕГО ЗЕЛЕНОГО СУКНО-СТОЛА -->
-            <div id="arcade-game-bj" class="arcade-game-container" style="display: block;">
+            <div id="arcade-game-bj" class="arcade-game-container" style="display: none;">
                 <div style="background: linear-gradient(180deg, #134e32 0%, #0a331f 100%); border: 3px solid #d4af37; border-radius: 18px; padding: 14px; margin-bottom: 14px; text-align: left; box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 0 15px rgba(212, 175, 55, 0.2); position: relative;">
                     
-                    <!-- Золотая надпись на сукне стола -->
                     <div style="text-align: center; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: #facc15; opacity: 0.8; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">BLACKJACK PAYS 3 TO 2</div>
 
-                    <!-- Зона дилера -->
                     <div style="margin-bottom: 12px; background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px dashed rgba(212,175,55,0.3);">
                         <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Дилер: <span id="dealer-score" style="color: #facc15;">?</span></div>
                         <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
@@ -912,15 +908,9 @@
 
                     <div style="height: 1px; background: rgba(212, 175, 55, 0.2); margin: 8px 0;"></div>
 
-                    <!-- Зона игрока -->
                     <div style="background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.4);">
                         <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Вы: <span id="player-score" style="color: #4ade80;">0</span></div>
                         <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
-                    </div>
-
-                    <!-- Стопка фишек снизу справа для декора -->
-                    <div style="position: absolute; bottom: 10px; right: 12px; font-size: 14px; opacity: 0.85;">
-                        🔴⚪🔵⚫
                     </div>
                 </div>
 
@@ -941,22 +931,39 @@
                 </div>
             </div>
 
-            <div id="arcade-game-roulette" class="arcade-game-container" style="display: none;">
-                <div style="background: #18111f; border: 2px solid #a855f7; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
-                    <div id="roulette-ball-display" style="font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px;">🎯 [ ? ]</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-                        <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #ef4444; color: #fff; border: 2px solid transparent;">🔴 Красное (x2)</button>
-                        <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #1f2937; color: #fff; border: 2px solid transparent;">⚫ Черное (x2)</button>
+            <!-- ОБНОВЛЕННЫЙ ДИЗАЙН КЛАССИЧЕСКОЙ РУЛЕТКИ В СТИЛЕ СУКНО-СТОЛА -->
+            <div id="arcade-game-roulette" class="arcade-game-container" style="display: block;">
+                <div style="background: linear-gradient(180deg, #134e32 0%, #0a331f 100%); border: 3px solid #d4af37; border-radius: 18px; padding: 14px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 0 15px rgba(212, 175, 55, 0.2); position: relative;">
+                    
+                    <div style="font-size: 11px; font-weight: 900; letter-spacing: 1px; color: #facc15; opacity: 0.9; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">EUROPEAN ROULETTE (MIN: 0.01 SOL)</div>
+
+                    <!-- Табло результатов / выпавший номер -->
+                    <div id="roulette-ball-display" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.4); border-radius: 12px; padding: 10px; font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);">
+                        🎯 [ ? ]
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 11px; color: #8a8d98;">Ставка:</span>
-                        <select id="roulette-bet-amount" style="background: #1a202c; color: #a855f7; border: 1px solid #2d3748; border-radius: 8px; padding: 6px 8px; font-weight: 700;">
+
+                    <!-- Поле выбора ставок (Красное / Черное / Зеро / Чет / Нечет) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #dc2626; color: #fff; border: 2px solid transparent; font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(220,38,38,0.4);">🔴 Красное (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #111827; color: #fff; border: 2px solid rgba(255,255,255,0.2); font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">⚫ Черное (x2)</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <button class="claim-btn" onclick="setRouletteBet('even')" id="roulette-btn-even" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Чёт (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('odd')" id="roulette-btn-odd" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Нечёт (x2)</button>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка SOL:</span>
+                        <select id="roulette-bet-amount" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
+                            <option value="0.10">0.10 SOL</option>
                         </select>
                     </div>
                 </div>
-                <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); color: #fff; font-size: 15px; padding: 12px; font-weight: 900;">
+
+                <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%); color: #000; font-size: 15px; padding: 14px; font-weight: 900; box-shadow: 0 0 20px rgba(250,204,21,0.3);">
                     Запустить Рулетку 🎯
                 </button>
             </div>
@@ -1829,7 +1836,7 @@
             triggerHaptic('light');
             playSound('click');
             document.getElementById('fortune-modal').style.display = 'flex';
-            switchArcadeGame('bj'); 
+            switchArcadeGame('roulette'); 
             updateEnergyUI();
         }
 
@@ -2154,9 +2161,9 @@
             const dScore = calcHandScore(dealerHand);
 
             if (dScore > 21 || pScore > dScore) {
-                bjFinish(2, "🎉 Вы победили дилера! Выигрыш x2!");
+                bjFinish(2, "🎉 Вы победили дилера! Выигрыш x2 SOL!");
             } else if (pScore === dScore) {
-                bjFinish(1, "🤝 Ничья! Ставка возвращена.");
+                bjFinish(1, "🤝 Ничья! Ставка SOL возвращена.");
             } else {
                 bjFinish(0, "💀 Дилер выиграл.");
             }
@@ -2164,7 +2171,8 @@
 
         function bjFinish(multiplier, msg) {
             if (multiplier > 0) {
-                solBalance += bjActiveBet * multiplier;
+                const solWon = bjActiveBet * multiplier;
+                solBalance += solWon;
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
             } else {
@@ -2178,19 +2186,30 @@
             document.getElementById('start-bj-btn').disabled = false;
         }
 
-        let selectedRouletteColor = null;
+        let selectedRouletteBetType = null;
 
-        function setRouletteBet(color) {
+        function setRouletteBet(betType) {
             triggerHaptic('light');
-            selectedRouletteColor = color;
-            document.getElementById('roulette-btn-red').style.borderColor = (color === 'red') ? '#fff' : 'transparent';
-            document.getElementById('roulette-btn-black').style.borderColor = (color === 'black') ? '#fff' : 'transparent';
+            selectedRouletteBetType = betType;
+            
+            ['red', 'black', 'even', 'odd'].forEach(t => {
+                const btn = document.getElementById(`roulette-btn-${t}`);
+                if (btn) {
+                    if (t === betType) {
+                        btn.style.borderColor = '#facc15';
+                        btn.style.boxShadow = '0 0 15px rgba(250,204,21,0.6)';
+                    } else {
+                        btn.style.borderColor = 'transparent';
+                        btn.style.boxShadow = 'none';
+                    }
+                }
+            });
         }
 
         async function spinRoulette() {
-            if (!selectedRouletteColor) {
+            if (!selectedRouletteBetType) {
                 triggerHaptic('warning');
-                tg.showAlert('⚠️ Выберите цвет ставки: Красное или Черное!');
+                tg.showAlert('⚠️️ Сделайте ставку (выберите Красное, Черное, Чёт или Нечёт)!');
                 return;
             }
 
@@ -2209,6 +2228,7 @@
             let timer = setInterval(() => {
                 const randomNum = Math.floor(Math.random() * 37);
                 ballEl.innerText = `🎯 [ ${randomNum} ]`;
+                playSound('click');
             }, 80);
 
             setTimeout(() => {
@@ -2216,18 +2236,25 @@
                 const winningNum = Math.floor(Math.random() * 37);
                 const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNum);
                 const winningColor = (winningNum === 0) ? 'green' : (isRed ? 'red' : 'black');
+                const isEven = (winningNum !== 0 && winningNum % 2 === 0);
 
                 ballEl.innerText = `🎯 [ ${winningNum} ${winningColor === 'red' ? '🔴' : (winningColor === 'black' ? '⚫' : '🟢')} ]`;
 
-                if (selectedRouletteColor === winningColor) {
+                let won = false;
+                if (selectedRouletteBetType === 'red' && winningColor === 'red') won = true;
+                else if (selectedRouletteBetType === 'black' && winningColor === 'black') won = true;
+                else if (selectedRouletteBetType === 'even' && isEven) won = true;
+                else if (selectedRouletteBetType === 'odd' && !isEven && winningNum !== 0) won = true;
+
+                if (won) {
                     const winSOL = betSOL * 2;
                     solBalance += winSOL;
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    tg.showAlert(`🎉 Вы угадали! Выигрыш +${winSOL.toFixed(3)} SOL!`);
+                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрышь: +${winSOL.toFixed(3)} SOL!`);
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert(`💀 Шарик остановился на ${winningNum}. Вы проиграли.`);
+                    tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
                 }
             }, 2500);
         }
@@ -2683,61 +2710,90 @@
                 walletModal.style.display = 'none';
                 
                 showCustomPrompt(
-                    "Withdraw ZRL", 
-                    `Enter target wallet address for withdrawal:`, 
-                    "Solana wallet address...", 
-                    async (targetAddr) => {
-                        if (targetAddr && targetAddr.length > 30) {
-                            showCustomPrompt(
-                                "Withdraw Amount", 
-                                `How many ZRL to withdraw?`, 
-                                "Enter amount...", 
-                                async (amountStr) => {
-                                    const amount = parseFloat(amountStr);
-                                    if (amount > 0) {
-                                        if (amount > totalBalance) {
-                                            triggerHaptic('error');
-                                            tg.showAlert('⚠ Insufficient ZRL balance for withdrawal.');
-                                            return;
-                                        }
-                                        try {
-                                            const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    telegramId: telegramId,
-                                                    walletAddress: targetAddr,
-                                                    amount: amount,
-                                                    currency: 'ZRL'
-                                                })
-                                            });
-                                            const data = await res.json();
-                                            if (res.ok && data.success) {
-                                                totalBalance -= amount;
-                                                saveData();
-                                                updateUI();
+                    "Select Currency to Withdraw", 
+                    "Enter currency to withdraw (SOL, USDC, or ZRL):", 
+                    "SOL, USDC, or ZRL...", 
+                    (currencyInput) => {
+                        if (!currencyInput) return;
+                        const currency = currencyInput.trim().toUpperCase();
+                        if (!['SOL', 'USDC', 'ZRL'].includes(currency)) {
+                            triggerHaptic('error');
+                            tg.showAlert('❌ Неверная валюта. Выберите SOL, USDC или ZRL.');
+                            return;
+                        }
 
-                                                triggerHaptic('success');
-                                                playSound('success');
-                                                tg.showAlert(`✅ Withdrawal transaction sent!\nHash: ${data.txHash.substring(0, 10)}...`);
+                        showCustomPrompt(
+                            `Withdraw ${currency}`, 
+                            `Enter target wallet address for ${currency} withdrawal:`, 
+                            "Solana wallet address...", 
+                            async (targetAddr) => {
+                                if (targetAddr && targetAddr.length > 30) {
+                                    showCustomPrompt(
+                                        `Withdraw Amount (${currency})`, 
+                                        `How many ${currency} to withdraw?`, 
+                                        "Enter amount...", 
+                                        async (amountStr) => {
+                                            const amount = parseFloat(amountStr);
+                                            if (amount > 0) {
+                                                if (currency === 'SOL' && amount > solBalance) {
+                                                    triggerHaptic('error');
+                                                    tg.showAlert('⚠ Недостаточно баланса SOL для вывода.');
+                                                    return;
+                                                }
+                                                if (currency === 'USDC' && amount > usdcBalance) {
+                                                    triggerHaptic('error');
+                                                    tg.showAlert('⚠ Недостаточно баланса USDC для вывода.');
+                                                    return;
+                                                }
+                                                if (currency === 'ZRL' && amount > totalBalance) {
+                                                    triggerHaptic('error');
+                                                    tg.showAlert('⚠ Недостаточно баланса ZRL для вывода.');
+                                                    return;
+                                                }
+
+                                                try {
+                                                    const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            telegramId: telegramId,
+                                                            walletAddress: targetAddr,
+                                                            amount: amount,
+                                                            currency: currency
+                                                        })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok && data.success) {
+                                                        if (currency === 'SOL') solBalance -= amount;
+                                                        else if (currency === 'USDC') usdcBalance -= amount;
+                                                        else if (currency === 'ZRL') totalBalance -= amount;
+
+                                                        saveData();
+                                                        updateUI();
+
+                                                        triggerHaptic('success');
+                                                        playSound('success');
+                                                        tg.showAlert(`✅ Вывод ${currency} успешно отправлен!\nHash: ${data.txHash ? data.txHash.substring(0, 10) + '...' : 'OK'}`);
+                                                    } else {
+                                                        triggerHaptic('error');
+                                                        tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
+                                                    }
+                                                } catch (err) {
+                                                    triggerHaptic('error');
+                                                    tg.showAlert(`❌ Ошибка сети при запросе вывода.`);
+                                                }
                                             } else {
                                                 triggerHaptic('error');
-                                                tg.showAlert(`❌ Error: ${data.error || 'Unknown error'}`);
+                                                tg.showAlert('⚠️ Неверная сумма.');
                                             }
-                                        } catch (err) {
-                                            triggerHaptic('error');
-                                            tg.showAlert(`❌ Network error during withdrawal.`);
                                         }
-                                    } else {
-                                        triggerHaptic('error');
-                                        tg.showAlert('⚠️ Invalid amount.');
-                                    }
+                                    );
+                                } else if (targetAddr !== null) {
+                                    triggerHaptic('error');
+                                    tg.showAlert('⚠️ Неверный адрес кошелька.');
                                 }
-                            );
-                        } else if (targetAddr !== null) {
-                            triggerHaptic('error');
-                            tg.showAlert('⚠️ Invalid wallet address.');
-                        }
+                            }
+                        );
                     }
                 );
             };
@@ -2776,7 +2832,7 @@
                         updateEnergyUI();
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Deposit credited!\n\n${messageAdded}`);
+                        tg.showAlert(`🎉 Депозит зачислен!\n\n${messageAdded}`);
                     }
                 }
             } catch (e) {}
