@@ -682,6 +682,54 @@
             </div>
         </div>
 
+        <!-- ZER0LIFE DUAL FARMING HUB (SOLANA & ZRL) -->
+        <div style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border: 1px solid rgba(20, 241, 149, 0.3); border-radius: 20px; padding: 20px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 16px; font-weight: 800; color: #14f195;" id="farming-hub-title">🌾 Solana & ZRL Farming</span>
+                <span style="font-size: 11px; background: rgba(20,241,149,0.15); color: #14f195; padding: 4px 8px; border-radius: 6px;" id="farming-badge">Lock Asset → Earn ZRL</span>
+            </div>
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;" id="farming-desc">
+                Lock your assets in the farming pool. Principal remains secure, earn daily ZRL rewards.
+            </p>
+
+            <!-- Переключатель пулов Фарминга: Solana vs ZRL -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #11141d; padding: 3px; border-radius: 12px; margin-bottom: 14px; border: 1px solid #2d3748;">
+                <button class="claim-btn" id="farm-tab-sol" onclick="switchFarmingAsset('sol')" style="padding: 8px; font-size: 12px; background: #14f195; color: #000; font-weight: 800;">Solana Pool</button>
+                <button class="claim-btn" id="farm-tab-zrl" onclick="switchFarmingAsset('zrl')" style="padding: 8px; font-size: 12px; background: transparent; color: #8a8d98; font-weight: 700;">ZRL Pool (0.5x)</button>
+            </div>
+
+            <!-- Сетка пакетов фарминга -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(1)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-1m">0.1% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(3)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-3m">0.4% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: #1c212b; border: 1px solid #2d303b; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(6)">
+                    <div style="font-size: 11px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff; margin: 4px 0;" id="rate-6m">0.7% <span style="font-size: 11px; color: #14f195;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Daily ZRL Return</div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #1f2a24 0%, #15171e 100%); border: 1px solid #14f195; border-radius: 14px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="selectFarmingPlan(12)">
+                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #14f195; margin: 4px 0;" id="rate-12m">1.3% <span style="font-size: 11px; color: #fff;">/day</span></div>
+                    <div style="font-size: 10px; color: #a8f07a;">Max ZRL Yield</div>
+                </div>
+            </div>
+
+            <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800;" onclick="openFarmingDepositModal()">
+                Deposit & Start Farming 🚀
+            </button>
+        </div>
+
         <div class="run-card">
             <div class="run-header">
                 Today's Run
@@ -795,13 +843,11 @@
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
-            <!-- Хедер с закрытием -->
             <div class="modal-header" style="margin-bottom: 12px;">
                 <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
-            <!-- Вкладки переключения игр -->
             <div class="leaderboard-tabs" style="grid-template-columns: repeat(4, 1fr); gap: 4px; background: #11141d; padding: 3px; margin-bottom: 16px; border-radius: 12px;">
                 <button class="lb-tab active" onclick="switchArcadeGame('wheel')" id="tab-game-wheel" style="font-size: 10px; padding: 8px 2px;">🎡 Wheel</button>
                 <button class="lb-tab" onclick="switchArcadeGame('slots')" id="tab-game-slots" style="font-size: 10px; padding: 8px 2px;">🎰 Slots</button>
@@ -809,7 +855,6 @@
                 <button class="lb-tab" onclick="switchArcadeGame('roulette')" id="tab-game-roulette" style="font-size: 10px; padding: 8px 2px;">🎯 Roulette</button>
             </div>
 
-            <!-- 1. КОЛЕСО ФОРТУНЫ -->
             <div id="arcade-game-wheel" class="arcade-game-container">
                 <div style="position: relative; width: 260px; height: 260px; margin: 0 auto 16px auto;">
                     <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 24px solid #f59e0b; z-index: 30; filter: drop-shadow(0 -3px 6px rgba(0,0,0,0.8));"></div>
@@ -824,7 +869,6 @@
                 </button>
             </div>
 
-            <!-- 2. СЛОТЫ / АВТОМАТЫ -->
             <div id="arcade-game-slots" class="arcade-game-container" style="display: none;">
                 <div style="background: #090a0f; border: 2px solid #3b82f6; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);">
                     <div style="display: flex; justify-content: space-around; background: #141721; border-radius: 12px; padding: 14px 8px; border: 1px solid #2d3748; font-size: 42px; font-weight: 800;" id="slot-reels-display">
@@ -846,30 +890,22 @@
                 </button>
             </div>
 
-            <!-- 3. БЛЭКДЖЕК / 21 -->
             <div id="arcade-game-bj" class="arcade-game-container" style="display: none;">
                 <div style="background: #0a1f18; border: 2px solid #14f195; border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: left;">
-                    
-                    <!-- Рука Дилера -->
                     <div style="margin-bottom: 12px;">
                         <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Дилер: <span id="dealer-score" style="color: #fff; font-weight: 700;">?</span></div>
                         <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
                     </div>
-
                     <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0;"></div>
-
-                    <!-- Рука Игрока -->
                     <div>
                         <div style="font-size: 11px; color: #8a8d98; margin-bottom: 4px;">Вы: <span id="player-score" style="color: #14f195; font-weight: 700;">0</span></div>
                         <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px;"></div>
                     </div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;" id="bj-controls-play">
                     <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5;">Еще (Hit)</button>
                     <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5;">Хватит (Stand)</button>
                 </div>
-
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <select id="bj-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #2d3748; border-radius: 10px; padding: 10px; font-weight: 700; width: 40%;">
                         <option value="0.01">0.01 SOL</option>
@@ -882,16 +918,13 @@
                 </div>
             </div>
 
-            <!-- 4. РУЛЕТКА (SOL ROULETTE) -->
             <div id="arcade-game-roulette" class="arcade-game-container" style="display: none;">
                 <div style="background: #18111f; border: 2px solid #a855f7; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
                     <div id="roulette-ball-display" style="font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px;">🎯 [ ? ]</div>
-                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                         <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #ef4444; color: #fff; border: 2px solid transparent;">🔴 Красное (x2)</button>
                         <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #1f2937; color: #fff; border: 2px solid transparent;">⚫ Черное (x2)</button>
                     </div>
-
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 11px; color: #8a8d98;">Ставка:</span>
                         <select id="roulette-bet-amount" style="background: #1a202c; color: #a855f7; border: 1px solid #2d3748; border-radius: 8px; padding: 6px 8px; font-weight: 700;">
@@ -900,12 +933,30 @@
                         </select>
                     </div>
                 </div>
-
                 <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); color: #fff; font-size: 15px; padding: 12px; font-weight: 900;">
                     Запустить Рулетку 🎯
                 </button>
             </div>
+        </div>
+    </div>
 
+    <!-- Модальное окно депозита для фарминга -->
+    <div class="modal-overlay" id="farming-deposit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="farming-modal-title">🌾 Lock Solana for Farming</span>
+                <button class="close-modal" onclick="document.getElementById('farming-deposit-modal').style.display='none'">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #8a8d98; margin-bottom: 15px;" id="farming-modal-desc">
+                Select amount to lock in pool for selected period:
+            </p>
+            <div class="custom-input-group">
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="Enter amount..." step="0.1" />
+            </div>
+            <div class="custom-modal-actions" style="margin-top: 20px;">
+                <button class="custom-btn-cancel" onclick="document.getElementById('farming-deposit-modal').style.display='none'">Cancel</button>
+                <button class="custom-btn-confirm" onclick="confirmFarmingDeposit()">Confirm Lock</button>
+            </div>
         </div>
     </div>
 
@@ -1449,6 +1500,111 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
+        // --- ЛОГИКА ФАРМИНГА (SOLANA / ZRL) ---
+        let currentFarmingAsset = 'sol'; // 'sol' или 'zrl'
+        let selectedFarmingMonths = 1;
+
+        window.switchFarmingAsset = function(asset) {
+            triggerHaptic('selection');
+            playSound('click');
+            currentFarmingAsset = asset;
+
+            const btnSol = document.getElementById('farm-tab-sol');
+            const btnZrl = document.getElementById('farm-tab-zrl');
+            const titleEl = document.getElementById('farming-hub-title');
+            const badgeEl = document.getElementById('farming-badge');
+            const descEl = document.getElementById('farming-desc');
+            const modalTitle = document.getElementById('farming-modal-title');
+
+            if (asset === 'sol') {
+                btnSol.style.background = '#14f195';
+                btnSol.style.color = '#000';
+                btnSol.style.fontWeight = '800';
+
+                btnZrl.style.background = 'transparent';
+                btnZrl.style.color = '#8a8d98';
+                btnZrl.style.fontWeight = '700';
+
+                titleEl.innerText = '🌾 Solana Staking & Farming';
+                badgeEl.innerText = 'Lock SOL → Earn ZRL';
+                descEl.innerText = 'Lock Solana in the pool to earn high daily ZRL rewards. Principal remains secure.';
+                modalTitle.innerText = '🌾 Lock Solana for Farming';
+
+                document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 11px; color: #14f195;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 11px; color: #14f195;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.7% <span style="font-size: 11px; color: #14f195;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '1.3% <span style="font-size: 11px; color: #fff;">/day</span>';
+            } else {
+                btnZrl.style.background = '#a8f07a';
+                btnZrl.style.color = '#000';
+                btnZrl.style.fontWeight = '800';
+
+                btnSol.style.background = 'transparent';
+                btnSol.style.color = '#8a8d98';
+                btnSol.style.fontWeight = '700';
+
+                titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
+                badgeEl.innerText = 'Lock ZRL → Earn ZRL';
+                descEl.innerText = 'Lock ZRL tokens in the pool. Standard yields are halved (0.5x) compared to Solana.';
+                modalTitle.innerText = '🌾 Lock ZRL for Farming';
+
+                document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-6m').innerHTML = '0.35% <span style="font-size: 11px; color: #a8f07a;">/day</span>';
+                document.getElementById('rate-12m').innerHTML = '0.65% <span style="font-size: 11px; color: #fff;">/day</span>';
+            }
+        }
+
+        window.selectFarmingPlan = function(months) {
+            triggerHaptic('light');
+            playSound('click');
+            selectedFarmingMonths = months;
+            document.getElementById('farming-deposit-modal').style.display = 'flex';
+            document.getElementById('farming-amount-input').focus();
+        }
+
+        window.openFarmingDepositModal = function() {
+            selectFarmingPlan(1);
+        }
+
+        window.confirmFarmingDeposit = function() {
+            const amountInput = document.getElementById('farming-amount-input');
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                triggerHaptic('error');
+                tg.showAlert('⚠️ Please enter a valid amount to lock.');
+                return;
+            }
+
+            if (currentFarmingAsset === 'sol' && solBalance < amount) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient SOL! You have ${solBalance.toFixed(4)} SOL.`);
+                return;
+            }
+
+            if (currentFarmingAsset === 'zrl' && totalBalance < amount) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient ZRL balance! You have ${totalBalance.toFixed(2)} ZRL.`);
+                return;
+            }
+
+            if (currentFarmingAsset === 'sol') {
+                solBalance -= amount;
+            } else {
+                totalBalance -= amount;
+            }
+
+            saveData();
+            updateUI();
+            document.getElementById('farming-deposit-modal').style.display = 'none';
+            amountInput.value = '';
+
+            triggerHaptic('success');
+            playSound('success');
+            tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} for ${selectedFarmingMonths} month(s) in Farming Pool!`);
+        }
+
         // --- ДАННЫЕ ДЛЯ КОЛЕСА ФОРТУНЫ ---
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
@@ -1504,7 +1660,6 @@
             }
         }
 
-        // --- СОХРАНЕНИЕ ДАННЫХ И СИНХРОНИЗАЦИЯ ---
         function saveData() {
             localStorage.setItem(STORAGE_PREFIX + 'total_balance', totalBalance);
             localStorage.setItem(STORAGE_PREFIX + 'sol_balance', solBalance);
@@ -1615,8 +1770,6 @@
             tg.showAlert("🔧 Sneakers successfully repaired to 100 HP!");
         };
 
-
-        // --- ПЕРЕКЛЮЧЕНИЕ ИГР В КАЗИНО ---
         function switchArcadeGame(gameKey) {
             triggerHaptic('selection');
             playSound('click');
@@ -1772,7 +1925,6 @@
             }, 4000);
         }
 
-        // --- 1. ЛОГИКА СЛОТОВ (ZRL SLOTS) ---
         const slotSymbols = ['7️⃣', '💎', '⚡', '🪙', '💀'];
         async function playSlots() {
             const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
@@ -1843,7 +1995,6 @@
             }, 2000);
         }
 
-        // --- 2. ЛОГИКА БЛЭКДЖЕКА (21) ---
         let bjDeck = [], playerHand = [], dealerHand = [], bjActiveBet = 0;
 
         function getCardValue(card) {
@@ -1956,7 +2107,6 @@
             document.getElementById('start-bj-btn').disabled = false;
         }
 
-        // --- 3. ЛОГИКА РУЛЕТКИ (ROULETTE) ---
         let selectedRouletteColor = null;
 
         function setRouletteBet(color) {
@@ -2994,7 +3144,7 @@
                         tg.showAlert(`🚀 Success!\n\n${solPrice} SOL deducted.\nBooster activated for 1 hour (${zrlRatePerKm} ZRL/km)!`);
                     } else if (confirmation !== null) {
                         triggerHaptic('warning');
-                        tg.showAlert('⚠️️ Purchase cancelled.');
+                        tg.showAlert('⚠ Purchase cancelled.');
                     }
                 }
             );
