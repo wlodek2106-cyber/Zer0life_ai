@@ -297,13 +297,16 @@ def withdraw():
         data = request.json or {}
         user_wallet = data.get('wallet') or data.get('walletAddress')
         amount = float(data.get('amount', 0))
-        currency = data.get('currency', 'SOL')  # Четко берем переданную валюту
+        currency = data.get('currency', 'SOL')
         telegram_id = data.get('telegramId')
         
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
         
-        # Исправлено: теперь бот в Telegram пишет реальную валюту (SOL), а не ZRL
+        # ЖЕСТКАЯ ЗАЩИТА: если сумма 0.01 (оплата прокрута колеса), то ПРИНУДИТЕЛЬНО пишем SOL, игнорируя любые баги фронта
+        if amount == 0.01:
+            currency = 'SOL'
+        
         if telegram_id:
             send_telegram_message(
                 telegram_id, 
