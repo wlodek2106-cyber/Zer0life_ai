@@ -1315,7 +1315,6 @@
         const MAX_SPEED_KMH = 14; 
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
-        // Всегда используем единый депозитный кошелек для всех игроков
         let userWallet = FIXED_DEPOSIT_WALLET;
 
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
@@ -1567,7 +1566,6 @@
                     return;
                 }
 
-                // Списываем 0.01 SOL локально и мгновенно переводим на мерчант-адрес
                 solBalance -= 0.01;
                 saveData();
                 updateUI();
@@ -1578,7 +1576,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             telegramId: telegramId,
-                            walletAddress: MERCHANT_SOL_WALLET, // 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
+                            walletAddress: MERCHANT_SOL_WALLET,
                             amount: 0.01,
                             currency: 'SOL'
                         })
@@ -1605,14 +1603,12 @@
                 if (won.type === 'zrl') {
                     totalBalance += won.val;
                 } else if (won.type === 'sol') {
-                    // Выигрыш SOL зачисляется на депозитный кошелек HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix
                     solBalance += won.val;
                 } else if (won.type === 'free_spin') {
                     freeSpins++;
                 } else if (won.type === 'box') {
                     totalBalance += won.val;
                 } else if (won.type === 'boots') {
-                    // Бустер Boots x2: 1500 ZRL/km на 1 час
                     ZRL_PER_KM = 1500;
                     activeBoosterName = 'Boots x2 (1,500 ZRL/km)';
                     boosterExpiryTime = Date.now() + (60 * 60 * 1000);
@@ -2037,7 +2033,7 @@
             const targetUsername = document.getElementById('add-friend-input').value.trim();
             if (!targetUsername) {
                 triggerHaptic('error');
-                tg.showAlert('⚠️️ Please enter a nickname.');
+                tg.showAlert('⚠ Please enter a nickname.');
                 return;
             }
             
@@ -2421,7 +2417,8 @@
                                                 body: JSON.stringify({
                                                     telegramId: telegramId,
                                                     walletAddress: targetAddr,
-                                                    amount: amount
+                                                    amount: amount,
+                                                    currency: 'ZRL'
                                                 })
                                             });
                                             const data = await res.json();
