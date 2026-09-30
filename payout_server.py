@@ -297,8 +297,19 @@ def withdraw():
         data = request.json or {}
         user_wallet = data.get('wallet') or data.get('walletAddress')
         amount = float(data.get('amount', 0))
+        currency = data.get('currency', 'SOL')  # Учитываем переданную валюту (по умолчанию SOL)
+        telegram_id = data.get('telegramId')
+        
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
+        
+        # Исправлено: теперь в Telegram-бот отправляется корректная валюта (например, SOL вместо ZRL)
+        if telegram_id:
+            send_telegram_message(
+                telegram_id, 
+                f"✅ <b>Вывод успешно завершен!</b>\n\nСумма: {amount} {currency}\nКошелек: {user_wallet[:6]}...{user_wallet[-4:]}"
+            )
+
         return jsonify({
             "success": True, 
             "txHash": "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix_tx_success"
@@ -338,6 +349,12 @@ def fortune_spin():
         
         USER_STATS[telegram_id] = user_stats
         save_db()
+
+        # Отправляем уведомление в Telegram о списании именно в SOL
+        send_telegram_message(
+            telegram_id,
+            f"✅ <b>Оплата прокрута колеса</b>\n\nСумма: 0.01 SOL\nМерчант: 57S7Tr...v5db"
+        )
 
         import random
         
