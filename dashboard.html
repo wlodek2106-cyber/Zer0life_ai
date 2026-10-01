@@ -1334,8 +1334,8 @@
         let userRealDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'user_real_deposit')) || 0.00;
         let earnedZrlBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'earned_zrl')) || 0.00;
 
-        // Глобальный счетчик оборота в казино для скрытой логики джекпота
         let totalCasinoTurnover = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'casino_turnover')) || 0.0;
+        let casinoTotalWon = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'casino_total_won')) || 0.0;
 
         const currentMonthKey = new Date().getFullYear() + '-' + new Date().getMonth();
         let savedMonthKey = localStorage.getItem('slots_jackpot_month_key');
@@ -1704,6 +1704,7 @@
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
             localStorage.setItem(STORAGE_PREFIX + 'casino_turnover', totalCasinoTurnover);
+            localStorage.setItem(STORAGE_PREFIX + 'casino_total_won', casinoTotalWon);
             localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
 
@@ -1851,9 +1852,11 @@
                 return;
             }
 
-            if (freeSpins <= 0 && solBalance < 0.01) {
+            // Проверяем реальный доступный баланс для ставок
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+            if (freeSpins <= 0 && effectiveSolBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Требуется: 0.01 SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: 0.01 SOL.`);
                 return;
             }
 
@@ -1866,8 +1869,6 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                solBalance -= 0.01;
-                userRealDeposit = Math.max(0, userRealDeposit - 0.01);
                 totalCasinoTurnover += 0.01;
                 
                 try {
@@ -1942,8 +1943,7 @@
                         totalBalance += won.val;
                         earnedZrlBalance += won.val;
                     } else if (won.type === 'sol') {
-                        solBalance += won.val;
-                        userRealDeposit += won.val; 
+                        casinoTotalWon += won.val;
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -1983,15 +1983,14 @@
             }
 
             const betSOL = parseFloat(document.getElementById('slots-bet-select').value);
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             
-            if (solBalance < betSOL) {
+            if (effectiveSolBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
-            solBalance -= betSOL; 
-            userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             totalCasinoTurnover += betSOL; 
             saveData();
             updateUI();
@@ -2047,8 +2046,7 @@
                 spinBtn.disabled = false;
 
                 if (winSOL > 0) {
-                    solBalance += winSOL; 
-                    userRealDeposit += winSOL;
+                    casinoTotalWon += winSOL;
                     saveData();
                     updateUI();
                     updateEnergyUI();
@@ -2109,15 +2107,14 @@
             }
 
             bjActiveBet = parseFloat(document.getElementById('bj-bet-select').value);
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             
-            if (solBalance < bjActiveBet) {
+            if (effectiveSolBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
                 return;
             }
 
-            solBalance -= bjActiveBet; 
-            userRealDeposit = Math.max(0, userRealDeposit - bjActiveBet);
             totalCasinoTurnover += bjActiveBet;
             saveData(); updateUI(); updateEnergyUI();
 
@@ -2191,14 +2188,12 @@
 
         function bjFinish(multiplier, msg) {
             if (multiplier === 'return') {
-                solBalance += bjActiveBet; 
-                userRealDeposit += bjActiveBet;
+                casinoTotalWon += bjActiveBet;
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
                 const solWon = bjActiveBet * multiplier;
-                solBalance += solWon; 
-                userRealDeposit += solWon;
+                casinoTotalWon += solWon;
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
             } else {
@@ -2246,15 +2241,14 @@
             }
 
             const betSOL = parseFloat(document.getElementById('roulette-bet-amount').value);
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             
-            if (solBalance < betSOL) {
+            if (effectiveSolBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${solBalance.toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
                 return;
             }
 
-            solBalance -= betSOL; 
-            userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             totalCasinoTurnover += betSOL;
             saveData(); updateUI(); updateEnergyUI();
 
@@ -2290,8 +2284,7 @@
 
                 if (won) {
                     const winSOL = betSOL * 2;
-                    solBalance += winSOL; 
-                    userRealDeposit += winSOL;
+                    casinoTotalWon += winSOL;
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
                     tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен!`);
@@ -2313,7 +2306,10 @@
         function updateWalletUI() {
             headerUsernameLabel.innerText = username || 'Player';
             headerZrlBalanceEl.innerText = totalBalance.toFixed(2) + " ZRL";
-            document.getElementById('wallet-btn-text').innerText = solBalance.toFixed(4) + " SOL";
+            
+            // Расчет отображаемого баланса SOL: Пополнено + Выиграно - Потрачено на ставки
+            const displaySol = Math.max(0, poolDeposit + casinoTotalWon - totalCasinoTurnover);
+            document.getElementById('wallet-btn-text').innerText = displaySol.toFixed(4) + " SOL";
         }
 
         function checkRegistration() {
@@ -2637,21 +2633,22 @@
                 const result = await response.json();
                 if (response.ok && result.success) {
                     if (result.solBalance !== undefined) {
-                        const newDepositFound = Math.max(0, result.solBalance - (poolDeposit + (solBalance - poolDeposit)));
+                        const newDepositFound = Math.max(0, result.solBalance - poolDeposit);
                         if (newDepositFound > 0) {
                             poolDeposit += newDepositFound; 
-                            solBalance += newDepositFound;  
                             userRealDeposit += newDepositFound; 
                         }
                     }
                 }
             } catch(e) {}
             
+            const effectiveSolBalance = Math.max(0, poolDeposit + casinoTotalWon - totalCasinoTurnover);
+
             document.getElementById('asset-zrl-bal').innerText = totalBalance.toFixed(2);
             document.getElementById('asset-zrl-usd').innerText = '$' + (totalBalance * 0.001).toFixed(2);
             
-            document.getElementById('asset-sol-bal').innerText = solBalance.toFixed(4);
-            document.getElementById('asset-sol-usd').innerText = '$' + (solBalance * 140).toFixed(2);
+            document.getElementById('asset-sol-bal').innerText = effectiveSolBalance.toFixed(4);
+            document.getElementById('asset-sol-usd').innerText = '$' + (effectiveSolBalance * 140).toFixed(2);
 
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
@@ -2668,17 +2665,17 @@
                 playSound('click');
                 walletModal.style.display = 'none';
                 
-                const maxWithdrawable = Math.min(solBalance, userRealDeposit + (solBalance - poolDeposit));
+                const maxWithdrawable = Math.min(effectiveSolBalance, userRealDeposit + casinoTotalWon);
 
                 if (maxWithdrawable <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("❌ У вас нет доступных личных средств для вывода. Общий пул заблокирован.");
+                    tg.showAlert("❌ У вас нет доступных средств для вывода.");
                     return;
                 }
 
                 showCustomPrompt(
                     "Withdraw Funds (Personal Balance Only)", 
-                    `Доступно к выводу вашим личным средствам: ${maxWithdrawable.toFixed(4)} SOL`, 
+                    `Доступно к выводу: ${maxWithdrawable.toFixed(4)} SOL`, 
                     "Solana wallet address...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
@@ -2702,7 +2699,7 @@
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
-                                                solBalance -= amount; 
+                                                poolDeposit = Math.max(0, poolDeposit - amount);
                                                 userRealDeposit = Math.max(0, userRealDeposit - amount);
                                                 saveData();
                                                 updateUI();
@@ -2720,7 +2717,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваши личные средства.');
+                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваши средства.');
                                     }
                                 }
                             );
@@ -2743,11 +2740,9 @@
                 
                 const result = await response.json();
                 if (response.ok && result.success && result.solBalance !== undefined) {
-                    const trackedTotal = poolDeposit + (solBalance - poolDeposit); 
-                    if (result.solBalance > trackedTotal) {
-                        const diff = result.solBalance - trackedTotal;
+                    if (result.solBalance > poolDeposit) {
+                        const diff = result.solBalance - poolDeposit;
                         poolDeposit += diff; 
-                        solBalance += diff;  
                         userRealDeposit += diff;
                         saveData();
                         updateUI();
@@ -2786,16 +2781,18 @@
         };
 
         window.buyBooster = function(solPrice, zrlRatePerKm, boosterName) {
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
                 tg.showAlert("❌ Доступ заблокирован!\n\nДля покупки бустеров внесите депозит в Solana.");
                 return;
             }
 
-            if (solBalance < solPrice) {
+            if (effectiveSolBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${effectiveSolBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -2809,8 +2806,7 @@
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
-                        solBalance -= solPrice;
-                        userRealDeposit = Math.max(0, userRealDeposit - solPrice);
+                        totalCasinoTurnover += solPrice; // списываем с виртуального баланса отображения
                         ZRL_PER_KM = zrlRatePerKm;
                         activeBoosterName = boosterName;
                         boosterExpiryTime = 0; 
@@ -2842,16 +2838,18 @@
         };
 
         window.buyTimedBooster = function(solPrice, zrlRatePerKm, boosterName, hoursDuration) {
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
                 tg.showAlert("❌ Доступ заблокирован!\n\nДля покупки бустеров внесите депозит в Solana.");
                 return;
             }
 
-            if (solBalance < solPrice) {
+            if (effectiveSolBalance < solPrice) {
                 triggerHaptic('error');
                 playSound('warning');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nНужно: ${solPrice} SOL. Доступно: ${effectiveSolBalance.toFixed(4)} SOL.`);
                 return;
             }
 
@@ -2865,8 +2863,7 @@
                 "Type YES to confirm...",
                 async (confirmation) => {
                     if (confirmation && confirmation.toUpperCase() === 'YES') {
-                        solBalance -= solPrice;
-                        userRealDeposit = Math.max(0, userRealDeposit - solPrice);
+                        totalCasinoTurnover += solPrice;
                         ZRL_PER_KM = zrlRatePerKm;
                         activeBoosterName = boosterName;
                         boosterExpiryTime = Date.now() + (hoursDuration * 60 * 60 * 1000);
@@ -2979,7 +2976,6 @@
                 totalDistance += stepKm;
                 unclaimedZRL += (stepKm * ZRL_PER_KM);
                 
-                // ОБНОВЛЕННЫЙ РАСХОД ЭНЕРГИИ: 100% шкалы хватает ровно на 10 км
                 currentEnergy = Math.max(0, currentEnergy - 0.0075);
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
