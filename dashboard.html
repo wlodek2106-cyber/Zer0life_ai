@@ -1334,20 +1334,19 @@
         let userRealDeposit = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'user_real_deposit')) || 0.00;
         let earnedZrlBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'earned_zrl')) || 0.00;
 
+        // Глобальный счетчик оборота в казино для скрытой логики джекпота
+        let totalCasinoTurnover = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'casino_turnover')) || 0.0;
+
         const currentMonthKey = new Date().getFullYear() + '-' + new Date().getMonth();
         let savedMonthKey = localStorage.getItem('slots_jackpot_month_key');
         let jackpotWinsThisMonth = parseInt(localStorage.getItem('slots_jackpot_wins_month')) || 0;
-        let currentJackpotThreshold = parseFloat(localStorage.getItem('slots_jackpot_threshold')) || 50.0;
 
         if (savedMonthKey !== currentMonthKey) {
             localStorage.setItem('slots_jackpot_month_key', currentMonthKey);
             localStorage.setItem('slots_jackpot_wins_month', '0');
-            localStorage.setItem('slots_jackpot_threshold', '50');
             jackpotWinsThisMonth = 0;
-            currentJackpotThreshold = 50.0;
         }
 
-        let totalSlotsTurnoverSol = parseFloat(localStorage.getItem('total_slots_turnover_sol')) || 0.0;
         let freeSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'free_spins')) || 0;
         
         let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
@@ -1704,9 +1703,8 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'username', username);
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
-            localStorage.setItem('total_slots_turnover_sol', totalSlotsTurnoverSol);
+            localStorage.setItem(STORAGE_PREFIX + 'casino_turnover', totalCasinoTurnover);
             localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
-            localStorage.setItem('slots_jackpot_threshold', currentJackpotThreshold);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
 
             syncStatsToServer();
@@ -1870,6 +1868,7 @@
             } else {
                 solBalance -= 0.01;
                 userRealDeposit = Math.max(0, userRealDeposit - 0.01);
+                totalCasinoTurnover += 0.01;
                 
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -1993,7 +1992,7 @@
 
             solBalance -= betSOL; 
             userRealDeposit = Math.max(0, userRealDeposit - betSOL);
-            totalSlotsTurnoverSol += betSOL; 
+            totalCasinoTurnover += betSOL; 
             saveData();
             updateUI();
             updateEnergyUI();
@@ -2022,22 +2021,20 @@
                 const rand = Math.random();
                 let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
 
-                const canHitJackpot = (totalSlotsTurnoverSol >= currentJackpotThreshold) && (jackpotWinsThisMonth < 2);
+                const canHitJackpot = (totalCasinoTurnover >= 10.0) && (jackpotWinsThisMonth < 2);
 
                 if (canHitJackpot && rand < 0.015) { 
                     r1 = r2 = r3 = '7️⃣';
                     winSOL = 1.0;
                     isJackpot = true;
-                    
                     jackpotWinsThisMonth++;
-                    currentJackpotThreshold += 25.0;
                 } else if (canHitJackpot && rand < 0.08) { 
                     r1 = r2 = r3 = '🍉';
                     winSOL = betSOL * 10;
-                } else if (rand < 0.25) { 
+                } else if (rand < 0.35) { 
                     r1 = '🍇'; r2 = '🍇'; r3 = '🍇';
-                    winZRL = Math.floor(Math.random() * 901) + 100; 
-                } else if (rand < 0.45) { 
+                    winZRL = Math.floor(Math.random() * 991) + 10; 
+                } else if (rand < 0.50) { 
                     r1 = '🍊'; r2 = '🍊'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; winSOL = betSOL * 1.5;
                 } else { 
                     r1 = '🍒'; r2 = slotSymbols[Math.floor(Math.random() * 4)]; r3 = '🍉';
@@ -2074,13 +2071,7 @@
                     tg.showAlert(`🎁 ВЫИГРЫШ!\n\nВы выиграли: ${winZRL} ZRL!`);
                 } else {
                     triggerHaptic('error');
-                    if (jackpotWinsThisMonth >= 2) {
-                        tg.showAlert(`🔒 Лимит джекпотов на этот месяц исчерпан (2/2).`);
-                    } else if (totalSlotsTurnoverSol < currentJackpotThreshold) {
-                        tg.showAlert(`💀 Увы! Джекпот заблокирован. Сделайте больше оборота.`);
-                    } else {
-                        tg.showAlert('💀 Увы! Повезет в следующий раз.');
-                    }
+                    tg.showAlert('💀 Увы! Повезет в следующий раз.');
                 }
             }, 2000);
         }
@@ -2127,6 +2118,7 @@
 
             solBalance -= bjActiveBet; 
             userRealDeposit = Math.max(0, userRealDeposit - bjActiveBet);
+            totalCasinoTurnover += bjActiveBet;
             saveData(); updateUI(); updateEnergyUI();
 
             try {
@@ -2263,6 +2255,7 @@
 
             solBalance -= betSOL; 
             userRealDeposit = Math.max(0, userRealDeposit - betSOL);
+            totalCasinoTurnover += betSOL;
             saveData(); updateUI(); updateEnergyUI();
 
             try {
