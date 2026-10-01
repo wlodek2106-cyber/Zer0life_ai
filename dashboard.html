@@ -1870,7 +1870,6 @@
                 solBalance -= 0.01;
                 userRealDeposit = Math.max(0, userRealDeposit - 0.01);
                 
-                // Ставка уходит на адрес мерчанта с корректной валютой SOL
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                         method: 'POST',
@@ -1998,7 +1997,6 @@
             updateUI();
             updateEnergyUI();
 
-            // Ставка уходит на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
@@ -2130,7 +2128,6 @@
             userRealDeposit = Math.max(0, userRealDeposit - bjActiveBet);
             saveData(); updateUI(); updateEnergyUI();
 
-            // Ставка на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
@@ -2267,7 +2264,6 @@
             userRealDeposit = Math.max(0, userRealDeposit - betSOL);
             saveData(); updateUI(); updateEnergyUI();
 
-            // Ставка на мерчант с корректной валютой SOL
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                     method: 'POST',
@@ -2989,7 +2985,8 @@
                 totalDistance += stepKm;
                 unclaimedZRL += (stepKm * ZRL_PER_KM);
                 
-                currentEnergy = Math.max(0, currentEnergy - 0.05);
+                // ОБНОВЛЕННЫЙ РАСХОД ЭНЕРГИИ: 100% шкалы хватает ровно на 10 км
+                currentEnergy = Math.max(0, currentEnergy - 0.0075);
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
                 updateUI();
