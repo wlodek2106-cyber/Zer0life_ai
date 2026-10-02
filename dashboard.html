@@ -2645,7 +2645,7 @@
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
             };
 
-            // Генерация реквизитов на фиксированную сумму 0.1 SOL без необходимости ввода
+            // Генерация реквизитов на фиксированную сумму 0.1 SOL без поля ввода
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
                 triggerHaptic('success');
                 playSound('click');
@@ -2656,7 +2656,6 @@
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                 document.getElementById('deposit-details-box').style.display = 'block';
 
-                // Запуск автоматического опроса блокчейна каждые 4 секунды
                 const statusMsg = document.getElementById('deposit-status-msg');
                 statusMsg.innerText = "⏳ Ожидание транзакции 0.1 SOL в сети Solana...";
 
@@ -2669,7 +2668,8 @@
                             body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
                         });
                         const result = await response.json();
-                        if (response.ok && result.success) {
+                        // Зачисление происходит ТОЛЬКО при реальном подтверждении транзакции бэкендом
+                        if (response.ok && result.success && result.verified === true) {
                             clearInterval(autoCheckInterval);
                             poolDeposit += targetAmt;
                             userRealDeposit += targetAmt;
@@ -2681,10 +2681,10 @@
                             tg.showAlert(`🎉 Транзакция подтверждена! Депозит на сумму 0.1 SOL успешно зачислен.`);
                         }
                     } catch(e) {}
-                }, 4000);
+                }, 5000);
             };
 
-            // Проверка по кнопке с автополлингом
+            // Проверка по кнопке с реальным опросом сети
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const targetAmt = 0.1;
                 const statusMsg = document.getElementById('deposit-status-msg');
@@ -2699,7 +2699,8 @@
                         body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
                     });
                     const result = await response.json();
-                    if (response.ok && result.success) {
+                    
+                    if (response.ok && result.success && result.verified === true) {
                         if (autoCheckInterval) clearInterval(autoCheckInterval);
                         poolDeposit += targetAmt;
                         userRealDeposit += targetAmt;
@@ -2710,8 +2711,9 @@
                         playSound('success');
                         tg.showAlert(`🎉 Депозит на сумму 0.1 SOL успешно зачислен на ваш баланс!`);
                     } else {
-                        statusMsg.innerText = "⏳ Транзакция еще не найдена. Ожидаем в сети...";
-                        tg.showAlert(`⏳ Транзакция на сумму 0.1 SOL еще не подтверждена в блокчейне.`);
+                        statusMsg.innerText = "⏳ Транзакция еще не найдена в блокчейне.";
+                        triggerHaptic('warning');
+                        tg.showAlert(`⏳ Перевод на 0.1 SOL еще не подтвержден в сети Solana.`);
                     }
                 } catch(e) {
                     statusMsg.innerText = "❌ Ошибка связи с блокчейном.";
