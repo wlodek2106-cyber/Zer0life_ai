@@ -1301,7 +1301,7 @@
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
                     triggerHaptic('error');
-                    tg.showAlert('⚠️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
+                    tg.showAlert('⚠️️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
                     return;
                 }
 
@@ -1644,7 +1644,7 @@
         const wheelSectors = [
             { text: "0.1 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.1 },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
-            { text: "🎁 Box", color: "#ec4899", textColor: "#fff", type: "box", val: 150 },
+            { text: "🎁 Box", color: "#ec4899", textColor: "#fff", type: "box", val: 50 },
             { text: "Free Spin", color: "#eab308", textColor: "#000", type: "free_spin", val: 1 },
             { text: "0.1 SOL", color: "#10b981", textColor: "#000", type: "sol", val: 0.1 },
             { text: "600 ZRL", color: "#a855f7", textColor: "#fff", type: "zrl", val: 600 },
@@ -1923,8 +1923,9 @@
             const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
             const won = wheelSectors[winningIndex];
 
+            // Диапазон сундука от 1 до 50 ZRL
             if (won.type === 'box') {
-                won.val = Math.floor(Math.random() * 91) + 10; 
+                won.val = Math.floor(Math.random() * 50) + 1; 
             }
 
             const arcSize = 360 / wheelSectors.length;
@@ -2445,7 +2446,7 @@
 
         function checkRandomMysteryBox() {
             if (Math.random() < 0.02) {
-                pendingBoxReward = Math.floor(Math.random() * 131) + 20; 
+                pendingBoxReward = Math.floor(Math.random() * 50) + 1; // Диапазон от 1 до 50 ZRL
                 triggerHaptic('success');
                 playSound('success');
                 mysteryBoxModal.style.display = 'flex';
