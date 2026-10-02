@@ -1054,7 +1054,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА (ФИКСИРОВАННЫЙ МИН ДЕПОЗИТ 0.1 SOL БЕЗ ПОЛЯ ВВОДА) -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1301,7 +1301,7 @@
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
                     triggerHaptic('error');
-                    tg.showAlert('⚠️️ Файл слишком большой. Выберите изображение размером до 2 МБ.');
+                    tg.showAlert('⚠ Файл слишком большой. Выберите изображение размером до 2 МБ.');
                     return;
                 }
 
@@ -1390,6 +1390,80 @@
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
+
+        // ==========================================
+        // ЛОГИКА ПОКУПКИ БУСТЕРОВ (МЕРЧАНТ-ПОТОК)
+        // ==========================================
+        window.buyBooster = function(costSol, rate, name) {
+            triggerHaptic('medium');
+            playSound('click');
+
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+            if (effectiveSolBalance < costSol) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств на балансе SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: ${costSol} SOL.`);
+                return;
+            }
+
+            // Списываем оборот казино / баланс пула и отправляем на мерчант-кошелек
+            totalCasinoTurnover += costSol;
+            ZRL_PER_KM = rate;
+            activeBoosterName = name;
+            boosterExpiryTime = 0; // Постоянный бустер
+
+            saveData();
+            updateUI();
+            updateEnergyUI();
+            document.getElementById('boosters-modal').style.display = 'none';
+
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: costSol, currency: 'SOL' })
+                });
+            } catch(e) {}
+
+            triggerHaptic('success');
+            playSound('success');
+            tg.showAlert(`🚀 VIP Booster Activated!\n\nPackage: ${name}\nFunds routed to Merchant wallet.`);
+        };
+
+        window.buyTimedBooster = function(costSol, rate, name, durationHours) {
+            triggerHaptic('medium');
+            playSound('click');
+
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+            if (effectiveSolBalance < costSol) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Недостаточно средств на балансе SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: ${costSol} SOL.`);
+                return;
+            }
+
+            totalCasinoTurnover += costSol;
+            ZRL_PER_KM = rate;
+            activeBoosterName = name;
+            boosterExpiryTime = Date.now() + (durationHours * 60 * 60 * 1000);
+
+            localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
+            saveData();
+            updateUI();
+            updateEnergyUI();
+            document.getElementById('boosters-modal').style.display = 'none';
+
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: costSol, currency: 'SOL' })
+                });
+            } catch(e) {}
+
+            triggerHaptic('success');
+            playSound('success');
+            tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for ${durationHours} hour(s).`);
+        };
+        // ==========================================
 
         let currentFarmingAsset = 'sol';
         let selectedFarmingMonths = 12;
@@ -1923,7 +1997,6 @@
             const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
             const won = wheelSectors[winningIndex];
 
-            // Диапазон сундука от 1 до 50 ZRL
             if (won.type === 'box') {
                 won.val = Math.floor(Math.random() * 50) + 1; 
             }
@@ -2446,7 +2519,7 @@
 
         function checkRandomMysteryBox() {
             if (Math.random() < 0.02) {
-                pendingBoxReward = Math.floor(Math.random() * 50) + 1; // Диапазон от 1 до 50 ZRL
+                pendingBoxReward = Math.floor(Math.random() * 50) + 1;
                 triggerHaptic('success');
                 playSound('success');
                 mysteryBoxModal.style.display = 'flex';
@@ -2646,7 +2719,6 @@
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
             };
 
-            // Генерация реквизитов на фиксированную сумму 0.1 SOL без поля ввода
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
                 triggerHaptic('success');
                 playSound('click');
@@ -2669,7 +2741,6 @@
                             body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
                         });
                         const result = await response.json();
-                        // Зачисление происходит ТОЛЬКО при реальном подтверждении транзакции бэкендом
                         if (response.ok && result.success && result.verified === true) {
                             clearInterval(autoCheckInterval);
                             poolDeposit += targetAmt;
@@ -2685,7 +2756,6 @@
                 }, 5000);
             };
 
-            // Проверка по кнопке с реальным опросом сети
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const targetAmt = 0.1;
                 const statusMsg = document.getElementById('deposit-status-msg');
