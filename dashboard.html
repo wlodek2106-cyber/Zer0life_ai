@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="author" content="V Palamarchuk">
-    <title>Zer0Life Run - Dashboard</title>
+    <title>Zer0life Run - Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body, html {
@@ -985,7 +985,7 @@
     <div class="modal-overlay" id="register-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">🚀 Welcome to Zer0Life Run</span>
+                <span class="modal-title">🚀 Welcome to Zer0life Run</span>
             </div>
             <p style="font-size: 13px; color: #a8f07a; margin-top: -10px; margin-bottom: 15px; font-weight: 700;">
                 🎁 Bonus: Get 1,000 ZRL instantly on start for registration!
@@ -1054,7 +1054,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА (МИН 0.1 SOL + АВТОПРОВЕРКА) -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА (ФИКСИРОВАННЫЙ МИН ДЕПОЗИТ 0.1 SOL БЕЗ ПОЛЯ ВВОДА) -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1062,9 +1062,9 @@
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
-                <div class="custom-input-group" style="margin-bottom: 15px; text-align: left;">
-                    <label style="font-size: 12px; color: #14f195; font-weight: 700;">Сумма депозита в SOL (Мин. 0.1 SOL):</label>
-                    <input type="number" id="deposit-amount-input" class="custom-input-field" placeholder="например, 0.1" step="0.01" min="0.1" />
+                <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
+                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.1 SOL</div>
+                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После пополнения баланс зачислится автоматически</div>
                 </div>
 
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
@@ -1072,7 +1072,7 @@
                 </button>
 
                 <div id="deposit-details-box" style="display: none;">
-                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите ровно указанную сумму на общий адрес:</p>
+                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите ровно 0.1 SOL на общий адрес:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;" />
                     </div>
@@ -2641,30 +2641,24 @@
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
                 document.getElementById('deposit-details-box').style.display = 'none';
-                document.getElementById('deposit-amount-input').value = '0.1';
                 document.getElementById('deposit-status-msg').innerText = '';
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
             };
 
-            // Генерация реквизитов с проверкой мин. депозита 0.1 SOL
+            // Генерация реквизитов на фиксированную сумму 0.1 SOL без необходимости ввода
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
-                const amt = parseFloat(document.getElementById('deposit-amount-input').value);
-                if (isNaN(amt) || amt < 0.1) {
-                    triggerHaptic('error');
-                    tg.showAlert("⚠️ Минимальная сумма депозита составляет 0.1 SOL.");
-                    return;
-                }
                 triggerHaptic('success');
                 playSound('click');
                 
+                const targetAmt = 0.1;
+
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                 document.getElementById('deposit-details-box').style.display = 'block';
 
-                // Запускаем автоматическую проверку блокчейна каждые 4 секунды
-                const targetAmt = amt;
+                // Запуск автоматического опроса блокчейна каждые 4 секунды
                 const statusMsg = document.getElementById('deposit-status-msg');
-                statusMsg.innerText = "⏳ Ожидание транзакции в сети Solana...";
+                statusMsg.innerText = "⏳ Ожидание транзакции 0.1 SOL в сети Solana...";
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
                 autoCheckInterval = setInterval(async () => {
@@ -2684,15 +2678,15 @@
                             depositModal.style.display = 'none';
                             triggerHaptic('success');
                             playSound('success');
-                            tg.showAlert(`🎉 Транзакция подтверждена! Депозит на сумму ${targetAmt} SOL успешно зачислен.`);
+                            tg.showAlert(`🎉 Транзакция подтверждена! Депозит на сумму 0.1 SOL успешно зачислен.`);
                         }
                     } catch(e) {}
                 }, 4000);
             };
 
-            // Ручная проверка по кнопке с автополлингом
+            // Проверка по кнопке с автополлингом
             document.getElementById('check-deposit-status-btn').onclick = async () => {
-                const targetAmt = parseFloat(document.getElementById('deposit-amount-input').value);
+                const targetAmt = 0.1;
                 const statusMsg = document.getElementById('deposit-status-msg');
                 triggerHaptic('medium');
                 playSound('click');
@@ -2714,10 +2708,10 @@
                         depositModal.style.display = 'none';
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит на сумму ${targetAmt} SOL успешно зачислен на ваш баланс!`);
+                        tg.showAlert(`🎉 Депозит на сумму 0.1 SOL успешно зачислен на ваш баланс!`);
                     } else {
                         statusMsg.innerText = "⏳ Транзакция еще не найдена. Ожидаем в сети...";
-                        tg.showAlert(`⏳ Транзакция на сумму ${targetAmt} SOL еще не подтверждена в блокчейне.`);
+                        tg.showAlert(`⏳ Транзакция на сумму 0.1 SOL еще не подтверждена в блокчейне.`);
                     }
                 } catch(e) {
                     statusMsg.innerText = "❌ Ошибка связи с блокчейном.";
