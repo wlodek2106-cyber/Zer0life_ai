@@ -2773,7 +2773,7 @@
                 document.getElementById('deposit-details-box').style.display = 'block';
             };
 
-            // РЕАЛЬНАЯ ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН И СЕРВЕР
+            // РЕАЛЬНАЯ ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН И СЕРВЕР (С ПОЛНЫМ URL РЕНДЕРА)
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const txSig = document.getElementById('tx-signature-input').value.trim();
                 const statusMsg = document.getElementById('deposit-status-msg');
