@@ -234,7 +234,7 @@ def verify_deposit():
         if status_info.err is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
 
-        # Получаем реальную сумму перевода без каких-либо минимальных лимитов
+        # Точно вычисляем реальный прирост суммы перевода без фиктивных лимитов
         deposited_sol = 0.0
         try:
             tx_details = client.get_transaction(
@@ -244,9 +244,11 @@ def verify_deposit():
             if tx_details and tx_details.value:
                 meta = tx_details.value.transaction.meta
                 if meta and meta.pre_balances and meta.post_balances:
-                    diff = (meta.post_balances[0] - meta.pre_balances[0]) / (10**9)
-                    if diff > 0:
-                        deposited_sol = diff
+                    # Ищем максимальный положительный прирост среди всех аккаунтов в транзакции (это и есть депозит на кошелек получателя)
+                    for i in range(len(meta.post_balances)):
+                        d = (meta.post_balances[i] - meta.pre_balances[i]) / (10**9)
+                        if d > deposited_sol:
+                            deposited_sol = d
         except Exception as ex:
             print("Notice parsing tx details:", ex)
 
