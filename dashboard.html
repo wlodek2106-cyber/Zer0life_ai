@@ -1021,7 +1021,7 @@
                             <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
                             <div>
                                 <div class="asset-name">ZRL Token</div>
-                                <div class="asset-sub">Earned / Reward Balance</div>
+                                <div class="asset-sub">Earned / Reward Balance (Доступен вывод)</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1033,8 +1033,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Solana (Личный баланс)</div>
-                                <div class="asset-sub">Депозит + Выигрыши</div>
+                                <div class="asset-name">Solana (Пул игры)</div>
+                                <div class="asset-sub">Только пополнения и игра в казино</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1046,7 +1046,7 @@
 
                 <div class="wallet-actions" id="wallet-actions-div">
                     <button class="wallet-action-btn" id="deposit-btn">📥 Deposit SOL</button>
-                    <button class="wallet-action-btn" id="withdraw-btn">📤 Withdraw</button>
+                    <button class="wallet-action-btn" id="withdraw-zrl-btn">📤 Withdraw ZRL</button>
                 </div>
 
                 <button class="logout-btn" id="logout-btn">🚪 Logout / Switch Profile</button>
@@ -1054,11 +1054,11 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА (С ВВОДОМ СУММЫ) -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Deposit Crypto (Пополнение)</span>
+                <span class="modal-title">Deposit Crypto (Пополнение SOL)</span>
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
@@ -1953,7 +1953,7 @@
                         totalBalance += won.val;
                         earnedZrlBalance += won.val;
                     } else if (won.type === 'sol') {
-                        casinoTotalWon += won.val; // Плюсуем выигрыш к Solana балансу
+                        casinoTotalWon += won.val;
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -2056,7 +2056,7 @@
                 spinBtn.disabled = false;
 
                 if (winSOL > 0) {
-                    casinoTotalWon += winSOL; // Плюсуем выигрыш SOL
+                    casinoTotalWon += winSOL; 
                     saveData();
                     updateUI();
                     updateEnergyUI();
@@ -2203,7 +2203,7 @@
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
                 const solWon = bjActiveBet * multiplier;
-                casinoTotalWon += solWon; // Плюсуем выигрыш SOL
+                casinoTotalWon += solWon; 
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
             } else {
@@ -2294,7 +2294,7 @@
 
                 if (won) {
                     const winSOL = betSOL * 2;
-                    casinoTotalWon += winSOL; // Плюсуем выигрыш SOL
+                    casinoTotalWon += winSOL; 
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
                     tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен!`);
@@ -2646,7 +2646,6 @@
                 document.getElementById('deposit-amount-input').value = '';
             };
 
-            // Генерация реквизитов после ввода суммы
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
                 const amt = parseFloat(document.getElementById('deposit-amount-input').value);
                 if (isNaN(amt) || amt <= 0) {
@@ -2662,7 +2661,6 @@
                 document.getElementById('deposit-details-box').style.display = 'block';
             };
 
-            // Проверка зачисления указанной суммы бэкендом
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const targetAmt = parseFloat(document.getElementById('deposit-amount-input').value);
                 triggerHaptic('medium');
@@ -2694,33 +2692,33 @@
                 }
             };
 
-            // Вывод средств (строго с проверкой доступного остатка)
-            document.getElementById('withdraw-btn').onclick = () => {
+            // ВЫВОД ТОЛЬКО ZRL ТОКЕНОВ (SOL выводить нельзя)
+            document.getElementById('withdraw-zrl-btn').onclick = () => {
                 triggerHaptic('medium');
                 playSound('click');
                 walletModal.style.display = 'none';
                 
-                const maxWithdrawable = Math.min(effectiveSolBalance, userRealDeposit + casinoTotalWon);
+                const maxWithdrawableZrl = totalBalance;
 
-                if (maxWithdrawable <= 0) {
+                if (maxWithdrawableZrl <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("❌ У вас нет доступных средств для вывода.");
+                    tg.showAlert("❌ У вас нет заработанных ZRL токенов для вывода.");
                     return;
                 }
 
                 showCustomPrompt(
-                    "Withdraw Funds (Personal Balance Only)", 
-                    `Доступно к выводу: ${maxWithdrawable.toFixed(4)} SOL`, 
-                    "Solana wallet address...", 
+                    "Withdraw ZRL Tokens", 
+                    `Доступно к выводу: ${maxWithdrawableZrl.toFixed(2)} ZRL`, 
+                    "Ваш личный Solana адрес для получения ZRL...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
                             showCustomPrompt(
-                                `Withdraw Amount (SOL)`, 
-                                `Сколько SOL хотите вывести?`, 
-                                "Enter amount...", 
+                                `Withdraw ZRL Amount`, 
+                                `Сколько ZRL хотите вывести?`, 
+                                "Enter ZRL amount...", 
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
-                                    if (amount > 0 && amount <= maxWithdrawable) {
+                                    if (amount > 0 && amount <= maxWithdrawableZrl) {
                                         try {
                                             const res = await fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                                                 method: 'POST',
@@ -2729,19 +2727,19 @@
                                                     telegramId: telegramId,
                                                     walletAddress: targetAddr,
                                                     amount: amount,
-                                                    currency: 'SOL'
+                                                    currency: 'ZRL'
                                                 })
                                             });
                                             const data = await res.json();
                                             if (res.ok && data.success) {
-                                                poolDeposit = Math.max(0, poolDeposit - amount);
-                                                userRealDeposit = Math.max(0, userRealDeposit - amount);
+                                                totalBalance -= amount;
+                                                earnedZrlBalance = Math.max(0, earnedZrlBalance - amount);
                                                 saveData();
                                                 updateUI();
 
                                                 triggerHaptic('success');
                                                 playSound('success');
-                                                tg.showAlert(`✅ Успешно выведено ${amount} SOL на ваш кошелек!`);
+                                                tg.showAlert(`✅ Успешно отправлено ${amount} ZRL на ваш адрес!`);
                                             } else {
                                                 triggerHaptic('error');
                                                 tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
@@ -2752,7 +2750,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваш персональный баланс.');
+                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваш баланс ZRL.');
                                     }
                                 }
                             );
