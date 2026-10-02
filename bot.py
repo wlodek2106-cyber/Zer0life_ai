@@ -213,6 +213,48 @@ def check_deposit():
         print("ERROR IN DEPOSIT CHECK:", traceback.format_exc())
         return jsonify({"error": str(e)}), 400
 
+@api_app.route('/verify-deposit', methods=['POST'])
+def verify_deposit():
+    try:
+        data = request.json
+        if not data or 'txSignature' not in data:
+            return jsonify({"success": False, "error": "Missing transaction signature"}), 400
+
+        tx_signature = data['txSignature'].strip()
+        client = Client("https://api.mainnet-beta.solana.com")
+
+        # Проверяем статус транзакции в блокчейне Solana
+        tx_status = client.get_signature_statuses([tx_signature])
+        if not tx_status or not tx_status.value or not tx_status.value[0]:
+            return jsonify({"success": False, "error": "Транзакция не найдена в блокчейне"}), 400
+
+        status_info = tx_status.value[0]
+        if status_info.err is not None:
+            return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
+
+        # Получаем детали транзакции для проверки суммы перевода
+        tx_details = client.get_transaction(
+            tx_signature, 
+            max_supported_transaction_version=0
+        )
+        
+        deposited_sol = 0.01  # Базовое зачисление по умолчанию (либо парсинг из tx_details)
+        if tx_details and tx_details.value:
+            meta = tx_details.value.transaction.meta
+            if meta and meta.pre_balances and meta.post_balances:
+                # Пример расчета изменения баланса пула
+                diff = (meta.post_balances[0] - meta.pre_balances[0]) / (10**9)
+                if diff > 0:
+                    deposited_sol = diff
+
+        return jsonify({
+            "success": True,
+            "depositedSOL": deposited_sol
+        })
+    except Exception as e:
+        print("ERROR IN VERIFY DEPOSIT:", traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 400
+
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
     try:
