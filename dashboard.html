@@ -799,32 +799,32 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">0.1% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">1 SOL = 8.3k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-3" onclick="selectFarmingPlan(3)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">0.4% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">1 SOL = 25k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-6" onclick="selectFarmingPlan(6)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">0.7% <span style="font-size: 10px; color: #14f195;">/day</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Daily ZRL Return</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">1 SOL = 50k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
                 </div>
 
                 <div class="farm-plan-card selected" id="plan-card-12" onclick="selectFarmingPlan(12)">
                     <div style="font-size: 10px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">1.3% <span style="font-size: 10px; color: #fff;">/day</span></div>
+                    <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">1 SOL = 100k <span style="font-size: 10px; color: #fff;">ZRL</span></div>
                     <div style="font-size: 9px; color: #a8f07a;">Max ZRL Yield</div>
                 </div>
             </div>
 
             <div class="custom-input-group" style="margin-bottom: 10px;">
                 <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (SOL / ZRL):</label>
-                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 40000" step="0.01" />
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 0.01" step="0.001" />
             </div>
 
             <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 14px;" onclick="confirmFarmingDeposit()">
@@ -1310,7 +1310,7 @@
                     const base64Image = e.target.result;
                     avatarElement.style.backgroundImage = `url('${base64Image}')`;
                     localStorage.setItem(STORAGE_PREFIX + 'custom_avatar', base64Image);
-                    syncStatsToServer(); // Синхронизируем новый аватар сразу с сервером
+                    syncStatsToServer(); 
                     triggerHaptic('success');
                     playSound('success');
                     tg.showAlert('✅ Аватарка успешно обновлена!');
@@ -1497,10 +1497,10 @@
 
                 titleEl.innerText = '🌾 Solana & ZRL Farming';
 
-                document.getElementById('rate-1m').innerHTML = '0.1% <span style="font-size: 10px; color: #14f195;">/day</span>';
-                document.getElementById('rate-3m').innerHTML = '0.4% <span style="font-size: 10px; color: #14f195;">/day</span>';
-                document.getElementById('rate-6m').innerHTML = '0.7% <span style="font-size: 10px; color: #14f195;">/day</span>';
-                document.getElementById('rate-12m').innerHTML = '1.3% <span style="font-size: 10px; color: #fff;">/day</span>';
+                document.getElementById('rate-1m').innerHTML = '1 SOL = 8.3k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
+                document.getElementById('rate-3m').innerHTML = '1 SOL = 25k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
+                document.getElementById('rate-6m').innerHTML = '1 SOL = 50k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
+                document.getElementById('rate-12m').innerHTML = '1 SOL = 100k <span style="font-size: 10px; color: #fff;">ZRL</span>';
             } else {
                 btnZrl.style.background = '#a8f07a';
                 btnZrl.style.color = '#000';
@@ -1508,7 +1508,7 @@
 
                 btnSol.style.background = 'transparent';
                 btnSol.style.color = '#8a8d98';
-                btnSol.style.fontWeight = '700';
+                btnZrl.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
 
@@ -1546,9 +1546,10 @@
                 return;
             }
 
-            if (currentFarmingAsset === 'sol' && solBalance < amount) {
+            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
+            if (currentFarmingAsset === 'sol' && effectiveSolBalance < amount) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств! Доступно: ${solBalance.toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Недостаточно средств в пуле SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL.`);
                 return;
             }
 
@@ -1559,19 +1560,29 @@
             }
 
             if (currentFarmingAsset === 'sol') {
-                solBalance -= amount;
-                userRealDeposit = Math.max(0, userRealDeposit - amount);
+                totalCasinoTurnover += amount;
+                userRealDeposit = Math.max(0, userRealDeposit + amount);
             } else {
                 totalBalance -= amount;
                 earnedZrlBalance = Math.max(0, earnedZrlBalance - amount);
             }
 
             let dailyRate = 0.001; 
-            if (selectedFarmingMonths === 3) dailyRate = 0.004;
-            else if (selectedFarmingMonths === 6) dailyRate = 0.007;
-            else if (selectedFarmingMonths === 12) dailyRate = 0.013;
+            if (currentFarmingAsset === 'sol') {
+                let totalTargetZrlPerSol = 100000;
+                if (selectedFarmingMonths === 1) totalTargetZrlPerSol = 8333.33;
+                else if (selectedFarmingMonths === 3) totalTargetZrlPerSol = 25000;
+                else if (selectedFarmingMonths === 6) totalTargetZrlPerSol = 50000;
+                else if (selectedFarmingMonths === 12) totalTargetZrlPerSol = 100000;
 
-            if (currentFarmingAsset === 'zrl') dailyRate *= 0.5;
+                const totalDays = selectedFarmingMonths * 30;
+                dailyRate = (totalTargetZrlPerSol / totalDays); 
+            } else {
+                if (selectedFarmingMonths === 3) dailyRate = 0.004;
+                else if (selectedFarmingMonths === 6) dailyRate = 0.007;
+                else if (selectedFarmingMonths === 12) dailyRate = 0.013;
+                dailyRate *= 0.5; 
+            }
 
             const durationMs = selectedFarmingMonths * 30 * 24 * 60 * 60 * 1000;
             const now = Date.now();
@@ -1652,11 +1663,11 @@
                 `;
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount.toLocaleString()} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
+                        <span style="font-size: 13px; font-weight: 800; color: #fff;">${farm.amount} ${farm.asset.toUpperCase()} (${farm.months}m Pool)</span>
                         <span style="font-size: 11px;">${timeStr}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #8a8d98;">
-                        <span>Earned: <strong style="color: #a8f07a;">+${currentReward.toFixed(2)} ZRL</strong></span>
+                        <span>Earned: <strong style="color: #a8f07a;">+${currentReward.toFixed(4)} ZRL</strong></span>
                         <button class="claim-btn" onclick="claimOrWithdrawFarm('${farm.id}')" style="padding: 5px 10px; font-size: 11px; background: ${isUnlocked ? '#14f195' : '#a8f07a'}; color: #000; font-weight: 800;">
                             ${isUnlocked ? 'Claim & Withdraw 🚀' : 'Claim Yield'}
                         </button>
@@ -1686,8 +1697,7 @@
 
             if (isUnlocked) {
                 if (farm.asset === 'sol') {
-                    solBalance += farm.amount;
-                    userRealDeposit += farm.amount;
+                    totalCasinoTurnover = Math.max(0, totalCasinoTurnover - farm.amount);
                 } else {
                     totalBalance += farm.amount;
                     earnedZrlBalance += farm.amount;
@@ -3052,7 +3062,6 @@
             }
         });
 
-        // Открытие лидерборда и запуск живого автообновления каждые 5 сек
         document.getElementById('nav-rewards').addEventListener('click', () => {
             triggerHaptic('light');
             playSound('click');
