@@ -1054,7 +1054,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА С РЕАЛЬНОЙ ПРОВЕРКОЙ ЧЕРЕЗ БЛОКЧЕЙН -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1064,21 +1064,28 @@
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
                     <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.01 SOL</div>
-                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После пополнения баланс зачислится автоматически</div>
+                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После перевода введите хэш транзакции (Signature)</div>
                 </div>
 
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
-                    Сгенерировать реквизиты 🚀
+                    Показать реквизиты для перевода 🚀
                 </button>
 
                 <div id="deposit-details-box" style="display: none;">
-                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите ровно 0.01 SOL на общий адрес:</p>
+                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите сумму на адрес:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;" />
                     </div>
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
-                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 10px;">📋 Копировать адрес</button>
-                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Проверить зачисление в блокчейне 🔄</button>
+                    
+                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Копировать адрес</button>
+
+                    <div class="custom-input-group" style="margin-bottom: 12px; text-align: left;">
+                        <label style="font-size: 11px; color: #14f195; font-weight: 700;">Хэш транзакции (Signature):</label>
+                        <input type="text" id="tx-signature-input" class="custom-input-field" placeholder="Вставьте Signature из кошелька..." />
+                    </div>
+
+                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Проверить и зачислить SOL 🔄</button>
                     <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
@@ -2693,7 +2700,6 @@
         const boostersModal = document.getElementById('boosters-modal');
         const walletModal = document.getElementById('wallet-modal');
         const leaderboardModal = document.getElementById('leaderboard-modal');
-        let autoCheckInterval = null;
 
         function showCustomPrompt(title, description, placeholder, callback) {
             triggerHaptic('light');
@@ -2754,8 +2760,8 @@
                 walletModal.style.display = 'none';
                 depositModal.style.display = 'flex';
                 document.getElementById('deposit-details-box').style.display = 'none';
+                document.getElementById('tx-signature-input').value = '';
                 document.getElementById('deposit-status-msg').innerText = '';
-                if (autoCheckInterval) clearInterval(autoCheckInterval);
             };
 
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
@@ -2765,43 +2771,54 @@
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                 document.getElementById('deposit-details-box').style.display = 'block';
-
-                const statusMsg = document.getElementById('deposit-status-msg');
-                statusMsg.innerText = "⏳ Ожидание транзакции (Тестовый режим)...";
-
-                if (autoCheckInterval) clearInterval(autoCheckInterval);
-                
-                autoCheckInterval = setInterval(() => {
-                    clearInterval(autoCheckInterval);
-                    poolDeposit += 0.01;
-                    userRealDeposit += 0.01;
-                    saveData();
-                    updateUI();
-                    depositModal.style.display = 'none';
-                    triggerHaptic('success');
-                    playSound('success');
-                    tg.showAlert(`🎉 Депозит зачислен автоматически (обход)!`);
-                }, 4000);
             };
 
+            // РЕАЛЬНАЯ ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН И СЕРВЕР
             document.getElementById('check-deposit-status-btn').onclick = async () => {
+                const txSig = document.getElementById('tx-signature-input').value.trim();
                 const statusMsg = document.getElementById('deposit-status-msg');
+
+                if (!txSig) {
+                    triggerHaptic('error');
+                    tg.showAlert("⚠ Пожалуйста, введите хэш транзакции (Signature) из вашего кошелька.");
+                    return;
+                }
+
                 triggerHaptic('medium');
                 playSound('click');
-                statusMsg.innerText = "🔄 Зачисляем баланс...";
+                statusMsg.innerText = "🔄 Проверяем транзакцию в блокчейне Solana...";
 
-                if (autoCheckInterval) clearInterval(autoCheckInterval);
-                
-                setTimeout(() => {
-                    poolDeposit += 0.01;
-                    userRealDeposit += 0.01;
-                    saveData();
-                    updateUI();
-                    depositModal.style.display = 'none';
-                    triggerHaptic('success');
-                    playSound('success');
-                    tg.showAlert(`🎉 Депозит подтвержден (ручной обход)!`);
-                }, 1000);
+                try {
+                    const response = await fetch('https://zer0life-ai-iz5n.onrender.com/verify-deposit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            telegramId: telegramId, 
+                            txSignature: txSig 
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        poolDeposit += data.depositedSOL;
+                        userRealDeposit += data.depositedSOL;
+                        saveData();
+                        updateUI();
+                        depositModal.style.display = 'none';
+                        
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert(`🎉 Депозит успешно подтвержден!\n\nЗачислено: +${data.depositedSOL} SOL`);
+                    } else {
+                        triggerHaptic('error');
+                        statusMsg.innerText = "❌ " + (data.error || "Ошибка проверки");
+                        tg.showAlert(`❌ Не удалось подтвердить перевод:\n${data.error || 'Проверьте хэш'}`);
+                    }
+                } catch (e) {
+                    statusMsg.innerText = "❌ Ошибка соединения с сервером";
+                    triggerHaptic('error');
+                }
             };
 
             document.getElementById('withdraw-zrl-btn').onclick = () => {
@@ -2877,7 +2894,6 @@
         document.getElementById('close-deposit').onclick = () => {
             triggerHaptic('light');
             depositModal.style.display = 'none';
-            if (autoCheckInterval) clearInterval(autoCheckInterval);
         };
 
         document.getElementById('close-boosters').onclick = () => {
@@ -3052,21 +3068,11 @@
             playSound('click');
             fetchLeaderboardFromBackend();
             leaderboardModal.style.display = 'flex';
-
-            if (lbAutoRefreshInterval) clearInterval(lbAutoRefreshInterval);
-            lbAutoRefreshInterval = setInterval(() => {
-                if (leaderboardModal.style.display === 'flex') {
-                    fetchLeaderboardFromBackend();
-                } else {
-                    clearInterval(lbAutoRefreshInterval);
-                }
-            }, 5000);
         });
 
         document.getElementById('close-leaderboard').addEventListener('click', () => {
             triggerHaptic('light');
             leaderboardModal.style.display = 'none';
-            if (lbAutoRefreshInterval) clearInterval(lbAutoRefreshInterval);
         });
 
         const openWalletModal = () => {
