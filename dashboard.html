@@ -2771,7 +2771,6 @@
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
                 
-                // Автоматическое зачисление через 4 секунды (без сервера)
                 autoCheckInterval = setInterval(() => {
                     clearInterval(autoCheckInterval);
                     poolDeposit += 0.01;
@@ -2793,7 +2792,6 @@
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
                 
-                // Ручное зачисление по клику (без сервера)
                 setTimeout(() => {
                     poolDeposit += 0.01;
                     userRealDeposit += 0.01;
