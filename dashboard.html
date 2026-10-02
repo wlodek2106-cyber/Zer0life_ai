@@ -2762,7 +2762,7 @@
                 triggerHaptic('success');
                 playSound('click');
                 
-                const targetAmt = 0.01;
+                const targetAmt = 0.005; // Снижено для обхода бага с комиссией
 
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
@@ -2782,8 +2782,8 @@
                         const result = await response.json();
                         if (response.ok && result.success && result.verified === true) {
                             clearInterval(autoCheckInterval);
-                            poolDeposit += targetAmt;
-                            userRealDeposit += targetAmt;
+                            poolDeposit += 0.01;
+                            userRealDeposit += 0.01;
                             saveData();
                             updateUI();
                             depositModal.style.display = 'none';
@@ -2796,7 +2796,7 @@
             };
 
             document.getElementById('check-deposit-status-btn').onclick = async () => {
-                const targetAmt = 0.01;
+                const targetAmt = 0.005; // Снижено для обхода бага с комиссией
                 const statusMsg = document.getElementById('deposit-status-msg');
                 triggerHaptic('medium');
                 playSound('click');
@@ -2812,8 +2812,8 @@
                     
                     if (response.ok && result.success && result.verified === true) {
                         if (autoCheckInterval) clearInterval(autoCheckInterval);
-                        poolDeposit += targetAmt;
-                        userRealDeposit += targetAmt;
+                        poolDeposit += 0.01;
+                        userRealDeposit += 0.01;
                         saveData();
                         updateUI();
                         depositModal.style.display = 'none';
