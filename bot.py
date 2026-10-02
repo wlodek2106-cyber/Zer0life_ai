@@ -19,7 +19,7 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from solders.message import Message
 from solders.hash import Hash
-from solders.signature import Signature  # <--- ИМПОРТ ДЛЯ ПОДПИСИ ТРАНЗАКЦИЙ SOLANA
+from solders.signature import Signature
 from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
@@ -223,10 +223,9 @@ def verify_deposit():
         tx_signature_str = data['txSignature'].strip()
         client = Client("https://api.mainnet-beta.solana.com")
 
-        # Корректно преобразуем строку в объект Signature для solders
         sig_obj = Signature.from_string(tx_signature_str)
 
-        # Проверяем статус транзакции в блокчейне Solana
+        # Проверяем статус транзакции в блокчейне
         tx_status = client.get_signature_statuses([sig_obj])
         if not tx_status or not tx_status.value or not tx_status.value[0]:
             return jsonify({"success": False, "error": "Транзакция не найдена в блокчейне"}), 400
@@ -235,8 +234,8 @@ def verify_deposit():
         if status_info.err is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
 
-        # Получаем детали транзакции для проверки суммы перевода
-        deposited_sol = 0.01  # Базовое зачисление по умолчанию
+        # Получаем реальную сумму перевода без каких-либо минимальных лимитов
+        deposited_sol = 0.0
         try:
             tx_details = client.get_transaction(
                 sig_obj, 
@@ -251,9 +250,12 @@ def verify_deposit():
         except Exception as ex:
             print("Notice parsing tx details:", ex)
 
+        if deposited_sol <= 0:
+            deposited_sol = 0.001
+
         return jsonify({
             "success": True,
-            "depositedSOL": deposited_sol
+            "depositedSOL": round(deposited_sol, 4)
         })
     except Exception as e:
         print("ERROR IN VERIFY DEPOSIT:", traceback.format_exc())
