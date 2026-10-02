@@ -128,12 +128,23 @@ def get_leaderboard():
             "name": stats.get("username", "Runner"),
             "dist": round(stats.get("distance", 0), 2),
             "zrl": int(stats.get("balance", 0)),
-            "telegramId": uid
+            "telegramId": uid,
+            "avatar": stats.get("avatar", "")
         })
     users_list.sort(key=lambda x: x['dist'], reverse=True)
     for i, u in enumerate(users_list):
         u['rank'] = i + 1
-    return jsonify({"success": True, "leaderboard": users_list[:50]})
+        
+    # Поиск места текущего пользователя, если передан telegramId
+    my_id = str(request.args.get('telegramId', ''))
+    my_rank_data = None
+    if my_id:
+        for u in users_list:
+            if u["telegramId"] == my_id:
+                my_rank_data = u
+                break
+                
+    return jsonify({"success": True, "leaderboard": users_list[:50], "myRank": my_rank_data})
 
 @app.route('/friend/list', methods=['GET', 'OPTIONS'])
 @app.route('/api/friend/list', methods=['GET', 'OPTIONS'])
@@ -292,7 +303,7 @@ def check_deposit():
         "zrlBalance": float(user_stats.get("balance", 25000.0))
     })
 
-# --- НОВЫЙ ЗАЩИЩЕННЫЙ ЭНДПОИНТ ПРОВЕРКИ ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН ---
+# --- ЗАЩИЩЕННЫЙ ЭНДПОИНТ ПРОВЕРКИ ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН ---
 @app.route('/verify-deposit', methods=['POST', 'OPTIONS'])
 @app.route('/api/verify-deposit', methods=['POST', 'OPTIONS'])
 def verify_deposit():
@@ -474,7 +485,6 @@ def fortune_spin():
 
         current_zrl = float(user_stats.get("balance", 0))
         if reward["type"] == "zrl" or reward["type"] == "box":
-            current_zrol += reward["val"] # type fix handled correctly below if needed
             current_zrl += reward["val"]
             user_stats["balance"] = current_zrl
         elif reward["type"] == "sol":
