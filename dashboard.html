@@ -869,7 +869,7 @@
                     </div>
                 </div>
                 <button class="claim-btn" id="spin-wheel-btn" onclick="spinFortuneWheel()" style="width: 100%; background: linear-gradient(135deg, #fef08a 0%, #eab308 100%); color: #000; font-size: 15px; padding: 12px; font-weight: 900;">
-                    Spin Wheel (0.05 SOL) 🚀
+                    Spin Wheel (0.01 SOL) 🚀
                 </button>
             </div>
 
@@ -887,9 +887,9 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                         <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
                         <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #c084fc; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
+                            <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
                             <option value="0.1">0.1 SOL</option>
-                            <option value="0.2">0.2 SOL</option>
                         </select>
                     </div>
                 </div>
@@ -924,9 +924,9 @@
 
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <select id="bj-bet-select" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 10px; padding: 10px; font-weight: 700; width: 40%; outline: none;">
+                        <option value="0.01">0.01 SOL</option>
                         <option value="0.05">0.05 SOL</option>
                         <option value="0.1">0.1 SOL</option>
-                        <option value="0.2">0.2 SOL</option>
                     </select>
                     <button class="claim-btn" id="start-bj-btn" onclick="startBlackjack()" style="width: 60%; background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(250,204,21,0.3);">
                         Раздать (21) 🃏
@@ -957,9 +957,9 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
                         <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
                         <select id="roulette-bet-amount" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
+                            <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
                             <option value="0.1">0.1 SOL</option>
-                            <option value="0.2">0.2 SOL</option>
                         </select>
                     </div>
                 </div>
@@ -1034,7 +1034,7 @@
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
                                 <div class="asset-name">Solana (Пул игры)</div>
-                                <div class="asset-sub">Мин. депозит 0.05 SOL</div>
+                                <div class="asset-sub">Мин. депозит 0.01 SOL</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1063,7 +1063,7 @@
             </div>
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
-                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.05 SOL</div>
+                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.01 SOL</div>
                     <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После пополнения баланс зачислится автоматически</div>
                 </div>
 
@@ -1072,14 +1072,14 @@
                 </button>
 
                 <div id="deposit-details-box" style="display: none;">
-                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите ровно 0.05 SOL на общий адрес:</p>
+                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите ровно 0.01 SOL на общий адрес:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;" />
                     </div>
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
                     <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 10px;">📋 Копировать адрес</button>
                     <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Проверить зачисление (Авто) 🔄</button>
-                    <button class="wallet-action-btn" id="force-deposit-btn" style="width: 100%; background: rgba(20,241,149,0.15); border-color: #14f195; color: #14f195; margin-top: 10px; font-size: 12px;">⚡ Принудительно зачислить 0.05 SOL</button>
+                    <button class="wallet-action-btn" id="force-deposit-btn" style="width: 100%; background: rgba(20,241,149,0.15); border-color: #14f195; color: #14f195; margin-top: 10px; font-size: 12px;">⚡ Принудительно зачислить 0.01 SOL</button>
                     <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
@@ -1098,48 +1098,48 @@
             </p>
             
             <div class="booster-grid">
-                <div class="booster-card featured" onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 1h)', 1)">
+                <div class="booster-card featured" onclick="buyTimedBooster(0.05, 1500, 'Boots x2 (1,500 ZRL/km - 1h)', 1)">
                     <div class="booster-badge" style="color: #14f195; background: rgba(20,241,149,0.15);">⏳ 1-Hour Special</div>
                     <div class="booster-multiplier">Boots x2 (1h)</div>
                     <div class="booster-rate">1,500 ZRL / km (Active 1h)</div>
-                    <div class="booster-price-btn" style="background: #14f195; color: #000; border: none;">0.2 SOL</div>
+                    <div class="booster-price-btn" style="background: #14f195; color: #000; border: none;">0.05 SOL</div>
                 </div>
 
-                <div class="booster-card" onclick="buyBooster(0.5, 1000, 'Starter (1,000 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(0.1, 1000, 'Starter (1,000 ZRL/km)')">
                     <div class="booster-badge">Starter</div>
                     <div class="booster-multiplier">2x Speed</div>
                     <div class="booster-rate">1,000 ZRL / km</div>
-                    <div class="booster-price-btn">0.5 SOL</div>
+                    <div class="booster-price-btn">0.1 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (1,500 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(0.5, 1500, 'Standard (1,500 ZRL/km)')">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
                     <div class="booster-rate">1,500 ZRL / km</div>
-                    <div class="booster-price-btn">1 SOL</div>
+                    <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-                <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
+                <div class="booster-card featured" onclick="buyBooster(1, 13000, 'Pro Tier (13,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #3b82f6; background: rgba(59,130,246,0.1);">Pro Tier</div>
                     <div class="booster-multiplier">26x Speed</div>
                     <div class="booster-rate">13,000 ZRL / km</div>
-                    <div class="booster-price-btn">5 SOL</div>
+                    <div class="booster-price-btn">1 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(10, 30000, 'Whale (30,000 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(2, 30000, 'Whale (30,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #a855f7; background: rgba(168,85,247,0.1);">Whale</div>
                     <div class="booster-multiplier">60x Speed</div>
                     <div class="booster-rate">30,000 ZRL / km</div>
-                    <div class="booster-price-btn">10 SOL</div>
+                    <div class="booster-price-btn">2 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(20, 65000, 'Elite Whale (65,000 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(5, 65000, 'Elite Whale (65,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #ec4899; background: rgba(236,72,153,0.1);">Elite Whale</div>
                     <div class="booster-multiplier">130x Speed</div>
                     <div class="booster-rate">65,000 ZRL / km</div>
-                    <div class="booster-price-btn">20 SOL</div>
+                    <div class="booster-price-btn">5 SOL</div>
                 </div>
-                <div class="booster-card featured" onclick="buyBooster(50, 200000, 'Legend (200,000 ZRL/km)')">
+                <div class="booster-card featured" onclick="buyBooster(10, 200000, 'Legend (200,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #f59e0b; background: rgba(245,158,11,0.1);">👑 Legend</div>
                     <div class="booster-multiplier">400x Speed</div>
                     <div class="booster-rate">200,000 ZRL / km</div>
-                    <div class="booster-price-btn" style="background: #f59e0b; color: #000; border: none;">50 SOL</div>
+                    <div class="booster-price-btn" style="background: #f59e0b; color: #000; border: none;">10 SOL</div>
                 </div>
             </div>
         </div>
@@ -1736,11 +1736,11 @@
         }, 1000);
 
         const wheelSectors = [
-            { text: "0.05 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.05 },
+            { text: "0.01 SOL", color: "#14f195", textColor: "#000", type: "sol", val: 0.01 },
             { text: "Boots x2", color: "#3b82f6", textColor: "#fff", type: "boots", val: 2 },
             { text: "🎁 Box", color: "#ec4899", textColor: "#fff", type: "box", val: 50 },
             { text: "Free Spin", color: "#eab308", textColor: "#000", type: "free_spin", val: 1 },
-            { text: "0.05 SOL", color: "#10b981", textColor: "#000", type: "sol", val: 0.05 },
+            { text: "0.01 SOL", color: "#10b981", textColor: "#000", type: "sol", val: 0.01 },
             { text: "600 ZRL", color: "#a855f7", textColor: "#fff", type: "zrl", val: 600 },
             { text: "10k ZRL", color: "#ffffff", textColor: "#000", type: "zrl", val: 10000 },
             { text: "100 ZRL", color: "#38bdf8", textColor: "#fff", type: "zrl", val: 100 },
@@ -1959,9 +1959,9 @@
             }
 
             const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
-            if (freeSpins <= 0 && effectiveSolBalance < 0.05) {
+            if (freeSpins <= 0 && effectiveSolBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: 0.05 SOL.`);
+                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: 0.01 SOL.`);
                 return;
             }
 
@@ -1974,13 +1974,13 @@
             if (freeSpins > 0) {
                 freeSpins--;
             } else {
-                totalCasinoTurnover += 0.05;
+                totalCasinoTurnover += 0.01;
                 
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0.05, currency: 'SOL' })
+                        body: JSON.stringify({ telegramId, walletAddress: MERCHANT_SOL_WALLET, amount: 0.01, currency: 'SOL' })
                     });
                 } catch(e) {}
 
@@ -2001,7 +2001,7 @@
                 const sector = wheelSectors[i];
                 let weight = 0;
 
-                if (sector.type === 'sol' && sector.val === 0.05) {
+                if (sector.type === 'sol' && sector.val === 0.01) {
                     weight = (totalSpins >= 50) ? 1 : 2; 
                 } else if (sector.type === 'box') {
                     weight = 8; 
@@ -2067,7 +2067,7 @@
                     if (freeSpins > 0) {
                         spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
                     } else {
-                        spinBtn.innerText = `Spin Wheel (0.05 SOL) 🚀`;
+                        spinBtn.innerText = `Spin Wheel (0.01 SOL) 🚀`;
                     }
                 }
                 
@@ -2763,14 +2763,14 @@
                 triggerHaptic('success');
                 playSound('click');
                 
-                const targetAmt = 0.05;
+                const targetAmt = 0.01;
 
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                 document.getElementById('deposit-details-box').style.display = 'block';
 
                 const statusMsg = document.getElementById('deposit-status-msg');
-                statusMsg.innerText = "⏳ Ожидание транзакции 0.05+ SOL в сети Solana...";
+                statusMsg.innerText = "⏳ Ожидание транзакции 0.01+ SOL в сети Solana...";
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
                 autoCheckInterval = setInterval(async () => {
@@ -2781,7 +2781,6 @@
                             body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
                         });
                         const result = await response.json();
-                        // Сервер теперь проверяет >= expectedAmount, поэтому примет и 0.0505 SOL
                         if (response.ok && result.success && result.verified === true) {
                             clearInterval(autoCheckInterval);
                             poolDeposit += targetAmt;
@@ -2798,7 +2797,7 @@
             };
 
             document.getElementById('check-deposit-status-btn').onclick = async () => {
-                const targetAmt = 0.05;
+                const targetAmt = 0.01;
                 const statusMsg = document.getElementById('deposit-status-msg');
                 triggerHaptic('medium');
                 playSound('click');
@@ -2834,17 +2833,16 @@
                 }
             };
 
-            // Кнопка принудительного зачисления на случай долгой синхронизации бэкенда
             document.getElementById('force-deposit-btn').onclick = () => {
                 triggerHaptic('success');
                 playSound('coin');
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
-                poolDeposit += 0.05;
-                userRealDeposit += 0.05;
+                poolDeposit += 0.01;
+                userRealDeposit += 0.01;
                 saveData();
                 updateUI();
                 depositModal.style.display = 'none';
-                tg.showAlert(`⚡ Депозит принудительно зачислен (+0.05 SOL)! Баланс обновлен.`);
+                tg.showAlert(`⚡ Депозит принудительно зачислен (+0.01 SOL)! Баланс обновлен.`);
             };
 
             document.getElementById('withdraw-zrl-btn').onclick = () => {
