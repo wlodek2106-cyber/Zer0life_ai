@@ -799,25 +799,25 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <div class="farm-plan-card" id="plan-card-1" onclick="selectFarmingPlan(1)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">1 MONTH</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">1 SOL = 8.3k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-1m">8.33% <span style="font-size: 10px; color: #14f195;">Total</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">~0.28% / day</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-3" onclick="selectFarmingPlan(3)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">3 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">1 SOL = 25k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-3m">25% <span style="font-size: 10px; color: #14f195;">Total</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">~0.28% / day</div>
                 </div>
 
                 <div class="farm-plan-card" id="plan-card-6" onclick="selectFarmingPlan(6)">
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">6 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">1 SOL = 50k <span style="font-size: 10px; color: #14f195;">ZRL</span></div>
-                    <div style="font-size: 9px; color: #a8f07a;">Fixed Yield</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0;" id="rate-6m">50% <span style="font-size: 10px; color: #14f195;">Total</span></div>
+                    <div style="font-size: 9px; color: #a8f07a;">~0.28% / day</div>
                 </div>
 
                 <div class="farm-plan-card selected" id="plan-card-12" onclick="selectFarmingPlan(12)">
                     <div style="font-size: 10px; color: #14f195; font-weight: 800;">👑 12 MONTHS</div>
-                    <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">1 SOL = 100k <span style="font-size: 10px; color: #fff;">ZRL</span></div>
+                    <div style="font-size: 15px; font-weight: 900; color: #14f195; margin: 2px 0;" id="rate-12m">100% <span style="font-size: 10px; color: #fff;">Total</span></div>
                     <div style="font-size: 9px; color: #a8f07a;">Max ZRL Yield</div>
                 </div>
             </div>
@@ -1497,10 +1497,10 @@
 
                 titleEl.innerText = '🌾 Solana & ZRL Farming';
 
-                document.getElementById('rate-1m').innerHTML = '1 SOL = 8.3k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
-                document.getElementById('rate-3m').innerHTML = '1 SOL = 25k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
-                document.getElementById('rate-6m').innerHTML = '1 SOL = 50k <span style="font-size: 10px; color: #14f195;">ZRL</span>';
-                document.getElementById('rate-12m').innerHTML = '1 SOL = 100k <span style="font-size: 10px; color: #fff;">ZRL</span>';
+                document.getElementById('rate-1m').innerHTML = '8.33% <span style="font-size: 10px; color: #14f195;">Total</span>';
+                document.getElementById('rate-3m').innerHTML = '25% <span style="font-size: 10px; color: #14f195;">Total</span>';
+                document.getElementById('rate-6m').innerHTML = '50% <span style="font-size: 10px; color: #14f195;">Total</span>';
+                document.getElementById('rate-12m').innerHTML = '100% <span style="font-size: 10px; color: #fff;">Total</span>';
             } else {
                 btnZrl.style.background = '#a8f07a';
                 btnZrl.style.color = '#000';
@@ -1508,14 +1508,14 @@
 
                 btnSol.style.background = 'transparent';
                 btnSol.style.color = '#8a8d98';
-                btnZrl.style.fontWeight = '700';
+                btnSol.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
 
-                document.getElementById('rate-1m').innerHTML = '0.05% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-3m').innerHTML = '0.20% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-6m').innerHTML = '0.35% <span style="font-size: 10px; color: #a8f07a;">/day</span>';
-                document.getElementById('rate-12m').innerHTML = '0.65% <span style="font-size: 10px; color: #fff;">/day</span>';
+                document.getElementById('rate-1m').innerHTML = '4.16% <span style="font-size: 10px; color: #a8f07a;">Total</span>';
+                document.getElementById('rate-3m').innerHTML = '12.5% <span style="font-size: 10px; color: #a8f07a;">Total</span>';
+                document.getElementById('rate-6m').innerHTML = '25% <span style="font-size: 10px; color: #a8f07a;">Total</span>';
+                document.getElementById('rate-12m').innerHTML = '50% <span style="font-size: 10px; color: #fff;">Total</span>';
             }
         }
 
