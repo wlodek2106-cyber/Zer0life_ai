@@ -1310,6 +1310,7 @@
                     const base64Image = e.target.result;
                     avatarElement.style.backgroundImage = `url('${base64Image}')`;
                     localStorage.setItem(STORAGE_PREFIX + 'custom_avatar', base64Image);
+                    syncStatsToServer(); // Синхронизируем новый аватар сразу с сервером
                     triggerHaptic('success');
                     playSound('success');
                     tg.showAlert('✅ Аватарка успешно обновлена!');
@@ -1391,9 +1392,6 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // ==========================================
-        // ЛОГИКА ПОКУПКИ БУСТЕРОВ (МЕРЧАНТ-ПОТОК)
-        // ==========================================
         window.buyBooster = function(costSol, rate, name) {
             triggerHaptic('medium');
             playSound('click');
@@ -1405,11 +1403,10 @@
                 return;
             }
 
-            // Списываем оборот казино / баланс пула и отправляем на мерчант-кошелек
             totalCasinoTurnover += costSol;
             ZRL_PER_KM = rate;
             activeBoosterName = name;
-            boosterExpiryTime = 0; // Постоянный бустер
+            boosterExpiryTime = 0;
 
             saveData();
             updateUI();
@@ -1463,7 +1460,6 @@
             playSound('success');
             tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for ${durationHours} hour(s).`);
         };
-        // ==========================================
 
         let currentFarmingAsset = 'sol';
         let selectedFarmingMonths = 12;
@@ -1798,6 +1794,7 @@
         async function syncStatsToServer() {
             if (!username) return;
             try {
+                const myAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar') || '';
                 await fetch('https://zer0life-ai-iz5n.onrender.com/update-stats', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1806,7 +1803,8 @@
                         username: username,
                         walletAddress: userWallet,
                         distance: totalDistance,
-                        balance: totalBalance
+                        balance: totalBalance,
+                        avatar: myAvatar
                     })
                 });
             } catch(e) {}
@@ -2538,6 +2536,7 @@
         };
 
         let currentLbTab = 'daily';
+        let lbAutoRefreshInterval = null;
 
         window.switchLbTab = function(tab) {
             triggerHaptic('selection');
@@ -2578,6 +2577,12 @@
                 topThree.forEach((user) => {
                     const isFirst = user.rank === 1;
                     const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
+                    
+                    let avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background: #222736; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #a8f07a; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">${initials}</div>`;
+                    if (user.avatar) {
+                        avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`;
+                    }
+
                     const div = document.createElement('div');
                     div.style.cssText = `
                         background: ${isFirst ? 'linear-gradient(135deg, #1b241e 0%, #121816 100%)' : '#141721'};
@@ -2593,7 +2598,7 @@
                     `;
                     div.innerHTML = `
                         <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 6px;">#${user.rank}</div>
-                        <div style="width: 44px; height: 44px; border-radius: 50%; background: #222736; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #a8f07a; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">${initials}</div>
+                        ${avatarContent}
                         <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; margin-bottom: 2px;">${user.name}</div>
                         <div style="font-size: 11px; color: #a8f07a; font-weight: 600;">${user.dist} km</div>
                     `;
@@ -2602,6 +2607,11 @@
 
                 users.slice(3).forEach(user => {
                     const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
+                    let avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>`;
+                    if (user.avatar) {
+                        avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center;"></div>`;
+                    }
+
                     const row = document.createElement('div');
                     row.style.cssText = `
                         background: #141721;
@@ -2616,7 +2626,7 @@
                     row.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="font-size: 13px; font-weight: 800; color: #8a8d98; width: 20px; text-align: center;">${user.rank}</div>
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>
+                            ${avatarContent}
                             <div style="font-size: 14px; font-weight: 700; color: #fff;">${user.name}</div>
                         </div>
                         <div style="text-align: right;">
@@ -2628,12 +2638,18 @@
                 });
 
                 if (data.myRank) {
+                    const myAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar') || '';
                     const myInitials = username ? username.substring(0, 2).toUpperCase() : 'PL';
+                    let myAvatarContent = `<div style="width: 38px; height: 38px; border-radius: 50%; background: #1f2a24; border: 1.5px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${myInitials}</div>`;
+                    if (myAvatar) {
+                        myAvatarContent = `<div style="width: 38px; height: 38px; border-radius: 50%; background-image: url('${myAvatar}'); background-size: cover; background-position: center; border: 1.5px solid #a8f07a;"></div>`;
+                    }
+
                     stickyContainer.innerHTML = `
                         <div style="background: #141721; border: 1.5px solid #a8f07a; border-radius: 18px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 20px rgba(168, 240, 122, 0.15); margin-top: 4px;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="font-size: 14px; font-weight: 800; color: #a8f07a; width: 20px; text-align: center;">${data.myRank.rank}</div>
-                                <div style="width: 38px; height: 38px; border-radius: 50%; background: #1f2a24; border: 1.5px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${myInitials}</div>
+                                ${myAvatarContent}
                                 <div>
                                     <div style="font-size: 14px; font-weight: 800; color: #fff;">${username || 'Player'} (You)</div>
                                 </div>
@@ -3036,16 +3052,27 @@
             }
         });
 
+        // Открытие лидерборда и запуск живого автообновления каждые 5 сек
         document.getElementById('nav-rewards').addEventListener('click', () => {
             triggerHaptic('light');
             playSound('click');
             fetchLeaderboardFromBackend();
             leaderboardModal.style.display = 'flex';
+
+            if (lbAutoRefreshInterval) clearInterval(lbAutoRefreshInterval);
+            lbAutoRefreshInterval = setInterval(() => {
+                if (leaderboardModal.style.display === 'flex') {
+                    fetchLeaderboardFromBackend();
+                } else {
+                    clearInterval(lbAutoRefreshInterval);
+                }
+            }, 5000);
         });
 
         document.getElementById('close-leaderboard').addEventListener('click', () => {
             triggerHaptic('light');
             leaderboardModal.style.display = 'none';
+            if (lbAutoRefreshInterval) clearInterval(lbAutoRefreshInterval);
         });
 
         const openWalletModal = () => {
