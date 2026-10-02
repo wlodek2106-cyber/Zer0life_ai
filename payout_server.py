@@ -8,8 +8,12 @@ from solana.rpc.api import Client
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Подключение к сети Solana
 solana_client = Client("https://api.mainnet-beta.solana.com")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Целевой кошелек проекта для депозитов (куда игроки пересылают SOL)
+TARGET_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 
 DB_FILE = "database.json"
 
@@ -101,7 +105,7 @@ def update_stats():
             existing = USER_STATS.get(telegram_id, {})
             USER_STATS[telegram_id] = {
                 "username": username,
-                "walletAddress": data.get('walletAddress', existing.get('walletAddress', "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix")),
+                "walletAddress": data.get('walletAddress', existing.get('walletAddress', TARGET_WALLET)),
                 "distance": data.get('distance', existing.get('distance', 0)),
                 "balance": data.get('balance', existing.get('balance', 0)),
                 "solBalance": existing.get('solBalance', 1.5)
@@ -288,6 +292,91 @@ def check_deposit():
         "zrlBalance": float(user_stats.get("balance", 25000.0))
     })
 
+# --- НОВЫЙ ЗАЩИЩЕННЫЙ ЭНДПОИНТ ПРОВЕРКИ ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН ---
+@app.route('/verify-deposit', methods=['POST', 'OPTIONS'])
+@app.route('/api/verify-deposit', methods=['POST', 'OPTIONS'])
+def verify_deposit():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        telegram_id = str(data.get('telegramId'))
+        tx_signature = data.get('txSignature')
+        
+        if not telegram_id or not tx_signature:
+            return jsonify({"success": False, "error": "Не указан telegramId или txSignature"}), 400
+            
+        # Запрашиваем транзакцию из сети Solana
+        response = solana_client.get_transaction(tx_signature, max_supported_transaction_version=0)
+        
+        if not response or not response.get('result'):
+            return jsonify({"success": False, "error": "Транзакция еще не найдена в блокчейне. Подождите 10-15 секунд."}), 400
+            
+        tx_data = response['result']
+        
+        # Проверяем на наличие ошибок выполнения транзакции
+        meta = tx_data.get('meta', {})
+        if meta and meta.get('err') is not None:
+            return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне Solana."}), 400
+            
+        # Извлекаем ключи аккаунтов
+        transaction_info = tx_data.get('transaction', {})
+        message = transaction_info.get('message', {})
+        account_keys = message.get('accountKeys', [])
+        
+        # Ищем индекс нашего целевого кошелька
+        target_index = -1
+        for idx, key in enumerate(account_keys):
+            pubkey_str = key if isinstance(key, str) else key.get('pubkey')
+            if pubkey_str == TARGET_WALLET:
+                target_index = idx
+                break
+                
+        if target_index == -1:
+            return jsonify({"success": False, "error": "Эта транзакция не связана с кошельком проекта."}), 400
+            
+        pre_balances = meta.get('preBalances', [])
+        post_balances = meta.get('postBalances', [])
+        
+        if len(pre_balances) <= target_index or len(post_balances) <= target_index:
+            return jsonify({"success": False, "error": "Не удалось проверить изменение баланса кошелька."}), 400
+            
+        pre_balance = pre_balances[target_index]
+        post_balance = post_balances[target_index]
+        
+        diff_lamports = post_balance - pre_balance
+        diff_sol = diff_lamports / 1_000_000_000
+        
+        MIN_DEPOSIT = 0.01
+        if diff_sol < MIN_DEPOSIT:
+            return jsonify({"success": False, "error": f"Сумма слишком мала ({diff_sol} SOL). Минимум: {MIN_DEPOSIT} SOL."}), 400
+            
+        # Успешно! Начисляем SOL пользователю
+        user_stats = USER_STATS.get(telegram_id, {})
+        current_sol = float(user_stats.get("solBalance", 1.5))
+        current_sol += diff_sol
+        user_stats["solBalance"] = current_sol
+        
+        USER_TOTAL_DEPOSITS[telegram_id] = USER_TOTAL_DEPOSITS.get(telegram_id, 0.0) + diff_sol
+        USER_STATS[telegram_id] = user_stats
+        save_db()
+        
+        send_telegram_message(
+            telegram_id,
+            f"✅ <b>Депозит успешно подтвержден!</b>\n\nЗачислено: {diff_sol} SOL\nВаш новый баланс: {current_sol:.4f} SOL"
+        )
+        
+        return jsonify({
+            "success": True,
+            "depositedSOL": diff_sol,
+            "newSolBalance": current_sol,
+            "message": f"Успешно зачислено {diff_sol} SOL!"
+        })
+        
+    except Exception as e:
+        print("Verify deposit error:", e)
+        return jsonify({"success": False, "error": f"Ошибка проверки транзакции: {str(e)}"}), 500
+
 @app.route('/withdraw', methods=['POST', 'OPTIONS'])
 @app.route('/api/withdraw', methods=['POST', 'OPTIONS'])
 def withdraw():
@@ -303,7 +392,6 @@ def withdraw():
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
         
-        # ЖЕСТКАЯ ЗАЩИТА: если сумма 0.01 (оплата прокрута колеса), то ПРИНУДИТЕЛЬНО пишем SOL, игнорируя любые баги фронта
         if amount == 0.01:
             currency = 'SOL'
         
@@ -315,7 +403,7 @@ def withdraw():
 
         return jsonify({
             "success": True, 
-            "txHash": "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix_tx_success"
+            "txHash": f"{TARGET_WALLET}_tx_success"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -386,6 +474,7 @@ def fortune_spin():
 
         current_zrl = float(user_stats.get("balance", 0))
         if reward["type"] == "zrl" or reward["type"] == "box":
+            current_zrol += reward["val"] # type fix handled correctly below if needed
             current_zrl += reward["val"]
             user_stats["balance"] = current_zrl
         elif reward["type"] == "sol":
