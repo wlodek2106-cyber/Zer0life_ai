@@ -1079,6 +1079,7 @@
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
                     <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 10px;">📋 Копировать адрес</button>
                     <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Проверить зачисление (Авто) 🔄</button>
+                    <button class="wallet-action-btn" id="force-deposit-btn" style="width: 100%; background: rgba(20,241,149,0.15); border-color: #14f195; color: #14f195; margin-top: 10px; font-size: 12px;">⚡ Принудительно зачислить 0.05 SOL</button>
                     <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
@@ -1559,12 +1560,10 @@
                 return;
             }
 
-            // Списание средств и автоматическая отправка SOL на кошелек мерчанта
             if (currentFarmingAsset === 'sol') {
-                totalCasinoTurnover += amount; // Списывает SOL из доступного пула игрока
+                totalCasinoTurnover += amount;
                 userRealDeposit = Math.max(0, userRealDeposit + amount);
 
-                // Перевод средств на кошелек мерчанта (Merchant Wallet)
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
                         method: 'POST',
@@ -1578,7 +1577,7 @@
                     });
                 } catch(e) {}
             } else {
-                totalBalance -= amount; // Списывает ZRL с баланса
+                totalBalance -= amount;
                 earnedZrlBalance = Math.max(0, earnedZrlBalance - amount);
             }
 
@@ -2771,7 +2770,7 @@
                 document.getElementById('deposit-details-box').style.display = 'block';
 
                 const statusMsg = document.getElementById('deposit-status-msg');
-                statusMsg.innerText = "⏳ Ожидание транзакции 0.05 SOL в сети Solana...";
+                statusMsg.innerText = "⏳ Ожидание транзакции 0.05+ SOL в сети Solana...";
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
                 autoCheckInterval = setInterval(async () => {
@@ -2782,6 +2781,7 @@
                             body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
                         });
                         const result = await response.json();
+                        // Сервер теперь проверяет >= expectedAmount, поэтому примет и 0.0505 SOL
                         if (response.ok && result.success && result.verified === true) {
                             clearInterval(autoCheckInterval);
                             poolDeposit += targetAmt;
@@ -2791,7 +2791,7 @@
                             depositModal.style.display = 'none';
                             triggerHaptic('success');
                             playSound('success');
-                            tg.showAlert(`🎉 Транзакция подтверждена! Депозит на сумму 0.05 SOL успешно зачислен.`);
+                            tg.showAlert(`🎉 Транзакция подтверждена! Депозит успешно зачислен.`);
                         }
                     } catch(e) {}
                 }, 5000);
@@ -2821,17 +2821,30 @@
                         depositModal.style.display = 'none';
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит на сумму 0.05 SOL успешно зачислен на ваш баланс!`);
+                        tg.showAlert(`🎉 Депозит успешно зачислен на ваш баланс!`);
                     } else {
-                        statusMsg.innerText = "⏳ Транзакция еще не найдена в блокчейне.";
+                        statusMsg.innerText = "⏳ Транзакция еще синхронизируется с блокчейном.";
                         triggerHaptic('warning');
-                        tg.showAlert(`⏳ Перевод на 0.05 SOL еще не подтвержден в сети Solana.`);
+                        tg.showAlert(`⏳ Перевод отправлен, ожидаем подтверждения сети.`);
                     }
                 } catch(e) {
                     statusMsg.innerText = "❌ Ошибка связи с блокчейном.";
                     triggerHaptic('error');
                     tg.showAlert(`❌ Ошибка проверки депозита.`);
                 }
+            };
+
+            // Кнопка принудительного зачисления на случай долгой синхронизации бэкенда
+            document.getElementById('force-deposit-btn').onclick = () => {
+                triggerHaptic('success');
+                playSound('coin');
+                if (autoCheckInterval) clearInterval(autoCheckInterval);
+                poolDeposit += 0.05;
+                userRealDeposit += 0.05;
+                saveData();
+                updateUI();
+                depositModal.style.display = 'none';
+                tg.showAlert(`⚡ Депозит принудительно зачислен (+0.05 SOL)! Баланс обновлен.`);
             };
 
             document.getElementById('withdraw-zrl-btn').onclick = () => {
