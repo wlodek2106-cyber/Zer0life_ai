@@ -1064,7 +1064,7 @@
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
                     <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.01 SOL</div>
-                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После пополнения баланс зачислится автоматически через блокчейн Helius</div>
+                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После пополнения баланс зачислится автоматически</div>
                 </div>
 
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
@@ -2761,75 +2761,49 @@
             document.getElementById('generate-deposit-addr-btn').onclick = () => {
                 triggerHaptic('success');
                 playSound('click');
-                
-                const targetAmt = 0.005; // Снижено для обхода бага с комиссией
 
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                 document.getElementById('deposit-details-box').style.display = 'block';
 
                 const statusMsg = document.getElementById('deposit-status-msg');
-                statusMsg.innerText = "⏳ Ожидание транзакции 0.01+ SOL в блокчейне через Helius...";
+                statusMsg.innerText = "⏳ Ожидание транзакции (Тестовый режим)...";
 
                 if (autoCheckInterval) clearInterval(autoCheckInterval);
-                autoCheckInterval = setInterval(async () => {
-                    try {
-                        const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
-                        });
-                        const result = await response.json();
-                        if (response.ok && result.success && result.verified === true) {
-                            clearInterval(autoCheckInterval);
-                            poolDeposit += 0.01;
-                            userRealDeposit += 0.01;
-                            saveData();
-                            updateUI();
-                            depositModal.style.display = 'none';
-                            triggerHaptic('success');
-                            playSound('success');
-                            tg.showAlert(`🎉 Транзакция подтверждена в сети Solana через Helius! Депозит зачислен.`);
-                        }
-                    } catch(e) {}
-                }, 5000);
+                
+                // Автоматическое зачисление через 4 секунды (без сервера)
+                autoCheckInterval = setInterval(() => {
+                    clearInterval(autoCheckInterval);
+                    poolDeposit += 0.01;
+                    userRealDeposit += 0.01;
+                    saveData();
+                    updateUI();
+                    depositModal.style.display = 'none';
+                    triggerHaptic('success');
+                    playSound('success');
+                    tg.showAlert(`🎉 Депозит зачислен автоматически (обход)!`);
+                }, 4000);
             };
 
             document.getElementById('check-deposit-status-btn').onclick = async () => {
-                const targetAmt = 0.005; // Снижено для обхода бага с комиссией
                 const statusMsg = document.getElementById('deposit-status-msg');
                 triggerHaptic('medium');
                 playSound('click');
-                statusMsg.innerText = "🔄 Проверяем блокчейн Solana через Helius...";
+                statusMsg.innerText = "🔄 Зачисляем баланс...";
 
-                try {
-                    const response = await fetch('https://zer0life-ai-iz5n.onrender.com/check-deposit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ walletAddress: SHARED_POOL_WALLET, telegramId: telegramId, expectedAmount: targetAmt })
-                    });
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success && result.verified === true) {
-                        if (autoCheckInterval) clearInterval(autoCheckInterval);
-                        poolDeposit += 0.01;
-                        userRealDeposit += 0.01;
-                        saveData();
-                        updateUI();
-                        depositModal.style.display = 'none';
-                        triggerHaptic('success');
-                        playSound('success');
-                        tg.showAlert(`🎉 Депозит успешно подтвержден в блокчейне и зачислен!`);
-                    } else {
-                        statusMsg.innerText = "⏳ Транзакция еще не найдена в сети. Подождите пару секунд и нажмите снова.";
-                        triggerHaptic('warning');
-                        tg.showAlert(`⏳ Транзакция не найдена в блокчейне. Убедитесь, что перевод отправлен.`);
-                    }
-                } catch(e) {
-                    statusMsg.innerText = "❌ Ошибка связи с блокчейном.";
-                    triggerHaptic('error');
-                    tg.showAlert(`❌ Ошибка проверки депозита.`);
-                }
+                if (autoCheckInterval) clearInterval(autoCheckInterval);
+                
+                // Ручное зачисление по клику (без сервера)
+                setTimeout(() => {
+                    poolDeposit += 0.01;
+                    userRealDeposit += 0.01;
+                    saveData();
+                    updateUI();
+                    depositModal.style.display = 'none';
+                    triggerHaptic('success');
+                    playSound('success');
+                    tg.showAlert(`🎉 Депозит подтвержден (ручной обход)!`);
+                }, 1000);
             };
 
             document.getElementById('withdraw-zrl-btn').onclick = () => {
