@@ -19,7 +19,7 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from solders.message import Message
 from solders.hash import Hash
-# ДОБАВЛЕН ИМПОРТ ДЛЯ ТРАНЗАКЦИЙ SOL:
+from solders.signature import Signature  # <--- ИМПОРТ ДЛЯ ПОДПИСИ ТРАНЗАКЦИЙ SOLANA
 from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
@@ -220,11 +220,14 @@ def verify_deposit():
         if not data or 'txSignature' not in data:
             return jsonify({"success": False, "error": "Missing transaction signature"}), 400
 
-        tx_signature = data['txSignature'].strip()
+        tx_signature_str = data['txSignature'].strip()
         client = Client("https://api.mainnet-beta.solana.com")
 
+        # Корректно преобразуем строку в объект Signature для solders
+        sig_obj = Signature.from_string(tx_signature_str)
+
         # Проверяем статус транзакции в блокчейне Solana
-        tx_status = client.get_signature_statuses([tx_signature])
+        tx_status = client.get_signature_statuses([sig_obj])
         if not tx_status or not tx_status.value or not tx_status.value[0]:
             return jsonify({"success": False, "error": "Транзакция не найдена в блокчейне"}), 400
 
@@ -233,19 +236,20 @@ def verify_deposit():
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
 
         # Получаем детали транзакции для проверки суммы перевода
-        tx_details = client.get_transaction(
-            tx_signature, 
-            max_supported_transaction_version=0
-        )
-        
-        deposited_sol = 0.01  # Базовое зачисление по умолчанию (либо парсинг из tx_details)
-        if tx_details and tx_details.value:
-            meta = tx_details.value.transaction.meta
-            if meta and meta.pre_balances and meta.post_balances:
-                # Пример расчета изменения баланса пула
-                diff = (meta.post_balances[0] - meta.pre_balances[0]) / (10**9)
-                if diff > 0:
-                    deposited_sol = diff
+        deposited_sol = 0.01  # Базовое зачисление по умолчанию
+        try:
+            tx_details = client.get_transaction(
+                sig_obj, 
+                max_supported_transaction_version=0
+            )
+            if tx_details and tx_details.value:
+                meta = tx_details.value.transaction.meta
+                if meta and meta.pre_balances and meta.post_balances:
+                    diff = (meta.post_balances[0] - meta.pre_balances[0]) / (10**9)
+                    if diff > 0:
+                        deposited_sol = diff
+        except Exception as ex:
+            print("Notice parsing tx details:", ex)
 
         return jsonify({
             "success": True,
@@ -280,7 +284,6 @@ def withdraw():
         
         instructions = []
         
-        # РАЗДЕЛЕНИЕ ЛОГИКИ ТРАНЗАКЦИЙ (SOL vs ZRL)
         if currency == 'SOL':
             lamports = int(amount * (10**9))
             transfer_ix = transfer(
