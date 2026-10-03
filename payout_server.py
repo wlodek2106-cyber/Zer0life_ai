@@ -83,6 +83,15 @@ def send_telegram_message(chat_id, text):
     except Exception as e:
         print("TG Notification error:", e)
 
+def check_and_expire_boosters(user_stats):
+    """Проверяет, не истек ли срок действия недельного буста (7 дней)"""
+    expire_time = user_stats.get("booster_expire_time", 0)
+    if expire_time and time.time() > expire_time:
+        user_stats["active_temp_booster"] = None
+        user_stats["booster_expire_time"] = 0
+        return True
+    return False
+
 @app.route('/register', methods=['POST', 'OPTIONS'])
 @app.route('/api/register', methods=['POST', 'OPTIONS'])
 def register_user():
@@ -114,13 +123,17 @@ def update_stats():
             active_runners_map[telegram_id] = time.time() * 1000
             
             existing = USER_STATS.get(telegram_id, {})
+            check_and_expire_boosters(existing)
+            
             USER_STATS[telegram_id] = {
                 "username": username,
                 "walletAddress": data.get('walletAddress', existing.get('walletAddress', TARGET_WALLET)),
                 "distance": data.get('distance', existing.get('distance', 0)),
                 "balance": data.get('balance', existing.get('balance', 0)),
                 "solBalance": existing.get('solBalance', 1.5),
-                "avatar": data.get('avatar', existing.get('avatar', ''))
+                "avatar": data.get('avatar', existing.get('avatar', '')),
+                "active_temp_booster": existing.get('active_temp_booster'),
+                "booster_expire_time": existing.get('booster_expire_time', 0)
             }
             USERS_MAP[telegram_id] = username
             save_db()
@@ -185,6 +198,7 @@ def get_leaderboard():
         return '', 200
     users_list = []
     for uid, stats in USER_STATS.items():
+        check_and_expire_boosters(stats)
         users_list.append({
             "name": stats.get("username", "Runner"),
             "dist": round(stats.get("distance", 0), 2),
@@ -220,6 +234,7 @@ def get_friends_list():
     friends = []
     for fid in friends_ids:
         st = USER_STATS.get(fid, {})
+        check_and_expire_boosters(st)
         friends.append({
             "telegramId": fid, 
             "username": st.get("username", USERS_MAP.get(fid, "Runner")), 
@@ -356,11 +371,13 @@ def check_deposit():
         return '', 200
     telegram_id = str(request.json.get('telegramId') or request.args.get('telegramId', ''))
     user_stats = USER_STATS.get(telegram_id, {})
+    check_and_expire_boosters(user_stats)
     return jsonify({
         "success": True,
         "solBalance": float(user_stats.get("solBalance", 1.5)),
         "usdcBalance": 50.0,
-        "zrlBalance": float(user_stats.get("balance", 25000.0))
+        "zrlBalance": float(user_stats.get("balance", 25000.0)),
+        "activeBooster": user_stats.get("active_temp_booster")
     })
 
 @app.route('/verify-deposit', methods=['POST', 'OPTIONS'])
@@ -414,6 +431,7 @@ def verify_deposit():
             return jsonify({"success": False, "error": f"Сумма слишком мала ({diff_sol} SOL). Минимум: {MIN_DEPOSIT} SOL."}), 400
             
         user_stats = USER_STATS.get(telegram_id, {})
+        check_and_expire_boosters(user_stats)
         current_sol = float(user_stats.get("solBalance", 1.5))
         current_sol += diff_sol
         user_stats["solBalance"] = current_sol
@@ -466,6 +484,54 @@ def withdraw():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+# --- ЭНДПОИНТ ПОКУПКИ БУСТА НА 7 ДНЕЙ ---
+@app.route('/api/buy-booster-7days', methods=['POST', 'OPTIONS'])
+@app.route('/buy-booster-7days', methods=['POST', 'OPTIONS'])
+def buy_booster_7days():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        telegram_id = str(data.get('telegramId'))
+        booster_id = data.get('boosterId')  # например, 'boots_7days' или множитель
+        cost = float(data.get('cost', 0.2))  # цена в SOL (например 0.2 для 2x Speed или ваш прайс)
+
+        if not telegram_id:
+            return jsonify({"success": False, "error": "Unauthorized"})
+
+        user_stats = USER_STATS.get(telegram_id, {})
+        check_and_expire_boosters(user_stats)
+        
+        current_sol = float(user_stats.get("solBalance", 1.5))
+        if current_sol < cost:
+            return jsonify({"success": False, "error": "Недостаточно SOL на балансе!"})
+
+        current_sol -= cost
+        user_stats["solBalance"] = current_sol
+        
+        # Устанавливаем буст на 7 дней (7 * 24 * 60 * 60 секунд)
+        seven_days_seconds = 7 * 24 * 60 * 60
+        user_stats["active_temp_booster"] = booster_id or "boots_7days"
+        user_stats["booster_expire_time"] = time.time() + seven_days_seconds
+
+        USER_STATS[telegram_id] = user_stats
+        save_db()
+
+        send_telegram_message(
+            telegram_id,
+            f"⚡ <b>Буст активирован на 7 дней!</b>\n\nСписано: {cost} SOL\nДействует до истечения 7-дневного срока."
+        )
+
+        return jsonify({
+            "success": True,
+            "newSolBalance": current_sol,
+            "activeBooster": user_stats["active_temp_booster"],
+            "expireTime": user_stats["booster_expire_time"]
+        })
+    except Exception as e:
+        print("Buy booster error:", e)
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route('/api/fortune/spin', methods=['POST', 'OPTIONS'])
 @app.route('/fortune/spin', methods=['POST', 'OPTIONS'])
 def fortune_spin():
@@ -479,6 +545,8 @@ def fortune_spin():
             return jsonify({"success": False, "error": "Unauthorized"})
 
         user_stats = USER_STATS.get(telegram_id, {})
+        check_and_expire_boosters(user_stats)
+        
         current_sol = float(user_stats.get("solBalance", 1.5))
         
         SPIN_COST = 0.01
@@ -531,6 +599,7 @@ def fortune_spin():
             user_stats["solBalance"] = float(user_stats.get("solBalance", 0)) + reward["val"]
         elif reward["type"] == "booster":
             user_stats["active_temp_booster"] = reward["id"]
+            user_stats["booster_expire_time"] = time.time() + 3600  # часовой бонус из колеса
         elif reward["type"] == "repair":
             user_stats["boots_hp"] = 100.0
 
