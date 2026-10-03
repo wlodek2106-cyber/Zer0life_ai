@@ -13,7 +13,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 solana_client = Client("https://api.mainnet-beta.solana.com")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Целевой кошелек проекта для депозитов (куда игроки пересылают SOL)
+# Целевой кошелек проекта для депозитов
 TARGET_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 
 DB_FILE = "database.json"
@@ -68,7 +68,6 @@ CHAT_DB = db.get("CHAT_DB", [])
 USER_TOTAL_DEPOSITS = db.get("USER_TOTAL_DEPOSITS", {})
 CASINO_STATS = db.get("CASINO_STATS", {"total_sol_in": 142.50, "total_zrl_won": 845200.0})
 
-# Карта для хранения времени последней активности игроков (для реального онлайна)
 active_runners_map = {}
 
 def send_telegram_message(chat_id, text):
@@ -130,7 +129,6 @@ def update_stats():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# --- РЕАЛЬНЫЙ ОНЛАЙН И СТАТИСТИКА КАЗИНО ---
 @app.route('/online-stats', methods=['GET', 'OPTIONS'])
 @app.route('/api/online-stats', methods=['GET', 'OPTIONS'])
 def get_online_stats():
@@ -138,12 +136,10 @@ def get_online_stats():
         return '', 200
     
     now = time.time() * 1000
-    # Удаляем пользователей, неактивных более 10 минут (600000 мс)
     inactive_users = [uid for uid, t in active_runners_map.items() if now - t > 600000]
     for uid in inactive_users:
         del active_runners_map[uid]
     
-    # Минимальный порог для красоты + реальные активные сессии
     online_count = max(1422, len(active_runners_map))
     
     return jsonify({
@@ -367,7 +363,6 @@ def check_deposit():
         "zrlBalance": float(user_stats.get("balance", 25000.0))
     })
 
-# --- ЗАЩИЩЕННЫЙ ЭНДПОИНТ ПРОВЕРКИ ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН ---
 @app.route('/verify-deposit', methods=['POST', 'OPTIONS'])
 @app.route('/api/verify-deposit', methods=['POST', 'OPTIONS'])
 def verify_deposit():
@@ -387,7 +382,6 @@ def verify_deposit():
             return jsonify({"success": False, "error": "Транзакция еще не найдена в блокчейне. Подождите 10-15 секунд."}), 400
             
         tx_data = response['result']
-        
         meta = tx_data.get('meta', {})
         if meta and meta.get('err') is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне Solana."}), 400
@@ -412,10 +406,7 @@ def verify_deposit():
         if len(pre_balances) <= target_index or len(post_balances) <= target_index:
             return jsonify({"success": False, "error": "Не удалось проверить изменение баланса кошелька."}), 400
             
-        pre_balance = pre_balances[target_index]
-        post_balance = post_balances[target_index]
-        
-        diff_lamports = post_balance - pre_balance
+        diff_lamports = post_balances[target_index] - pre_balances[target_index]
         diff_sol = diff_lamports / 1_000_000_000
         
         MIN_DEPOSIT = 0.01
@@ -462,9 +453,6 @@ def withdraw():
         if not user_wallet or amount <= 0:
             return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
         
-        if amount == 0.01:
-            currency = 'SOL'
-        
         if telegram_id:
             send_telegram_message(
                 telegram_id, 
@@ -478,7 +466,6 @@ def withdraw():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-# --- ЭНДПОИНТ КОЛЕСА ФОРТУНЫ ---
 @app.route('/api/fortune/spin', methods=['POST', 'OPTIONS'])
 @app.route('/fortune/spin', methods=['POST', 'OPTIONS'])
 def fortune_spin():
@@ -510,13 +497,7 @@ def fortune_spin():
         USER_STATS[telegram_id] = user_stats
         save_db()
 
-        send_telegram_message(
-            telegram_id,
-            f"✅ <b>Оплата прокрута колеса</b>\n\nСумма: 0.01 SOL\nМерчант: 57S7Tr...v5db"
-        )
-
         import random
-        
         prizes = [
             {"id": "zrl_50", "type": "zrl", "val": 50, "name": "50 ZRL"},
             {"id": "zrl_100", "type": "zrl", "val": 100, "name": "100 ZRL"},
