@@ -686,6 +686,18 @@
             </div>
         </div>
 
+        <!-- НАСТРОЙКА АУДИО-КОУЧА (ON / OFF) -->
+        <div class="energy-card" style="border-color: rgba(20, 241, 149, 0.3); background: linear-gradient(135deg, #15171e 0%, #161f22 100%);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 700; color: #14f195;">🔊 AUDIO COACH (VOICE ASSISTANT)</span>
+                <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                    <input type="checkbox" id="audioCoachToggle" checked onchange="toggleAudioCoach(this)" style="opacity: 0; width: 0; height: 0;">
+                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #282d3d; transition: .4s; border-radius: 24px;" id="audio-slider-bg"></span>
+                </label>
+            </div>
+            <div style="font-size: 10px; color: #8a8d98; margin-top: 4px;">Голосовые подсказки темпа и дистанции в наушниках</div>
+        </div>
+
         <div class="energy-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #1a221e 100%);">
             <div class="energy-header" style="color: #a8f07a;">
                 <span>👟 SNEAKERS DURABILITY (HP)</span>
@@ -1034,7 +1046,7 @@
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
                                 <div class="asset-name">Solana (Пул игры)</div>
-                                <div class="asset-sub">Мин. депозит 0.01 SOL</div>
+                                <div class="asset-sub">Депозит без ограничений суммы</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1063,7 +1075,7 @@
             </div>
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
-                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Минимальный депозит: 0.01 SOL</div>
+                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Пополнение без минимальных лимитов</div>
                     <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После перевода введите хэш транзакции (Signature)</div>
                 </div>
 
@@ -1171,14 +1183,37 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА -->
+    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА И СЕЗОННЫХ ЛИГ -->
     <div class="modal-overlay" id="leaderboard-modal">
         <div class="modal-content" style="max-height: 85vh;">
             <div class="modal-header">
-                <span class="modal-title">🏆 Leaderboard</span>
+                <span class="modal-title">🏆 Seasonal Leagues & Leaderboard</span>
                 <button class="close-modal" id="close-leaderboard">&times;</button>
             </div>
             
+            <!-- Блок Сезонного Марафона -->
+            <div style="background: linear-gradient(135deg, #15221b 0%, #111717 100%); border: 1px solid rgba(20,241,149,0.3); border-radius: 16px; padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">🏆 ZRL MARATHON LEAGUE</div>
+                    <div style="font-size: 14px; font-weight: 900; color: #fff; margin-top: 2px;">Prize Pool: 15 SOL + 50k ZRL</div>
+                </div>
+                <div style="font-size: 10px; background: rgba(20,241,149,0.15); color: #14f195; padding: 6px 10px; border-radius: 8px; font-weight: 700;">14 Days Left</div>
+            </div>
+
+            <!-- Достижения (Achievements Hub Preview в лидерборде) -->
+            <div style="background: #141721; border: 1px solid #282d3d; border-radius: 16px; padding: 10px 12px; margin-bottom: 12px;">
+                <div style="font-size: 11px; color: #a8f07a; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                    <span>🛡️ MY UNLOCKED BADGES</span>
+                    <span style="font-size: 10px; color: #8a8d98;">4 / 8 Earned</span>
+                </div>
+                <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+                    <div style="min-width: 36px; height: 36px; background: rgba(20,241,149,0.15); border: 1px solid #14f195; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Early Adopter">💧</div>
+                    <div style="min-width: 36px; height: 36px; background: rgba(168,240,122,0.15); border: 1px solid #a8f07a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="First Step">👟</div>
+                    <div style="min-width: 36px; height: 36px; background: rgba(59,130,246,0.15); border: 1px solid #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="Iron Will">🔋</div>
+                    <div style="min-width: 36px; height: 36px; background: rgba(168,85,247,0.15); border: 1px solid #a855f7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;" title="In Shape">💪</div>
+                </div>
+            </div>
+
             <div class="leaderboard-tabs" style="margin-bottom: 14px;">
                 <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
                 <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
@@ -1187,7 +1222,7 @@
 
             <div id="podium-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;"></div>
 
-            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; margin-bottom: 12px;"></div>
+            <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 12px;"></div>
 
             <div id="my-rank-sticky-container"></div>
         </div>
@@ -1227,6 +1262,44 @@
 
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
+
+        // ЛОГИКА АУДИО-КОУЧА (VOICE COACH ON/OFF)
+        let isAudioCoachEnabled = localStorage.getItem(STORAGE_PREFIX + 'audioCoach') !== 'false';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const toggleElement = document.getElementById('audioCoachToggle');
+            const sliderBg = document.getElementById('audio-slider-bg');
+            if (toggleElement) {
+                toggleElement.checked = isAudioCoachEnabled;
+                if (sliderBg) sliderBg.style.backgroundColor = isAudioCoachEnabled ? '#14f195' : '#282d3d';
+            }
+        });
+
+        window.toggleAudioCoach = function(checkbox) {
+            isAudioCoachEnabled = checkbox.checked;
+            localStorage.setItem(STORAGE_PREFIX + 'audioCoach', isAudioCoachEnabled);
+            const sliderBg = document.getElementById('audio-slider-bg');
+            if (sliderBg) sliderBg.style.backgroundColor = isAudioCoachEnabled ? '#14f195' : '#282d3d';
+
+            triggerHaptic('selection');
+            if (isAudioCoachEnabled) {
+                speak("Аудио коуч активирован. Погнали!");
+            }
+        }
+
+        function speak(text) {
+            if (!isAudioCoachEnabled) return;
+            if ('speechSynthesis' in window) {
+                try {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'ru-RU';
+                    utterance.rate = 1.0;
+                    utterance.pitch = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                } catch(e) {}
+            }
+        }
 
         let audioCtx = null;
         function initAudio() {
@@ -2566,7 +2639,6 @@
         };
 
         let currentLbTab = 'daily';
-        let lbAutoRefreshInterval = null;
 
         window.switchLbTab = function(tab) {
             triggerHaptic('selection');
@@ -2773,7 +2845,7 @@
                 document.getElementById('deposit-details-box').style.display = 'block';
             };
 
-            // РЕАЛЬНАЯ ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН И СЕРВЕР (С ПОЛНЫМ URL РЕНДЕРА)
+            // ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН (БЕЗ МИНИМАЛЬНЫХ ЛИМИТОВ)
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const txSig = document.getElementById('tx-signature-input').value.trim();
                 const statusMsg = document.getElementById('deposit-status-msg');
@@ -2933,6 +3005,8 @@
         }
 
         let lastMotionTime = 0;
+        let lastSpokenKm = 0;
+
         function handleMotion(event) {
             if (!isRunning) return;
 
@@ -2977,6 +3051,12 @@
                 currentEnergy = Math.max(0, currentEnergy - 0.0075);
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
+                // Озвучка пройденной дистанции каждые 0.5 км через аудио-коуч
+                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                    lastSpokenKm = todayDistance;
+                    speak(`Пройдено ${todayDistance.toFixed(1)} километров. Отличный темп!`);
+                }
+
                 updateUI();
                 updateEnergyUI();
                 checkRandomMysteryBox();
@@ -2994,6 +3074,7 @@
                 watchId = null;
             }
             warningEl.style.display = 'none';
+            speak("Тренировка остановлена.");
         }
 
         startBtn.addEventListener('click', async () => {
@@ -3028,6 +3109,7 @@
                             isRunning = true;
                             startBtn.classList.add('active-run');
                             startBtnText.innerText = 'Stop Run';
+                            speak("Тренировка началась. Включай скорость!");
                         } else {
                             triggerHaptic('error');
                             tg.showAlert("Motion permission is required to track your run.");
@@ -3038,6 +3120,7 @@
                     isRunning = true;
                     startBtn.classList.add('active-run');
                     startBtnText.innerText = 'Stop Run';
+                    speak("Тренировка началась. Включай скорость!");
                 }
             } else {
                 stopRunning();
@@ -3056,6 +3139,7 @@
                 updateUI();
                 saveData();
                 
+                speak("Токены успешно зачислены на баланс!");
                 tg.showAlert('Tokens successfully claimed to your balance!');
             } else {
                 triggerHaptic('warning');
