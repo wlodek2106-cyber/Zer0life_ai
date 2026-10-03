@@ -1291,6 +1291,7 @@
             }
         }
 
+        // Улучшенная функция синтеза речи с выбором приятного голоса
         function speak(text) {
             if (!isAudioCoachEnabled) return;
             if ('speechSynthesis' in window) {
@@ -1298,11 +1299,29 @@
                     window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'ru-RU';
-                    utterance.rate = 1.0;
-                    utterance.pitch = 0.9;
+                    utterance.rate = 1.05; // Чуть бодрее для пробежки
+                    utterance.pitch = 1.1;  // Мягкая и приятная тональность
+
+                    // Подбираем лучший доступный русскоязычный голос на устройстве
+                    const voices = window.speechSynthesis.getVoices();
+                    if (voices && voices.length > 0) {
+                        const ruVoice = voices.find(v => v.lang.includes('ru') && (v.name.includes('Milena') || v.name.includes('Katya') || v.name.includes('Siri') || v.name.includes('Google') || v.name.includes('Yandex'))) ||
+                                       voices.find(v => v.lang.includes('ru-RU')) ||
+                                       voices.find(v => v.lang.includes('ru'));
+                        if (ruVoice) {
+                            utterance.voice = ruVoice;
+                        }
+                    }
+
                     window.speechSynthesis.speak(utterance);
                 } catch(e) {}
             }
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
         }
 
         let audioCtx = null;
