@@ -664,7 +664,7 @@
     <div class="dashboard-container">
         <div class="header">
             <div class="balance-section">
-                <div class="avatar" id="user-avatar" title="Нажмите, чтобы сменить фото профиля"></div>
+                <div class="avatar" id="user-avatar" title="Click to change profile avatar"></div>
                 <div class="balance-info">
                     <span class="balance-label" id="header-username-label">Player</span>
                     <span class="balance-amount" id="header-zrl-balance">0.00 ZRL</span>
@@ -686,7 +686,7 @@
             </div>
         </div>
 
-        <!-- НАСТРОЙКА АУДИО-КОУЧА (ON / OFF) -->
+        <!-- AUDIO COACH TOGGLE (ON / OFF) -->
         <div class="energy-card" style="border-color: rgba(20, 241, 149, 0.3); background: linear-gradient(135deg, #15171e 0%, #161f22 100%);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 12px; font-weight: 700; color: #14f195;">🔊 AUDIO COACH (VOICE ASSISTANT)</span>
@@ -695,7 +695,7 @@
                     <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #282d3d; transition: .4s; border-radius: 24px;" id="audio-slider-bg"></span>
                 </label>
             </div>
-            <div style="font-size: 10px; color: #8a8d98; margin-top: 4px;">Голосовые подсказки темпа и дистанции в наушниках</div>
+            <div style="font-size: 10px; color: #8a8d98; margin-top: 4px;">Voice prompts for pace and distance in headphones</div>
         </div>
 
         <div class="energy-card" style="border-color: rgba(168, 240, 122, 0.3); background: linear-gradient(135deg, #15171e 0%, #1a221e 100%);">
@@ -707,7 +707,7 @@
                 <div class="energy-bar-fill" id="boots-bar-fill" style="background: linear-gradient(90deg, #ca8a04 0%, #a8f07a 100%);"></div>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-                <button class="claim-btn" id="repair-boots-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(168,240,122,0.15); color: #a8f07a; border: 1px solid rgba(168,240,122,0.3);">🔧 Repair Boots (50 ZRL / Мерчант)</button>
+                <button class="claim-btn" id="repair-boots-btn" style="padding: 4px 10px; font-size: 11px; background: rgba(168,240,122,0.15); color: #a8f07a; border: 1px solid rgba(168,240,122,0.3);">🔧 Repair Boots (50 ZRL / Merchant)</button>
             </div>
         </div>
 
@@ -795,7 +795,7 @@
         </button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ФАРМИНГА -->
+    <!-- FARMING MODAL -->
     <div class="modal-overlay" id="farming-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 8px;">
@@ -855,7 +855,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КАЗИНО -->
+    <!-- CASINO / ARCADE MODAL -->
     <div class="modal-overlay" id="fortune-modal">
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
@@ -897,7 +897,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Bet:</span>
                         <select id="slots-bet-select" style="background: #1a202c; color: #14f195; border: 1px solid #c084fc; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
@@ -907,7 +907,7 @@
                 </div>
 
                 <button class="claim-btn" id="spin-slots-btn" onclick="playSlots()" style="width: 100%; background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%); color: #fff; font-size: 15px; padding: 14px; font-weight: 900; box-shadow: 0 0 20px rgba(147, 51, 234, 0.4);">
-                    Крутить Слоты (Jackpot 1 SOL) 🎰
+                    Spin Slots (Jackpot 1 SOL) 🎰
                 </button>
             </div>
 
@@ -917,21 +917,21 @@
                     <div style="text-align: center; font-size: 12px; font-weight: 900; letter-spacing: 2px; color: #facc15; opacity: 0.8; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">BLACKJACK PAYS 3 TO 2</div>
 
                     <div style="margin-bottom: 12px; background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px dashed rgba(212,175,55,0.3);">
-                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Дилер: <span id="dealer-score" style="color: #facc15;">?</span></div>
+                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Dealer: <span id="dealer-score" style="color: #facc15;">?</span></div>
                         <div id="dealer-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
                     </div>
 
                     <div style="height: 1px; background: rgba(212, 175, 55, 0.2); margin: 8px 0;"></div>
 
                     <div style="background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.4);">
-                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">Вы: <span id="player-score" style="color: #4ade80;">0</span></div>
+                        <div style="font-size: 11px; color: #e2e8f0; margin-bottom: 4px; font-weight: 700;">You: <span id="player-score" style="color: #4ade80;">0</span></div>
                         <div id="player-cards" style="display: flex; gap: 6px; min-height: 48px; align-items: center;"></div>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;" id="bj-controls-play">
-                    <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5; font-weight: 800;">Еще (Hit)</button>
-                    <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5; font-weight: 800;">Хватит (Stand)</button>
+                    <button class="claim-btn" onclick="bjHit()" id="bj-hit-btn" disabled style="background: #3b82f6; color: #fff; opacity: 0.5; font-weight: 800;">Hit</button>
+                    <button class="claim-btn" onclick="bjStand()" id="bj-stand-btn" disabled style="background: #f59e0b; color: #000; opacity: 0.5; font-weight: 800;">Stand</button>
                 </div>
 
                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -941,12 +941,12 @@
                         <option value="0.1">0.1 SOL</option>
                     </select>
                     <button class="claim-btn" id="start-bj-btn" onclick="startBlackjack()" style="width: 60%; background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%); color: #000; font-weight: 900; box-shadow: 0 0 15px rgba(250,204,21,0.3);">
-                        Раздать (21) 🃏
+                        Deal (21) 🃏
                     </button>
                 </div>
             </div>
 
-            <!-- РУЛЕТКА -->
+            <!-- ROULETTE -->
             <div id="arcade-game-roulette" class="arcade-game-container" style="display: block;">
                 <div style="background: linear-gradient(180deg, #134e32 0%, #0a331f 100%); border: 3px solid #d4af37; border-radius: 18px; padding: 14px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 0 25px rgba(0,0,0,0.6), 0 0 15px rgba(212, 175, 55, 0.2); position: relative;">
                     
@@ -957,17 +957,17 @@
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
-                        <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #dc2626; color: #fff; border: 2px solid transparent; font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(220,38,38,0.4);">🔴 Красное (x2)</button>
-                        <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #111827; color: #fff; border: 2px solid rgba(255,255,255,0.2); font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">⚫ Черное (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('red')" id="roulette-btn-red" style="background: #dc2626; color: #fff; border: 2px solid transparent; font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(220,38,38,0.4);">🔴 Red (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('black')" id="roulette-btn-black" style="background: #111827; color: #fff; border: 2px solid rgba(255,255,255,0.2); font-weight: 800; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">⚫ Black (x2)</button>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                        <button class="claim-btn" onclick="setRouletteBet('even')" id="roulette-btn-even" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Чёт (x2)</button>
-                        <button class="claim-btn" onclick="setRouletteBet('odd')" id="roulette-btn-odd" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Нечёт (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('even')" id="roulette-btn-even" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Even (x2)</button>
+                        <button class="claim-btn" onclick="setRouletteBet('odd')" id="roulette-btn-odd" style="background: #1e293b; color: #facc15; border: 1px solid rgba(212,175,55,0.3); font-weight: 700; font-size: 12px;">Odd (x2)</button>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Ставка:</span>
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700;">Bet:</span>
                         <select id="roulette-bet-amount" style="background: #1a202c; color: #facc15; border: 1px solid #d4af37; border-radius: 8px; padding: 6px 12px; font-weight: 700; outline: none;">
                             <option value="0.01">0.01 SOL</option>
                             <option value="0.05">0.05 SOL</option>
@@ -977,13 +977,13 @@
                 </div>
 
                 <button class="claim-btn" id="spin-roulette-btn" onclick="spinRoulette()" style="width: 100%; background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%); color: #000; font-size: 15px; padding: 14px; font-weight: 900; box-shadow: 0 0 20px rgba(250,204,21,0.3);">
-                    Запустить Рулетку 🎯
+                    Spin Roulette 🎯
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО MYSTERY BOX -->
+    <!-- MYSTERY BOX MODAL -->
     <div class="modal-overlay" id="mystery-box-modal" style="align-items: center; justify-content: center;">
         <div class="modal-content" style="max-width: 320px; text-align: center; border-radius: 28px; background: linear-gradient(135deg, #1b241e 0%, #121816 100%); border: 1px solid #14f195;">
             <div style="font-size: 50px; margin-bottom: 10px;">🎁</div>
@@ -993,7 +993,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО РЕГИСТРАЦИИ -->
+    <!-- REGISTRATION MODAL -->
     <div class="modal-overlay" id="register-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1015,7 +1015,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО КОШЕЛЬКА -->
+    <!-- WALLET MODAL -->
     <div class="modal-overlay" id="wallet-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1024,7 +1024,7 @@
             </div>
             <div id="wallet-modal-body">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="font-size: 12px; color: #8a8d98; margin-top: 6px;">Общий пул / Единый адрес</div>
+                    <div style="font-size: 12px; color: #8a8d98; margin-top: 6px;">Shared Pool / Unified Address</div>
                 </div>
 
                 <div id="crypto-assets-list">
@@ -1033,7 +1033,7 @@
                             <div class="asset-icon" style="background: rgba(168,240,122,0.15); color: #a8f07a;">Z</div>
                             <div>
                                 <div class="asset-name">ZRL Token</div>
-                                <div class="asset-sub">Earned / Reward Balance (Доступен вывод)</div>
+                                <div class="asset-sub">Earned / Reward Balance (Available to withdraw)</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1045,8 +1045,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Solana (Пул игры)</div>
-                                <div class="asset-sub">Депозит без ограничений суммы</div>
+                                <div class="asset-name">Solana (Game Pool)</div>
+                                <div class="asset-sub">Deposit without limits</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -1066,49 +1066,49 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЕПОЗИТА С РЕАЛЬНОЙ ПРОВЕРКОЙ ЧЕРЕЗ БЛОКЧЕЙН -->
+    <!-- DEPOSIT MODAL -->
     <div class="modal-overlay" id="deposit-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Deposit Crypto (Пополнение SOL)</span>
+                <span class="modal-title">Deposit Crypto (SOL Top-Up)</span>
                 <button class="close-modal" id="close-deposit">&times;</button>
             </div>
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
-                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Пополнение без минимальных лимитов</div>
-                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">После перевода введите хэш транзакции (Signature)</div>
+                    <div style="font-size: 13px; color: #14f195; font-weight: 800;">Deposit without minimum limits</div>
+                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">After transfer, enter transaction signature</div>
                 </div>
 
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
-                    Показать реквизиты для перевода 🚀
+                    Show Deposit Address 🚀
                 </button>
 
                 <div id="deposit-details-box" style="display: none;">
-                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Переведите сумму на адрес:</p>
+                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Transfer funds to address:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;" />
                     </div>
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
                     
-                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Копировать адрес</button>
+                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy Address</button>
 
                     <div class="custom-input-group" style="margin-bottom: 12px; text-align: left;">
-                        <label style="font-size: 11px; color: #14f195; font-weight: 700;">Хэш транзакции (Signature):</label>
-                        <input type="text" id="tx-signature-input" class="custom-input-field" placeholder="Вставьте Signature из кошелька..." />
+                        <label style="font-size: 11px; color: #14f195; font-weight: 700;">Transaction Signature:</label>
+                        <input type="text" id="tx-signature-input" class="custom-input-field" placeholder="Paste signature from your wallet..." />
                     </div>
 
-                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Проверить и зачислить SOL 🔄</button>
+                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: &000; font-weight: 800;">Verify & Credit SOL 🔄</button>
                     <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО БУСТЕРОВ -->
+    <!-- BOOSTERS MODAL -->
     <div class="modal-overlay" id="boosters-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">⚡ VIP Boosters Store (Мерчант-поток)</span>
+                <span class="modal-title">⚡ VIP Boosters Store (Merchant Flow)</span>
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             <p style="font-size: 13px; color: #8a8d98; margin-top: -10px; margin-bottom: 15px;">
@@ -1163,7 +1163,7 @@
         </div>
     </div>
 
-    <!-- КАСТОМНЫЙ PROMPT -->
+    <!-- CUSTOM PROMPT MODAL -->
     <div class="modal-overlay" id="custom-prompt-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1183,7 +1183,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ЛИДЕРБОРДА И СЕЗОННЫХ ЛИГ -->
+    <!-- LEADERBOARD & SEASONS MODAL -->
     <div class="modal-overlay" id="leaderboard-modal">
         <div class="modal-content" style="max-height: 85vh;">
             <div class="modal-header">
@@ -1191,7 +1191,7 @@
                 <button class="close-modal" id="close-leaderboard">&times;</button>
             </div>
             
-            <!-- Блок Сезонного Марафона (Обновленный призовой фонд в ZRL) -->
+            <!-- Seasonal Marathon Block -->
             <div style="background: linear-gradient(135deg, #15221b 0%, #111717 100%); border: 1px solid rgba(168,240,122,0.4); border-radius: 16px; padding: 12px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-size: 11px; color: #a8f07a; font-weight: 800;">🏆 ZRL MONTHLY MARATHON</span>
@@ -1200,11 +1200,11 @@
                 <div style="font-size: 15px; font-weight: 900; color: #fff; margin-bottom: 6px;">Total Prize Pool: 1,000,000 ZRL</div>
                 <div style="font-size: 11px; color: #8a8d98; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px;">
                     <span>🥇 500k | 🥈 300k | 🥉 200k</span>
-                    <span style="color: #14f195; font-weight: 700;">+10k ZRL всем участникам!</span>
+                    <span style="color: #14f195; font-weight: 700;">+10k ZRL to all participants!</span>
                 </div>
             </div>
 
-            <!-- Достижения (Achievements Hub Preview в лидерборде) -->
+            <!-- Achievements Hub Preview -->
             <div style="background: #141721; border: 1px solid #282d3d; border-radius: 16px; padding: 10px 12px; margin-bottom: 12px;">
                 <div style="font-size: 11px; color: #a8f07a; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between;">
                     <span>🛡️ MY UNLOCKED BADGES</span>
@@ -1232,7 +1232,7 @@
         </div>
     </div>
 
-    <!-- НИЖНЯЯ ПАНЕЛЬ -->
+    <!-- BOTTOM NAVIGATION -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
@@ -1267,7 +1267,7 @@
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
-        // ЛОГИКА АУДИО-КОУЧА (VOICE COACH ON/OFF)
+        // AUDIO COACH LOGIC (VOICE ASSISTANT ON/OFF)
         let isAudioCoachEnabled = localStorage.getItem(STORAGE_PREFIX + 'audioCoach') !== 'false';
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -1287,29 +1287,27 @@
 
             triggerHaptic('selection');
             if (isAudioCoachEnabled) {
-                speak("Аудио коуч активирован. Погнали!");
+                speak("Audio coach activated. Let's go!");
             }
         }
 
-        // Улучшенная функция синтеза речи с выбором приятного голоса
         function speak(text) {
             if (!isAudioCoachEnabled) return;
             if ('speechSynthesis' in window) {
                 try {
                     window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'ru-RU';
-                    utterance.rate = 1.05; // Чуть бодрее для пробежки
-                    utterance.pitch = 1.1;  // Мягкая и приятная тональность
+                    utterance.lang = 'en-US';
+                    utterance.rate = 1.05;
+                    utterance.pitch = 1.1;
 
-                    // Подбираем лучший доступный русскоязычный голос на устройстве
                     const voices = window.speechSynthesis.getVoices();
                     if (voices && voices.length > 0) {
-                        const ruVoice = voices.find(v => v.lang.includes('ru') && (v.name.includes('Milena') || v.name.includes('Katya') || v.name.includes('Siri') || v.name.includes('Google') || v.name.includes('Yandex'))) ||
-                                       voices.find(v => v.lang.includes('ru-RU')) ||
-                                       voices.find(v => v.lang.includes('ru'));
-                        if (ruVoice) {
-                            utterance.voice = ruVoice;
+                        const enVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Siri') || v.name.includes('Samantha'))) ||
+                                       voices.find(v => v.lang.includes('en-US')) ||
+                                       voices.find(v => v.lang.includes('en'));
+                        if (enVoice) {
+                            utterance.voice = enVoice;
                         }
                     }
 
@@ -1404,7 +1402,7 @@
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
                     triggerHaptic('error');
-                    tg.showAlert('⚠ Файл слишком большой. Выберите изображение размером до 2 МБ.');
+                    tg.showAlert('⚠ File is too large. Please select an image under 2 MB.');
                     return;
                 }
 
@@ -1416,7 +1414,7 @@
                     syncStatsToServer(); 
                     triggerHaptic('success');
                     playSound('success');
-                    tg.showAlert('✅ Аватарка успешно обновлена!');
+                    tg.showAlert('✅ Avatar successfully updated!');
                 };
                 reader.readAsDataURL(file);
             }
@@ -1502,7 +1500,7 @@
             const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             if (effectiveSolBalance < costSol) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: ${costSol} SOL.`);
+                tg.showAlert(`❌ Insufficient SOL balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Required: ${costSol} SOL.`);
                 return;
             }
 
@@ -1536,7 +1534,7 @@
             const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             if (effectiveSolBalance < costSol) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: ${costSol} SOL.`);
+                tg.showAlert(`❌ Insufficient SOL balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Required: ${costSol} SOL.`);
                 return;
             }
 
@@ -1652,7 +1650,7 @@
             const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             if (currentFarmingAsset === 'sol' && effectiveSolBalance < amount) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств в пуле SOL!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL.`);
+                tg.showAlert(`❌ Insufficient SOL pool balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL.`);
                 return;
             }
 
@@ -1819,9 +1817,9 @@
                     earnedZrlBalance += farm.amount;
                 }
                 activeFarms.splice(farmIndex, 1);
-                tg.showAlert(`🎉 Пакет разблокирован!\n\nДепозит (${farm.amount} ${farm.asset.toUpperCase()}) и проценты зачислены!`);
+                tg.showAlert(`🎉 Deposit Unlocked!\n\nYour initial deposit (${farm.amount} ${farm.asset.toUpperCase()}) and rewards have been credited!`);
             } else {
-                tg.showAlert(`🎁 Награда собрана!\n\n+${currentReward.toFixed(2)} ZRL зачислено на баланс.`);
+                tg.showAlert(`🎁 Reward Claimed!\n\n+${currentReward.toFixed(2)} ZRL credited to your balance.`);
             }
 
             saveFarms();
@@ -2037,7 +2035,7 @@
             
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana на общий пул.");
+                tg.showAlert("❌ Casino access locked!\n\nYou must make a Solana deposit to the game pool to play casino games.");
                 return;
             }
 
@@ -2056,14 +2054,14 @@
         async function spinFortuneWheel() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в казино необходимо внести депозит в Solana.");
+                tg.showAlert("❌ Casino access locked!\n\nYou must make a Solana deposit to play.");
                 return;
             }
 
             const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
             if (freeSpins <= 0 && effectiveSolBalance < 0.01) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Требуется: 0.01 SOL.`);
+                tg.showAlert(`❌ Insufficient Solana balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Required: 0.01 SOL.`);
                 return;
             }
 
@@ -2164,7 +2162,7 @@
                     updateUI();
                     updateEnergyUI();
 
-                    tg.showAlert(`🎉 Поздравляем!\n\nВы выиграли: ${won.text}!`);
+                    tg.showAlert(`🎉 Congratulations!\n\nYou won: ${won.text}!`);
                     
                     if (freeSpins > 0) {
                         spinBtn.innerText = `Spin Free (${freeSpins} left) 🎁`;
@@ -2183,7 +2181,7 @@
         async function playSlots() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в слоты необходимо внести депозит в Solana.");
+                tg.showAlert("❌ Casino access locked!\n\nYou must make a Solana deposit to play slots.");
                 return;
             }
 
@@ -2192,7 +2190,7 @@
             
             if (effectiveSolBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Insufficient Solana balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Bet: ${betSOL} SOL.`);
                 return;
             }
 
@@ -2259,9 +2257,9 @@
                     playSound('coin');
 
                     if (isJackpot) {
-                        tg.showAlert(`👑 ДЖЕКПОТ ВЫИГРАН!\n\nВы выиграли Главный Джекпот: 1.0 SOL! 🚀`);
+                        tg.showAlert(`👑 JACKPOT WON!\n\nYou won the Main Jackpot: 1.0 SOL! 🚀`);
                     } else {
-                        tg.showAlert(`🎉 ВЫИГРЫШ В СЛОТАХ!\n\nВы выиграли: ${winSOL.toFixed(3)} SOL!`);
+                        tg.showAlert(`🎉 SLOTS WIN!\n\nYou won: ${winSOL.toFixed(3)} SOL!`);
                     }
                 } else if (winZRL > 0) {
                     totalBalance += winZRL;
@@ -2271,10 +2269,10 @@
                     updateEnergyUI();
                     triggerHaptic('success');
                     playSound('coin');
-                    tg.showAlert(`🎁 ВЫИГРЫШ!\n\nВы выиграли: ${winZRL} ZRL!`);
+                    tg.showAlert(`🎁 WIN!\n\nYou won: ${winZRL} ZRL!`);
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert('💀 Увы! Повезет в следующий раз.');
+                    tg.showAlert('💀 Bad luck! Try again next time.');
                 }
             }, 2000);
         }
@@ -2307,7 +2305,7 @@
         async function startBlackjack() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в Blackjack необходимо внести депозит в Solana.");
+                tg.showAlert("❌ Casino access locked!\n\nYou must make a Solana deposit to play Blackjack.");
                 return;
             }
 
@@ -2316,7 +2314,7 @@
             
             if (effectiveSolBalance < bjActiveBet) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${bjActiveBet} SOL.`);
+                tg.showAlert(`❌ Insufficient Solana balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Bet: ${bjActiveBet} SOL.`);
                 return;
             }
 
@@ -2344,7 +2342,7 @@
             renderBJ();
 
             if (calcHandScore(playerHand) === 21) {
-                bjFinish(2.5, "🎉 БЛЭКДЖЕК! Выиграли x2.5 SOL!");
+                bjFinish(2.5, "🎉 BLACKJACK! You won x2.5 SOL!");
             }
         }
 
@@ -2369,7 +2367,7 @@
             playerHand.push(bjDeck.pop());
             renderBJ();
             if (calcHandScore(playerHand) > 21) {
-                bjFinish(0, "💥 Перебор! Вы проиграли ставку.");
+                bjFinish(0, "💥 Bust! You lost your bet.");
             }
         }
 
@@ -2383,11 +2381,11 @@
             const dScore = calcHandScore(dealerHand);
 
             if (dScore > 21 || pScore > dScore) {
-                bjFinish(2, "🎉 Вы победили дилера!");
+                bjFinish(2, "🎉 You beat the dealer!");
             } else if (pScore === dScore) {
-                bjFinish('return', "🤝 Ничья! Ставка возвращена на баланс.");
+                bjFinish('return', "🤝 Push! Bet returned to balance.");
             } else {
-                bjFinish(0, "💀 Дилер выиграл.");
+                bjFinish(0, "💀 Dealer won.");
             }
         }
 
@@ -2435,13 +2433,13 @@
         async function spinRoulette() {
             if (poolDeposit <= 0) {
                 triggerHaptic('error');
-                tg.showAlert("❌ Доступ в казино заблокирован!\n\nДля игры в рулетку необходимо внести депозит в Solana.");
+                tg.showAlert("❌ Casino access locked!\n\nYou must make a Solana deposit to play roulette.");
                 return;
             }
 
             if (!selectedRouletteBetType) {
                 triggerHaptic('warning');
-                tg.showAlert('⚠ Сделайте ставку (выберите Красное, Черное, Чёт или Нечёт)!');
+                tg.showAlert('⚠ Please select a bet type (Red, Black, Even, or Odd)!');
                 return;
             }
 
@@ -2450,7 +2448,7 @@
             
             if (effectiveSolBalance < betSOL) {
                 triggerHaptic('error');
-                tg.showAlert(`❌ Недостаточно средств на балансе Solana!\n\nДоступно: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Ставка: ${betSOL} SOL.`);
+                tg.showAlert(`❌ Insufficient Solana balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Bet: ${betSOL} SOL.`);
                 return;
             }
 
@@ -2492,10 +2490,10 @@
                     casinoTotalWon += winSOL; 
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    tg.showAlert(`🎉 ПОБЕДА!\n\nВыпало: ${winningNum} (${winningColor}). Выигрыш (+${winSOL.toFixed(3)} SOL) зачислен!`);
+                    tg.showAlert(`🎉 WIN!\n\nNumber: ${winningNum} (${winningColor}). Winnings (+${winSOL.toFixed(3)} SOL) credited!`);
                 } else {
                     triggerHaptic('error');
-                    tg.showAlert(`💀 Шарик остановился на ${winningNum} (${winningColor}). Вы проиграли.`);
+                    tg.showAlert(`💀 Ball landed on ${winningNum} (${winningColor}). You lost.`);
                 }
             }, 2500);
         }
@@ -2874,13 +2872,13 @@
 
                 if (!txSig) {
                     triggerHaptic('error');
-                    tg.showAlert("⚠ Пожалуйста, введите хэш транзакции (Signature) из вашего кошелька.");
+                    tg.showAlert("⚠ Please enter the transaction signature from your wallet.");
                     return;
                 }
 
                 triggerHaptic('medium');
                 playSound('click');
-                statusMsg.innerText = "🔄 Проверяем транзакцию в блокчейне Solana...";
+                statusMsg.innerText = "🔄 Verifying transaction on Solana blockchain...";
 
                 try {
                     const response = await fetch('https://zer0life-ai-iz5n.onrender.com/verify-deposit', {
@@ -2903,14 +2901,14 @@
                         
                         triggerHaptic('success');
                         playSound('success');
-                        tg.showAlert(`🎉 Депозит успешно подтвержден!\n\nЗачислено: +${data.depositedSOL} SOL`);
+                        tg.showAlert(`🎉 Deposit successfully verified!\n\nCredited: +${data.depositedSOL} SOL`);
                     } else {
                         triggerHaptic('error');
-                        statusMsg.innerText = "❌ " + (data.error || "Ошибка проверки");
-                        tg.showAlert(`❌ Не удалось подтвердить перевод:\n${data.error || 'Проверьте хэш'}`);
+                        statusMsg.innerText = "❌ " + (data.error || "Verification failed");
+                        tg.showAlert(`❌ Could not verify transfer:\n${data.error || 'Check signature'}`);
                     }
                 } catch (e) {
-                    statusMsg.innerText = "❌ Ошибка соединения с сервером";
+                    statusMsg.innerText = "❌ Network connection error";
                     triggerHaptic('error');
                 }
             };
@@ -2924,19 +2922,19 @@
 
                 if (maxWithdrawableZrl <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("❌ У вас нет заработанных ZRL токенов для вывода.");
+                    tg.showAlert("❌ You don't have earned ZRL tokens available for withdrawal.");
                     return;
                 }
 
                 showCustomPrompt(
                     "Withdraw ZRL Tokens", 
-                    `Доступно к выводу: ${maxWithdrawableZrl.toFixed(2)} ZRL`, 
-                    "Ваш личный Solana адрес для получения ZRL...", 
+                    `Available to withdraw: ${maxWithdrawableZrl.toFixed(2)} ZRL`, 
+                    "Your personal Solana address for receiving ZRL...", 
                     async (targetAddr) => {
                         if (targetAddr && targetAddr.length > 30) {
                             showCustomPrompt(
                                 `Withdraw ZRL Amount`, 
-                                `Сколько ZRL хотите вывести?`, 
+                                `How many ZRL do you want to withdraw?`, 
                                 "Enter ZRL amount...", 
                                 async (amountStr) => {
                                     const amount = parseFloat(amountStr);
@@ -2961,24 +2959,24 @@
 
                                                 triggerHaptic('success');
                                                 playSound('success');
-                                                tg.showAlert(`✅ Успешно отправлено ${amount} ZRL на ваш адрес!`);
+                                                tg.showAlert(`✅ Successfully sent ${amount} ZRL to your address!`);
                                             } else {
                                                 triggerHaptic('error');
-                                                tg.showAlert(`❌ Ошибка: ${data.error || 'Unknown error'}`);
+                                                tg.showAlert(`❌ Error: ${data.error || 'Unknown error'}`);
                                             }
                                         } catch (err) {
                                             triggerHaptic('error');
-                                            tg.showAlert(`❌ Ошибка сети при запросе вывода.`);
+                                            tg.showAlert(`❌ Network error while processing withdrawal request.`);
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️ Неверная сумма или она превышает ваш баланс ZRL.');
+                                        tg.showAlert('⚠️ Invalid amount or exceeds your ZRL balance.');
                                     }
                                 }
                             );
                         } else if (targetAddr !== null) {
                             triggerHaptic('error');
-                            tg.showAlert('⚠ Неверный адрес кошелька.');
+                            tg.showAlert('⚠ Invalid wallet address.');
                         }
                     }
                 );
@@ -3075,7 +3073,7 @@
 
                 if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
                     lastSpokenKm = todayDistance;
-                    speak(`Пройдено ${todayDistance.toFixed(1)} километров. Отличный темп!`);
+                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
                 }
 
                 updateUI();
@@ -3095,7 +3093,7 @@
                 watchId = null;
             }
             warningEl.style.display = 'none';
-            speak("Тренировка остановлена.");
+            speak("Workout stopped.");
         }
 
         startBtn.addEventListener('click', async () => {
@@ -3130,7 +3128,7 @@
                             isRunning = true;
                             startBtn.classList.add('active-run');
                             startBtnText.innerText = 'Stop Run';
-                            speak("Тренировка началась. Включай скорость!");
+                            speak("Workout started. Keep up the pace!");
                         } else {
                             triggerHaptic('error');
                             tg.showAlert("Motion permission is required to track your run.");
@@ -3141,7 +3139,7 @@
                     isRunning = true;
                     startBtn.classList.add('active-run');
                     startBtnText.innerText = 'Stop Run';
-                    speak("Тренировка началась. Включай скорость!");
+                    speak("Workout started. Keep up the pace!");
                 }
             } else {
                 stopRunning();
@@ -3160,7 +3158,7 @@
                 updateUI();
                 saveData();
                 
-                speak("Токены успешно зачислены на баланс!");
+                speak("Tokens successfully credited to balance!");
                 tg.showAlert('Tokens successfully claimed to your balance!');
             } else {
                 triggerHaptic('warning');
