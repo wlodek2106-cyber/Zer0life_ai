@@ -740,7 +740,7 @@
 
         <div class="online-badge">
             <div class="online-dot"></div>
-            <span id="online-users-count">Online: 1,428 runners</span>
+            <span id="online-users-count">Online: Syncing...</span>
         </div>
 
         <div class="energy-card">
@@ -935,12 +935,12 @@
             <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 14px; padding: 10px 12px; margin-bottom: 14px; display: flex; justify-content: space-around; font-size: 11px;">
                 <div>
                     <div style="color: #8a8d98; font-weight: 700;">TOTAL SOL IN:</div>
-                    <div style="color: #14f195; font-weight: 900; font-size: 13px;" id="casino-stat-sol">142.85 SOL</div>
+                    <div style="color: #14f195; font-weight: 900; font-size: 13px;" id="casino-stat-sol">Loading...</div>
                 </div>
                 <div style="width: 1px; background: rgba(255,255,255,0.1);"></div>
                 <div>
                     <div style="color: #8a8d98; font-weight: 700;">ZRL WON OUT:</div>
-                    <div style="color: #a8f07a; font-weight: 900; font-size: 13px;" id="casino-stat-zrl">1,854,200 ZRL</div>
+                    <div style="color: #a8f07a; font-weight: 900; font-size: 13px;" id="casino-stat-zrl">Loading...</div>
                 </div>
             </div>
 
@@ -1347,9 +1347,32 @@
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
+        // REAL LIVE STATS FROM BACKEND SERVER
+        async function fetchRealOnlineAndCasinoStats() {
+            try {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/online-stats');
+                const data = await response.json();
+                if (data) {
+                    if (data.onlineCount !== undefined) {
+                        document.getElementById('online-users-count').innerText = `Online: ${data.onlineCount.toLocaleString()} runners`;
+                    }
+                    if (data.totalCasinoSolIn !== undefined) {
+                        document.getElementById('casino-stat-sol').innerText = data.totalCasinoSolIn.toFixed(2) + " SOL";
+                    }
+                    if (data.totalCasinoZrlWon !== undefined) {
+                        document.getElementById('casino-stat-zrl').innerText = Math.floor(data.totalCasinoZrlWon).toLocaleString() + " ZRL";
+                    }
+                }
+            } catch(e) {
+                // Fallback if offline
+                document.getElementById('online-users-count').innerText = `Online: 1 runner`;
+            }
+        }
+
+        setInterval(fetchRealOnlineAndCasinoStats, 5000);
+        setTimeout(fetchRealOnlineAndCasinoStats, 500);
+
         // LIVE TRANSACTION TICKER & TOAST SYSTEM
-        const mockNames = ["CyberRunner", "SolanaKing", "CryptoNinja", "SpeedDemon", "ZrlMaster", "MoonWalker", "TokenHunter", "ApexRunner"];
-        
         function showLiveTxToast(icon, title, desc) {
             const toast = document.getElementById('live-tx-toast');
             document.getElementById('toast-icon').innerText = icon;
@@ -1362,54 +1385,6 @@
             }, 4000);
         }
 
-        // Periodic simulated global feed for withdrawals and wins
-        setInterval(() => {
-            const randomName = mockNames[Math.floor(Math.random() * mockNames.length)];
-            const type = Math.random();
-            if (type < 0.5) {
-                const zrlAmount = (Math.floor(Math.random() * 20) + 1) * 500;
-                showLiveTxToast('📤', 'LIVE ZRL WITHDRAWAL', `${randomName} withdrew ${zrlAmount.toLocaleString()} ZRL to wallet`);
-            } else {
-                const solWon = (Math.random() * 0.2 + 0.01).toFixed(3);
-                showLiveTxToast('🎰', 'CASINO JACKPOT WIN', `${randomName} won ${solWon} SOL in Roulette!`);
-            }
-        }, 14000);
-
-        async function fetchOnlineUsersCount() {
-            try {
-                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/online-stats');
-                const data = await response.json();
-                if (data && data.onlineCount) {
-                    document.getElementById('online-users-count').innerText = `Online: ${data.onlineCount.toLocaleString()} runners`;
-                    return;
-                }
-            } catch(e) {}
-
-            let baseCount = parseInt(localStorage.getItem('zrl_cached_online')) || 1420;
-            const fluctuation = Math.floor(Math.random() * 9) - 4;
-            baseCount = Math.max(1200, Math.min(2500, baseCount + fluctuation));
-            localStorage.setItem('zrl_cached_online', baseCount);
-            
-            const onlineEl = document.getElementById('online-users-count');
-            if (onlineEl) {
-                onlineEl.innerText = `Online: ${baseCount.toLocaleString()} runners`;
-            }
-        }
-
-        setInterval(fetchOnlineUsersCount, 8000);
-        setTimeout(fetchOnlineUsersCount, 1000);
-
-        // LIVE CASINO STATS SYNC
-        let globalCasinoSolIn = parseFloat(localStorage.getItem('zrl_global_sol_in')) || 142.85;
-        let globalCasinoZrlWon = parseFloat(localStorage.getItem('zrl_global_zrl_won')) || 1854200;
-
-        function updateCasinoStatsUI() {
-            const solEl = document.getElementById('casino-stat-sol');
-            const zrlEl = document.getElementById('casino-stat-zrl');
-            if (solEl) solEl.innerText = globalCasinoSolIn.toFixed(2) + " SOL";
-            if (zrlEl) zrlEl.innerText = Math.floor(globalCasinoZrlWon).toLocaleString() + " ZRL";
-        }
-
         // AUDIO COACH LOGIC (VOICE ASSISTANT ON/OFF)
         let isAudioCoachEnabled = localStorage.getItem(STORAGE_PREFIX + 'audioCoach') !== 'false';
 
@@ -1420,7 +1395,6 @@
                 toggleElement.checked = isAudioCoachEnabled;
                 if (sliderBg) sliderBg.style.backgroundColor = isAudioCoachEnabled ? '#14f195' : '#282d3d';
             }
-            updateCasinoStatsUI();
         });
 
         window.toggleAudioCoach = function(checkbox) {
@@ -1636,6 +1610,18 @@
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
+
+        // REPORT CASINO ACTIVITY TO BACKEND
+        async function reportCasinoAction(solIn, zrlWon) {
+            try {
+                await fetch('https://zer0life-ai-iz5n.onrender.com/casino-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, solIn, zrlWon, username })
+                });
+                fetchRealOnlineAndCasinoStats();
+            } catch(e) {}
+        }
 
         window.buyBooster = function(costSol, rate, name) {
             triggerHaptic('medium');
@@ -2056,9 +2042,6 @@
             localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
 
-            localStorage.setItem('zrl_global_sol_in', globalCasinoSolIn);
-            localStorage.setItem('zrl_global_zrl_won', globalCasinoZrlWon);
-
             syncStatsToServer();
         }
 
@@ -2189,7 +2172,7 @@
 
             document.getElementById('fortune-modal').style.display = 'flex';
             switchArcadeGame('roulette'); 
-            updateCasinoStatsUI();
+            fetchRealOnlineAndCasinoStats();
             updateEnergyUI();
         }
 
@@ -2224,7 +2207,7 @@
                 freeSpins--;
             } else {
                 totalCasinoTurnover += 0.01;
-                globalCasinoSolIn += 0.01;
+                reportCasinoAction(0.01, 0);
                 
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2237,7 +2220,6 @@
                 saveData();
                 updateUI();
                 updateEnergyUI();
-                updateCasinoStatsUI();
             }
 
             spinBtn.disabled = true;
@@ -2296,9 +2278,10 @@
                     if (won.type === 'zrl') {
                         totalBalance += won.val;
                         earnedZrlBalance += won.val;
-                        globalCasinoZrlWon += won.val;
+                        reportCasinoAction(0, won.val);
                     } else if (won.type === 'sol') {
                         casinoTotalWon += won.val;
+                        reportCasinoAction(0, 0);
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
@@ -2313,7 +2296,6 @@
                     saveData();
                     updateUI();
                     updateEnergyUI();
-                    updateCasinoStatsUI();
 
                     showLiveTxToast('🎡', 'WHEEL OF FORTUNE', `${username || 'Player'} won ${won.text}!`);
                     tg.showAlert(`🎉 Congratulations!\n\nYou won: ${won.text}!`);
@@ -2349,11 +2331,10 @@
             }
 
             totalCasinoTurnover += betSOL; 
-            globalCasinoSolIn += betSOL;
+            reportCasinoAction(betSOL, 0);
             saveData();
             updateUI();
             updateEnergyUI();
-            updateCasinoStatsUI();
 
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2406,10 +2387,10 @@
 
                 if (winSOL > 0) {
                     casinoTotalWon += winSOL; 
+                    reportCasinoAction(0, 0);
                     saveData();
                     updateUI();
                     updateEnergyUI();
-                    updateCasinoStatsUI();
                     triggerHaptic('success');
                     playSound('coin');
 
@@ -2423,11 +2404,10 @@
                 } else if (winZRL > 0) {
                     totalBalance += winZRL;
                     earnedZrlBalance += winZRL;
-                    globalCasinoZrlWon += winZRL;
+                    reportCasinoAction(0, winZRL);
                     saveData();
                     updateUI();
                     updateEnergyUI();
-                    updateCasinoStatsUI();
                     triggerHaptic('success');
                     playSound('coin');
                     showLiveTxToast('🎁', 'ZRL BONUS WIN', `${username || 'Player'} won +${winZRL} ZRL in Slots!`);
@@ -2481,8 +2461,8 @@
             }
 
             totalCasinoTurnover += bjActiveBet;
-            globalCasinoSolIn += bjActiveBet;
-            saveData(); updateUI(); updateEnergyUI(); updateCasinoStatsUI();
+            reportCasinoAction(bjActiveBet, 0);
+            saveData(); updateUI(); updateEnergyUI();
 
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2555,12 +2535,14 @@
         function bjFinish(multiplier, msg) {
             if (multiplier === 'return') {
                 casinoTotalWon += bjActiveBet;
-                saveData(); updateUI(); updateEnergyUI(); updateCasinoStatsUI();
+                reportCasinoAction(0, 0);
+                saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
             } else if (multiplier > 0) {
                 const solWon = bjActiveBet * multiplier;
                 casinoTotalWon += solWon; 
-                saveData(); updateUI(); updateEnergyUI(); updateCasinoStatsUI();
+                reportCasinoAction(0, 0);
+                saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
                 showLiveTxToast('🃏', 'BLACKJACK WIN', `${username || 'Player'} won ${(solWon).toFixed(3)} SOL in Blackjack!`);
             } else {
@@ -2617,8 +2599,8 @@
             }
 
             totalCasinoTurnover += betSOL;
-            globalCasinoSolIn += betSOL;
-            saveData(); updateUI(); updateEnergyUI(); updateCasinoStatsUI();
+            reportCasinoAction(betSOL, 0);
+            saveData(); updateUI(); updateEnergyUI();
 
             try {
                 fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2653,7 +2635,8 @@
                 if (won) {
                     const winSOL = betSOL * 2;
                     casinoTotalWon += winSOL; 
-                    saveData(); updateUI(); updateEnergyUI(); updateCasinoStatsUI();
+                    reportCasinoAction(0, 0);
+                    saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
                     showLiveTxToast('🎯', 'ROULETTE WIN', `${username || 'Player'} won ${winSOL.toFixed(3)} SOL in Roulette!`);
                     tg.showAlert(`🎉 WIN!\n\nNumber: ${winningNum} (${winningColor}). Winnings (+${winSOL.toFixed(3)} SOL) credited!`);
