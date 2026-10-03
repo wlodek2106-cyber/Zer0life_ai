@@ -860,7 +860,7 @@
         <div class="modal-content" style="text-align: center; background: radial-gradient(circle, #1a202c 0%, #0d0f17 100%); border-top: 2px solid #f59e0b; max-width: 400px; padding: 20px 16px 30px 16px;">
             
             <div class="modal-header" style="margin-bottom: 12px;">
-                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0Life Casino</span>
+                <span class="modal-title" style="color: #f59e0b; font-size: 18px;">🎰 Zer0life Casino</span>
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
@@ -1191,13 +1191,17 @@
                 <button class="close-modal" id="close-leaderboard">&times;</button>
             </div>
             
-            <!-- Блок Сезонного Марафона -->
-            <div style="background: linear-gradient(135deg, #15221b 0%, #111717 100%); border: 1px solid rgba(20,241,149,0.3); border-radius: 16px; padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 11px; color: #14f195; font-weight: 800;">🏆 ZRL MARATHON LEAGUE</div>
-                    <div style="font-size: 14px; font-weight: 900; color: #fff; margin-top: 2px;">Prize Pool: 15 SOL + 50k ZRL</div>
+            <!-- Блок Сезонного Марафона (Обновленный призовой фонд в ZRL) -->
+            <div style="background: linear-gradient(135deg, #15221b 0%, #111717 100%); border: 1px solid rgba(168,240,122,0.4); border-radius: 16px; padding: 12px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 11px; color: #a8f07a; font-weight: 800;">🏆 ZRL MONTHLY MARATHON</span>
+                    <span style="font-size: 10px; background: rgba(168,240,122,0.15); color: #a8f07a; padding: 4px 8px; border-radius: 6px; font-weight: 700;">1 Month Pool</span>
                 </div>
-                <div style="font-size: 10px; background: rgba(20,241,149,0.15); color: #14f195; padding: 6px 10px; border-radius: 8px; font-weight: 700;">14 Days Left</div>
+                <div style="font-size: 15px; font-weight: 900; color: #fff; margin-bottom: 6px;">Total Prize Pool: 1,000,000 ZRL</div>
+                <div style="font-size: 11px; color: #8a8d98; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px;">
+                    <span>🥇 500k | 🥈 300k | 🥉 200k</span>
+                    <span style="color: #14f195; font-weight: 700;">+10k ZRL всем участникам!</span>
+                </div>
             </div>
 
             <!-- Достижения (Achievements Hub Preview в лидерборде) -->
@@ -2845,7 +2849,6 @@
                 document.getElementById('deposit-details-box').style.display = 'block';
             };
 
-            // ПРОВЕРКА ДЕПОЗИТА ЧЕРЕЗ БЛОКЧЕЙН (БЕЗ МИНИМАЛЬНЫХ ЛИМИТОВ)
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const txSig = document.getElementById('tx-signature-input').value.trim();
                 const statusMsg = document.getElementById('deposit-status-msg');
@@ -3051,7 +3054,6 @@
                 currentEnergy = Math.max(0, currentEnergy - 0.0075);
                 bootsHP = Math.max(0, bootsHP - 0.02);
 
-                // Озвучка пройденной дистанции каждые 0.5 км через аудио-коуч
                 if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
                     lastSpokenKm = todayDistance;
                     speak(`Пройдено ${todayDistance.toFixed(1)} километров. Отличный темп!`);
