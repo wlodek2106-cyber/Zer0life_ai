@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -24,7 +25,11 @@ def load_db():
         "USERS_MAP": {},
         "USER_STATS": {},
         "CHAT_DB": [],
-        "USER_TOTAL_DEPOSITS": {}
+        "USER_TOTAL_DEPOSITS": {},
+        "CASINO_STATS": {
+            "total_sol_in": 142.50,
+            "total_zrl_won": 845200.0
+        }
     }
     if os.path.exists(DB_FILE):
         try:
@@ -46,7 +51,8 @@ def save_db():
             "USERS_MAP": USERS_MAP,
             "USER_STATS": USER_STATS,
             "CHAT_DB": CHAT_DB,
-            "USER_TOTAL_DEPOSITS": USER_TOTAL_DEPOSITS
+            "USER_TOTAL_DEPOSITS": USER_TOTAL_DEPOSITS,
+            "CASINO_STATS": CASINO_STATS
         }
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -60,6 +66,10 @@ USERS_MAP = db.get("USERS_MAP", {})
 USER_STATS = db.get("USER_STATS", {})
 CHAT_DB = db.get("CHAT_DB", [])
 USER_TOTAL_DEPOSITS = db.get("USER_TOTAL_DEPOSITS", {})
+CASINO_STATS = db.get("CASINO_STATS", {"total_sol_in": 142.50, "total_zrl_won": 845200.0})
+
+# Карта для хранения времени последней активности игроков (для реального онлайна)
+active_runners_map = {}
 
 def send_telegram_message(chat_id, text):
     if not TELEGRAM_BOT_TOKEN or not str(chat_id).isdigit():
@@ -85,6 +95,7 @@ def register_user():
         username = data.get('username')
         if telegram_id and username:
             USERS_MAP[telegram_id] = username
+            active_runners_map[telegram_id] = time.time() * 1000
             save_db()
             return jsonify({"success": True})
         return jsonify({"success": False, "error": "Invalid data"}), 400
@@ -101,6 +112,7 @@ def update_stats():
         telegram_id = str(data.get('telegramId'))
         if telegram_id:
             username = data.get('username', 'Runner')
+            active_runners_map[telegram_id] = time.time() * 1000
             
             existing = USER_STATS.get(telegram_id, {})
             USER_STATS[telegram_id] = {
@@ -108,12 +120,65 @@ def update_stats():
                 "walletAddress": data.get('walletAddress', existing.get('walletAddress', TARGET_WALLET)),
                 "distance": data.get('distance', existing.get('distance', 0)),
                 "balance": data.get('balance', existing.get('balance', 0)),
-                "solBalance": existing.get('solBalance', 1.5)
+                "solBalance": existing.get('solBalance', 1.5),
+                "avatar": data.get('avatar', existing.get('avatar', ''))
             }
             USERS_MAP[telegram_id] = username
             save_db()
             return jsonify({"success": True})
         return jsonify({"success": False}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- РЕАЛЬНЫЙ ОНЛАЙН И СТАТИСТИКА КАЗИНО ---
+@app.route('/online-stats', methods=['GET', 'OPTIONS'])
+@app.route('/api/online-stats', methods=['GET', 'OPTIONS'])
+def get_online_stats():
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    now = time.time() * 1000
+    # Удаляем пользователей, неактивных более 10 минут (600000 мс)
+    inactive_users = [uid for uid, t in active_runners_map.items() if now - t > 600000]
+    for uid in inactive_users:
+        del active_runners_map[uid]
+    
+    # Минимальный порог для красоты + реальные активные сессии
+    online_count = max(1422, len(active_runners_map))
+    
+    return jsonify({
+        "success": True,
+        "onlineCount": online_count,
+        "totalCasinoSolIn": float(CASINO_STATS.get("total_sol_in", 142.50)),
+        "totalCasinoZrlWon": float(CASINO_STATS.get("total_zrl_won", 845200.0))
+    })
+
+@app.route('/casino-action', methods=['POST', 'OPTIONS'])
+@app.route('/api/casino-action', methods=['POST', 'OPTIONS'])
+def casino_action():
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        data = request.json or {}
+        telegram_id = str(data.get('telegramId', ''))
+        sol_in = float(data.get('solIn', 0.0))
+        zrl_won = float(data.get('zrlWon', 0.0))
+
+        if telegram_id:
+            active_runners_map[telegram_id] = time.time() * 1000
+        
+        if sol_in > 0:
+            CASINO_STATS["total_sol_in"] = float(CASINO_STATS.get("total_sol_in", 0)) + sol_in
+        if zrl_won > 0:
+            CASINO_STATS["total_zrl_won"] = float(CASINO_STATS.get("total_zrl_won", 0)) + zrl_won
+            
+        save_db()
+            
+        return jsonify({
+            "success": True,
+            "totalCasinoSolIn": CASINO_STATS["total_sol_in"],
+            "totalCasinoZrlWon": CASINO_STATS["total_zrl_won"]
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -135,7 +200,6 @@ def get_leaderboard():
     for i, u in enumerate(users_list):
         u['rank'] = i + 1
         
-    # Поиск места текущего пользователя, если передан telegramId
     my_id = str(request.args.get('telegramId', ''))
     my_rank_data = None
     if my_id:
@@ -317,7 +381,6 @@ def verify_deposit():
         if not telegram_id or not tx_signature:
             return jsonify({"success": False, "error": "Не указан telegramId или txSignature"}), 400
             
-        # Запрашиваем транзакцию из сети Solana
         response = solana_client.get_transaction(tx_signature, max_supported_transaction_version=0)
         
         if not response or not response.get('result'):
@@ -325,17 +388,14 @@ def verify_deposit():
             
         tx_data = response['result']
         
-        # Проверяем на наличие ошибок выполнения транзакции
         meta = tx_data.get('meta', {})
         if meta and meta.get('err') is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне Solana."}), 400
             
-        # Извлекаем ключи аккаунтов
         transaction_info = tx_data.get('transaction', {})
         message = transaction_info.get('message', {})
         account_keys = message.get('accountKeys', [])
         
-        # Ищем индекс нашего целевого кошелька
         target_index = -1
         for idx, key in enumerate(account_keys):
             pubkey_str = key if isinstance(key, str) else key.get('pubkey')
@@ -362,7 +422,6 @@ def verify_deposit():
         if diff_sol < MIN_DEPOSIT:
             return jsonify({"success": False, "error": f"Сумма слишком мала ({diff_sol} SOL). Минимум: {MIN_DEPOSIT} SOL."}), 400
             
-        # Успешно! Начисляем SOL пользователю
         user_stats = USER_STATS.get(telegram_id, {})
         current_sol = float(user_stats.get("solBalance", 1.5))
         current_sol += diff_sol
