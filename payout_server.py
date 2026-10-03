@@ -84,7 +84,6 @@ def send_telegram_message(chat_id, text):
         print("TG Notification error:", e)
 
 def check_and_expire_boosters(user_stats):
-    """Проверяет, не истек ли срок действия недельного буста (7 дней)"""
     expire_time = user_stats.get("booster_expire_time", 0)
     if expire_time and time.time() > expire_time:
         user_stats["active_temp_booster"] = None
@@ -484,7 +483,6 @@ def withdraw():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-# --- ЭНДПОИНТ ПОКУПКИ БУСТА НА 7 ДНЕЙ ---
 @app.route('/api/buy-booster-7days', methods=['POST', 'OPTIONS'])
 @app.route('/buy-booster-7days', methods=['POST', 'OPTIONS'])
 def buy_booster_7days():
@@ -493,8 +491,8 @@ def buy_booster_7days():
     try:
         data = request.json or {}
         telegram_id = str(data.get('telegramId'))
-        booster_id = data.get('boosterId')  # например, 'boots_7days' или множитель
-        cost = float(data.get('cost', 0.2))  # цена в SOL (например 0.2 для 2x Speed или ваш прайс)
+        booster_id = data.get('boosterId')
+        cost = float(data.get('cost', 0.2))
 
         if not telegram_id:
             return jsonify({"success": False, "error": "Unauthorized"})
@@ -509,7 +507,6 @@ def buy_booster_7days():
         current_sol -= cost
         user_stats["solBalance"] = current_sol
         
-        # Устанавливаем буст на 7 дней (7 * 24 * 60 * 60 секунд)
         seven_days_seconds = 7 * 24 * 60 * 60
         user_stats["active_temp_booster"] = booster_id or "boots_7days"
         user_stats["booster_expire_time"] = time.time() + seven_days_seconds
@@ -599,7 +596,7 @@ def fortune_spin():
             user_stats["solBalance"] = float(user_stats.get("solBalance", 0)) + reward["val"]
         elif reward["type"] == "booster":
             user_stats["active_temp_booster"] = reward["id"]
-            user_stats["booster_expire_time"] = time.time() + 3600  # часовой бонус из колеса
+            user_stats["booster_expire_time"] = time.time() + 3600
         elif reward["type"] == "repair":
             user_stats["boots_hp"] = 100.0
 
