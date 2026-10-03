@@ -32,7 +32,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .balance-section {
@@ -73,6 +73,37 @@
         .balance-amount {
             font-size: 20px;
             font-weight: 700;
+        }
+
+        /* ONLINE USERS BADGE */
+        .online-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(20, 241, 149, 0.08);
+            border: 1px solid rgba(20, 241, 149, 0.25);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #14f195;
+            margin-bottom: 16px;
+            width: fit-content;
+        }
+
+        .online-dot {
+            width: 7px;
+            height: 7px;
+            background-color: #14f195;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #14f195;
+            animation: onlinePulse 2s infinite;
+        }
+
+        @keyframes onlinePulse {
+            0% { transform: scale(0.95); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+            100% { transform: scale(0.95); opacity: 1; }
         }
 
         .wallet-btn {
@@ -676,6 +707,12 @@
             </div>
         </div>
 
+        <!-- ONLINE USERS BADGE -->
+        <div class="online-badge">
+            <div class="online-dot"></div>
+            <span id="online-users-count">Online: 1,428 runners</span>
+        </div>
+
         <div class="energy-card">
             <div class="energy-header">
                 <span>⚡ ENERGY / STAMINA</span>
@@ -1097,7 +1134,7 @@
                         <input type="text" id="tx-signature-input" class="custom-input-field" placeholder="Paste signature from your wallet..." />
                     </div>
 
-                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: &000; font-weight: 800;">Verify & Credit SOL 🔄</button>
+                    <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Verify & Credit SOL 🔄</button>
                     <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
@@ -1266,6 +1303,33 @@
 
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
+
+        // ONLINE USERS FETCHING / LIVE SIMULATION
+        async function fetchOnlineUsersCount() {
+            try {
+                // Если у вас на бэкенде Render будет эндпоинт /online-stats, он будет запрашиваться оттуда
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/online-stats');
+                const data = await response.json();
+                if (data && data.onlineCount) {
+                    document.getElementById('online-users-count').innerText = `Online: ${data.onlineCount.toLocaleString()} runners`;
+                    return;
+                }
+            } catch(e) {}
+
+            // Плавная живая симуляция онлайн-статистики (от 1250 до 1650 пользователей)
+            let baseCount = parseInt(localStorage.getItem('zrl_cached_online')) || 1420;
+            const fluctuation = Math.floor(Math.random() * 9) - 4; // от -4 до +4
+            baseCount = Math.max(1200, Math.min(2500, baseCount + fluctuation));
+            localStorage.setItem('zrl_cached_online', baseCount);
+            
+            const onlineEl = document.getElementById('online-users-count');
+            if (onlineEl) {
+                onlineEl.innerText = `Online: ${baseCount.toLocaleString()} runners`;
+            }
+        }
+
+        setInterval(fetchOnlineUsersCount, 8000);
+        setTimeout(fetchOnlineUsersCount, 1000);
 
         // AUDIO COACH LOGIC (VOICE ASSISTANT ON/OFF)
         let isAudioCoachEnabled = localStorage.getItem(STORAGE_PREFIX + 'audioCoach') !== 'false';
@@ -3212,7 +3276,7 @@
 
         const LEVELS = [
             { level: 1, targetKm: 5, reward: "Standard" },
-            { level: 2, targetKm: 20, reward: "Standard" },
+            { level: 2, targetNum: 20, targetKm: 20, reward: "Standard" },
             { level: 3, targetKm: 50, reward: "Standard" },
             { level: 4, targetKm: 100, reward: "+10,000 ZRL Bonus (7d hold)" },
             { level: 5, targetKm: 150, reward: "Elite Tier" },
@@ -3246,7 +3310,7 @@
 
             levelTextEl.innerText = 'Level ' + currentLevelObj.level;
             progressTextEl.innerText = `${totalDistance.toFixed(2)} / ${currentLevelObj.targetKm} km`;
-            progressBarEl.style.width = `${progressPercent}%`;
+            progressBarEl.style.width = `${progressPercent}`;
             updateWalletUI();
             updateEnergyUI();
         }
