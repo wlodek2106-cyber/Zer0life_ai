@@ -1209,10 +1209,10 @@
                     <div class="booster-rate">1,000 ZRL / km</div>
                     <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (500 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (1,500 ZRL/km)')">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
-                    <div class="booster-rate">500 ZRL / km</div>
+                    <div class="booster-rate">1,500 ZRL / km</div>
                     <div class="booster-price-btn">1 SOL</div>
                 </div>
                 <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
@@ -1572,8 +1572,7 @@
             }
         });
 
-        // Фиксируем курс строго 500 ZRL/km (или текущий активный буст)
-        let ZRL_PER_KM = 500;
+        let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
         let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (500 ZRL/km)';
 
         let boosterExpiryTime = parseInt(localStorage.getItem(STORAGE_PREFIX + 'booster_expiry')) || 0;
@@ -1583,12 +1582,10 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 500);
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
-        } else {
-            const savedRate = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate'));
-            if (!isNaN(savedRate)) ZRL_PER_KM = savedRate;
         }
 
         const METERS_PER_STEP = 0.00075; 
+        const MAX_SPEED_KMH = 14; 
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = SHARED_POOL_WALLET;
@@ -1630,7 +1627,11 @@
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
         let isRunning = false;
-        let runInterval = null;
+        let watchId = null;
+        let currentSpeedKmh = 0;
+        let lastLat = null;
+        let lastLon = null;
+        let lastTime = null;
         let lastSpokenKm = 0;
 
         const headerUsernameLabel = document.getElementById('header-username-label');
@@ -3135,7 +3136,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠ Invalid amount or exceeds your ZRL balance.');
+                                        tg.showAlert('⚠️️ Invalid amount or exceeds your ZRL balance.');
                                     }
                                 }
                             );
@@ -3165,7 +3166,97 @@
             tg.showAlert('✅ Address copied to clipboard!');
         };
 
-        // Стабильный таймер бега при активной тренировке (без капризных датчиков и скачков GPS)
+        function handlePositionUpdate(position) {
+            const currentLat = position.coords.latitude;
+            const currentLon = position.coords.longitude;
+            const currentTime = position.timestamp;
+
+            if (lastLat !== null && lastLon !== null && lastTime !== null) {
+                const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
+                const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
+
+                if (timeDiffHours > 0) {
+                    currentSpeedKmh = distanceKm / timeDiffHours;
+                    if (currentSpeedKmh > MAX_SPEED_KMH) {
+                        warningEl.style.display = 'block';
+                    } else {
+                        warningEl.style.display = 'none';
+                    }
+                }
+            }
+
+            lastLat = currentLat;
+            lastLon = currentLon;
+            lastTime = currentTime;
+        }
+
+        let lastStepTimestamp = 0;
+
+        function handleMotion(event) {
+            if (!isRunning) return;
+
+            if (currentEnergy <= 0) {
+                stopRunning();
+                triggerHaptic('error');
+                tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge.");
+                return;
+            }
+
+            if (bootsHP <= 0) {
+                stopRunning();
+                triggerHaptic('error');
+                tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers.");
+                return;
+            }
+
+            const acc = event.accelerationIncludingGravity || event.acceleration;
+            if (!acc) return;
+
+            const totalAcc = Math.sqrt((acc.x || 0) * (acc.x || 0) + (acc.y || 0) * (acc.y || 0) + (acc.z || 0) * (acc.z || 0));
+            const now = Date.now();
+            const timeDelta = now - lastStepTimestamp;
+
+            // Смягченные пороги акселерометра для гарантированного начисления ZRL при реальном движении
+            if (totalAcc > 9.2 && timeDelta > 250) {
+                lastStepTimestamp = now;
+                todaySteps++;
+                triggerHaptic('light');
+
+                const stepKm = METERS_PER_STEP;
+                todayDistance += stepKm;
+                totalDistance += stepKm;
+                
+                // Гарантированное приращение токенов с учетом множителя
+                unclaimedZRL += (stepKm * ZRL_PER_KM);
+                
+                currentEnergy = Math.max(0, currentEnergy - 0.0075);
+                bootsHP = Math.max(0, bootsHP - 0.02);
+
+                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                    lastSpokenKm = todayDistance;
+                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                }
+
+                updateUI();
+                updateEnergyUI();
+                checkRandomMysteryBox();
+                saveData();
+            }
+        }
+
+        function stopRunning() {
+            isRunning = false;
+            startBtn.classList.remove('active-run');
+            startBtnText.innerText = 'Start Run';
+            window.removeEventListener('devicemotion', handleMotion);
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            warningEl.style.display = 'none';
+            speak("Workout stopped.");
+        }
+
         startBtn.addEventListener('click', async () => {
             triggerHaptic('heavy');
             playSound('click');
@@ -3182,62 +3273,39 @@
                     return;
                 }
 
-                warningEl.style.display = 'none';
-                isRunning = true;
-                startBtn.classList.add('active-run');
-                startBtnText.innerText = 'Stop Run';
-                speak("Workout started. Keep up the pace!");
+                if ("geolocation" in navigator) {
+                    watchId = navigator.geolocation.watchPosition(
+                        handlePositionUpdate, 
+                        (err) => console.log(err), 
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                    );
+                }
 
-                runInterval = setInterval(() => {
-                    if (!isRunning) return;
-
-                    if (currentEnergy <= 0 || bootsHP <= 0) {
-                        stopRunning();
-                        tg.showAlert("⚠ Workout stopped: Energy or Boots durability depleted.");
-                        return;
-                    }
-
-                    const stepsMade = 2; // Шаги за тик
-                    const stepKm = stepsMade * METERS_PER_STEP;
-
-                    todaySteps += stepsMade;
-                    todayDistance += stepKm;
-                    totalDistance += stepKm;
-                    
-                    // Начисление строго по курсу ZRL_PER_KM (500 ZRL за 1 км или по текущему бусту)
-                    unclaimedZRL += (stepKm * ZRL_PER_KM);
-
-                    currentEnergy = Math.max(0, currentEnergy - 0.005);
-                    bootsHP = Math.max(0, bootsHP - 0.01);
-
-                    if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
-                        lastSpokenKm = todayDistance;
-                        speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
-                    }
-
-                    triggerHaptic('light');
-                    updateUI();
-                    updateEnergyUI();
-                    checkRandomMysteryBox();
-                    saveData();
-                }, 1000);
-
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try {
+                        const response = await DeviceMotionEvent.requestPermission();
+                        if (response === 'granted') {
+                            window.addEventListener('devicemotion', handleMotion);
+                            isRunning = true;
+                            startBtn.classList.add('active-run');
+                            startBtnText.innerText = 'Stop Run';
+                            speak("Workout started. Keep up the pace!");
+                        } else {
+                            triggerHaptic('error');
+                            tg.showAlert("Motion permission is required to track your run.");
+                        }
+                    } catch (e) {}
+                } else {
+                    window.addEventListener('devicemotion', handleMotion);
+                    isRunning = true;
+                    startBtn.classList.add('active-run');
+                    startBtnText.innerText = 'Stop Run';
+                    speak("Workout started. Keep up the pace!");
+                }
             } else {
                 stopRunning();
             }
         });
-
-        function stopRunning() {
-            isRunning = false;
-            if (runInterval) {
-                clearInterval(runInterval);
-                runInterval = null;
-            }
-            startBtn.classList.remove('active-run');
-            startBtnText.innerText = 'Start Run';
-            warningEl.style.display = 'none';
-            speak("Workout stopped.");
-        }
 
         document.getElementById('claim-btn').addEventListener('click', () => {
             triggerHaptic('medium');
@@ -3291,6 +3359,17 @@
             playSound('click');
             boostersModal.style.display = 'flex';
         });
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
 
         const LEVELS = [
             { level: 1, targetKm: 5, reward: "Standard" },
