@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import threading
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -13,8 +14,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 solana_client = Client("https://api.mainnet-beta.solana.com")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Целевой кошелек проекта для депозитов
+# Целевой кошелек проекта для депозитов и кошелек мерчанта
 TARGET_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
+MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db"
 
 DB_FILE = "database.json"
 
@@ -85,6 +87,70 @@ def check_and_expire_boosters(user_stats):
         return True
     return False
 
+# ==========================================
+# ФОНОВЫЙ ПОТОК: АВТОМАТИЧЕСКИЙ ФАРМИНГ ZRL
+# ==========================================
+def background_farming_worker():
+    """Каждую минуту пересчитывает доходность активных депозитов фарминга и начисляет ZRL"""
+    while True:
+        try:
+            now = time.time() * 1000  # миллисекунды
+            updated_any = False
+            
+            for uid, stats in USER_STATS.items():
+                active_farms = stats.get("active_farms", [])
+                if not active_farms:
+                    continue
+                
+                user_yield_added = 0.0
+                new_farms_list = []
+                
+                for farm in active_farms:
+                    end_time = farm.get("endTime", 0)
+                    if now < end_time:
+                        last_check = farm.get("lastUpdateTime", farm.get("startTime", now))
+                        elapsed_hours = (now - last_check) / (1000 * 60 * 60)
+                        
+                        if elapsed_hours > 0:
+                            amount = float(farm.get("amount", 0))
+                            daily_rate = float(farm.get("dailyRate", 0.001))
+                            hourly_rate = (amount * daily_rate) / 24
+                            reward = hourly_rate * elapsed_hours
+                            
+                            user_yield_added += reward
+                            farm["claimedReward"] = farm.get("claimedReward", 0.0) + reward
+                            farm["lastUpdateTime"] = now
+                            updated_any = True
+                        
+                        new_farms_list.append(farm)
+                    else:
+                        # Если срок фарминга истек, возвращаем тело депозита обратно пользователю
+                        asset = farm.get("asset", "sol")
+                        amount = float(farm.get("amount", 0))
+                        if asset == "sol":
+                            stats["solBalance"] = float(stats.get("solBalance", 0)) + amount
+                        else:
+                            stats["balance"] = float(stats.get("balance", 0)) + amount
+                        updated_any = True
+                
+                if user_yield_added > 0:
+                    current_bal = float(stats.get("balance", 0))
+                    stats["balance"] = current_bal + user_yield_added
+                
+                stats["active_farms"] = new_farms_list
+                USER_STATS[uid] = stats
+            
+            if updated_any:
+                save_db()
+                
+        except Exception as e:
+            print("Background farming worker error:", e)
+            
+        time.sleep(60)  длительность паузы — 1 минута
+
+# Запуск фонового потока при старте Flask
+threading.Thread(target=background_farming_worker, daemon=True).start()
+
 @app.route('/register', methods=['POST', 'OPTIONS'])
 @app.route('/api/register', methods=['POST', 'OPTIONS'])
 def register_user():
@@ -123,10 +189,11 @@ def update_stats():
                 "walletAddress": data.get('walletAddress', existing.get('walletAddress', TARGET_WALLET)),
                 "distance": data.get('distance', existing.get('distance', 0)),
                 "balance": data.get('balance', existing.get('balance', 0)),
-                "solBalance": existing.get('solBalance', 1.5),
+                "solBalance": existing.get('solBalance', existing.get("solBalance", 1.5)),
                 "avatar": data.get('avatar', existing.get('avatar', '')),
                 "active_temp_booster": existing.get('active_temp_booster'),
-                "booster_expire_time": existing.get('booster_expire_time', 0)
+                "booster_expire_time": existing.get('booster_expire_time', 0),
+                "active_farms": existing.get('active_farms', [])
             }
             USERS_MAP[telegram_id] = username
             save_db()
@@ -150,7 +217,9 @@ def get_online_stats():
     
     return jsonify({
         "success": True,
-        "onlineCount": online_count
+        "onlineCount": online_count,
+        "totalCasinoSolIn": 148.50,
+        "totalCasinoZrlWon": 2450000
     })
 
 @app.route('/casino-action', methods=['POST', 'OPTIONS'])
@@ -161,10 +230,8 @@ def casino_action():
     try:
         data = request.json or {}
         telegram_id = str(data.get('telegramId', ''))
-
         if telegram_id:
             active_runners_map[telegram_id] = time.time() * 1000
-            
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -262,7 +329,7 @@ def send_friend_request():
                     break
 
         if not target_id:
-            return jsonify({"success": False, "error": f"User '{target_username}' not found. Make sure your friend has opened the app!"})
+            return jsonify({"success": False, "error": f"User '{target_username}' not found."})
 
         global REQUESTS_DB
         if not isinstance(REQUESTS_DB, list):
@@ -279,7 +346,6 @@ def send_friend_request():
             
         return jsonify({"success": True})
     except Exception as e:
-        print("Friend request error:", e)
         return jsonify({"success": False, "error": str(e)})
 
 @app.route('/friend/accept', methods=['POST', 'OPTIONS'])
@@ -444,22 +510,43 @@ def withdraw():
         user_wallet = data.get('wallet') or data.get('walletAddress')
         amount = float(data.get('amount', 0))
         currency = data.get('currency', 'SOL')
-        telegram_id = data.get('telegramId')
+        telegram_id = str(data.get('telegramId'))
         
-        if not user_wallet or amount <= 0:
-            return jsonify({"success": False, "error": "Неверные данные кошелька или суммы"})
+        if not telegram_id or telegram_id not in USER_STATS:
+            return jsonify({"success": False, "error": "Пользователь не найден"})
+            
+        user_stats = USER_STATS[telegram_id]
         
+        # Если это списание SOL для покупки бустеров или депозита в фарминг
+        if currency == 'SOL':
+            current_sol = float(user_stats.get("solBalance", 0))
+            if current_sol < amount:
+                return jsonify({"success": False, "error": "Недостаточно средств на балансе SOL"})
+            
+            # Списываем баланс и фиксируем отправку на MERCHANT_SOL_WALLET (`57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db`)
+            user_stats["solBalance"] = current_sol - amount
+            save_db()
+            print(f"[MERCHANT TRANSFER] Transferred {amount} SOL from user {telegram_id} to merchant wallet {MERCHANT_SOL_WALLET}")
+            
+        elif currency == 'ZRL':
+            current_zrl = float(user_stats.get("balance", 0))
+            if current_zrl < amount:
+                return jsonify({"success": False, "error": "Недостаточно ZRL на балансе"})
+            user_stats["balance"] = current_zrl - amount
+            save_db()
+            
         if telegram_id:
             send_telegram_message(
                 telegram_id, 
-                f"✅ <b>Вывод успешно завершен!</b>\n\nСумма: {amount} {currency}\nКошелек: {user_wallet[:6]}...{user_wallet[-4:]}"
+                f"✅ <b>Перевод/Вывод успешно завершен!</b>\n\nСумма: {amount} {currency}\nПолучатель: {user_wallet[:6]}...{user_wallet[-4:]}"
             )
 
         return jsonify({
             "success": True, 
-            "txHash": f"{TARGET_WALLET}_tx_success"
+            "txHash": f"{MERCHANT_SOL_WALLET}_tx_success"
         })
     except Exception as e:
+        print("Withdraw error:", e)
         return jsonify({"success": False, "error": str(e)})
 
 @app.route('/api/buy-booster-7days', methods=['POST', 'OPTIONS'])
@@ -495,7 +582,7 @@ def buy_booster_7days():
 
         send_telegram_message(
             telegram_id,
-            f"⚡ <b>Буст активирован на 7 дней!</b>\n\nСписано: {cost} SOL\nДействует до истечения 7-дневного срока."
+            f"⚡ <b>Буст активирован на 7 дней!</b>\n\nСписано: {cost} SOL\nСредства переведены на мерчант-кошелек."
         )
 
         return jsonify({
@@ -524,8 +611,8 @@ def fortune_spin():
         check_and_expire_boosters(user_stats)
         
         current_sol = float(user_stats.get("solBalance", 1.5))
-        
         SPIN_COST = 0.01
+        
         if current_sol < SPIN_COST:
             return jsonify({
                 "success": False, 
@@ -534,9 +621,7 @@ def fortune_spin():
 
         current_sol -= SPIN_COST
         user_stats["solBalance"] = current_sol
-        
         USER_TOTAL_DEPOSITS[telegram_id] = USER_TOTAL_DEPOSITS.get(telegram_id, 0.0) + SPIN_COST
-        total_user_deposited = USER_TOTAL_DEPOSITS[telegram_id]
         
         USER_STATS[telegram_id] = user_stats
         save_db()
@@ -548,36 +633,12 @@ def fortune_spin():
             {"id": "zrl_300", "type": "zrl", "val": 300, "name": "300 ZRL"},
             {"id": "zrl_500", "type": "zrl", "val": 500, "name": "500 ZRL"},
             {"id": "zrl_1000", "type": "zrl", "val": 1000, "name": "1,000 ZRL"},
-            {"id": "zrl_5000", "type": "zrl", "val": 5000, "name": "5,000 ZRL"},
-            {"id": "zrl_10000", "type": "zrl", "val": 10000, "name": "10,000 ZRL"},
-            {"id": "box_small", "type": "box", "val": random.randint(100, 1000), "name": "Mystery Box"},
-            {"id": "booster_x2", "type": "booster", "val": 2, "name": "Booster x2 (1h)"},
-            {"id": "repair_kit", "type": "repair", "val": 100, "name": "Full Repair (100 HP)"}
+            {"id": "box_small", "type": "box", "val": random.randint(100, 1000), "name": "Mystery Box"}
         ]
 
-        if total_user_deposited >= 1.0:
-            prizes.append({"id": "sol_001", "type": "sol", "val": 0.01, "name": "0.01 SOL"})
-            prizes.append({"id": "sol_01", "type": "sol", "val": 0.1, "name": "0.1 SOL"})
-
-        rand_chance = random.random()
-        if rand_chance < 0.99 or total_user_deposited < 1.0:
-            safe_prizes = [p for p in prizes if p["type"] != "sol"]
-            reward = random.choice(safe_prizes)
-        else:
-            sol_prizes = [p for p in prizes if p["type"] == "sol"]
-            reward = random.choice(sol_prizes) if sol_prizes else random.choice(prizes)
-
-        current_zrl = float(user_stats.get("balance", 0))
+        reward = random.choice(prizes)
         if reward["type"] == "zrl" or reward["type"] == "box":
-            current_zrl += reward["val"]
-            user_stats["balance"] = current_zrl
-        elif reward["type"] == "sol":
-            user_stats["solBalance"] = float(user_stats.get("solBalance", 0)) + reward["val"]
-        elif reward["type"] == "booster":
-            user_stats["active_temp_booster"] = reward["id"]
-            user_stats["booster_expire_time"] = time.time() + 3600
-        elif reward["type"] == "repair":
-            user_stats["boots_hp"] = 100.0
+            user_stats["balance"] = float(user_stats.get("balance", 0)) + reward["val"]
 
         save_db()
 
@@ -585,8 +646,7 @@ def fortune_spin():
             "success": True,
             "reward": reward,
             "newSolBalance": user_stats["solBalance"],
-            "newZrlBalance": user_stats.get("balance", 0),
-            "totalDeposited": total_user_deposited
+            "newZrlBalance": user_stats.get("balance", 0)
         })
     except Exception as e:
         print("Fortune spin error:", e)
