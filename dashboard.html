@@ -904,9 +904,21 @@
                 </div>
             </div>
 
-            <div class="custom-input-group" style="margin-bottom: 10px;">
+            <div class="custom-input-group" style="margin-bottom: 6px;">
                 <label style="font-size: 11px; color: #14f195; font-weight: 700;" id="farming-input-label">Amount to Lock (Max 10 SOL):</label>
-                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 10" step="0.001" max="10" />
+                <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 1" step="0.001" max="10" oninput="calculateFarmingEstimation()" />
+            </div>
+
+            <!-- ИНТЕРАКТИВНЫЙ КАЛЬКУЛЯТОР ДОХОДНОСТИ В ДЕНЬ -->
+            <div id="farming-calc-box" style="background: rgba(20, 241, 149, 0.08); border: 1px dashed rgba(20, 241, 149, 0.4); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">ESTIMATED YIELD:</div>
+                    <div style="font-size: 13px; color: #14f195; font-weight: 800;" id="calc-per-day-text">+0.00 ZRL / day</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">TOTAL REWARD:</div>
+                    <div style="font-size: 13px; color: #a8f07a; font-weight: 800;" id="calc-total-text">0.00 ZRL</div>
+                </div>
             </div>
 
             <button class="claim-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 14px;" onclick="confirmFarmingDeposit()">
@@ -934,7 +946,6 @@
                 <button class="close-modal" onclick="closeFortuneModal()">&times;</button>
             </div>
 
-            <!-- LIVE CASINO POOL & DEPOSITORS STATS -->
             <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 14px; padding: 10px 12px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; text-align: center; font-size: 11px;">
                 <div>
                     <div style="color: #8a8d98; font-weight: 700; font-size: 10px;">TOTAL SOL IN:</div>
@@ -1712,7 +1723,7 @@
         };
 
         let currentFarmingAsset = 'sol';
-        let selectedFarmingMonths = 300; // по умолчанию ставим 300%
+        let selectedFarmingMonths = 300; // по умолчанию 300%
 
         window.openFarmingModal = function() {
             triggerHaptic('light');
@@ -1735,6 +1746,7 @@
             const btnSol = document.getElementById('farm-tab-sol');
             const btnZrl = document.getElementById('farm-tab-zrl');
             const titleEl = document.getElementById('farming-hub-title');
+            const inputLabel = document.getElementById('farming-input-label');
 
             if (asset === 'sol') {
                 btnSol.style.background = '#14f195';
@@ -1746,6 +1758,8 @@
                 btnZrl.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 Solana & ZRL Farming';
+                inputLabel.innerText = 'Amount to Lock (Max 10 SOL):';
+                document.getElementById('farming-amount-input').max = 10;
             } else {
                 btnZrl.style.background = '#a8f07a';
                 btnZrl.style.color = '#000';
@@ -1756,7 +1770,10 @@
                 btnSol.style.fontWeight = '700';
 
                 titleEl.innerText = '🌾 ZRL Token Farming (0.5x Yield)';
+                inputLabel.innerText = 'Amount to Lock (Max 1,000,000 ZRL):';
+                document.getElementById('farming-amount-input').max = 1000000;
             }
+            calculateFarmingEstimation();
         }
 
         window.selectFarmingPlan = function(months) {
@@ -1774,6 +1791,48 @@
                     }
                 }
             });
+            calculateFarmingEstimation();
+        }
+
+        function getPlanDailyRateMultiplier() {
+            if (currentFarmingAsset === 'sol') {
+                let totalTargetZrlPerSol = 100000;
+                let totalDays = selectedFarmingMonths * 30;
+
+                if (selectedFarmingMonths === 300) {
+                    totalTargetZrlPerSol = 300000;
+                    totalDays = 365;
+                } else if (selectedFarmingMonths === 12) {
+                    totalTargetZrlPerSol = 100000;
+                } else if (selectedFarmingMonths === 6) {
+                    totalTargetZrlPerSol = 50000;
+                } else if (selectedFarmingMonths === 3) {
+                    totalTargetZrlPerSol = 25000;
+                } else if (selectedFarmingMonths === 1) {
+                    totalTargetZrlPerSol = 8333.33;
+                }
+                return { dailyRate: totalTargetZrlPerSol / totalDays, totalDays };
+            } else {
+                let dailyRate = 0.001;
+                if (selectedFarmingMonths === 3) dailyRate = 0.004;
+                else if (selectedFarmingMonths === 6) dailyRate = 0.007;
+                else if (selectedFarmingMonths === 12) dailyRate = 0.013;
+                dailyRate *= 0.5;
+                const totalDays = (selectedFarmingMonths === 300 ? 12 : selectedFarmingMonths) * 30;
+                return { dailyRate, totalDays };
+            }
+        }
+
+        window.calculateFarmingEstimation = function() {
+            const amountInput = document.getElementById('farming-amount-input');
+            const amount = parseFloat(amountInput.value) || 0;
+
+            const { dailyRate, totalDays } = getPlanDailyRateMultiplier();
+            const perDayZrl = amount * dailyRate;
+            const totalZrl = perDayZrl * totalDays;
+
+            document.getElementById('calc-per-day-text').innerText = `+${perDayZrl.toFixed(2)} ZRL / day`;
+            document.getElementById('calc-total-text').innerText = `${totalZrl.toFixed(2)} ZRL`;
         }
 
         window.confirmFarmingDeposit = function() {
@@ -1786,7 +1845,6 @@
                 return;
             }
 
-            // Ограничение в максимум 10 SOL на один депозит для всех планов
             if (currentFarmingAsset === 'sol' && amount > 10) {
                 triggerHaptic('error');
                 tg.showAlert('⚠ Maximum limit per farming deposit is 10 SOL.');
@@ -1833,33 +1891,8 @@
                 earnedZrlBalance = Math.max(0, earnedZrlBalance - amount);
             }
 
-            let dailyRate = 0.001; 
-            if (currentFarmingAsset === 'sol') {
-                let totalTargetZrlPerSol = 100000;
-                let totalDays = selectedFarmingMonths * 30;
-
-                if (selectedFarmingMonths === 300) {
-                    totalTargetZrlPerSol = 300000; // 300% годовых (300k ZRL на 1 SOL)
-                    totalDays = 365;
-                } else if (selectedFarmingMonths === 12) {
-                    totalTargetZrlPerSol = 100000;
-                } else if (selectedFarmingMonths === 6) {
-                    totalTargetZrlPerSol = 50000;
-                } else if (selectedFarmingMonths === 3) {
-                    totalTargetZrlPerSol = 25000;
-                } else if (selectedFarmingMonths === 1) {
-                    totalTargetZrlPerSol = 8333.33;
-                }
-
-                dailyRate = (totalTargetZrlPerSol / totalDays); 
-            } else {
-                if (selectedFarmingMonths === 3) dailyRate = 0.004;
-                else if (selectedFarmingMonths === 6) dailyRate = 0.007;
-                else if (selectedFarmingMonths === 12) dailyRate = 0.013;
-                dailyRate *= 0.5; 
-            }
-
-            const durationMs = (selectedFarmingMonths === 300 ? 12 : selectedFarmingMonths) * 30 * 24 * 60 * 60 * 1000;
+            const { dailyRate, totalDays } = getPlanDailyRateMultiplier();
+            const durationMs = totalDays * 24 * 60 * 60 * 1000;
             const now = Date.now();
 
             const newDeposit = {
@@ -1879,6 +1912,7 @@
             updateUI();
             renderFarmingDeposits();
             amountInput.value = '';
+            calculateFarmingEstimation();
 
             triggerHaptic('success');
             playSound('success');
@@ -3407,6 +3441,7 @@
         updateCheckinUI();
         updateEnergyUI();
         updateUI();
+        calculateFarmingEstimation();
     </script>
 </body>
 </html>
