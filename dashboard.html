@@ -738,7 +738,7 @@
 
         <div class="online-badge">
             <div class="online-dot"></div>
-            <span id="online-users-count">Online: Syncing...</span>
+            <span id="online-users-count">Online: 2,480 runners</span>
         </div>
 
         <div class="energy-card">
@@ -1342,14 +1342,33 @@
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
+        // Система динамического онлайна и социального доказательства для привлечения аудитории
+        let simulatedOnlineCount = 2480;
+        const fakeNames = ["CyberRunner", "SolanaKing", "CryptoNinja", "ZRL_Whale", "MoonWalker", "SpeedyG", "FastToken", "RunMaster"];
+        const fakeActions = [
+            { icon: '🎁', title: 'MYSTERY BOX', getDesc: (name) => `${name} found a box and won +2,500 ZRL!` },
+            { icon: '🎰', title: 'SLOTS WIN', getDesc: (name) => `${name} hit 0.5 SOL in Slots!` },
+            { icon: '🚀', title: 'VIP BOOSTER', getDesc: (name) => `${name} activated Legend Tier (400x)!` },
+            { icon: '📤', title: 'ZRL WITHDRAWAL', getDesc: (name) => `${name} successfully withdrew 15,000 ZRL!` }
+        ];
+
         async function fetchRealOnlineAndCasinoStats() {
             try {
+                // Плавное случайное изменение онлайн-счетчика для создания масштабного ажиотажа
+                const fluctuation = Math.floor(Math.random() * 21) - 10;
+                simulatedOnlineCount = Math.max(1240, simulatedOnlineCount + fluctuation);
+                
+                document.getElementById('online-users-count').innerText = `Online: ${simulatedOnlineCount.toLocaleString()} runners`;
+
+                // Периодически выводим фальшивые активности других игроков в тосте
+                if (Math.random() < 0.35) {
+                    triggerFakeLiveActivity();
+                }
+
+                // Также опрашиваем бэкенд для статистики пула казино
                 const response = await fetch('https://zer0life-ai-iz5n.onrender.com/online-stats');
                 const data = await response.json();
                 if (data) {
-                    if (data.onlineCount !== undefined) {
-                        document.getElementById('online-users-count').innerText = `Online: ${data.onlineCount.toLocaleString()} runners`;
-                    }
                     if (data.totalCasinoSolIn !== undefined) {
                         document.getElementById('casino-stat-sol').innerText = data.totalCasinoSolIn.toFixed(2) + " SOL";
                     }
@@ -1358,11 +1377,17 @@
                     }
                 }
             } catch(e) {
-                document.getElementById('online-users-count').innerText = `Online: 1 runner`;
+                document.getElementById('online-users-count').innerText = `Online: ${simulatedOnlineCount.toLocaleString()} runners`;
             }
         }
 
-        setInterval(fetchRealOnlineAndCasinoStats, 5000);
+        function triggerFakeLiveActivity() {
+            const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+            const randomAction = fakeActions[Math.floor(Math.random() * fakeActions.length)];
+            showLiveTxToast(randomAction.icon, randomAction.title, randomAction.getDesc(randomName));
+        }
+
+        setInterval(fetchRealOnlineAndCasinoStats, 4000);
         setTimeout(fetchRealOnlineAndCasinoStats, 500);
 
         async function reportCasinoAction(solIn, zrlWon) {
@@ -1619,7 +1644,7 @@
             }
 
             totalCasinoTurnover += costSol;
-            reportCasinoAction(costSol, 0); // ✅ Учитываем трату в TOTAL SOL IN
+            reportCasinoAction(costSol, 0); 
             ZRL_PER_KM = rate;
             activeBoosterName = name;
             boosterExpiryTime = 0;
@@ -1654,7 +1679,7 @@
             }
 
             totalCasinoTurnover += costSol;
-            reportCasinoAction(costSol, 0); // ✅ Учитываем трату в TOTAL SOL IN
+            reportCasinoAction(costSol, 0); 
             ZRL_PER_KM = rate;
             activeBoosterName = name;
             boosterExpiryTime = Date.now() + (durationHours * 60 * 60 * 1000);
@@ -1768,7 +1793,7 @@
 
             if (currentFarmingAsset === 'sol') {
                 totalCasinoTurnover += amount;
-                reportCasinoAction(amount, 0); // ✅ Учитываем блокировку в пуле
+                reportCasinoAction(amount, 0); 
                 userRealDeposit = Math.max(0, userRealDeposit + amount);
 
                 try {
@@ -2179,7 +2204,7 @@
                 freeSpins--;
             } else {
                 totalCasinoTurnover += 0.01;
-                reportCasinoAction(0.01, 0); // ✅ Учитываем ставку 0.01 SOL
+                reportCasinoAction(0.01, 0); 
                 
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2303,7 +2328,7 @@
             }
 
             totalCasinoTurnover += betSOL; 
-            reportCasinoAction(betSOL, 0); // ✅ Учитываем ставку в слотах
+            reportCasinoAction(betSOL, 0); 
             saveData();
             updateUI();
             updateEnergyUI();
@@ -2433,7 +2458,7 @@
             }
 
             totalCasinoTurnover += bjActiveBet;
-            reportCasinoAction(bjActiveBet, 0); // ✅ Учитываем ставку в блэкджеке
+            reportCasinoAction(bjActiveBet, 0); 
             saveData(); updateUI(); updateEnergyUI();
 
             try {
@@ -2571,7 +2596,7 @@
             }
 
             totalCasinoTurnover += betSOL;
-            reportCasinoAction(betSOL, 0); // ✅ Учитываем ставку в рулетке
+            reportCasinoAction(betSOL, 0); 
             saveData(); updateUI(); updateEnergyUI();
 
             try {
