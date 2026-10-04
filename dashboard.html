@@ -3190,7 +3190,6 @@
             lastTime = currentTime;
         }
 
-        // Обновленная функция обработки движения с защитой от махания телефоном сидя на месте
         let lastStepTimestamp = 0;
         let consecutiveSteps = 0;
 
@@ -3211,16 +3210,6 @@
                 return;
             }
 
-            // Анти-чит по скорости GPS: если пользователь стоит на месте, скорость меньше 1 км/ч
-            if (currentSpeedKmh < 1.0 || currentSpeedKmh > MAX_SPEED_KMH) {
-                if (currentSpeedKmh > MAX_SPEED_KMH) {
-                    warningEl.style.display = 'block';
-                }
-                return; // Прерываем начисление, если нет реального перемещения в пространстве
-            } else {
-                warningEl.style.display = 'none';
-            }
-
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
 
@@ -3228,12 +3217,12 @@
             const now = Date.now();
             const timeDelta = now - lastStepTimestamp;
 
-            // Анти-чит по паттерну шагов: проверка естественной частоты бега (от 300мс до 900мс)
-            if (totalAcc > 12.0 && totalAcc < 22.0 && timeDelta > 300 && timeDelta < 900) {
+            // Смягченные пороги акселерометра для гарантированного начисления ZRL при реальном движении
+            if (totalAcc > 10.5 && totalAcc < 25.0 && timeDelta > 200 && timeDelta < 1200) {
                 lastStepTimestamp = now;
                 consecutiveSteps++;
 
-                if (consecutiveSteps >= 3) {
+                if (consecutiveSteps >= 2) {
                     todaySteps++;
                     triggerHaptic('light');
 
