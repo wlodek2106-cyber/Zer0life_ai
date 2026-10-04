@@ -3136,7 +3136,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️️ Invalid amount or exceeds your ZRL balance.');
+                                        tg.showAlert('⚠ Invalid amount or exceeds your ZRL balance.');
                                     }
                                 }
                             );
@@ -3191,6 +3191,7 @@
         }
 
         let lastStepTimestamp = 0;
+        let consecutiveSteps = 0;
 
         function handleMotion(event) {
             if (!isRunning) return;
@@ -3216,31 +3217,36 @@
             const now = Date.now();
             const timeDelta = now - lastStepTimestamp;
 
-            // Смягченные пороги акселерометра для гарантированного начисления ZRL при реальном движении
-            if (totalAcc > 9.2 && timeDelta > 250) {
+            // Строгий фильтр античита: требует реального сильного импульса (шага/бега) и темпа
+            if (totalAcc > 13.5 && totalAcc < 28.0 && timeDelta > 350 && timeDelta < 1100) {
                 lastStepTimestamp = now;
-                todaySteps++;
-                triggerHaptic('light');
+                consecutiveSteps++;
 
-                const stepKm = METERS_PER_STEP;
-                todayDistance += stepKm;
-                totalDistance += stepKm;
-                
-                // Гарантированное приращение токенов с учетом множителя
-                unclaimedZRL += (stepKm * ZRL_PER_KM);
-                
-                currentEnergy = Math.max(0, currentEnergy - 0.0075);
-                bootsHP = Math.max(0, bootsHP - 0.02);
+                // Засчитываем шаг только после серии из 2 подтвержденных циклов движения
+                if (consecutiveSteps >= 2) {
+                    todaySteps++;
+                    triggerHaptic('light');
 
-                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
-                    lastSpokenKm = todayDistance;
-                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                    const stepKm = METERS_PER_STEP;
+                    todayDistance += stepKm;
+                    totalDistance += stepKm;
+                    unclaimedZRL += (stepKm * ZRL_PER_KM);
+                    
+                    currentEnergy = Math.max(0, currentEnergy - 0.0075);
+                    bootsHP = Math.max(0, bootsHP - 0.02);
+
+                    if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                        lastSpokenKm = todayDistance;
+                        speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                    }
+
+                    updateUI();
+                    updateEnergyUI();
+                    checkRandomMysteryBox();
+                    saveData();
                 }
-
-                updateUI();
-                updateEnergyUI();
-                checkRandomMysteryBox();
-                saveData();
+            } else if (timeDelta > 1400) {
+                consecutiveSteps = 0;
             }
         }
 
