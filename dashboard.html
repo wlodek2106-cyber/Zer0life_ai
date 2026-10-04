@@ -3136,7 +3136,7 @@
                                         }
                                     } else {
                                         triggerHaptic('error');
-                                        tg.showAlert('⚠️️ Invalid amount or exceeds your ZRL balance.');
+                                        tg.showAlert('⚠ Invalid amount or exceeds your ZRL balance.');
                                     }
                                 }
                             );
@@ -3166,23 +3166,74 @@
             tg.showAlert('✅ Address copied to clipboard!');
         };
 
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
+
         function handlePositionUpdate(position) {
+            if (!isRunning) return;
+
             const currentLat = position.coords.latitude;
             const currentLon = position.coords.longitude;
             const currentTime = position.timestamp;
+            const accuracy = position.coords.accuracy;
+
+            if (accuracy > 30) return;
+
+            if (currentEnergy <= 0 || bootsHP <= 0) {
+                stopRunning();
+                tg.showAlert("⚠ Workout stopped: Energy or Boots durability depleted.");
+                return;
+            }
 
             if (lastLat !== null && lastLon !== null && lastTime !== null) {
                 const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
-                const timeDiffHours = (currentTime - lastTime) / (1000 * 60 * 60);
-
-                if (timeDiffHours > 0) {
-                    currentSpeedKmh = distanceKm / timeDiffHours;
-                    if (currentSpeedKmh > MAX_SPEED_KMH) {
-                        warningEl.style.display = 'block';
-                    } else {
-                        warningEl.style.display = 'none';
-                    }
+                
+                if (distanceKm < 0.015) {
+                    return; 
                 }
+
+                const timeDiffSec = (currentTime - lastTime) / 1000;
+                const speedKmh = timeDiffSec > 0 ? (distanceKm / (timeDiffSec / 3600)) : 0;
+                
+                if (distanceKm > 0.5 || speedKmh > MAX_SPEED_KMH) {
+                    lastLat = currentLat;
+                    lastLon = currentLon;
+                    lastTime = currentTime;
+                    warningEl.style.display = 'block';
+                    return;
+                }
+
+                warningEl.style.display = 'none';
+
+                todayDistance += distanceKm;
+                totalDistance += distanceKm;
+                
+                unclaimedZRL += (distanceKm * ZRL_PER_KM);
+                
+                const stepsMade = Math.round(distanceKm / METERS_PER_STEP);
+                todaySteps += stepsMade;
+
+                currentEnergy = Math.max(0, currentEnergy - (distanceKm * 2));
+                bootsHP = Math.max(0, bootsHP - (distanceKm * 5));
+
+                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                    lastSpokenKm = todayDistance;
+                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                }
+
+                triggerHaptic('light');
+                updateUI();
+                updateEnergyUI();
+                checkRandomMysteryBox();
+                saveData();
             }
 
             lastLat = currentLat;
@@ -3190,65 +3241,10 @@
             lastTime = currentTime;
         }
 
-        let lastStepTimestamp = 0;
-
-        function handleMotion(event) {
-            if (!isRunning) return;
-
-            if (currentEnergy <= 0) {
-                stopRunning();
-                triggerHaptic('error');
-                tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge.");
-                return;
-            }
-
-            if (bootsHP <= 0) {
-                stopRunning();
-                triggerHaptic('error');
-                tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers.");
-                return;
-            }
-
-            const acc = event.accelerationIncludingGravity || event.acceleration;
-            if (!acc) return;
-
-            const totalAcc = Math.sqrt((acc.x || 0) * (acc.x || 0) + (acc.y || 0) * (acc.y || 0) + (acc.z || 0) * (acc.z || 0));
-            const now = Date.now();
-            const timeDelta = now - lastStepTimestamp;
-
-            // Смягченные пороги акселерометра для гарантированного начисления ZRL при реальном движении
-            if (totalAcc > 9.2 && timeDelta > 250) {
-                lastStepTimestamp = now;
-                todaySteps++;
-                triggerHaptic('light');
-
-                const stepKm = METERS_PER_STEP;
-                todayDistance += stepKm;
-                totalDistance += stepKm;
-                
-                // Гарантированное приращение токенов с учетом множителя
-                unclaimedZRL += (stepKm * ZRL_PER_KM);
-                
-                currentEnergy = Math.max(0, currentEnergy - 0.0075);
-                bootsHP = Math.max(0, bootsHP - 0.02);
-
-                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
-                    lastSpokenKm = todayDistance;
-                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
-                }
-
-                updateUI();
-                updateEnergyUI();
-                checkRandomMysteryBox();
-                saveData();
-            }
-        }
-
         function stopRunning() {
             isRunning = false;
             startBtn.classList.remove('active-run');
             startBtnText.innerText = 'Start Run';
-            window.removeEventListener('devicemotion', handleMotion);
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -3274,33 +3270,25 @@
                 }
 
                 if ("geolocation" in navigator) {
+                    lastLat = null;
+                    lastLon = null;
+                    lastTime = null;
+
                     watchId = navigator.geolocation.watchPosition(
                         handlePositionUpdate, 
-                        (err) => console.log(err), 
+                        (err) => {
+                            console.log(err);
+                            if (err.code === 1) tg.showAlert("⚠ Please enable GPS/Location access to track your run.");
+                        }, 
                         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                     );
-                }
-
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    try {
-                        const response = await DeviceMotionEvent.requestPermission();
-                        if (response === 'granted') {
-                            window.addEventListener('devicemotion', handleMotion);
-                            isRunning = true;
-                            startBtn.classList.add('active-run');
-                            startBtnText.innerText = 'Stop Run';
-                            speak("Workout started. Keep up the pace!");
-                        } else {
-                            triggerHaptic('error');
-                            tg.showAlert("Motion permission is required to track your run.");
-                        }
-                    } catch (e) {}
-                } else {
-                    window.addEventListener('devicemotion', handleMotion);
+                    
                     isRunning = true;
                     startBtn.classList.add('active-run');
                     startBtnText.innerText = 'Stop Run';
                     speak("Workout started. Keep up the pace!");
+                } else {
+                    tg.showAlert("⚠ Geolocation is not supported by your device/browser.");
                 }
             } else {
                 stopRunning();
@@ -3359,17 +3347,6 @@
             playSound('click');
             boostersModal.style.display = 'flex';
         });
-
-        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * (Math.PI / 180);
-            const dLon = (lon2 - lon1) * (Math.PI / 180);
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c; 
-        }
 
         const LEVELS = [
             { level: 1, targetKm: 5, reward: "Standard" },
