@@ -1585,7 +1585,7 @@
         }
 
         const METERS_PER_STEP = 0.00075; 
-        const MAX_SPEED_KMH = 14; 
+        const MAX_SPEED_KMH = 25; 
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = SHARED_POOL_WALLET;
@@ -3185,7 +3185,7 @@
             const currentTime = position.timestamp;
             const accuracy = position.coords.accuracy;
 
-            if (accuracy > 30) return;
+            if (accuracy > 50) return;
 
             if (currentEnergy <= 0 || bootsHP <= 0) {
                 stopRunning();
@@ -3196,18 +3196,17 @@
             if (lastLat !== null && lastLon !== null && lastTime !== null) {
                 const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
                 
-                if (distanceKm < 0.015) {
+                if (distanceKm < 0.003) {
                     return; 
                 }
 
                 const timeDiffSec = (currentTime - lastTime) / 1000;
                 const speedKmh = timeDiffSec > 0 ? (distanceKm / (timeDiffSec / 3600)) : 0;
                 
-                if (distanceKm > 0.5 || speedKmh > MAX_SPEED_KMH) {
+                if (distanceKm > 1.0 || speedKmh > MAX_SPEED_KMH) {
                     lastLat = currentLat;
                     lastLon = currentLon;
                     lastTime = currentTime;
-                    warningEl.style.display = 'block';
                     return;
                 }
 
