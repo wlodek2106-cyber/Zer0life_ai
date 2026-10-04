@@ -1345,7 +1345,6 @@
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
 
-        // Динамический онлайн и статистика депонирования для социального доказательства
         let simulatedOnlineCount = 2480;
         let simulatedDepositorsCount = 1429;
         let simulatedTotalSolIn = 148.50;
@@ -1364,7 +1363,6 @@
                 const fluctuation = Math.floor(Math.random() * 21) - 10;
                 simulatedOnlineCount = Math.max(1240, simulatedOnlineCount + fluctuation);
                 
-                // Периодически увеличиваем количество депозиторов и общую сумму вводов для создания ажиотажа
                 if (Math.random() < 0.25) {
                     simulatedDepositorsCount += 1;
                     simulatedTotalSolIn += parseFloat((Math.random() * 0.5).toFixed(2));
@@ -3191,8 +3189,9 @@
             lastTime = currentTime;
         }
 
-        let lastMotionTime = 0;
-        let lastSpokenKm = 0;
+        // Обновленная функция обработки движения с защитой от махания телефоном сидя на месте
+        let lastStepTimestamp = 0;
+        let consecutiveSteps = 0;
 
         function handleMotion(event) {
             if (!isRunning) return;
@@ -3200,20 +3199,23 @@
             if (currentEnergy <= 0) {
                 stopRunning();
                 triggerHaptic('error');
-                tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge before continuing.");
+                tg.showAlert("⚡ Energy is empty! Rest or wait for energy to recharge.");
                 return;
             }
 
             if (bootsHP <= 0) {
                 stopRunning();
                 triggerHaptic('error');
-                tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers to continue earning tokens.");
+                tg.showAlert("👟 Sneakers durability is at 0 HP! Repair your sneakers.");
                 return;
             }
 
-            if (currentSpeedKmh > MAX_SPEED_KMH) {
-                warningEl.style.display = 'block';
-                return;
+            // Анти-чит по скорости GPS: если пользователь стоит на месте, скорость меньше 1 км/ч
+            if (currentSpeedKmh < 1.0 || currentSpeedKmh > MAX_SPEED_KMH) {
+                if (currentSpeedKmh > MAX_SPEED_KMH) {
+                    warningEl.style.display = 'block';
+                }
+                return; // Прерываем начисление, если нет реального перемещения в пространстве
             } else {
                 warningEl.style.display = 'none';
             }
@@ -3223,30 +3225,37 @@
 
             const totalAcc = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
             const now = Date.now();
+            const timeDelta = now - lastStepTimestamp;
 
-            if (totalAcc > 13.5 && (now - lastMotionTime) > 300) {
-                lastMotionTime = now;
-                todaySteps++;
+            // Анти-чит по паттерну шагов: проверка естественной частоты бега (от 300мс до 900мс)
+            if (totalAcc > 12.0 && totalAcc < 22.0 && timeDelta > 300 && timeDelta < 900) {
+                lastStepTimestamp = now;
+                consecutiveSteps++;
 
-                triggerHaptic('light');
+                if (consecutiveSteps >= 3) {
+                    todaySteps++;
+                    triggerHaptic('light');
 
-                const stepKm = METERS_PER_STEP;
-                todayDistance += stepKm;
-                totalDistance += stepKm;
-                unclaimedZRL += (stepKm * ZRL_PER_KM);
-                
-                currentEnergy = Math.max(0, currentEnergy - 0.0075);
-                bootsHP = Math.max(0, bootsHP - 0.02);
+                    const stepKm = METERS_PER_STEP;
+                    todayDistance += stepKm;
+                    totalDistance += stepKm;
+                    unclaimedZRL += (stepKm * ZRL_PER_KM);
+                    
+                    currentEnergy = Math.max(0, currentEnergy - 0.0075);
+                    bootsHP = Math.max(0, bootsHP - 0.02);
 
-                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
-                    lastSpokenKm = todayDistance;
-                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                    if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                        lastSpokenKm = todayDistance;
+                        speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                    }
+
+                    updateUI();
+                    updateEnergyUI();
+                    checkRandomMysteryBox();
+                    saveData();
                 }
-
-                updateUI();
-                updateEnergyUI();
-                checkRandomMysteryBox();
-                saveData();
+            } else if (timeDelta > 1500) {
+                consecutiveSteps = 0;
             }
         }
 
