@@ -1619,6 +1619,7 @@
             }
 
             totalCasinoTurnover += costSol;
+            reportCasinoAction(costSol, 0); // ✅ Учитываем трату в TOTAL SOL IN
             ZRL_PER_KM = rate;
             activeBoosterName = name;
             boosterExpiryTime = 0;
@@ -1653,6 +1654,7 @@
             }
 
             totalCasinoTurnover += costSol;
+            reportCasinoAction(costSol, 0); // ✅ Учитываем трату в TOTAL SOL IN
             ZRL_PER_KM = rate;
             activeBoosterName = name;
             boosterExpiryTime = Date.now() + (durationHours * 60 * 60 * 1000);
@@ -1766,6 +1768,7 @@
 
             if (currentFarmingAsset === 'sol') {
                 totalCasinoTurnover += amount;
+                reportCasinoAction(amount, 0); // ✅ Учитываем блокировку в пуле
                 userRealDeposit = Math.max(0, userRealDeposit + amount);
 
                 try {
@@ -1916,6 +1919,7 @@
             if (isUnlocked) {
                 if (farm.asset === 'sol') {
                     totalCasinoTurnover = Math.max(0, totalCasinoTurnover - farm.amount);
+                    reportCasinoAction(-farm.amount, 0);
                 } else {
                     totalBalance += farm.amount;
                     earnedZrlBalance += farm.amount;
@@ -2175,7 +2179,7 @@
                 freeSpins--;
             } else {
                 totalCasinoTurnover += 0.01;
-                reportCasinoAction(0.01, 0);
+                reportCasinoAction(0.01, 0); // ✅ Учитываем ставку 0.01 SOL
                 
                 try {
                     fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
@@ -2299,7 +2303,7 @@
             }
 
             totalCasinoTurnover += betSOL; 
-            reportCasinoAction(betSOL, 0);
+            reportCasinoAction(betSOL, 0); // ✅ Учитываем ставку в слотах
             saveData();
             updateUI();
             updateEnergyUI();
@@ -2429,7 +2433,7 @@
             }
 
             totalCasinoTurnover += bjActiveBet;
-            reportCasinoAction(bjActiveBet, 0);
+            reportCasinoAction(bjActiveBet, 0); // ✅ Учитываем ставку в блэкджеке
             saveData(); updateUI(); updateEnergyUI();
 
             try {
@@ -2567,7 +2571,7 @@
             }
 
             totalCasinoTurnover += betSOL;
-            reportCasinoAction(betSOL, 0);
+            reportCasinoAction(betSOL, 0); // ✅ Учитываем ставку в рулетке
             saveData(); updateUI(); updateEnergyUI();
 
             try {
