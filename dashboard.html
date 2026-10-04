@@ -1209,10 +1209,10 @@
                     <div class="booster-rate">1,000 ZRL / km</div>
                     <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (1,500 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (500 ZRL/km)')">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
-                    <div class="booster-rate">1,500 ZRL / km</div>
+                    <div class="booster-rate">500 ZRL / km</div>
                     <div class="booster-price-btn">1 SOL</div>
                 </div>
                 <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
@@ -1572,7 +1572,8 @@
             }
         });
 
-        let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
+        // Фиксируем курс строго 500 ZRL/km (если активен стандартный буст)
+        let ZRL_PER_KM = 500;
         let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (500 ZRL/km)';
 
         let boosterExpiryTime = parseInt(localStorage.getItem(STORAGE_PREFIX + 'booster_expiry')) || 0;
@@ -1582,10 +1583,13 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 500);
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
+        } else {
+            const savedRate = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate'));
+            if (!isNaN(savedRate)) ZRL_PER_KM = savedRate;
         }
 
         const METERS_PER_STEP = 0.00075; 
-        const MAX_SPEED_KMH = 14; 
+        const MAX_SPEED_KMH = 16; 
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = SHARED_POOL_WALLET;
@@ -3191,8 +3195,8 @@
         }
 
         let lastStepTimestamp = 0;
-        let consecutiveSteps = 0;
 
+        // Строгий античит: шаги считаются ТОЛЬКО при реальной ходьбе/беге (уверенный вертикальный толчок)
         function handleMotion(event) {
             if (!isRunning) return;
 
@@ -3217,36 +3221,31 @@
             const now = Date.now();
             const timeDelta = now - lastStepTimestamp;
 
-            // Строгий фильтр античита: требует реального сильного импульса (шага/бега) и темпа
-            if (totalAcc > 13.5 && totalAcc < 28.0 && timeDelta > 350 && timeDelta < 1100) {
+            // Порог 12.5 - 22.0 отсекает любые случайные вибрации стола и телефона в статичном положении
+            if (totalAcc > 12.5 && totalAcc < 22.0 && timeDelta > 320 && timeDelta < 900) {
                 lastStepTimestamp = now;
-                consecutiveSteps++;
+                todaySteps++;
+                triggerHaptic('light');
 
-                // Засчитываем шаг только после серии из 2 подтвержденных циклов движения
-                if (consecutiveSteps >= 2) {
-                    todaySteps++;
-                    triggerHaptic('light');
+                const stepKm = METERS_PER_STEP;
+                todayDistance += stepKm;
+                totalDistance += stepKm;
+                
+                // Строгий расчет: 500 ZRL за 1 км (с учетом множителя ZRL_PER_KM)
+                unclaimedZRL += (stepKm * ZRL_PER_KM);
+                
+                currentEnergy = Math.max(0, currentEnergy - 0.0075);
+                bootsHP = Math.max(0, bootsHP - 0.02);
 
-                    const stepKm = METERS_PER_STEP;
-                    todayDistance += stepKm;
-                    totalDistance += stepKm;
-                    unclaimedZRL += (stepKm * ZRL_PER_KM);
-                    
-                    currentEnergy = Math.max(0, currentEnergy - 0.0075);
-                    bootsHP = Math.max(0, bootsHP - 0.02);
-
-                    if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
-                        lastSpokenKm = todayDistance;
-                        speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
-                    }
-
-                    updateUI();
-                    updateEnergyUI();
-                    checkRandomMysteryBox();
-                    saveData();
+                if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
+                    lastSpokenKm = todayDistance;
+                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
                 }
-            } else if (timeDelta > 1400) {
-                consecutiveSteps = 0;
+
+                updateUI();
+                updateEnergyUI();
+                checkRandomMysteryBox();
+                saveData();
             }
         }
 
