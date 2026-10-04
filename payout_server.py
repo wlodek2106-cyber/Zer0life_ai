@@ -25,11 +25,7 @@ def load_db():
         "USERS_MAP": {},
         "USER_STATS": {},
         "CHAT_DB": [],
-        "USER_TOTAL_DEPOSITS": {},
-        "CASINO_STATS": {
-            "total_sol_in": 142.50,
-            "total_zrl_won": 845200.0
-        }
+        "USER_TOTAL_DEPOSITS": {}
     }
     if os.path.exists(DB_FILE):
         try:
@@ -51,8 +47,7 @@ def save_db():
             "USERS_MAP": USERS_MAP,
             "USER_STATS": USER_STATS,
             "CHAT_DB": CHAT_DB,
-            "USER_TOTAL_DEPOSITS": USER_TOTAL_DEPOSITS,
-            "CASINO_STATS": CASINO_STATS
+            "USER_TOTAL_DEPOSITS": USER_TOTAL_DEPOSITS
         }
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -66,7 +61,6 @@ USERS_MAP = db.get("USERS_MAP", {})
 USER_STATS = db.get("USER_STATS", {})
 CHAT_DB = db.get("CHAT_DB", [])
 USER_TOTAL_DEPOSITS = db.get("USER_TOTAL_DEPOSITS", {})
-CASINO_STATS = db.get("CASINO_STATS", {"total_sol_in": 142.50, "total_zrl_won": 845200.0})
 
 active_runners_map = {}
 
@@ -156,9 +150,7 @@ def get_online_stats():
     
     return jsonify({
         "success": True,
-        "onlineCount": online_count,
-        "totalCasinoSolIn": float(CASINO_STATS.get("total_sol_in", 142.50)),
-        "totalCasinoZrlWon": float(CASINO_STATS.get("total_zrl_won", 845200.0))
+        "onlineCount": online_count
     })
 
 @app.route('/casino-action', methods=['POST', 'OPTIONS'])
@@ -169,24 +161,11 @@ def casino_action():
     try:
         data = request.json or {}
         telegram_id = str(data.get('telegramId', ''))
-        sol_in = float(data.get('solIn', 0.0))
-        zrl_won = float(data.get('zrlWon', 0.0))
 
         if telegram_id:
             active_runners_map[telegram_id] = time.time() * 1000
-        
-        if sol_in > 0:
-            CASINO_STATS["total_sol_in"] = float(CASINO_STATS.get("total_sol_in", 0)) + sol_in
-        if zrl_won > 0:
-            CASINO_STATS["total_zrl_won"] = float(CASINO_STATS.get("total_zrl_won", 0)) + zrl_won
             
-        save_db()
-            
-        return jsonify({
-            "success": True,
-            "totalCasinoSolIn": CASINO_STATS["total_sol_in"],
-            "totalCasinoZrlWon": CASINO_STATS["total_zrl_won"]
-        })
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
