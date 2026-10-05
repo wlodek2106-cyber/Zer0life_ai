@@ -140,6 +140,30 @@
             color: #000;
         }
 
+        .share-card-top-btn {
+            background: linear-gradient(135deg, rgba(20,241,149,0.15) 0%, rgba(168,240,122,0.15) 100%);
+            border: 1px solid rgba(20, 241, 149, 0.4);
+            border-radius: 14px;
+            height: 44px;
+            padding: 0 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            color: #14f195;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+            margin-bottom: 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .share-card-top-btn:active {
+            transform: scale(0.96);
+        }
+
         .energy-card {
             background: #15171e;
             border: 1px solid rgba(20, 241, 149, 0.2);
@@ -737,6 +761,11 @@
             </div>
         </div>
 
+        <!-- КНОПКА ПОДЕЛИТЬСЯ КАРТОЧКОЙ В САМОМ ВЕРХУ -->
+        <button class="share-card-top-btn" onclick="openShareModal()">
+            <span>📸</span> Share Run Card (TG Stories)
+        </button>
+
         <div class="online-badge">
             <div class="online-dot"></div>
             <span id="online-users-count">Online: 2,480 runners</span>
@@ -787,10 +816,7 @@
                     <span class="steps-count" id="steps-display">Steps: 0</span>
                     <span class="earned-tokens" id="today-earned">+0.00 ZRL</span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <button class="claim-btn" id="claim-btn">Claim</button>
-                    <button class="claim-btn" onclick="openShareModal()" style="background: rgba(20,241,149,0.15); color: #14f195; border: 1px solid rgba(20,241,149,0.4); font-size: 11px; padding: 6px 10px;">📸 Share Card</button>
-                </div>
+                <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
 
             <div class="active-booster-badge" id="active-booster-badge">
@@ -918,9 +944,7 @@
             <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px;">
                 📋 Active Proposals (Visible to All)
             </div>
-            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px;">
-                <!-- Список предложений загружается динамически -->
-            </div>
+            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px;"></div>
         </div>
     </div>
 
@@ -1706,7 +1730,6 @@
 
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
-        // DAO Proposals Store & Total Burned Tracker (с инициализацией тестового вопроса для гарантии отображения)
         let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || '[]');
         if (daoProposals.length === 0) {
             daoProposals = [
@@ -1736,7 +1759,6 @@
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
 
-        // SHARE RUN CARD LOGIC
         window.openShareModal = function() {
             triggerHaptic('light');
             playSound('click');
@@ -1957,7 +1979,6 @@
             tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for 7 days.`);
         };
 
-        // DAO MODAL LOGIC & 10 ZRL = 1 VOTE BURN TO REAL ADDRESS
         window.openDaoModal = function() {
             triggerHaptic('light');
             playSound('click');
