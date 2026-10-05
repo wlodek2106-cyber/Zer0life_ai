@@ -1878,35 +1878,98 @@
             if (stroke) ctx.stroke();
         }
 
+        // Универсальная генерация чистой карточки в памяти без UI-окон интерфейса
+        function createCleanShareBlob(callback) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1080;
+            tempCanvas.height = 1350;
+            const ctx = tempCanvas.getContext('2d');
+
+            ctx.fillStyle = '#0b0c10';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            const bgImg = new Image();
+            bgImg.crossOrigin = "anonymous";
+            bgImg.src = 'https://i.postimg.cc/Y9H8xDw6/IMG-8907.jpg';
+            
+            bgImg.onload = function() {
+                ctx.save();
+                ctx.globalAlpha = 0.35;
+                ctx.drawImage(bgImg, 0, 0, tempCanvas.width, tempCanvas.height);
+                ctx.restore();
+                drawCardForeground(ctx, tempCanvas.width, tempCanvas.height);
+                tempCanvas.toBlob(callback, 'image/png');
+            };
+
+            bgImg.onerror = function() {
+                drawCardForeground(ctx, tempCanvas.width, tempCanvas.height);
+                tempCanvas.toBlob(callback, 'image/png');
+            };
+        }
+
         window.downloadShareImage = function() {
             triggerHaptic('success');
             playSound('success');
-            const canvas = document.getElementById('share-canvas');
-            const link = document.createElement('a');
-            link.download = `Zer0life_Run_${Math.floor(Date.now() / 1000)}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            tg.showAlert('✅ Image successfully downloaded! You can now share it to Instagram Stories.');
+            
+            createCleanShareBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                
+                if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.0') && tg.downloadFile) {
+                    tg.downloadFile({
+                        url: url,
+                        file_name: `Zer0life_Run_${Math.floor(Date.now() / 1000)}.png`
+                    });
+                } else {
+                    const link = document.createElement('a');
+                    link.download = `Zer0life_Run_${Math.floor(Date.now() / 1000)}.png`;
+                    link.href = url;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+                
+                URL.revokeObjectURL(url);
+                tg.showAlert('✅ Clean run card successfully downloaded to gallery!');
+            });
         }
 
-        window.shareToTelegramStory = function() {
+        window.shareToTelegramStory = async function() {
             triggerHaptic('medium');
             playSound('click');
-            const canvas = document.getElementById('share-canvas');
             
-            if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.8') && tg.shareStory) {
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                tg.shareStory(dataUrl, {
-                    text: `🔥 Just crushed ${todayDistance.toFixed(2)} km and earned ZRL in Zer0life Run! 🚀`,
-                    widget_link: {
-                        url: 'https://t.me/Zer0lifeGenesis_bot',
-                        name: 'Join Zer0life Run'
+            createCleanShareBlob(async (blob) => {
+                const file = new File([blob], "zer0life_run.png", { type: "image/png" });
+                
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Zer0life Run',
+                            text: `🔥 Just crushed ${todayDistance.toFixed(2)} km and earned ZRL in Zer0life Run! 🚀`,
+                        });
+                        return;
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            console.log(err);
+                        }
                     }
-                });
-            } else {
-                downloadShareImage();
-            }
-        }
+                }
+                
+                if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.8') && tg.shareStory) {
+                    const canvas = document.getElementById('share-canvas');
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    tg.shareStory(dataUrl, {
+                        text: `🔥 Just crushed ${todayDistance.toFixed(2)} km and earned ZRL in Zer0life Run! 🚀`,
+                        widget_link: {
+                            url: 'https://t.me/Zer0lifeGenesis_bot',
+                            name: 'Join Zer0life Run'
+                        }
+                    });
+                } else {
+                    downloadShareImage();
+                }
+            });
+        };
 
         window.buyBooster = function(costSol, rate, name) {
             triggerHaptic('medium');
@@ -2357,7 +2420,7 @@
                     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
                     const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    const secs = Math.floor((timeLeft % (1000 * 60 * 60)) / 1000);
                     timeStr = `<span style='color: #f59e0b;'>⏳ ${days}d ${hours}h ${mins}m ${secs}s</span>`;
                 }
 
