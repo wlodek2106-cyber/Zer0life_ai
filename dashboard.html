@@ -696,7 +696,7 @@
             color: #8a8d98;
             font-size: 10px;
             cursor: pointer;
-            flex: 1; /* Чтобы кнопки равномерно распределялись */
+            flex: 1;
         }
 
         .nav-item.active {
@@ -858,6 +858,30 @@
             </svg>
             <span id="start-btn-text">Start Run</span>
         </button>
+    </div>
+
+    <!-- DAO HUB MODAL -->
+    <div class="modal-overlay" id="dao-modal">
+        <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
+            <div class="modal-header" style="margin-bottom: 8px;">
+                <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛️ Zer0life DAO Governance</span>
+                <button class="close-modal" onclick="closeDaoModal()">&times;</button>
+            </div>
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;">
+                Vote on community proposals. Creating a proposal requires $\ge 1,000,000$ ZRL (Admin <strong style="color: #14f195;">CryptoWlodek</strong> bypasses limit).
+            </p>
+
+            <button class="claim-btn" id="create-proposal-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 16px;" onclick="openCreateProposalPrompt()">
+                📝 Create New ZRLIP Proposal 🚀
+            </button>
+
+            <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px;">
+                📋 Active Proposals
+            </div>
+            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 240px; overflow-y: auto;">
+                <!-- Список пропоузалов рендерится динамически -->
+            </div>
+        </div>
     </div>
 
     <!-- FARMING MODAL -->
@@ -1100,7 +1124,7 @@
                 🎁 Bonus: Get 1,000 ZRL instantly on start for registration!
             </p>
             <p style="font-size: 13px; color: #8a8d98; margin-bottom: 20px;">
-                Enter your nickname to create your decentralized player profile:
+                Enter a unique nickname to create your decentralized player profile:
             </p>
             <div class="custom-input-group">
                 <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Player Nickname:</label>
@@ -1312,7 +1336,7 @@
         </div>
     </div>
 
-    <!-- BOTTOM NAVIGATION (С НОВОЙ КНОПКОЙ DAO) -->
+    <!-- BOTTOM NAVIGATION -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
@@ -1334,7 +1358,7 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosters
         </div>
-        <div class="nav-item" id="nav-dao">
+        <div class="nav-item" id="nav-dao" onclick="openDaoModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 21h18"></path>
                 <path d="M3 10h18"></path>
@@ -1641,6 +1665,12 @@
 
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
+        // DAO Proposals Store (localStorage)
+        let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || JSON.stringify([
+            { id: 1, title: 'ZRLIP-1: Expand Move-to-Earn Rewards by 20%', author: 'CryptoWlodek', yes: 1420, no: 120, status: 'Active', myVote: null },
+            { id: 2, title: 'ZRLIP-2: Integrate Robinhood Chain LP Staking', author: 'V Palamarchuk', yes: 890, no: 45, status: 'Active', myVote: null }
+        ]));
+
         let isRunning = false;
         let watchId = null;
         let currentSpeedKmh = 0;
@@ -1732,8 +1762,115 @@
             tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for 7 days.`);
         };
 
+        // DAO MODAL LOGIC
+        window.openDaoModal = function() {
+            triggerHaptic('light');
+            playSound('click');
+            renderDaoProposals();
+            document.getElementById('dao-modal').style.display = 'flex';
+        }
+
+        window.closeDaoModal = function() {
+            triggerHaptic('light');
+            document.getElementById('dao-modal').style.display = 'none';
+        }
+
+        window.renderDaoProposals = function() {
+            const listContainer = document.getElementById('dao-proposals-list');
+            if (!listContainer) return;
+
+            if (daoProposals.length === 0) {
+                listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No proposals active right now.</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            daoProposals.forEach(p => {
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: #181b24;
+                    border: 1px solid #282d3d;
+                    border-radius: 14px;
+                    padding: 12px 14px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                `;
+                card.innerHTML = `
+                    <div style="font-size: 13px; font-weight: 800; color: #fff;">${p.title}</div>
+                    <div style="font-size: 11px; color: #8a8d98; display: flex; justify-content: space-between;">
+                        <span>Author: <strong style="color: #a8f07a;">${p.author}</strong></span>
+                        <span style="color: #14f195;">👍 ${p.yes} | 👎 ${p.no}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'yes')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(20,241,149,0.15); color: #14f195; border: 1px solid rgba(20,241,149,0.4); font-weight: 800;">👍 Vote Yes</button>
+                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'no')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.4); font-weight: 800;">👎 Vote No</button>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        window.voteProposal = function(id, type) {
+            triggerHaptic('medium');
+            playSound('coin');
+            const prop = daoProposals.find(p => p.id === id);
+            if (prop) {
+                if (type === 'yes') prop.yes++;
+                else prop.no++;
+                localStorage.setItem('global_dao_proposals', JSON.stringify(daoProposals));
+                renderDaoProposals();
+                tg.showAlert(`✅ Vote recorded successfully!`);
+            }
+        }
+
+        window.openCreateProposalPrompt = function() {
+            triggerHaptic('medium');
+            playSound('click');
+
+            // Проверка прав администратора (CryptoWlodek или V Palamarchuk) или баланса >= 1,000,000 ZRL
+            const isAdmin = (username === 'CryptoWlodek' || username === 'V Palamarchuk' || telegramId === 123456789);
+
+            if (totalBalance < 1000000 && !isAdmin) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient Balance!\n\nYou need at least 1,000,000 ZRL to create a governance proposal.\nYour balance: ${totalBalance.toLocaleString()} ZRL.`);
+                return;
+            }
+
+            if (isAdmin && totalBalance < 1000000) {
+                tg.showAlert("👑 Admin Access Verified (CryptoWlodek/V Palamarchuk)!\n\nBypassing 1M ZRL requirement.");
+            }
+
+            showCustomPrompt(
+                "Create DAO Proposal",
+                "Enter your proposal title/description (e.g. ZRLIP-3: ...):",
+                "Proposal text...",
+                (text) => {
+                    if (text && text.length > 5) {
+                        const newProp = {
+                            id: Date.now(),
+                            title: text,
+                            author: username || 'Player',
+                            yes: 1,
+                            no: 0,
+                            status: 'Active'
+                        };
+                        daoProposals.unshift(newProp);
+                        localStorage.setItem('global_dao_proposals', JSON.stringify(daoProposals));
+                        renderDaoProposals();
+                        triggerHaptic('success');
+                        playSound('success');
+                        tg.showAlert("🚀 Proposal successfully published to DAO!");
+                    } else if (text !== null) {
+                        triggerHaptic('error');
+                        tg.showAlert("⚠ Proposal text is too short.");
+                    }
+                }
+            );
+        }
+
         let currentFarmingAsset = 'sol';
-        let selectedFarmingMonths = 300; // по умолчанию 300%
+        let selectedFarmingMonths = 300;
 
         window.openFarmingModal = function() {
             triggerHaptic('light');
@@ -1926,7 +2063,7 @@
 
             triggerHaptic('success');
             playSound('success');
-            tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} under selected yield plan! (Max 10 SOL limit applied)`);
+            tg.showAlert(`🌾 Success!\n\nLocked ${amount} ${currentFarmingAsset.toUpperCase()} under selected yield plan!`);
         }
 
         function saveFarms() {
@@ -2743,6 +2880,7 @@
             }
         }
 
+        // РЕГИСТРАЦИЯ С ПРОВЕРКОЙ УНИКАЛЬНОСТИ НИКНЕЙМА
         document.getElementById('reg-submit-btn').onclick = async () => {
             triggerHaptic('medium');
             playSound('click');
@@ -2750,11 +2888,29 @@
 
             if (!inputName || inputName.length < 2) {
                 triggerHaptic('error');
-                tg.showAlert('⚠ Please enter a valid player nickname.');
+                tg.showAlert('⚠ Please enter a valid player nickname (min 2 chars).');
+                return;
+            }
+
+            // Проверка локального списка зарегистрированных имён на уникальность
+            let registeredNicknames = JSON.parse(localStorage.getItem('global_registered_nicknames') || '[]');
+            
+            // Если этот ник уже занят другим игроком (и это не текущий пользователь)
+            const existingOwnerId = localStorage.getItem('nickname_owner_' + inputName);
+            if (existingOwnerId && existingOwnerId !== String(telegramId)) {
+                triggerHaptic('error');
+                tg.showAlert(`⚠ Nickname "${inputName}" is already taken by another player. Please choose a unique name.`);
                 return;
             }
 
             username = inputName;
+            localStorage.setItem('nickname_owner_' + username, telegramId);
+            
+            if (!registeredNicknames.includes(username)) {
+                registeredNicknames.push(username);
+                localStorage.setItem('global_registered_nicknames', JSON.stringify(registeredNicknames));
+            }
+
             totalBalance += 1000;
             earnedZrlBalance += 1000;
             saveData();
@@ -3207,30 +3363,6 @@
                 );
             };
         }
-
-        // ПРОВЕРКА СОЗДАНИЯ ПРОПОУЗАЛА (АДМИН ДОСТУП) - ТЕПЕРЬ ПРИВЯЗАНА К НОВОЙ КНОПКЕ DAO В НИЖНЕМ МЕНЮ
-        window.checkCreateProposal = function() {
-            triggerHaptic('medium');
-            playSound('click');
-            
-            const isAdmin = (username === 'V Palamarchuk' || telegramId === 123456789); 
-
-            if (totalBalance < 1000000 && !isAdmin) {
-                triggerHaptic('error');
-                tg.showAlert(`❌ Insufficient Balance!\n\nYou need at least 1,000,000 ZRL to create a governance proposal.\nYour balance: ${totalBalance.toLocaleString()} ZRL.`);
-            } else {
-                if (isAdmin && totalBalance < 1000000) {
-                    tg.showAlert("👑 Admin Access Verified!\n\nBypassing 1M ZRL requirement. DAO Hub will open here.");
-                } else {
-                    tg.showAlert("✅ Balance verified! DAO Hub will open here.");
-                }
-            }
-        };
-
-        // ПРИВЯЗКА СОБЫТИЯ К НОВОЙ КНОПКЕ DAO В МЕНЮ
-        document.getElementById('nav-dao').addEventListener('click', () => {
-            window.checkCreateProposal();
-        });
 
         document.getElementById('close-deposit').onclick = () => {
             triggerHaptic('light');
