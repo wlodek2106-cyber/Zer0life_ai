@@ -696,6 +696,7 @@
             color: #8a8d98;
             font-size: 10px;
             cursor: pointer;
+            flex: 1; /* Чтобы кнопки равномерно распределялись */
         }
 
         .nav-item.active {
@@ -909,7 +910,6 @@
                 <input type="number" id="farming-amount-input" class="custom-input-field" placeholder="e.g. 1" step="0.001" max="10" oninput="calculateFarmingEstimation()" />
             </div>
 
-            <!-- ИНТЕРАКТИВНЫЙ КАЛЬКУЛЯТОР ДОХОДНОСТИ В ДЕНЬ -->
             <div id="farming-calc-box" style="background: rgba(20, 241, 149, 0.08); border: 1px dashed rgba(20, 241, 149, 0.4); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-size: 10px; color: #8a8d98; font-weight: 700;">ESTIMATED YIELD:</div>
@@ -1312,7 +1312,7 @@
         </div>
     </div>
 
-    <!-- BOTTOM NAVIGATION -->
+    <!-- BOTTOM NAVIGATION (С НОВОЙ КНОПКОЙ DAO) -->
     <div class="bottom-nav">
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
@@ -1333,6 +1333,19 @@
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosters
+        </div>
+        <div class="nav-item" id="nav-dao">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 21h18"></path>
+                <path d="M3 10h18"></path>
+                <path d="M5 6l7-3 7 3"></path>
+                <path d="M4 10v11"></path>
+                <path d="M20 10v11"></path>
+                <path d="M8 14v3"></path>
+                <path d="M12 14v3"></path>
+                <path d="M16 14v3"></path>
+            </svg>
+            DAO
         </div>
     </div>
 
@@ -3194,6 +3207,30 @@
                 );
             };
         }
+
+        // ПРОВЕРКА СОЗДАНИЯ ПРОПОУЗАЛА (АДМИН ДОСТУП) - ТЕПЕРЬ ПРИВЯЗАНА К НОВОЙ КНОПКЕ DAO В НИЖНЕМ МЕНЮ
+        window.checkCreateProposal = function() {
+            triggerHaptic('medium');
+            playSound('click');
+            
+            const isAdmin = (username === 'V Palamarchuk' || telegramId === 123456789); 
+
+            if (totalBalance < 1000000 && !isAdmin) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient Balance!\n\nYou need at least 1,000,000 ZRL to create a governance proposal.\nYour balance: ${totalBalance.toLocaleString()} ZRL.`);
+            } else {
+                if (isAdmin && totalBalance < 1000000) {
+                    tg.showAlert("👑 Admin Access Verified!\n\nBypassing 1M ZRL requirement. DAO Hub will open here.");
+                } else {
+                    tg.showAlert("✅ Balance verified! DAO Hub will open here.");
+                }
+            }
+        };
+
+        // ПРИВЯЗКА СОБЫТИЯ К НОВОЙ КНОПКЕ DAO В МЕНЮ
+        document.getElementById('nav-dao').addEventListener('click', () => {
+            window.checkCreateProposal();
+        });
 
         document.getElementById('close-deposit').onclick = () => {
             triggerHaptic('light');
