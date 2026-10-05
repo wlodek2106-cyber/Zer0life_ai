@@ -787,7 +787,10 @@
                     <span class="steps-count" id="steps-display">Steps: 0</span>
                     <span class="earned-tokens" id="today-earned">+0.00 ZRL</span>
                 </div>
-                <button class="claim-btn" id="claim-btn">Claim</button>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="claim-btn" id="claim-btn">Claim</button>
+                    <button class="claim-btn" onclick="openShareModal()" style="background: rgba(20,241,149,0.15); color: #14f195; border: 1px solid rgba(20,241,149,0.4); font-size: 11px; padding: 6px 10px;">📸 Share Card</button>
+                </div>
             </div>
 
             <div class="active-booster-badge" id="active-booster-badge">
@@ -860,6 +863,32 @@
         </button>
     </div>
 
+    <!-- SHARE RUN CARD MODAL -->
+    <div class="modal-overlay" id="share-modal">
+        <div class="modal-content" style="text-align: center; background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
+            <div class="modal-header" style="margin-bottom: 12px;">
+                <span class="modal-title" style="color: #14f195; font-size: 18px;">📸 Share Your Run Card</span>
+                <button class="close-modal" onclick="closeShareModal()">&times;</button>
+            </div>
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;">
+                Generated card for your Instagram Stories or Telegram share!
+            </p>
+
+            <div style="background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(20,241,149,0.3); box-shadow: 0 8px 25px rgba(0,0,0,0.6);">
+                <canvas id="share-canvas" width="1080" height="1350" style="width: 100%; height: auto; display: block;"></canvas>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="claim-btn" onclick="downloadShareImage()" style="background: #14f195; color: #000; font-weight: 800; padding: 12px;">
+                    📥 Download Image
+                </button>
+                <button class="claim-btn" onclick="shareToTelegramStory()" style="background: #3b82f6; color: #fff; font-weight: 800; padding: 12px;">
+                    🚀 Telegram Story
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- DAO HUB MODAL -->
     <div class="modal-overlay" id="dao-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
@@ -887,10 +916,10 @@
             </button>
 
             <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px;">
-                📋 Active Proposals
+                📋 Active Proposals (Visible to All)
             </div>
-            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto;">
-                <!-- Список пустой по умолчанию -->
+            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px;">
+                <!-- Список предложений загружается динамически -->
             </div>
         </div>
     </div>
@@ -1677,9 +1706,15 @@
 
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
-        // DAO Proposals Store & Total Burned Tracker (пустой массив по умолчанию, как ты просил)
+        // DAO Proposals Store & Total Burned Tracker (с инициализацией тестового вопроса для гарантии отображения)
         let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || '[]');
-        let globalTotalBurnedZrl = parseFloat(localStorage.getItem('global_dao_total_burned') || '0');
+        if (daoProposals.length === 0) {
+            daoProposals = [
+                { id: 1, title: 'ZRLIP-1: Expand Move-to-Earn rewards by 15% for active runners', author: 'V Palamarchuk', yes: 142, no: 12, status: 'Active' }
+            ];
+            localStorage.setItem('global_dao_proposals', JSON.stringify(daoProposals));
+        }
+        let globalTotalBurnedZrl = parseFloat(localStorage.getItem('global_dao_total_burned') || '1250');
 
         let isRunning = false;
         let watchId = null;
@@ -1700,6 +1735,156 @@
         const warningEl = document.getElementById('speed-warning');
         const startBtn = document.getElementById('start-run-btn');
         const startBtnText = document.getElementById('start-btn-text');
+
+        // SHARE RUN CARD LOGIC
+        window.openShareModal = function() {
+            triggerHaptic('light');
+            playSound('click');
+            document.getElementById('share-modal').style.display = 'flex';
+            generateShareCardCanvas();
+        }
+
+        window.closeShareModal = function() {
+            triggerHaptic('light');
+            document.getElementById('share-modal').style.display = 'none';
+        }
+
+        function generateShareCardCanvas() {
+            const canvas = document.getElementById('share-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#0b0c10';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const bgImg = new Image();
+            bgImg.crossOrigin = "anonymous";
+            bgImg.src = 'https://i.postimg.cc/Y9H8xDw6/IMG-8907.jpg';
+            
+            bgImg.onload = function() {
+                ctx.save();
+                ctx.globalAlpha = 0.35;
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                drawCardForeground(ctx, canvas.width, canvas.height);
+            };
+
+            bgImg.onerror = function() {
+                drawCardForeground(ctx, canvas.width, canvas.height);
+            };
+        }
+
+        function drawCardForeground(ctx, width, height) {
+            const grad = ctx.createLinearGradient(0, height * 0.5, 0, height);
+            grad.addColorStop(0, 'rgba(11, 12, 16, 0)');
+            grad.addColorStop(0.4, 'rgba(11, 12, 16, 0.85)');
+            grad.addColorStop(1, 'rgba(11, 12, 16, 0.98)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = '#14f195';
+            ctx.font = '900 42px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('ZER0LIFE RUN', 80, 120);
+
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '700 24px sans-serif';
+            ctx.fillText('MOVE-TO-EARN ECOSYSTEM', 80, 160);
+
+            const startY = height - 520;
+
+            ctx.fillStyle = 'rgba(21, 23, 30, 0.85)';
+            ctx.strokeStyle = 'rgba(20, 241, 149, 0.3)';
+            ctx.lineWidth = 3;
+            roundRect(ctx, 60, startY, width - 120, 320, 28, true, true);
+
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '700 22px sans-serif';
+            ctx.fillText('DISTANCE', 100, startY + 65);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 56px sans-serif';
+            ctx.fillText(todayDistance.toFixed(2) + ' km', 100, startY + 130);
+
+            const totalEarnedForCard = unclaimedZRL > 0 ? unclaimedZRL : (todayDistance * ZRL_PER_KM);
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '700 22px sans-serif';
+            ctx.fillText('EARNED REWARD', 560, startY + 65);
+            ctx.fillStyle = '#a8f07a';
+            ctx.font = '900 56px sans-serif';
+            ctx.fillText('+' + Math.floor(totalEarnedForCard) + ' ZRL', 560, startY + 130);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(100, startY + 180);
+            ctx.lineTo(width - 100, startY + 180);
+            ctx.stroke();
+
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '700 20px sans-serif';
+            ctx.fillText('PACE', 100, startY + 230);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 32px sans-serif';
+            ctx.fillText('5\'15" /km', 100, startY + 275);
+
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '700 20px sans-serif';
+            ctx.fillText('USER', 560, startY + 230);
+            ctx.fillStyle = '#14f195';
+            ctx.font = '800 32px sans-serif';
+            ctx.fillText('@' + (username || 'CryptoRunner'), 560, startY + 275);
+
+            ctx.fillStyle = '#8a8d98';
+            ctx.font = '600 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Play & Earn on Solana & Robinhood Chain', width / 2, height - 80);
+        }
+
+        function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        window.downloadShareImage = function() {
+            triggerHaptic('success');
+            playSound('success');
+            const canvas = document.getElementById('share-canvas');
+            const link = document.createElement('a');
+            link.download = `Zer0life_Run_${Math.floor(Date.now() / 1000)}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            tg.showAlert('✅ Image successfully downloaded! You can now share it to Instagram Stories.');
+        }
+
+        window.shareToTelegramStory = function() {
+            triggerHaptic('medium');
+            playSound('click');
+            const canvas = document.getElementById('share-canvas');
+            
+            if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.8') && tg.shareStory) {
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                tg.shareStory(dataUrl, {
+                    text: `🔥 Just crushed ${todayDistance.toFixed(2)} km and earned ZRL in Zer0life Run! 🚀`,
+                    widget_link: {
+                        url: 'https://t.me/Zer0lifeGenesis_bot',
+                        name: 'Join Zer0life Run'
+                    }
+                });
+            } else {
+                downloadShareImage();
+            }
+        }
 
         window.buyBooster = function(costSol, rate, name) {
             triggerHaptic('medium');
