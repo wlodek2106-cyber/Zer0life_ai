@@ -867,9 +867,20 @@
                 <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛️ Zer0life DAO Governance</span>
                 <button class="close-modal" onclick="closeDaoModal()">&times;</button>
             </div>
-            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 14px;">
-                Vote on community proposals. Creating a proposal requires $\ge 1,000,000$ ZRL (Admin <strong style="color: #14f195;">CryptoWlodek</strong> bypasses limit).
+            <p style="font-size: 12px; color: #8a8d98; margin-bottom: 10px;">
+                1 Vote = 10 ZRL. Tokens are burned upon voting and sent to burn address.
             </p>
+
+            <!-- BURN TRACKER WIDGET -->
+            <div style="background: rgba(255, 71, 87, 0.08); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 10px; color: #ff4757; font-weight: 800;">🔥 TOTAL BURNED VIA VOTING</div>
+                    <div style="font-size: 15px; font-weight: 900; color: #fff;" id="dao-total-burned">0 ZRL</div>
+                </div>
+                <div style="font-size: 10px; color: #8a8d98; text-align: right; word-break: break-all; max-width: 140px;" title="Burn Address">
+                    Burn: <span style="color: #14f195;" id="dao-burn-addr-label">CXKW...3wi4Y</span>
+                </div>
+            </div>
 
             <button class="claim-btn" id="create-proposal-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; padding: 12px; margin-bottom: 16px;" onclick="openCreateProposalPrompt()">
                 📝 Create New ZRLIP Proposal 🚀
@@ -878,8 +889,8 @@
             <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px;">
                 📋 Active Proposals
             </div>
-            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 240px; overflow-y: auto;">
-                <!-- Список пропоузалов рендерится динамически -->
+            <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto;">
+                <!-- Список предложений -->
             </div>
         </div>
     </div>
@@ -1383,6 +1394,7 @@
 
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
+        const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
         let simulatedOnlineCount = 2480;
         let simulatedDepositorsCount = 1429;
@@ -1394,7 +1406,7 @@
             { icon: '🎰', title: 'SLOTS WIN', getDesc: (name) => `${name} hit 0.5 SOL in Slots!` },
             { icon: '🚀', title: 'VIP BOOSTER', getDesc: (name) => `${name} activated Legend Tier (400x)!` },
             { icon: '📥', title: 'SOL DEPOSIT', getDesc: (name) => `${name} deposited 0.5 SOL to pool!` },
-            { icon: '📤', title: 'ZRL WITHDRAWAL', getDesc: (name) => `${name} successfully withdrew 15,000 ZRL!` }
+            { icon: '🔥', title: 'DAO VOTE BURN', getDesc: (name) => `${name} burned 10 ZRL for DAO vote!` }
         ];
 
         async function fetchRealOnlineAndCasinoStats() {
@@ -1665,11 +1677,9 @@
 
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
-        // DAO Proposals Store (localStorage)
-        let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || JSON.stringify([
-            { id: 1, title: 'ZRLIP-1: Expand Move-to-Earn Rewards by 20%', author: 'CryptoWlodek', yes: 1420, no: 120, status: 'Active', myVote: null },
-            { id: 2, title: 'ZRLIP-2: Integrate Robinhood Chain LP Staking', author: 'V Palamarchuk', yes: 890, no: 45, status: 'Active', myVote: null }
-        ]));
+        // DAO Proposals Store & Total Burned Tracker (with real burn address)
+        let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || '[]');
+        let globalTotalBurnedZrl = parseFloat(localStorage.getItem('global_dao_total_burned') || '0');
 
         let isRunning = false;
         let watchId = null;
@@ -1762,7 +1772,7 @@
             tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for 7 days.`);
         };
 
-        // DAO MODAL LOGIC
+        // DAO MODAL LOGIC & 10 ZRL = 1 VOTE BURN TO REAL ADDRESS
         window.openDaoModal = function() {
             triggerHaptic('light');
             playSound('click');
@@ -1777,10 +1787,21 @@
 
         window.renderDaoProposals = function() {
             const listContainer = document.getElementById('dao-proposals-list');
+            const totalBurnedEl = document.getElementById('dao-total-burned');
+            const burnAddrLabel = document.getElementById('dao-burn-addr-label');
+
+            if (totalBurnedEl) {
+                totalBurnedEl.innerText = globalTotalBurnedZrl.toLocaleString() + " ZRL";
+            }
+            if (burnAddrLabel) {
+                burnAddrLabel.innerText = BURN_WALLET_ADDRESS.substring(0, 4) + '...' + BURN_WALLET_ADDRESS.substring(BURN_WALLET_ADDRESS.length - 5);
+                burnAddrLabel.title = BURN_WALLET_ADDRESS;
+            }
+
             if (!listContainer) return;
 
             if (daoProposals.length === 0) {
-                listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No proposals active right now.</div>`;
+                listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No proposals active right now. Be the first to create one!</div>`;
                 return;
             }
 
@@ -1802,9 +1823,10 @@
                         <span>Author: <strong style="color: #a8f07a;">${p.author}</strong></span>
                         <span style="color: #14f195;">👍 ${p.yes} | 👎 ${p.no}</span>
                     </div>
-                    <div style="display: flex; gap: 8px; margin-top: 4px;">
-                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'yes')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(20,241,149,0.15); color: #14f195; border: 1px solid rgba(20,241,149,0.4); font-weight: 800;">👍 Vote Yes</button>
-                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'no')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.4); font-weight: 800;">👎 Vote No</button>
+                    <div style="font-size: 10px; color: #ff4757; font-style: italic;">Cost per vote: 10 ZRL (Burned to ${BURN_WALLET_ADDRESS.substring(0,6)}...)</div>
+                    <div style="display: flex; gap: 8px; margin-top: 2px;">
+                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'yes')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(20,241,149,0.15); color: #14f195; border: 1px solid rgba(20,241,149,0.4); font-weight: 800;">👍 Vote Yes (-10 ZRL)</button>
+                        <button class="claim-btn" onclick="voteProposal(${p.id}, 'no')" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.4); font-weight: 800;">👎 Vote No (-10 ZRL)</button>
                     </div>
                 `;
                 listContainer.appendChild(card);
@@ -1814,21 +1836,47 @@
         window.voteProposal = function(id, type) {
             triggerHaptic('medium');
             playSound('coin');
+
+            const voteCost = 10;
+            if (totalBalance < voteCost) {
+                triggerHaptic('error');
+                tg.showAlert(`❌ Insufficient ZRL balance!\n\nYou need 10 ZRL to cast a vote (burned to DAO address). Your balance: ${totalBalance.toFixed(2)} ZRL.`);
+                return;
+            }
+
+            totalBalance -= voteCost;
+            earnedZrlBalance = Math.max(0, earnedZrlBalance - voteCost);
+            globalTotalBurnedZrl += voteCost;
+
+            localStorage.setItem('global_dao_total_burned', globalTotalBurnedZrl);
+
             const prop = daoProposals.find(p => p.id === id);
             if (prop) {
                 if (type === 'yes') prop.yes++;
                 else prop.no++;
                 localStorage.setItem('global_dao_proposals', JSON.stringify(daoProposals));
-                renderDaoProposals();
-                tg.showAlert(`✅ Vote recorded successfully!`);
             }
+
+            saveData();
+            updateUI();
+            renderDaoProposals();
+
+            showLiveTxToast('🔥', 'ZRL TOKEN BURN', `${username || 'Player'} burned 10 ZRL for DAO vote!`);
+            try {
+                fetch('https://zer0life-ai-iz5n.onrender.com/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId, walletAddress: BURN_WALLET_ADDRESS, amount: voteCost, currency: 'ZRL_BURN' })
+                });
+            } catch(e) {}
+
+            tg.showAlert(`🔥 Vote cast successfully!\n\n-10 ZRL burned and sent to burn address.`);
         }
 
         window.openCreateProposalPrompt = function() {
             triggerHaptic('medium');
             playSound('click');
 
-            // Проверка прав администратора (CryptoWlodek или V Palamarchuk) или баланса >= 1,000,000 ZRL
             const isAdmin = (username === 'CryptoWlodek' || username === 'V Palamarchuk' || telegramId === 123456789);
 
             if (totalBalance < 1000000 && !isAdmin) {
@@ -1843,7 +1891,7 @@
 
             showCustomPrompt(
                 "Create DAO Proposal",
-                "Enter your proposal title/description (e.g. ZRLIP-3: ...):",
+                "Enter your proposal title/description (e.g. ZRLIP-1: ...):",
                 "Proposal text...",
                 (text) => {
                     if (text && text.length > 5) {
@@ -2880,7 +2928,6 @@
             }
         }
 
-        // РЕГИСТРАЦИЯ С ПРОВЕРКОЙ УНИКАЛЬНОСТИ НИКНЕЙМА
         document.getElementById('reg-submit-btn').onclick = async () => {
             triggerHaptic('medium');
             playSound('click');
@@ -2892,10 +2939,8 @@
                 return;
             }
 
-            // Проверка локального списка зарегистрированных имён на уникальность
             let registeredNicknames = JSON.parse(localStorage.getItem('global_registered_nicknames') || '[]');
             
-            // Если этот ник уже занят другим игроком (и это не текущий пользователь)
             const existingOwnerId = localStorage.getItem('nickname_owner_' + inputName);
             if (existingOwnerId && existingOwnerId !== String(telegramId)) {
                 triggerHaptic('error');
