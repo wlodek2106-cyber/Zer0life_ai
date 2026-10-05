@@ -890,7 +890,7 @@
                 📋 Active Proposals
             </div>
             <div id="dao-proposals-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto;">
-                <!-- Список предложений -->
+                <!-- Список пустой по умолчанию -->
             </div>
         </div>
     </div>
@@ -1677,7 +1677,7 @@
 
         let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
 
-        // DAO Proposals Store & Total Burned Tracker (with real burn address)
+        // DAO Proposals Store & Total Burned Tracker (пустой массив по умолчанию, как ты просил)
         let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || '[]');
         let globalTotalBurnedZrl = parseFloat(localStorage.getItem('global_dao_total_burned') || '0');
 
