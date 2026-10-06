@@ -1745,7 +1745,7 @@
         }
 
         const METERS_PER_STEP = 0.00075; 
-        const MAX_SPEED_KMH = 25; 
+        const MAX_SPEED_KMH = 14; // Ограничение скорости изменено до 14 км/ч
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = SHARED_POOL_WALLET;
@@ -2622,7 +2622,7 @@
             localStorage.setItem(STORAGE_PREFIX + 'wallet', userWallet);
             localStorage.setItem(STORAGE_PREFIX + 'casino_turnover', totalCasinoTurnover);
             localStorage.setItem(STORAGE_PREFIX + 'casino_total_won', casinoTotalWon);
-            localStorage.setItem('slots_jackpot_wins_month', jackpotWinsThisMonth);
+            localStorage.setItem('slots_jackpot_month_key', jackpotWinsThisMonth);
             localStorage.setItem(STORAGE_PREFIX + 'last_active_time', Date.now());
 
             syncStatsToServer();
