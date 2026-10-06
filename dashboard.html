@@ -767,7 +767,7 @@
             <span>📸</span> Share Run Card (TG Stories)
         </button>
 
-        <!-- Кнопка просмотра рекламы AdsGram (Block ID: 52300) -->
+        <!-- Кнопка просмотра рекламы AdsGram (Block ID: 52300 - Global/US Optimized) -->
         <button class="share-card-top-btn" onclick="watchAdsGramReward()" style="background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(234,179,8,0.15) 100%); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b;">
             <span>📺</span> Watch Ad for +500 ZRL (AdsGram)
         </button>
@@ -1454,11 +1454,11 @@
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
-        // --- ИНТЕГРАЦИЯ ADSGRAM (Block ID: 52300) ---
+        // --- ИНТЕГРАЦИЯ ADSGRAM (Block ID: 52300 - Global/US Market Optimized) ---
         let AdsgramController = null;
         try {
             if (window.Adsgram) {
-                AdsgramController = window.Adsgram.init({ blockId: "52300" });
+                AdsgramController = window.Adsgram.init({ blockId: "52300", debug: false });
             }
         } catch (e) {
             console.log("Adsgram init error:", e);
@@ -1478,28 +1478,23 @@
 
             if (AdsgramController) {
                 try {
-                    AdsgramController.show().then(() => {
-                        // Пользователь успешно досмотрел рекламу до конца
-                        totalBalance += 500;
-                        earnedZrlBalance += 500;
-                        saveData();
-                        updateUI();
-                        
-                        triggerHaptic('success');
-                        playSound('coin');
-                        showLiveTxToast('📺', 'ADSGRAM REWARD', `${username || 'Player'} watched an ad and received +500 ZRL!`);
-                        tg.showAlert('🎉 Success!\n\n+500 ZRL successfully credited for watching the AdsGram ad!');
-                    }).catch((result) => {
-                        // Пользователь закрыл рекламу до завершения или произошла ошибка
-                        triggerHaptic('warning');
-                        tg.showAlert('⚠ Ad was closed before completion. Reward not issued.');
-                    });
-                } catch (err) {
-                    triggerHaptic('error');
-                    tg.showAlert('❌ Failed to load advertisement. Please try again later.');
+                    await AdsgramController.show();
+                    
+                    totalBalance += 500;
+                    earnedZrlBalance += 500;
+                    saveData();
+                    updateUI();
+                    
+                    triggerHaptic('success');
+                    playSound('coin');
+                    showLiveTxToast('📺', 'ADSGRAM REWARD', `${username || 'Player'} watched an ad and received +500 ZRL!`);
+                    tg.showAlert('🎉 Success!\n\n+500 ZRL successfully credited for watching the AdsGram ad!');
+                } catch (result) {
+                    triggerHaptic('warning');
+                    tg.showAlert('⚠ Advertisement was closed before completion, or no ads available. Reward not issued.');
                 }
             } else {
-                // Запасной вариант на случай локального тестирования вне Telegram / AdBlock
+                // Запасной вариант для тестирования вне Telegram / при блокировщиках рекламы
                 totalBalance += 500;
                 earnedZrlBalance += 500;
                 saveData();
