@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -761,7 +761,6 @@
             </div>
         </div>
 
-        <!-- КНОПКА ПОДЕЛИТЬСЯ КАРТОЧКОЙ В САМОМ ВЕРХУ -->
         <button class="share-card-top-btn" onclick="openShareModal()">
             <span>📸</span> Share Run Card (TG Stories)
         </button>
@@ -919,14 +918,13 @@
     <div class="modal-overlay" id="dao-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 8px;">
-                <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛️ Zer0life DAO Governance</span>
+                <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛️️ Zer0life DAO Governance</span>
                 <button class="close-modal" onclick="closeDaoModal()">&times;</button>
             </div>
             <p style="font-size: 12px; color: #8a8d98; margin-bottom: 10px;">
                 1 Vote = 10 ZRL. Tokens are burned upon voting and sent to burn address.
             </p>
 
-            <!-- BURN TRACKER WIDGET -->
             <div style="background: rgba(255, 71, 87, 0.08); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-size: 10px; color: #ff4757; font-weight: 800;">🔥 TOTAL BURNED VIA VOTING</div>
@@ -1450,13 +1448,14 @@
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
         let simulatedOnlineCount = 2480;
-        let simulatedDepositorsCount = 1429;
-        let simulatedTotalSolIn = 148.50;
+        let simulatedDepositorsCount = 1430;
+        let simulatedTotalSolIn = 148.69;
+        let simulatedZrlWonOut = 2450000;
 
         const fakeNames = ["CyberRunner", "SolanaKing", "CryptoNinja", "ZRL_Whale", "MoonWalker", "SpeedyG", "FastToken", "RunMaster"];
         const fakeActions = [
             { icon: '🎁', title: 'MYSTERY BOX', getDesc: (name) => `${name} found a box and won +2,500 ZRL!` },
-            { icon: '🎰', title: 'SLOTS WIN', getDesc: (name) => `${name} hit 0.5 SOL in Slots!` },
+            { icon: '🎰', title: 'ZRL WIN', getDesc: (name) => `${name} won 5,000 ZRL in Slots!` },
             { icon: '🚀', title: 'VIP BOOSTER', getDesc: (name) => `${name} activated Legend Tier (400x)!` },
             { icon: '📥', title: 'SOL DEPOSIT', getDesc: (name) => `${name} deposited 0.5 SOL to pool!` },
             { icon: '🔥', title: 'DAO VOTE BURN', getDesc: (name) => `${name} burned 10 ZRL for DAO vote!` }
@@ -1467,14 +1466,17 @@
                 const fluctuation = Math.floor(Math.random() * 21) - 10;
                 simulatedOnlineCount = Math.max(1240, simulatedOnlineCount + fluctuation);
                 
-                if (Math.random() < 0.25) {
+                // Динамика цифр казино (чтобы они постоянно «жили» и крутились)
+                simulatedTotalSolIn += parseFloat((Math.random() * 0.05).toFixed(2));
+                simulatedZrlWonOut += Math.floor(Math.random() * 250);
+                if (Math.random() < 0.2) {
                     simulatedDepositorsCount += 1;
-                    simulatedTotalSolIn += parseFloat((Math.random() * 0.5).toFixed(2));
                 }
                 
                 document.getElementById('online-users-count').innerText = `Online: ${simulatedOnlineCount.toLocaleString()} runners`;
                 document.getElementById('casino-stat-sol').innerText = simulatedTotalSolIn.toFixed(2) + " SOL";
                 document.getElementById('casino-stat-depositors').innerText = simulatedDepositorsCount.toLocaleString() + "+";
+                document.getElementById('casino-stat-zrl').innerText = (simulatedZrlWonOut / 1000).toFixed(1) + "k ZRL";
 
                 if (Math.random() < 0.35) {
                     triggerFakeLiveActivity();
@@ -1487,14 +1489,12 @@
                         simulatedTotalSolIn = Math.max(simulatedTotalSolIn, data.totalCasinoSolIn);
                         document.getElementById('casino-stat-sol').innerText = simulatedTotalSolIn.toFixed(2) + " SOL";
                     }
-                    if (data.totalCasinoZrlWon !== undefined) {
-                        document.getElementById('casino-stat-zrl').innerText = Math.floor(data.totalCasinoZrlWon).toLocaleString() + " ZRL";
-                    }
                 }
             } catch(e) {
                 document.getElementById('online-users-count').innerText = `Online: ${simulatedOnlineCount.toLocaleString()} runners`;
                 document.getElementById('casino-stat-sol').innerText = simulatedTotalSolIn.toFixed(2) + " SOL";
                 document.getElementById('casino-stat-depositors').innerText = simulatedDepositorsCount.toLocaleString() + "+";
+                document.getElementById('casino-stat-zrl').innerText = (simulatedZrlWonOut / 1000).toFixed(1) + "k ZRL";
             }
         }
 
@@ -1504,11 +1504,13 @@
             showLiveTxToast(randomAction.icon, randomAction.title, randomAction.getDesc(randomName));
         }
 
-        setInterval(fetchRealOnlineAndCasinoStats, 4000);
-        setTimeout(fetchRealOnlineAndCasinoStats, 500);
+        setInterval(fetchRealOnlineAndCasinoStats, 3500);
+        setTimeout(fetchRealOnlineAndCasinoStats, 400);
 
         async function reportCasinoAction(solIn, zrlWon) {
             try {
+                simulatedZrlWonOut += zrlWon;
+                if (solIn > 0) simulatedTotalSolIn += solIn;
                 await fetch('https://zer0life-ai-iz5n.onrender.com/casino-action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1878,7 +1880,6 @@
             if (stroke) ctx.stroke();
         }
 
-        // Универсальная генерация чистой карточки в памяти без UI-окон интерфейса
         function createCleanShareBlob(callback) {
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = 1080;
@@ -2542,6 +2543,13 @@
             }
         }
 
+        // --- ГЛАВНАЯ ЛОГИКА ШАНСА ВЫИГРЫША SOLANA (0.001%) ---
+        function checkSolanaWinChance() {
+            // Генерируем случайное число от 0 до 100. Если меньше или равно 0.001 (т.е. ровно 0.001%), выпала Solana!
+            const hit = Math.random() * 100;
+            return hit <= 0.001;
+        }
+
         function saveData() {
             localStorage.setItem(STORAGE_PREFIX + 'total_balance', totalBalance);
             localStorage.setItem(STORAGE_PREFIX + 'pool_deposit', poolDeposit);
@@ -2749,31 +2757,19 @@
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
 
-            let totalSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'total_spins')) || 0;
-            totalSpins++;
-            localStorage.setItem(STORAGE_PREFIX + 'total_spins', totalSpins);
+            // Проверка шанса выигрыша SOL (0.001%) или рандом ZRL / проигрыш
+            const winSol = checkSolanaWinChance();
+            let winningIndex = 0;
 
-            let weightedIndices = [];
-            for (let i = 0; i < wheelSectors.length; i++) {
-                const sector = wheelSectors[i];
-                let weight = 0;
-
-                if (sector.type === 'sol' && sector.val === 0.01) {
-                    weight = (totalSpins >= 50) ? 1 : 2; 
-                } else if (sector.type === 'box') {
-                    weight = 8; 
-                } else if (sector.type === 'free_spin' || sector.type === 'boots') {
-                    weight = 5; 
-                } else {
-                    weight = 12; 
-                }
-
-                for (let w = 0; w < weight; w++) {
-                    weightedIndices.push(i);
-                }
+            if (winSol) {
+                // Выбираем сектор SOL (например индекс 0 или 4)
+                winningIndex = Math.random() < 0.5 ? 0 : 4;
+            } else {
+                // Исключаем сектора SOL (индексы 0 и 4), выбираем случайный ZRL, Бокс или Буст
+                const nonSolIndices = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+                winningIndex = nonSolIndices[Math.floor(Math.random() * nonSolIndices.length)];
             }
 
-            const winningIndex = weightedIndices[Math.floor(Math.random() * weightedIndices.length)];
             const won = wheelSectors[winningIndex];
 
             if (won.type === 'box') {
@@ -2881,26 +2877,25 @@
             setTimeout(() => {
                 clearInterval(interval);
                 
-                const rand = Math.random();
+                const winSol = checkSolanaWinChance();
                 let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
 
-                const canHitJackpot = (totalCasinoTurnover >= 10.0) && (jackpotWinsThisMonth < 2);
-
-                if (canHitJackpot && rand < 0.015) { 
+                if (winSol) {
+                    // Выиграл Solana (0.001%)
                     r1 = r2 = r3 = '7️⃣';
-                    winSOL = 1.0;
+                    winSOL = betSOL * 20;
                     isJackpot = true;
-                    jackpotWinsThisMonth++;
-                } else if (canHitJackpot && rand < 0.08) { 
-                    r1 = r2 = r3 = '🍉';
-                    winSOL = betSOL * 10;
-                } else if (rand < 0.35) { 
-                    r1 = '🍇'; r2 = '🍇'; r3 = '🍇';
-                    winZRL = Math.floor(Math.random() * 991) + 10; 
-                } else if (rand < 0.50) { 
-                    r1 = '🍊'; r2 = '🍊'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; winSOL = betSOL * 1.5;
-                } else { 
-                    r1 = '🍒'; r2 = slotSymbols[Math.floor(Math.random() * 4)]; r3 = '🍉';
+                } else {
+                    const rand = Math.random();
+                    if (rand < 0.40) { 
+                        r1 = '🍇'; r2 = '🍇'; r3 = '🍇';
+                        winZRL = Math.floor(Math.random() * 951) + 50; 
+                    } else if (rand < 0.55) { 
+                        r1 = '🍊'; r2 = '🍊'; r3 = slotSymbols[Math.floor(Math.random() * 5)]; 
+                        winZRL = Math.floor(Math.random() * 200) + 20;
+                    } else { 
+                        r1 = '🍒'; r2 = slotSymbols[Math.floor(Math.random() * 4)]; r3 = '🍉';
+                    }
                 }
 
                 document.getElementById('reel1').innerText = r1;
@@ -2918,13 +2913,8 @@
                     triggerHaptic('success');
                     playSound('coin');
 
-                    if (isJackpot) {
-                        showLiveTxToast('👑', 'JACKPOT SOL WIN', `${username || 'Player'} hit the Main Jackpot of 1.0 SOL!`);
-                        tg.showAlert(`👑 JACKPOT WON!\n\nYou won the Main Jackpot: 1.0 SOL! 🚀`);
-                    } else {
-                        showLiveTxToast('🎰', 'SLOTS WIN', `${username || 'Player'} won ${winSOL.toFixed(3)} SOL in Slots!`);
-                        tg.showAlert(`🎉 SLOTS WIN!\n\nYou won: ${winSOL.toFixed(3)} SOL!`);
-                    }
+                    showLiveTxToast('👑', 'SOLANA JACKPOT', `${username || 'Player'} hit 0.001% chance and won ${winSOL.toFixed(2)} SOL!`);
+                    tg.showAlert(`👑 ULTRA RARE SOLANA WIN!\n\nYou hit the 0.001% chance and won ${winSOL.toFixed(2)} SOL! 🚀`);
                 } else if (winZRL > 0) {
                     totalBalance += winZRL;
                     earnedZrlBalance += winZRL;
@@ -3008,8 +2998,18 @@
 
             renderBJ();
 
+            const winSol = checkSolanaWinChance();
+            if (winSol) {
+                // Принудительный блекджек с выигрышем SOL
+                playerHand = [{ val: 'A', suit: '♠' }, { val: 'K', suit: '♥' }];
+                dealerHand = [{ val: '9', suit: '♦' }, { val: '7', suit: '♣' }];
+                renderBJ();
+                bjFinish(2.5, "👑 0.001% CHANCE! You hit Blackjack and won SOL!", true);
+                return;
+            }
+
             if (calcHandScore(playerHand) === 21) {
-                bjFinish(2.5, "🎉 BLACKJACK! You won x2.5 SOL!");
+                bjFinish(0, "🎉 Blackjack ZRL Reward!", false, 500);
             }
         }
 
@@ -3047,8 +3047,15 @@
             const pScore = calcHandScore(playerHand);
             const dScore = calcHandScore(dealerHand);
 
+            const winSol = checkSolanaWinChance();
+            if (winSol) {
+                bjFinish(2, "👑 0.001% CHANCE! Dealer folded, you won SOL!", true);
+                return;
+            }
+
             if (dScore > 21 || pScore > dScore) {
-                bjFinish(2, "🎉 You beat the dealer!");
+                const zrlReward = 200;
+                bjFinish(0, `🎉 You won +${zrlReward} ZRL!`, false, zrlReward);
             } else if (pScore === dScore) {
                 bjFinish('return', "🤝 Push! Bet returned to balance.");
             } else {
@@ -3056,19 +3063,25 @@
             }
         }
 
-        function bjFinish(multiplier, msg) {
+        function bjFinish(multiplier, msg, isSolWin = false, zrlReward = 0) {
             if (multiplier === 'return') {
                 casinoTotalWon += bjActiveBet;
                 reportCasinoAction(0, 0);
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('selection');
-            } else if (multiplier > 0) {
+            } else if (isSolWin) {
                 const solWon = bjActiveBet * multiplier;
                 casinoTotalWon += solWon; 
                 reportCasinoAction(0, 0);
                 saveData(); updateUI(); updateEnergyUI();
                 triggerHaptic('success'); playSound('coin');
-                showLiveTxToast('🃏', 'BLACKJACK WIN', `${username || 'Player'} won ${(solWon).toFixed(3)} SOL in Blackjack!`);
+                showLiveTxToast('🃏', 'SOLANA BLACKJACK', `${username || 'Player'} won ${(solWon).toFixed(3)} SOL in BJ!`);
+            } else if (zrlReward > 0) {
+                totalBalance += zrlReward;
+                earnedZrlBalance += zrlReward;
+                reportCasinoAction(0, zrlReward);
+                saveData(); updateUI(); updateEnergyUI();
+                triggerHaptic('success'); playSound('coin');
             } else {
                 triggerHaptic('error');
             }
@@ -3143,27 +3156,47 @@
 
             setTimeout(() => {
                 clearInterval(timer);
-                const winningNum = Math.floor(Math.random() * 37);
-                const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNum);
-                const winningColor = (winningNum === 0) ? 'green' : (isRed ? 'red' : 'black');
-                const isEven = (winningNum !== 0 && winningNum % 2 === 0);
+                
+                const winSol = checkSolanaWinChance();
+                let winningNum = 0;
+                let winningColor = 'green';
+                let won = false;
+
+                if (winSol) {
+                    // Выиграл SOL по рулетке (0.001%)
+                    winningNum = selectedRouletteBetType === 'red' ? 1 : 2;
+                    winningColor = 'red';
+                    won = true;
+                } else {
+                    winningNum = Math.floor(Math.random() * 37);
+                    const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNum);
+                    winningColor = (winningNum === 0) ? 'green' : (isRed ? 'red' : 'black');
+                    const isEven = (winningNum !== 0 && winningNum % 2 === 0);
+
+                    if (selectedRouletteBetType === 'red' && winningColor === 'red') won = true;
+                    else if (selectedRouletteBetType === 'black' && winningColor === 'black') won = true;
+                    else if (selectedRouletteBetType === 'even' && isEven) won = true;
+                    else if (selectedRouletteBetType === 'odd' && !isEven && winningNum !== 0) won = true;
+                }
 
                 ballEl.innerText = `🎯 [ ${winningNum} ${winningColor === 'red' ? '🔴' : (winningColor === 'black' ? '⚫' : '🟢')} ]`;
 
-                let won = false;
-                if (selectedRouletteBetType === 'red' && winningColor === 'red') won = true;
-                else if (selectedRouletteBetType === 'black' && winningColor === 'black') won = true;
-                else if (selectedRouletteBetType === 'even' && isEven) won = true;
-                else if (selectedRouletteBetType === 'odd' && !isEven && winningNum !== 0) won = true;
-
-                if (won) {
+                if (won && winSol) {
                     const winSOL = betSOL * 2;
                     casinoTotalWon += winSOL; 
                     reportCasinoAction(0, 0);
                     saveData(); updateUI(); updateEnergyUI();
                     triggerHaptic('success'); playSound('coin');
-                    showLiveTxToast('🎯', 'ROULETTE WIN', `${username || 'Player'} won ${winSOL.toFixed(3)} SOL in Roulette!`);
-                    tg.showAlert(`🎉 WIN!\n\nNumber: ${winningNum} (${winningColor}). Winnings (+${winSOL.toFixed(3)} SOL) credited!`);
+                    showLiveTxToast('🎯', 'SOLANA ROULETTE', `${username || 'Player'} hit 0.001% chance and won ${winSOL.toFixed(3)} SOL!`);
+                    tg.showAlert(`👑 0.001% CHANCE! You hit the lucky spin and won ${winSOL.toFixed(3)} SOL!`);
+                } else if (won) {
+                    const zrlReward = 150;
+                    totalBalance += zrlReward;
+                    earnedZrlBalance += zrlReward;
+                    reportCasinoAction(0, zrlReward);
+                    saveData(); updateUI(); updateEnergyUI();
+                    triggerHaptic('success'); playSound('coin');
+                    tg.showAlert(`🎉 WIN! Ball landed on ${winningNum}. You won +${zrlReward} ZRL!`);
                 } else {
                     triggerHaptic('error');
                     tg.showAlert(`💀 Ball landed on ${winningNum} (${winningColor}). You lost.`);
