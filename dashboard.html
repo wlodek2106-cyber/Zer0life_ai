@@ -1472,13 +1472,21 @@
         }
         checkAndResetMarathonDistance();
 
-        // Таймер обратного отсчета для марафона в таблице лидеров
+        // Таймер обратного отсчета для марафона в таблице лидеров + автоматическое уведомление о старте
         function updateMarathonTimerUI() {
             const badge = document.getElementById('marathon-timer-badge');
             if (!badge) return;
 
             const now = Date.now();
             const timeLeft = MARATHON_END_TIME - now;
+
+            if (now >= MARATHON_START_TIME) {
+                const notifiedKey = STORAGE_PREFIX + 'marathon_started_push_shown';
+                if (!localStorage.getItem(notifiedKey)) {
+                    localStorage.setItem(notifiedKey, 'true');
+                    showLiveTxToast('🚨', 'MARATHON STARTED!', '30-day ZRL marathon is officially live! Good luck!');
+                }
+            }
 
             if (timeLeft <= 0) {
                 badge.innerText = "🏁 Marathon Finished!";
@@ -1496,7 +1504,6 @@
         function checkAndProcessMarathonRewards() {
             const rewardedKey = STORAGE_PREFIX + 'marathon_reward_claimed_oct2026';
             if (!localStorage.getItem(rewardedKey)) {
-                // Если марафон завершился, автоматически начисляем 10 000 ZRL тем, кто не в топ-3 (будет обработано при открытии или на бэкенде)
                 localStorage.setItem(rewardedKey, 'true');
             }
         }
@@ -2905,14 +2912,13 @@
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
-                        // Накапливаемый множитель Boots x2 сверху до лимита 10 000 ZRL/km строго на 1 час
                         let baseRate = (ZRL_PER_KM > 500 && boosterExpiryTime > Date.now()) ? ZRL_PER_KM : 500;
                         let newRate = baseRate * 2;
-                        if (newRate > 10000) newRate = 10000; // Лимит до 10 000 ZRL/km
+                        if (newRate > 10000) newRate = 10000;
 
                         ZRL_PER_KM = newRate;
                         activeBoosterName = `Boots x2 (${ZRL_PER_KM.toLocaleString()} ZRL/km)`;
-                        boosterExpiryTime = Date.now() + (60 * 60 * 1000); // Ровно на 1 час
+                        boosterExpiryTime = Date.now() + (60 * 60 * 1000);
                         
                         localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
                         localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
@@ -3533,7 +3539,6 @@
                         avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`;
                     }
 
-                    // Для Топ-3 выводим уведомление написать в Телеграм https://t.me/CryptoWlodek для получения приза
                     const div = document.createElement('div');
                     div.style.cssText = `
                         background: ${isFirst ? 'linear-gradient(135deg, #1b241e 0%, #121816 100%)' : '#141721'};
@@ -3557,7 +3562,6 @@
                     podiumContainer.appendChild(div);
                 });
 
-                // С 4 места и ниже участники автоматически получат по 10 000 ZRL после марафона
                 users.slice(3).forEach(user => {
                     const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
                     let avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>`;
