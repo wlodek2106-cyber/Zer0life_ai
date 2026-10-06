@@ -1454,7 +1454,7 @@
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
-        // --- ИНТЕГРАЦИЯ ADSGRAM (Block ID: 52300 - Global/US Market Optimized) ---
+        // --- ИНТЕГРАЦИЯ ADSGRAM (Block ID: 52300 - Strict Mode without fake fallback) ---
         let AdsgramController = null;
         try {
             if (window.Adsgram) {
@@ -1471,13 +1471,14 @@
             if (!AdsgramController) {
                 try {
                     if (window.Adsgram) {
-                        AdsgramController = window.Adsgram.init({ blockId: "52300" });
+                        AdsgramController = window.Adsgram.init({ blockId: "52300", debug: false });
                     }
                 } catch(e) {}
             }
 
             if (AdsgramController) {
                 try {
+                    // Ожидаем реального просмотра рекламы пользователем
                     await AdsgramController.show();
                     
                     totalBalance += 500;
@@ -1490,17 +1491,14 @@
                     showLiveTxToast('📺', 'ADSGRAM REWARD', `${username || 'Player'} watched an ad and received +500 ZRL!`);
                     tg.showAlert('🎉 Success!\n\n+500 ZRL successfully credited for watching the AdsGram ad!');
                 } catch (result) {
+                    // Реклама закрыта до конца или произошла ошибка показа
                     triggerHaptic('warning');
                     tg.showAlert('⚠ Advertisement was closed before completion, or no ads available. Reward not issued.');
                 }
             } else {
-                // Запасной вариант для тестирования вне Telegram / при блокировщиках рекламы
-                totalBalance += 500;
-                earnedZrlBalance += 500;
-                saveData();
-                updateUI();
-                triggerHaptic('success');
-                tg.showAlert('🎉 [Test Mode] +500 ZRL credited!');
+                // Если SDK недоступен, монеты больше НЕ начисляются автоматически вхолостую
+                triggerHaptic('error');
+                tg.showAlert('❌ Advertising system is currently unavailable. Please check your internet connection or try opening the app inside Telegram mobile.');
             }
         };
 
