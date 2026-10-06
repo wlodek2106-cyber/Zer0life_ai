@@ -6,6 +6,8 @@
     <meta name="author" content="V Palamarchuk">
     <title>Zer0life Run - Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключение AdsGram SDK -->
+    <script src="https://sad.adsgram.ai/js/adsgram.min.js?v=1"></script>
     <style>
         body, html {
             margin: 0;
@@ -765,6 +767,11 @@
             <span>📸</span> Share Run Card (TG Stories)
         </button>
 
+        <!-- Кнопка просмотра рекламы AdsGram (Block ID: 52300) -->
+        <button class="share-card-top-btn" onclick="watchAdsGramReward()" style="background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(234,179,8,0.15) 100%); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b;">
+            <span>📺</span> Watch Ad for +500 ZRL (AdsGram)
+        </button>
+
         <div class="online-badge">
             <div class="online-dot"></div>
             <span id="online-users-count">Online: 2,480 runners</span>
@@ -918,7 +925,7 @@
     <div class="modal-overlay" id="dao-modal">
         <div class="modal-content" style="background: linear-gradient(135deg, #15171e 0%, #1a221e 100%); border-top: 2px solid #14f195;">
             <div class="modal-header" style="margin-bottom: 8px;">
-                <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛️️ Zer0life DAO Governance</span>
+                <span class="modal-title" style="color: #14f195; font-size: 18px;">🏛 Zer0life DAO Governance</span>
                 <button class="close-modal" onclick="closeDaoModal()">&times;</button>
             </div>
             <p style="font-size: 12px; color: #8a8d98; margin-bottom: 10px;">
@@ -1447,6 +1454,61 @@
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
+        // --- ИНТЕГРАЦИЯ ADSGRAM (Block ID: 52300) ---
+        let AdsgramController = null;
+        try {
+            if (window.Adsgram) {
+                AdsgramController = window.Adsgram.init({ blockId: "52300" });
+            }
+        } catch (e) {
+            console.log("Adsgram init error:", e);
+        }
+
+        window.watchAdsGramReward = async function() {
+            triggerHaptic('medium');
+            playSound('click');
+
+            if (!AdsgramController) {
+                try {
+                    if (window.Adsgram) {
+                        AdsgramController = window.Adsgram.init({ blockId: "52300" });
+                    }
+                } catch(e) {}
+            }
+
+            if (AdsgramController) {
+                try {
+                    AdsgramController.show().then(() => {
+                        // Пользователь успешно досмотрел рекламу до конца
+                        totalBalance += 500;
+                        earnedZrlBalance += 500;
+                        saveData();
+                        updateUI();
+                        
+                        triggerHaptic('success');
+                        playSound('coin');
+                        showLiveTxToast('📺', 'ADSGRAM REWARD', `${username || 'Player'} watched an ad and received +500 ZRL!`);
+                        tg.showAlert('🎉 Success!\n\n+500 ZRL successfully credited for watching the AdsGram ad!');
+                    }).catch((result) => {
+                        // Пользователь закрыл рекламу до завершения или произошла ошибка
+                        triggerHaptic('warning');
+                        tg.showAlert('⚠ Ad was closed before completion. Reward not issued.');
+                    });
+                } catch (err) {
+                    triggerHaptic('error');
+                    tg.showAlert('❌ Failed to load advertisement. Please try again later.');
+                }
+            } else {
+                // Запасной вариант на случай локального тестирования вне Telegram / AdBlock
+                totalBalance += 500;
+                earnedZrlBalance += 500;
+                saveData();
+                updateUI();
+                triggerHaptic('success');
+                tg.showAlert('🎉 [Test Mode] +500 ZRL credited!');
+            }
+        };
+
         let simulatedOnlineCount = 2480;
         let simulatedDepositorsCount = 1430;
         let simulatedTotalSolIn = 148.69;
@@ -1466,7 +1528,6 @@
                 const fluctuation = Math.floor(Math.random() * 21) - 10;
                 simulatedOnlineCount = Math.max(1240, simulatedOnlineCount + fluctuation);
                 
-                // Динамика цифр казино (чтобы они постоянно «жили» и крутились)
                 simulatedTotalSolIn += parseFloat((Math.random() * 0.05).toFixed(2));
                 simulatedZrlWonOut += Math.floor(Math.random() * 250);
                 if (Math.random() < 0.2) {
@@ -2543,9 +2604,7 @@
             }
         }
 
-        // --- ГЛАВНАЯ ЛОГИКА ШАНСА ВЫИГРЫША SOLANA (0.001%) ---
         function checkSolanaWinChance() {
-            // Генерируем случайное число от 0 до 100. Если меньше или равно 0.001 (т.е. ровно 0.001%), выпала Solana!
             const hit = Math.random() * 100;
             return hit <= 0.001;
         }
@@ -2757,15 +2816,12 @@
             spinBtn.disabled = true;
             spinBtn.style.opacity = '0.5';
 
-            // Проверка шанса выигрыша SOL (0.001%) или рандом ZRL / проигрыш
             const winSol = checkSolanaWinChance();
             let winningIndex = 0;
 
             if (winSol) {
-                // Выбираем сектор SOL (например индекс 0 или 4)
                 winningIndex = Math.random() < 0.5 ? 0 : 4;
             } else {
-                // Исключаем сектора SOL (индексы 0 и 4), выбираем случайный ZRL, Бокс или Буст
                 const nonSolIndices = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
                 winningIndex = nonSolIndices[Math.floor(Math.random() * nonSolIndices.length)];
             }
@@ -2881,7 +2937,6 @@
                 let r1, r2, r3, winSOL = 0, winZRL = 0, isJackpot = false;
 
                 if (winSol) {
-                    // Выиграл Solana (0.001%)
                     r1 = r2 = r3 = '7️⃣';
                     winSOL = betSOL * 20;
                     isJackpot = true;
@@ -3000,7 +3055,6 @@
 
             const winSol = checkSolanaWinChance();
             if (winSol) {
-                // Принудительный блекджек с выигрышем SOL
                 playerHand = [{ val: 'A', suit: '♠' }, { val: 'K', suit: '♥' }];
                 dealerHand = [{ val: '9', suit: '♦' }, { val: '7', suit: '♣' }];
                 renderBJ();
@@ -3163,7 +3217,6 @@
                 let won = false;
 
                 if (winSol) {
-                    // Выиграл SOL по рулетке (0.001%)
                     winningNum = selectedRouletteBetType === 'red' ? 1 : 2;
                     winningColor = 'red';
                     won = true;
