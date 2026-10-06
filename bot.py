@@ -26,7 +26,7 @@ from solders.signature import Signature
 from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
-# Добавлено для планировщика марафона
+# Планировщик для марафона
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 api_app = Flask(__name__)
@@ -109,19 +109,20 @@ def save_stats_data(stats):
     except Exception as e:
         logging.error(f"Error saving stats: {e}")
 
-# Функция принудительного обнуления дистанции у всех участников для честного марафона
+# ЖЕСТКИЙ СБРОС ВСЕХ КИЛОМЕТРОВ ДО 0.0 ДЛЯ ВСЕХ УЧАСТНИКОВ
 def force_reset_all_distances():
-    if os.path.exists(STATS_FILE):
-        try:
-            with open(STATS_FILE, "r") as f:
-                stats = json.load(f)
-            for tg_id in stats:
-                stats[tg_id]["distance"] = 0.0
-            with open(STATS_FILE, "w") as f:
-                json.dump(stats, f)
-            logging.info("SUCCESS: All participants' distances have been reset to 0.0 for the marathon.")
-        except Exception as e:
-            logging.error(f"Failed to reset distances: {e}")
+    try:
+        # Полностью удаляем старый файл статистики со старыми накрученными километрами
+        if os.path.exists(STATS_FILE):
+            os.remove(STATS_FILE)
+            logging.info("Old leaderboard_stats.json successfully deleted.")
+        
+        # Создаем пустой файл заново
+        with open(STATS_FILE, "w") as f:
+            json.dump({}, f)
+        logging.info("SUCCESS: Leaderboard completely wiped to 0.0 for all participants.")
+    except Exception as e:
+        logging.error(f"Failed to reset leaderboard: {e}")
 
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
@@ -218,7 +219,6 @@ async def crypto_market_price_alerts():
         except Exception as e:
             logging.error(f"Phantom price fetch error: {e}")
 
-# Планировщик для старта марафона (7 октября 2026 года в 00:00 UTC)
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
 
 async def send_marathon_start_push():
@@ -554,7 +554,7 @@ def setup_webhook_sync():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     
-    # ПРИНУДИТЕЛЬНЫЙ СБРОС КИЛОМЕТРОВ ПРИ СТАРТЕ СЕРВЕРА ДЛЯ ЧЕСТНОГО МАРАФОНА
+    # СБРОС ВСЕХ КИЛОМЕТРОВ ПРИ СТАРТЕ СЕРВЕРА
     force_reset_all_distances()
 
     if TOKEN:
