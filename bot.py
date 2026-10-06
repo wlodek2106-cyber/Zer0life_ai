@@ -7,6 +7,8 @@ import asyncio
 import base58
 import traceback
 import random
+import datetime
+import aiohttp
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -111,7 +113,7 @@ def start_background_loop(loop):
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
-# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК (BROADCAST) ====================
+# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК И КУРСОВ ====================
 async def send_broadcast_to_all(text: str):
     users = load_users()
     if not bot:
@@ -122,7 +124,7 @@ async def send_broadcast_to_all(text: str):
                 [InlineKeyboardButton(text="🚀 Open Zer0Life Run & Casino", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
             ])
             await bot.send_message(chat_id=int(user_id), text=text, reply_markup=keyboard, parse_mode="HTML")
-            await asyncio.sleep(0.05) # Защита от лимитов Telegram API
+            await asyncio.sleep(0.05)
         except Exception as e:
             logging.error(f"Failed to send broadcast to {user_id}: {e}")
 
@@ -139,10 +141,10 @@ def api_broadcast():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
-# Автоматический генератор событий
+# Автоматический генератор игровых событий
 async def automated_ecosystem_notifications():
     while True:
-        await asyncio.sleep(1800) # Уведомления каждые 30 минут
+        await asyncio.sleep(1800)
         if get_total_users() == 0:
             continue
             
@@ -158,8 +160,62 @@ async def automated_ecosystem_notifications():
         chosen_text = random.choice(prompts)
         await send_broadcast_to_all(chosen_text)
 
+# Сводка цен BTC, ETH, SOL и ZRL (через Phantom/Jupiter оракулы)
+async def crypto_market_price_alerts():
+    while True:
+        await asyncio.sleep(10800) # Каждые 3 часа
+        if get_total_users() == 0:
+            continue
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                # 1. Тянем BTC, ETH, SOL с Binance
+                binance_url = 'https://api.binance.com/api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","SOLUSDT"]'
+                async with session.get(binance_url) as resp:
+                    market_data = await resp.json() if resp.status == 200 else []
+                
+                date_str = datetime.datetime.now().strftime("%B %d, %Y")
+                msg = f"📢 <b>Market Overview — {date_str}</b>\n\n"
+                
+                prices_map = {}
+                for item in market_data:
+                    sym = item['symbol'].replace('USDT', '')
+                    price = float(item['lastPrice'])
+                    change = float(item['priceChangePercent'])
+                    prices_map[sym] = {"price": price, "change": change}
+                
+                btc = prices_map.get('BTC', {"price": 0, "change": 0})
+                eth = prices_map.get('ETH', {"price": 0, "change": 0})
+                sol = prices_map.get('SOL', {"price": 0, "change": 0})
+                
+                msg += f"<b>BTC:</b> ${btc['price']:,.2f} | {'Uptrend ⬆️' if btc['change'] >= 0 else 'Downtrend ⬇️'} ({btc['change']:+.2f}%)\n"
+                msg += f"<b>ETH:</b> ${eth['price']:,.2f} | {'Uptrend ⬆️' if eth['change'] >= 0 else 'Downtrend ⬇️'} ({eth['change']:+.2f}%)\n"
+                msg += f"<b>SOL:</b> ${sol['price']:,.2f} | {'Uptrend ⬆️' if sol['change'] >= 0 else 'Downtrend ⬇️'} ({sol['change']:+.2f}%)\n"
+
+                # 2. Проверяем цену ZRL через Solana/Jupiter API (как в кошельке Phantom)
+                zrl_mint = os.getenv('ZRL_MINT')
+                zrl_price_text = "Not Listed Yet (Keep Farming! 🌾)"
+                if zrl_mint:
+                    try:
+                        jup_url = f"https://price.jup.ag/v6/price?ids={zrl_mint}"
+                        async with session.get(jup_url) as jup_resp:
+                            if jup_resp.status == 200:
+                                jup_data = await jup_resp.json()
+                                if 'data' in jup_data and zrl_mint in jup_data['data']:
+                                    zrl_val = float(jup_data['data'][zrl_mint]['price'])
+                                    zrl_price_text = f"${zrl_val:.4f} (DEX Live 🚀)"
+                    except Exception as ex:
+                        logging.error(f"ZRL price fetch error: {ex}")
+
+                msg += f"<b>ZRL Token:</b> {zrl_price_text}\n"
+                
+                await send_broadcast_to_all(msg)
+        except Exception as e:
+            logging.error(f"Market price alert error: {e}")
+
 def start_periodic_notifications():
     asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
+    asyncio.run_coroutine_threadsafe(crypto_market_price_alerts(), bot_loop)
 # ==============================================================================
 
 @api_app.route('/update-stats', methods=['POST'])
@@ -277,7 +333,6 @@ def verify_deposit():
 
         sig_obj = Signature.from_string(tx_signature_str)
 
-        # Проверяем статус транзакции в блокчейне
         tx_status = client.get_signature_statuses([sig_obj])
         if not tx_status or not tx_status.value or not tx_status.value[0]:
             return jsonify({"success": False, "error": "Транзакция не найдена в блокчейне"}), 400
@@ -286,7 +341,6 @@ def verify_deposit():
         if status_info.err is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
 
-        # Точно вычисляем реальный прирост суммы перевода без фиктивных лимитов
         deposited_sol = 0.0
         try:
             tx_details = client.get_transaction(
@@ -296,7 +350,6 @@ def verify_deposit():
             if tx_details and tx_details.value:
                 meta = tx_details.value.transaction.meta
                 if meta and meta.pre_balances and meta.post_balances:
-                    # Ищем максимальный положительный прирост среди всех аккаунтов в транзакции (это и есть депозит на кошелек получателя)
                     for i in range(len(meta.post_balances)):
                         d = (meta.post_balances[i] - meta.pre_balances[i]) / (10**9)
                         if d > deposited_sol:
