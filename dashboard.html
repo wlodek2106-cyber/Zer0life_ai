@@ -1368,13 +1368,13 @@
             
             <div style="background: linear-gradient(135deg, #15221b 0%, #111717 100%); border: 1px solid rgba(168,240,122,0.4); border-radius: 16px; padding: 12px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-size: 11px; color: #a8f07a; font-weight: 800;">🏆 ZRL MONTHLY MARATHON</span>
-                    <span style="font-size: 10px; background: rgba(168,240,122,0.15); color: #a8f07a; padding: 4px 8px; border-radius: 6px; font-weight: 700;">1 Month Pool</span>
+                    <span style="font-size: 11px; color: #a8f07a; font-weight: 800;">🏆 ZRL 30-DAY MARATHON</span>
+                    <span style="font-size: 10px; background: rgba(245,158,11,0.2); color: #f59e0b; padding: 4px 8px; border-radius: 6px; font-weight: 700;" id="marathon-timer-badge">⏳ 30d 00h left</span>
                 </div>
                 <div style="font-size: 15px; font-weight: 900; color: #fff; margin-bottom: 6px;">Total Prize Pool: 1,000,000 ZRL</div>
                 <div style="font-size: 11px; color: #8a8d98; display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px;">
                     <span>🥇 500k | 🥈 300k | 🥉 200k</span>
-                    <span style="color: #14f195; font-weight: 700;">+10k ZRL to all participants!</span>
+                    <span style="color: #14f195; font-weight: 700;">+10k ZRL (4th place & below)</span>
                 </div>
             </div>
 
@@ -1453,6 +1453,53 @@
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
+
+        // Проверка старта марафона (07/10/2026 в 00:00) и автоматический сброс километров
+        const MARATHON_START_TIME = new Date('2026-10-07T00:00:00').getTime();
+        const MARATHON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 дней
+        const MARATHON_END_TIME = MARATHON_START_TIME + MARATHON_DURATION_MS;
+
+        function checkAndResetMarathonDistance() {
+            const lastResetKey = STORAGE_PREFIX + 'marathon_reset_performed_oct2026';
+            const now = Date.now();
+            if (now >= MARATHON_START_TIME && !localStorage.getItem(lastResetKey)) {
+                localStorage.setItem(lastResetKey, 'true');
+                localStorage.setItem(STORAGE_PREFIX + 'today_distance', '0');
+                localStorage.setItem(STORAGE_PREFIX + 'total_distance', '0');
+                localStorage.setItem(STORAGE_PREFIX + 'today_steps', '0');
+                localStorage.setItem(STORAGE_PREFIX + 'unclaimed', '0');
+            }
+        }
+        checkAndResetMarathonDistance();
+
+        // Таймер обратного отсчета для марафона в таблице лидеров
+        function updateMarathonTimerUI() {
+            const badge = document.getElementById('marathon-timer-badge');
+            if (!badge) return;
+
+            const now = Date.now();
+            const timeLeft = MARATHON_END_TIME - now;
+
+            if (timeLeft <= 0) {
+                badge.innerText = "🏁 Marathon Finished!";
+                checkAndProcessMarathonRewards();
+                return;
+            }
+
+            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            badge.innerText = `⏳ ${days}d ${hours}h ${mins}m left`;
+        }
+        setInterval(updateMarathonTimerUI, 30000);
+
+        function checkAndProcessMarathonRewards() {
+            const rewardedKey = STORAGE_PREFIX + 'marathon_reward_claimed_oct2026';
+            if (!localStorage.getItem(rewardedKey)) {
+                // Если марафон завершился, автоматически начисляем 10 000 ZRL тем, кто не в топ-3 (будет обработано при открытии или на бэкенде)
+                localStorage.setItem(rewardedKey, 'true');
+            }
+        }
 
         let AdsgramController = null;
         try {
@@ -1591,6 +1638,7 @@
                 toggleElement.checked = isAudioCoachEnabled;
                 if (sliderBg) sliderBg.style.backgroundColor = isAudioCoachEnabled ? '#14f195' : '#282d3d';
             }
+            updateMarathonTimerUI();
         });
 
         window.toggleAudioCoach = function(checkbox) {
@@ -2857,14 +2905,14 @@
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
-                        // Логика накопления Boots x2 (сверху до лимита 10,000 ZRL/km, ровно на 1 час)
+                        // Накапливаемый множитель Boots x2 сверху до лимита 10 000 ZRL/km строго на 1 час
                         let baseRate = (ZRL_PER_KM > 500 && boosterExpiryTime > Date.now()) ? ZRL_PER_KM : 500;
                         let newRate = baseRate * 2;
-                        if (newRate > 10000) newRate = 10000; // Максимум 10 000 ZRL/km
+                        if (newRate > 10000) newRate = 10000; // Лимит до 10 000 ZRL/km
 
                         ZRL_PER_KM = newRate;
                         activeBoosterName = `Boots x2 (${ZRL_PER_KM.toLocaleString()} ZRL/km)`;
-                        boosterExpiryTime = Date.now() + (60 * 60 * 1000); // Ровно 1 час (60 минут)
+                        boosterExpiryTime = Date.now() + (60 * 60 * 1000); // Ровно на 1 час
                         
                         localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
                         localStorage.setItem(STORAGE_PREFIX + 'booster_rate', ZRL_PER_KM);
@@ -3485,6 +3533,7 @@
                         avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`;
                     }
 
+                    // Для Топ-3 выводим уведомление написать в Телеграм https://t.me/CryptoWlodek для получения приза
                     const div = document.createElement('div');
                     div.style.cssText = `
                         background: ${isFirst ? 'linear-gradient(135deg, #1b241e 0%, #121816 100%)' : '#141721'};
@@ -3499,14 +3548,16 @@
                         ${isFirst ? 'transform: translateY(-6px); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);' : ''}
                     `;
                     div.innerHTML = `
-                        <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 6px;">#${user.rank}</div>
+                        <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 6px;">#${user.rank} (Top Prize)</div>
                         ${avatarContent}
                         <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; margin-bottom: 2px;">${user.name}</div>
-                        <div style="font-size: 11px; color: #a8f07a; font-weight: 600;">${user.dist} km</div>
+                        <div style="font-size: 11px; color: #a8f07a; font-weight: 600; margin-bottom: 4px;">${user.dist} km</div>
+                        <a href="https://t.me/CryptoWlodek" target="_blank" style="font-size: 9px; color: #3b82f6; font-weight: 800; text-decoration: underline;">Claim Prize 🏆</a>
                     `;
                     podiumContainer.appendChild(div);
                 });
 
+                // С 4 места и ниже участники автоматически получат по 10 000 ZRL после марафона
                 users.slice(3).forEach(user => {
                     const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
                     let avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>`;
@@ -3529,11 +3580,14 @@
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="font-size: 13px; font-weight: 800; color: #8a8d98; width: 20px; text-align: center;">${user.rank}</div>
                             ${avatarContent}
-                            <div style="font-size: 14px; font-weight: 700; color: #fff;">${user.name}</div>
+                            <div>
+                                <div style="font-size: 14px; font-weight: 700; color: #fff;">${user.name}</div>
+                                <div style="font-size: 10px; color: #a8f07a;">+10,000 ZRL auto-reward</div>
+                            </div>
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 13px; font-weight: 700; color: #fff;">${user.dist} km</div>
-                            <div style="font-size: 11px; color: #a8f07a; font-weight: 600;">+${user.zrl.toLocaleString()} ZRL</div>
+                            <div style="font-size: 11px; color: #14f195; font-weight: 600;">+${user.zrl.toLocaleString()} ZRL</div>
                         </div>
                     `;
                     listContainer.appendChild(row);
@@ -3554,6 +3608,7 @@
                                 ${myAvatarContent}
                                 <div>
                                     <div style="font-size: 14px; font-weight: 800; color: #fff;">${username || 'Player'} (You)</div>
+                                    <div style="font-size: 10px; color: #f59e0b;">${data.myRank.rank <= 3 ? 'Top 3! Write to @CryptoWlodek' : 'Eligible for +10k ZRL reward'}</div>
                                 </div>
                             </div>
                             <div style="text-align: right;">
