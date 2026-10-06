@@ -26,6 +26,9 @@ from solders.signature import Signature
 from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
+# Добавлено для планировщика марафона
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 api_app = Flask(__name__)
 CORS(api_app, resources={r"/*": {"origins": "*"}})
 
@@ -169,7 +172,6 @@ async def crypto_market_price_alerts():
         
         try:
             async with aiohttp.ClientSession() as session:
-                # Базовые активы экосистемы и ZRL токен (если задан в переменных среды Render)
                 ids = "SOL,BTC,ETH"
                 zrl_mint = os.getenv('ZRL_MINT', '')
                 if zrl_mint:
@@ -192,7 +194,6 @@ async def crypto_market_price_alerts():
                         msg += f"<b>BTC:</b> ${btc_p:,.2f} (Phantom Oracle 🟢)\n"
                         msg += f"<b>ETH:</b> ${eth_p:,.2f} (Phantom Oracle 🟢)\n"
 
-                        # Курс ZRL (автоматически активируется после листинга в DEX и указания ZRL_MINT)
                         if zrl_mint and zrl_mint in data:
                             zrl_p = data[zrl_mint].get('price', 0)
                             msg += f"<b>ZRL Token:</b> ${zrl_p:.4f} (DEX Live 🚀)\n"
@@ -203,9 +204,32 @@ async def crypto_market_price_alerts():
         except Exception as e:
             logging.error(f"Phantom price fetch error: {e}")
 
+# Планировщик для старта марафона (7 октября 2026 года в 00:00 UTC)
+marathon_scheduler = AsyncIOScheduler(timezone="UTC")
+
+async def send_marathon_start_push():
+    text = (
+        "🚨 <b>MARATHON STARTED!</b> 🚨\n\n"
+        "The 30-day ZRL marathon has officially begun! 🏆\n"
+        "All kilometers have been reset, and the 1,000,000 ZRL prize pool is up for grabs. "
+        "Lace up your sneakers and start running right now! 🚀"
+    )
+    await send_broadcast_to_all(text)
+
+def schedule_marathon_start():
+    marathon_time = datetime.datetime(2026, 10, 7, 0, 0, 0)
+    marathon_scheduler.add_job(
+        send_marathon_start_push,
+        'date',
+        run_date=marathon_time,
+        id='marathon_start_event'
+    )
+    marathon_scheduler.start()
+
 def start_periodic_notifications():
     asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
     asyncio.run_coroutine_threadsafe(crypto_market_price_alerts(), bot_loop)
+    schedule_marathon_start() # Запуск планировщика марафона в фоновом потоке бота
 # ==============================================================================
 
 @api_app.route('/update-stats', methods=['POST'])
