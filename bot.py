@@ -109,6 +109,20 @@ def save_stats_data(stats):
     except Exception as e:
         logging.error(f"Error saving stats: {e}")
 
+# Функция принудительного обнуления дистанции у всех участников для честного марафона
+def force_reset_all_distances():
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r") as f:
+                stats = json.load(f)
+            for tg_id in stats:
+                stats[tg_id]["distance"] = 0.0
+            with open(STATS_FILE, "w") as f:
+                json.dump(stats, f)
+            logging.info("SUCCESS: All participants' distances have been reset to 0.0 for the marathon.")
+        except Exception as e:
+            logging.error(f"Failed to reset distances: {e}")
+
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
@@ -208,6 +222,7 @@ async def crypto_market_price_alerts():
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
 
 async def send_marathon_start_push():
+    force_reset_all_distances()
     text = (
         "🚨 <b>MARATHON STARTED!</b> 🚨\n\n"
         "The 30-day ZRL marathon has officially begun! 🏆\n"
@@ -229,7 +244,7 @@ def schedule_marathon_start():
 def start_periodic_notifications():
     asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
     asyncio.run_coroutine_threadsafe(crypto_market_price_alerts(), bot_loop)
-    schedule_marathon_start() # Запуск планировщика марафона в фоновом потоке бота
+    schedule_marathon_start() 
 # ==============================================================================
 
 @api_app.route('/update-stats', methods=['POST'])
@@ -538,6 +553,10 @@ def setup_webhook_sync():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    
+    # ПРИНУДИТЕЛЬНЫЙ СБРОС КИЛОМЕТРОВ ПРИ СТАРТЕ СЕРВЕРА ДЛЯ ЧЕСТНОГО МАРАФОНА
+    force_reset_all_distances()
+
     if TOKEN:
         setup_webhook_sync()
         start_periodic_notifications()
