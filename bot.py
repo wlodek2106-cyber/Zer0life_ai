@@ -6,6 +6,7 @@ import threading
 import asyncio
 import base58
 import traceback
+import random
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -109,6 +110,57 @@ def start_background_loop(loop):
     loop.run_forever()
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
+
+# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК (BROADCAST) ====================
+async def send_broadcast_to_all(text: str):
+    users = load_users()
+    if not bot:
+        return
+    for user_id in users:
+        try:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🚀 Open Zer0Life Run & Casino", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+            ])
+            await bot.send_message(chat_id=int(user_id), text=text, reply_markup=keyboard, parse_mode="HTML")
+            await asyncio.sleep(0.05) # Защита от лимитов Telegram API
+        except Exception as e:
+            logging.error(f"Failed to send broadcast to {user_id}: {e}")
+
+@api_app.route('/broadcast', methods=['POST'])
+def api_broadcast():
+    try:
+        data = request.json
+        if not data or 'text' not in data:
+            return jsonify({"success": False, "error": "Missing text parameter"}), 400
+        
+        message_text = data['text']
+        asyncio.run_coroutine_threadsafe(send_broadcast_to_all(message_text), bot_loop)
+        return jsonify({"success": True, "recipients": get_total_users()})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+# Автоматический генератор событий
+async def automated_ecosystem_notifications():
+    while True:
+        await asyncio.sleep(1800) # Уведомления каждые 30 минут
+        if get_total_users() == 0:
+            continue
+            
+        prompts = [
+            "📤 <b>Withdrawal Alert:</b> A player successfully withdrew 5,000 ZRL to their Solana wallet!",
+            "🎰 <b>Casino Alert:</b> CryptoNinja just hit a massive multiplier and won 10,000 ZRL in Slots!",
+            "🌾 <b>Farming Alert:</b> A user locked 5 SOL in the 300% APY Super Yield farming pool!",
+            "🌾 <b>ZRL Farming Notice:</b> Someone just staked 250,000 ZRL into the 12-month farming vault!",
+            "👟 <b>Store Alert:</b> A runner just purchased <b>Boots x2</b> (7-day boost) from the merchant store!",
+            "⚡ <b>VIP Store Alert:</b> A whale player just unlocked the <b>Boots x10</b> speed package!",
+            "🔥 <b>Jackpot Alert:</b> Another lucky runner won Solana in the Zer0Life Casino roulette!"
+        ]
+        chosen_text = random.choice(prompts)
+        await send_broadcast_to_all(chosen_text)
+
+def start_periodic_notifications():
+    asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
+# ==============================================================================
 
 @api_app.route('/update-stats', methods=['POST'])
 def update_stats():
@@ -421,6 +473,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     if TOKEN:
         setup_webhook_sync()
+        start_periodic_notifications()
     
     port = int(os.environ.get("PORT", 10000))
     api_app.run(host="0.0.0.0", port=port)
