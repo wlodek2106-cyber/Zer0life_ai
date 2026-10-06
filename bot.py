@@ -113,7 +113,7 @@ def start_background_loop(loop):
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
-# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК И КУРСОВ ====================
+# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК И КУРСОВ PHANTOM / JUPITER ====================
 async def send_broadcast_to_all(text: str):
     users = load_users()
     if not bot:
@@ -160,7 +160,7 @@ async def automated_ecosystem_notifications():
         chosen_text = random.choice(prompts)
         await send_broadcast_to_all(chosen_text)
 
-# Сводка цен BTC, ETH, SOL и ZRL (через Phantom/Jupiter оракулы)
+# Сводка цен BTC, ETH, SOL и ZRL через оракулы Solana / Phantom (Jupiter Price API)
 async def crypto_market_price_alerts():
     while True:
         await asyncio.sleep(10800) # Каждые 3 часа
@@ -169,49 +169,39 @@ async def crypto_market_price_alerts():
         
         try:
             async with aiohttp.ClientSession() as session:
-                # 1. Тянем BTC, ETH, SOL с Binance
-                binance_url = 'https://api.binance.com/api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","SOLUSDT"]'
-                async with session.get(binance_url) as resp:
-                    market_data = await resp.json() if resp.status == 200 else []
-                
-                date_str = datetime.datetime.now().strftime("%B %d, %Y")
-                msg = f"📢 <b>Market Overview — {date_str}</b>\n\n"
-                
-                prices_map = {}
-                for item in market_data:
-                    sym = item['symbol'].replace('USDT', '')
-                    price = float(item['lastPrice'])
-                    change = float(item['priceChangePercent'])
-                    prices_map[sym] = {"price": price, "change": change}
-                
-                btc = prices_map.get('BTC', {"price": 0, "change": 0})
-                eth = prices_map.get('ETH', {"price": 0, "change": 0})
-                sol = prices_map.get('SOL', {"price": 0, "change": 0})
-                
-                msg += f"<b>BTC:</b> ${btc['price']:,.2f} | {'Uptrend ⬆️' if btc['change'] >= 0 else 'Downtrend ⬇️'} ({btc['change']:+.2f}%)\n"
-                msg += f"<b>ETH:</b> ${eth['price']:,.2f} | {'Uptrend ⬆️' if eth['change'] >= 0 else 'Downtrend ⬇️'} ({eth['change']:+.2f}%)\n"
-                msg += f"<b>SOL:</b> ${sol['price']:,.2f} | {'Uptrend ⬆️' if sol['change'] >= 0 else 'Downtrend ⬇️'} ({sol['change']:+.2f}%)\n"
-
-                # 2. Проверяем цену ZRL через Solana/Jupiter API (как в кошельке Phantom)
-                zrl_mint = os.getenv('ZRL_MINT')
-                zrl_price_text = "Not Listed Yet (Keep Farming! 🌾)"
+                # Базовые активы экосистемы и ZRL токен (если задан в переменных среды Render)
+                ids = "SOL,BTC,ETH"
+                zrl_mint = os.getenv('ZRL_MINT', '')
                 if zrl_mint:
-                    try:
-                        jup_url = f"https://price.jup.ag/v6/price?ids={zrl_mint}"
-                        async with session.get(jup_url) as jup_resp:
-                            if jup_resp.status == 200:
-                                jup_data = await jup_resp.json()
-                                if 'data' in jup_data and zrl_mint in jup_data['data']:
-                                    zrl_val = float(jup_data['data'][zrl_mint]['price'])
-                                    zrl_price_text = f"${zrl_val:.4f} (DEX Live 🚀)"
-                    except Exception as ex:
-                        logging.error(f"ZRL price fetch error: {ex}")
+                    ids += f",{zrl_mint}"
 
-                msg += f"<b>ZRL Token:</b> {zrl_price_text}\n"
-                
-                await send_broadcast_to_all(msg)
+                jup_url = f"https://price.jup.ag/v6/price?ids={ids}"
+                async with session.get(jup_url) as resp:
+                    if resp.status == 200:
+                        res = await resp.json()
+                        data = res.get('data', {})
+                        
+                        date_str = datetime.datetime.now().strftime("%B %d, %Y")
+                        msg = f"📢 <b>Phantom Market Overview — {date_str}</b>\n\n"
+                        
+                        sol_p = data.get('SOL', {}).get('price', 0)
+                        btc_p = data.get('BTC', {}).get('price', 0)
+                        eth_p = data.get('ETH', {}).get('price', 0)
+                        
+                        msg += f"<b>SOL:</b> ${sol_p:,.2f} (Phantom Oracle 🟢)\n"
+                        msg += f"<b>BTC:</b> ${btc_p:,.2f} (Phantom Oracle 🟢)\n"
+                        msg += f"<b>ETH:</b> ${eth_p:,.2f} (Phantom Oracle 🟢)\n"
+
+                        # Курс ZRL (автоматически активируется после листинга в DEX и указания ZRL_MINT)
+                        if zrl_mint and zrl_mint in data:
+                            zrl_p = data[zrl_mint].get('price', 0)
+                            msg += f"<b>ZRL Token:</b> ${zrl_p:.4f} (DEX Live 🚀)\n"
+                        else:
+                            msg += "<b>ZRL Token:</b> Not Listed Yet (Keep Farming! 🌾)\n"
+                        
+                        await send_broadcast_to_all(msg)
         except Exception as e:
-            logging.error(f"Market price alert error: {e}")
+            logging.error(f"Phantom price fetch error: {e}")
 
 def start_periodic_notifications():
     asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
