@@ -6,8 +6,6 @@
     <meta name="author" content="V Palamarchuk">
     <title>Zer0life Run - Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключение AdsGram SDK -->
-    <script src="https://sad.adsgram.ai/js/adsgram.min.js?v=1"></script>
     <style>
         body, html {
             margin: 0;
@@ -767,11 +765,6 @@
             <span>📸</span> Share Run Card (TG Stories)
         </button>
 
-        <!-- Кнопка просмотра рекламы AdsGram (Block ID: 52300 - Global/US Optimized) -->
-        <button class="share-card-top-btn" onclick="watchAdsGramReward()" style="background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(234,179,8,0.15) 100%); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b;">
-            <span>📺</span> Watch Ad for +500 ZRL (AdsGram)
-        </button>
-
         <div class="online-badge">
             <div class="online-dot"></div>
             <span id="online-users-count">Online: 2,480 runners</span>
@@ -1454,9 +1447,8 @@
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
         const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
 
-        // Проверка старта марафона (07/10/2026 в 00:00) и автоматический сброс километров
         const MARATHON_START_TIME = new Date('2026-10-07T00:00:00').getTime();
-        const MARATHON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 дней
+        const MARATHON_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const MARATHON_END_TIME = MARATHON_START_TIME + MARATHON_DURATION_MS;
 
         function checkAndResetMarathonDistance() {
@@ -1472,7 +1464,6 @@
         }
         checkAndResetMarathonDistance();
 
-        // Таймер обратного отсчета для марафона в таблице лидеров + автоматическое уведомление о старте
         function updateMarathonTimerUI() {
             const badge = document.getElementById('marathon-timer-badge');
             if (!badge) return;
@@ -1507,50 +1498,6 @@
                 localStorage.setItem(rewardedKey, 'true');
             }
         }
-
-        let AdsgramController = null;
-        try {
-            if (window.Adsgram) {
-                AdsgramController = window.Adsgram.init({ blockId: "52300", debug: false });
-            }
-        } catch (e) {
-            console.log("Adsgram init error:", e);
-        }
-
-        window.watchAdsGramReward = async function() {
-            triggerHaptic('medium');
-            playSound('click');
-
-            if (!AdsgramController) {
-                try {
-                    if (window.Adsgram) {
-                        AdsgramController = window.Adsgram.init({ blockId: "52300", debug: false });
-                    }
-                } catch(e) {}
-            }
-
-            if (AdsgramController) {
-                try {
-                    await AdsgramController.show();
-                    
-                    totalBalance += 500;
-                    earnedZrlBalance += 500;
-                    saveData();
-                    updateUI();
-                    
-                    triggerHaptic('success');
-                    playSound('coin');
-                    showLiveTxToast('📺', 'ADSGRAM REWARD', `${username || 'Player'} watched an ad and received +500 ZRL!`);
-                    tg.showAlert('🎉 Success!\n\n+500 ZRL successfully credited for watching the AdsGram ad!');
-                } catch (result) {
-                    triggerHaptic('warning');
-                    tg.showAlert('⚠ Advertisement was closed before completion, or no ads available. Reward not issued.');
-                }
-            } else {
-                triggerHaptic('error');
-                tg.showAlert('❌ Advertising system is currently unavailable. Please check your internet connection or try opening the app inside Telegram mobile.');
-            }
-        };
 
         let simulatedOnlineCount = 2480;
         let simulatedDepositorsCount = 1430;
