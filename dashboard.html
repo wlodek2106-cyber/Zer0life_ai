@@ -1303,16 +1303,16 @@
                     <div class="booster-price-btn" style="background: #14f195; color: #000; border: none;">0.2 SOL</div>
                 </div>
 
-                <div class="booster-card" onclick="buyBooster(0.5, 1000, 'Starter (1,000 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(0.5, 3000, 'Starter (3,000 ZRL/km)')">
                     <div class="booster-badge">Starter</div>
                     <div class="booster-multiplier">2x Speed</div>
-                    <div class="booster-rate">1,000 ZRL / km</div>
+                    <div class="booster-rate">3,000 ZRL / km</div>
                     <div class="booster-price-btn">0.5 SOL</div>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 1500, 'Standard (1,500 ZRL/km)')">
+                <div class="booster-card" onclick="buyBooster(1, 6000, 'Standard (6,000 ZRL/km)')">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
-                    <div class="booster-rate">1,500 ZRL / km</div>
+                    <div class="booster-rate">6,000 ZRL / km</div>
                     <div class="booster-price-btn">1 SOL</div>
                 </div>
                 <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
@@ -3812,7 +3812,6 @@
             const currentTime = position.timestamp;
             const accuracy = position.coords.accuracy;
 
-            // ИСПРАВЛЕНИЕ: Ужесточен фильтр точности GPS до 25 метров (было 50)
             if (accuracy > 25) return;
 
             if (currentEnergy <= 0 || bootsHP <= 0) {
@@ -3824,7 +3823,6 @@
             if (lastLat !== null && lastLon !== null && lastTime !== null) {
                 const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
                 
-                // ИСПРАВЛЕНИЕ: Добавлен фильтр микро-смещений меньше 4 метров для отсечения шума покоя
                 if (distanceKm < 0.004) {
                     return; 
                 }
