@@ -1896,7 +1896,6 @@
             ctx.lineTo(width - 100, startY + 180);
             ctx.stroke();
 
-            // Отображение PACE слева и SNEAKERS / BOOSTER справа
             ctx.fillStyle = '#8a8d98';
             ctx.font = '700 20px sans-serif';
             ctx.fillText('PACE', 100, startY + 230);
@@ -2862,11 +2861,9 @@
                     } else if (won.type === 'free_spin') {
                         freeSpins++;
                     } else if (won.type === 'boots') {
-                        // Защита купленного бустера: если уже активен недельный бустер с высоким рейтом, 
-                        // колесо продлевает его или суммирует время, не сбрасывая на часовой бонус.
                         let isPaidActive = boosterExpiryTime > Date.now() && ZRL_PER_KM >= 1500;
                         if (isPaidActive) {
-                            boosterExpiryTime += (60 * 60 * 1000); // Продлеваем текущий активный на 1 час
+                            boosterExpiryTime += (60 * 60 * 1000); 
                         } else {
                             let baseRate = ZRL_PER_KM > 500 ? ZRL_PER_KM : 500;
                             ZRL_PER_KM = Math.max(baseRate, 1500);
@@ -3815,7 +3812,8 @@
             const currentTime = position.timestamp;
             const accuracy = position.coords.accuracy;
 
-            if (accuracy > 50) return;
+            // ИСПРАВЛЕНИЕ: Ужесточен фильтр точности GPS до 25 метров (было 50)
+            if (accuracy > 25) return;
 
             if (currentEnergy <= 0 || bootsHP <= 0) {
                 stopRunning();
@@ -3826,14 +3824,17 @@
             if (lastLat !== null && lastLon !== null && lastTime !== null) {
                 const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
                 
-                if (distanceKm < 0.003) {
+                // ИСПРАВЛЕНИЕ: Добавлен фильтр микро-смещений меньше 4 метров для отсечения шума покоя
+                if (distanceKm < 0.004) {
                     return; 
                 }
 
                 const timeDiffSec = (currentTime - lastTime) / 1000;
-                const speedKmh = timeDiffSec > 0 ? (distanceKm / (timeDiffSec / 3600)) : 0;
+                if (timeDiffSec <= 0) return;
+
+                const speedKmh = (distanceKm / (timeDiffSec / 3600));
                 
-                if (distanceKm > 1.0 || speedKmh > MAX_SPEED_KMH) {
+                if (speedKmh > MAX_SPEED_KMH || distanceKm > 0.5) {
                     warningEl.style.display = 'block'; 
                     warningEl.innerText = "Transport detected! Max speed is 14 km/h";
                     
