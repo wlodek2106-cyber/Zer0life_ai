@@ -1896,6 +1896,7 @@
             ctx.lineTo(width - 100, startY + 180);
             ctx.stroke();
 
+            // Отображение PACE слева и SNEAKERS / BOOSTER справа
             ctx.fillStyle = '#8a8d98';
             ctx.font = '700 20px sans-serif';
             ctx.fillText('PACE', 100, startY + 230);
@@ -1905,10 +1906,12 @@
 
             ctx.fillStyle = '#8a8d98';
             ctx.font = '700 20px sans-serif';
-            ctx.fillText('USER', 560, startY + 230);
-            ctx.fillStyle = '#14f195';
-            ctx.font = '800 32px sans-serif';
-            ctx.fillText('@' + (username || 'CryptoRunner'), 560, startY + 275);
+            ctx.fillText('BOOTS / RATE', 560, startY + 230);
+            
+            ctx.fillStyle = '#a8f07a';
+            ctx.font = '800 26px sans-serif';
+            const shortBoosterName = activeBoosterName.length > 22 ? activeBoosterName.substring(0, 20) + '...' : activeBoosterName;
+            ctx.fillText(shortBoosterName, 560, startY + 275);
 
             ctx.fillStyle = '#8a8d98';
             ctx.font = '600 22px sans-serif';
