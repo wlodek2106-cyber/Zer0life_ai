@@ -819,7 +819,7 @@
             </div>
 
             <div class="active-booster-badge" id="active-booster-badge">
-                <span>⚡ Active Booster: <strong id="booster-name-text">Standard (500 ZRL/km)</strong></span>
+                <span>⚡ Active Booster: <strong id="booster-name-text">Standard (300 ZRL/km)</strong></span>
                 <span style="font-size: 10px; background: rgba(168, 240, 122, 0.2); padding: 2px 6px; border-radius: 6px;" id="booster-tier-label">VIP</span>
             </div>
         </div>
@@ -1730,14 +1730,14 @@
             }
         });
 
-        let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 500;
-        let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (500 ZRL/km)';
+        let ZRL_PER_KM = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'booster_rate')) || 300;
+        let activeBoosterName = localStorage.getItem(STORAGE_PREFIX + 'booster_name') || 'Standard (300 ZRL/km)';
 
         let boosterExpiryTime = parseInt(localStorage.getItem(STORAGE_PREFIX + 'booster_expiry')) || 0;
         if (boosterExpiryTime > 0 && Date.now() > boosterExpiryTime) {
-            ZRL_PER_KM = 500;
-            activeBoosterName = 'Standard (500 ZRL/km)';
-            localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 500);
+            ZRL_PER_KM = 300;
+            activeBoosterName = 'Standard (300 ZRL/km)';
+            localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 300);
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
         }
@@ -2688,8 +2688,8 @@
 
                     document.getElementById('booster-name-text').innerText = `${activeBoosterName} (${timeStr})`;
                 } else {
-                    ZRL_PER_KM = 500;
-                    activeBoosterName = 'Standard (500 ZRL/km)';
+                    ZRL_PER_KM = 300;
+                    activeBoosterName = 'Standard (300 ZRL/km)';
                     boosterExpiryTime = 0;
                     localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
                     document.getElementById('booster-name-text').innerText = activeBoosterName;
@@ -2865,7 +2865,7 @@
                         if (isPaidActive) {
                             boosterExpiryTime += (60 * 60 * 1000); 
                         } else {
-                            let baseRate = ZRL_PER_KM > 500 ? ZRL_PER_KM : 500;
+                            let baseRate = ZRL_PER_KM > 300 ? ZRL_PER_KM : 300;
                             ZRL_PER_KM = Math.max(baseRate, 1500);
                             activeBoosterName = `Wheel Bonus x2 (${ZRL_PER_KM.toLocaleString()} ZRL/km)`;
                             boosterExpiryTime = Date.now() + (60 * 60 * 1000);
