@@ -10,8 +10,10 @@ from solana.rpc.api import Client
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Подключение к сети Solana
-solana_client = Client("https://api.mainnet-beta.solana.com")
+# Подключение к сети Solana через Helius RPC (для стабильной и быстрой индексации)
+HELIUS_RPC_URL = os.getenv("HELIUS_RPC_URL", "https://mainnet.helius-rpc.com/?api-key=ВАШ_HELIUS_КЛЮЧ")
+solana_client = Client(HELIUS_RPC_URL)
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # Целевой кошелек проекта для депозитов и кошелек мерчанта
@@ -146,7 +148,7 @@ def background_farming_worker():
         except Exception as e:
             print("Background farming worker error:", e)
             
-        time.sleep(60)  длительность паузы — 1 минута
+        time.sleep(60)
 
 # Запуск фонового потока при старте Flask
 threading.Thread(target=background_farming_worker, daemon=True).start()
@@ -437,12 +439,21 @@ def verify_deposit():
         if not telegram_id or not tx_signature:
             return jsonify({"success": False, "error": "Не указан telegramId или txSignature"}), 400
             
-        response = solana_client.get_transaction(tx_signature, max_supported_transaction_version=0)
-        
-        if not response or not response.get('result'):
-            return jsonify({"success": False, "error": "Транзакция еще не найдена в блокчейне. Подождите 10-15 секунд."}), 400
+        # Цикл повторных попыток для ожидания индексации транзакции через Helius RPC
+        tx_data = None
+        for attempt in range(5):
+            try:
+                response = solana_client.get_transaction(tx_signature, max_supported_transaction_version=0)
+                if response and response.get('result'):
+                    tx_data = response['result']
+                    break
+            except Exception:
+                pass
+            time.sleep(3)  # Ждем 3 секунды перед следующей попыткой
             
-        tx_data = response['result']
+        if not tx_data:
+            return jsonify({"success": False, "error": "Транзакция еще не найдена в блокчейне. Подождите 10-15 секунд и попробуйте снова."}), 400
+            
         meta = tx_data.get('meta', {})
         if meta and meta.get('err') is not None:
             return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне Solana."}), 400
@@ -517,13 +528,11 @@ def withdraw():
             
         user_stats = USER_STATS[telegram_id]
         
-        # Если это списание SOL для покупки бустеров или депозита в фарминг
         if currency == 'SOL':
             current_sol = float(user_stats.get("solBalance", 0))
             if current_sol < amount:
                 return jsonify({"success": False, "error": "Недостаточно средств на балансе SOL"})
             
-            # Списываем баланс и фиксируем отправку на MERCHANT_SOL_WALLET (`57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db`)
             user_stats["solBalance"] = current_sol - amount
             save_db()
             print(f"[MERCHANT TRANSFER] Transferred {amount} SOL from user {telegram_id} to merchant wallet {MERCHANT_SOL_WALLET}")
