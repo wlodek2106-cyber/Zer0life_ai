@@ -4196,6 +4196,8 @@
         updateEnergyUI();
         updateUI();
         calculateFarmingEstimation();
+        // Repopulate the server leaderboard from this account's unchanged local progress after a server restart.
+        if (username) setTimeout(syncStatsToServer, 1500);
     </script>
 </body>
 </html>
