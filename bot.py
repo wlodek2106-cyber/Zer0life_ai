@@ -109,20 +109,7 @@ def save_stats_data(stats):
     except Exception as e:
         logging.error(f"Error saving stats: {e}")
 
-# ЖЕСТКИЙ СБРОС ВСЕХ КИЛОМЕТРОВ ДО 0.0 ДЛЯ ВСЕХ УЧАСТНИКОВ
-def force_reset_all_distances():
-    try:
-        # Полностью удаляем старый файл статистики со старыми накрученными километрами
-        if os.path.exists(STATS_FILE):
-            os.remove(STATS_FILE)
-            logging.info("Old leaderboard_stats.json successfully deleted.")
-        
-        # Создаем пустой файл заново
-        with open(STATS_FILE, "w") as f:
-            json.dump({}, f)
-        logging.info("SUCCESS: Leaderboard completely wiped to 0.0 for all participants.")
-    except Exception as e:
-        logging.error(f"Failed to reset leaderboard: {e}")
+# Marathon progress and leaderboard records must remain persistent across restarts.
 
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
@@ -222,17 +209,20 @@ async def crypto_market_price_alerts():
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
 
 async def send_marathon_start_push():
-    force_reset_all_distances()
+    # Announce the event without modifying any participant progress.
     text = (
         "🚨 <b>MARATHON STARTED!</b> 🚨\n\n"
         "The 30-day ZRL marathon has officially begun! 🏆\n"
-        "All kilometers have been reset, and the 1,000,000 ZRL prize pool is up for grabs. "
+        "The marathon is underway. Existing participant distances remain saved, and the 1,000,000 ZRL prize pool is up for grabs. "
         "Lace up your sneakers and start running right now! 🚀"
     )
     await send_broadcast_to_all(text)
 
 def schedule_marathon_start():
-    marathon_time = datetime.datetime(2026, 10, 7, 0, 0, 0)
+    marathon_time = datetime.datetime(2026, 10, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    if marathon_time <= datetime.datetime.now(datetime.timezone.utc):
+        logging.info("Marathon already started; skipping old start notification and preserving all progress.")
+        return
     marathon_scheduler.add_job(
         send_marathon_start_push,
         'date',
@@ -554,8 +544,7 @@ def setup_webhook_sync():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     
-    # СБРОС ВСЕХ КИЛОМЕТРОВ ПРИ СТАРТЕ СЕРВЕРА
-    force_reset_all_distances()
+    # Preserve existing leaderboard records and participant progress on every startup.
 
     if TOKEN:
         setup_webhook_sync()
