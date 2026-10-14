@@ -732,7 +732,32 @@
             height: 24px;
             fill: currentColor;
         }
-    </style>
+    
+        .lb-podium-card{position:relative;min-width:0;padding:16px 10px 14px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:linear-gradient(155deg,#171d29,#10141d);display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:transform .18s,border-color .18s}
+        .lb-podium-card:active{transform:scale(.98)}
+        .lb-podium-card--first{border-color:rgba(245,158,11,.72);background:linear-gradient(155deg,rgba(245,158,11,.13),#111720 70%);box-shadow:0 10px 26px rgba(245,158,11,.12)}
+        .lb-rank-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#aab3c2;font-weight:800;margin-bottom:10px}
+        .lb-podium-card--first .lb-rank-label{color:#f4bd4f}
+        .lb-avatar{width:48px;height:48px;flex:0 0 48px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#202938;border:2px solid rgba(255,255,255,.14);color:#dce6f3;font-weight:800;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3);margin-bottom:9px}
+        .lb-podium-card--first .lb-avatar{border-color:#f4bd4f;width:56px;height:56px;flex-basis:56px}
+        .lb-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+        .lb-player-name{width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f5f7fb;font-size:12px;font-weight:750;margin-bottom:4px}
+        .lb-player-distance{color:#63e39a;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+        .lb-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;background:linear-gradient(110deg,#141a24,#10151d);border:1px solid rgba(255,255,255,.07);border-radius:15px;min-height:58px}
+        .lb-row-main{display:flex;align-items:center;gap:10px;min-width:0}
+        .lb-row-rank{width:25px;flex:0 0 25px;text-align:center;color:#9ca8bb;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+        .lb-row .lb-avatar{width:38px;height:38px;flex-basis:38px;margin:0;font-size:12px}
+        .lb-row-copy{min-width:0}
+        .lb-row-metric{color:#f4f6fa;font-size:13px;font-weight:750;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+        .lb-row-sub{color:#9ba7b8;font-size:10px;margin-top:3px}
+        .lb-self-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(168,240,122,.75);border-radius:16px;background:linear-gradient(110deg,rgba(168,240,122,.1),#141a24 72%);box-shadow:0 0 18px rgba(168,240,122,.08)}
+        .lb-self-card .lb-avatar{width:40px;height:40px;flex-basis:40px;margin:0}
+        .tracking-status{margin-top:10px;color:#9ba7b8;font-size:11px;line-height:1.45;text-align:center}
+        .tracking-status.is-ready{color:#63e39a}
+        .tracking-status.is-warning{color:#f4bd4f}
+        @media(max-width:380px){.lb-podium-card{padding:13px 6px}.lb-avatar{width:42px;height:42px;flex-basis:42px}.lb-podium-card--first .lb-avatar{width:50px;height:50px;flex-basis:50px}}
+
+        </style>
 </head>
 <body>
 
@@ -817,6 +842,7 @@
                 </div>
                 <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
+            <div class="tracking-status" id="tracking-status">GPS distance · phone motion sensor needed for ZRL rewards and leaderboard</div>
 
             <div class="active-booster-badge" id="active-booster-badge">
                 <span>⚡ Active Booster: <strong id="booster-name-text">Standard (300 ZRL/km)</strong></span>
@@ -1385,9 +1411,9 @@
             </div>
 
             <div class="leaderboard-tabs" style="margin-bottom: 14px;">
-                <button class="lb-tab active" onclick="switchLbTab('daily')">Daily</button>
-                <button class="lb-tab" onclick="switchLbTab('weekly')">Weekly</button>
-                <button class="lb-tab" onclick="switchLbTab('all')">All Time</button>
+                <button class="lb-tab active" onclick="switchLbTab('daily', this)">Daily</button>
+                <button class="lb-tab" onclick="switchLbTab('weekly', this)">Weekly</button>
+                <button class="lb-tab" onclick="switchLbTab('all', this)">All Time</button>
             </div>
 
             <div id="podium-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;"></div>
@@ -1452,14 +1478,10 @@
         const MARATHON_END_TIME = MARATHON_START_TIME + MARATHON_DURATION_MS;
 
         function checkAndResetMarathonDistance() {
-            const lastResetKey = STORAGE_PREFIX + 'marathon_reset_performed_oct2026';
-            const now = Date.now();
-            if (now >= MARATHON_START_TIME && !localStorage.getItem(lastResetKey)) {
-                localStorage.setItem(lastResetKey, 'true');
-                localStorage.setItem(STORAGE_PREFIX + 'today_distance', '0');
-                localStorage.setItem(STORAGE_PREFIX + 'total_distance', '0');
-                localStorage.setItem(STORAGE_PREFIX + 'today_steps', '0');
-                localStorage.setItem(STORAGE_PREFIX + 'unclaimed', '0');
+            // The marathon is already active. Never erase today/total distance or step history here.
+            const preservationKey = STORAGE_PREFIX + 'marathon_progress_preserved_oct2026';
+            if (Date.now() >= MARATHON_START_TIME && !localStorage.getItem(preservationKey)) {
+                localStorage.setItem(preservationKey, 'true');
             }
         }
         checkAndResetMarathonDistance();
@@ -1740,10 +1762,26 @@
             localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 300);
             localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
             localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', 0);
+        } else if (/^standard\b/i.test(activeBoosterName) && ZRL_PER_KM !== 300) {
+            // Migrate only the standard rate; keep accrued balances and explicitly named boosters untouched.
+            ZRL_PER_KM = 300;
+            activeBoosterName = 'Standard (300 ZRL/km)';
+            localStorage.setItem(STORAGE_PREFIX + 'booster_rate', 300);
+            localStorage.setItem(STORAGE_PREFIX + 'booster_name', activeBoosterName);
         }
 
-        const METERS_PER_STEP = 0.00075; 
-        const MAX_SPEED_KMH = 14; 
+        const KM_PER_ESTIMATED_STEP = 0.00075;
+        const MAX_SPEED_KMH = 12;
+        const MIN_WALK_STEPS_PER_SECOND = 0.5;
+        const MAX_WALK_STEPS_PER_SECOND = 4.5;
+        let stepSensorPermission = false;
+        let motionSignalAt = 0;
+        let motionStepsSinceLastGps = 0;
+        let motionGravity = null;
+        let motionFilteredMagnitude = 0;
+        let motionPeakActive = false;
+        let lastMotionStepAt = 0;
+        let motionListenerAttached = false; 
         
         let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
         let userWallet = SHARED_POOL_WALLET;
@@ -3445,136 +3483,188 @@
 
         let currentLbTab = 'daily';
 
-        window.switchLbTab = function(tab) {
+        window.switchLbTab = function(tab, button) {
             triggerHaptic('selection');
             playSound('click');
             currentLbTab = tab;
             document.querySelectorAll('#leaderboard-modal .lb-tab').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            if (button) button.classList.add('active');
             fetchLeaderboardFromBackend();
         };
+
+        function makeLeaderboardAvatar(name, avatarUrl, size, featured) {
+            const safeName = typeof name === 'string' ? name.trim() : '';
+            const initials = safeName ? safeName.slice(0, 2).toUpperCase() : 'ZR';
+            const avatar = document.createElement('div');
+            avatar.className = 'lb-avatar';
+            avatar.style.width = size + 'px';
+            avatar.style.height = size + 'px';
+            avatar.style.flexBasis = size + 'px';
+            avatar.setAttribute('aria-label', safeName || 'Zer0Life runner');
+            avatar.textContent = initials;
+
+            const validImage = typeof avatarUrl === 'string' && avatarUrl.length <= 2500000 &&
+                (/^https:\/\//i.test(avatarUrl) || /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(avatarUrl));
+            if (validImage) {
+                const image = document.createElement('img');
+                image.alt = '';
+                image.referrerPolicy = 'no-referrer';
+                image.src = avatarUrl;
+                image.addEventListener('error', () => { image.remove(); avatar.textContent = initials; }, { once: true });
+                avatar.textContent = '';
+                avatar.appendChild(image);
+            }
+            if (featured) avatar.classList.add('lb-avatar-featured');
+            return avatar;
+        }
+
+        function addLeaderboardMessage(container, message) {
+            const element = document.createElement('div');
+            element.className = 'lb-empty-state';
+            element.style.cssText = 'text-align:center;color:#9ba7b8;padding:22px 12px;font-size:13px;line-height:1.5;';
+            element.textContent = message;
+            container.replaceChildren(element);
+        }
 
         async function fetchLeaderboardFromBackend() {
             const podiumContainer = document.getElementById('podium-container');
             const listContainer = document.getElementById('leaderboard-list');
             const stickyContainer = document.getElementById('my-rank-sticky-container');
+            addLeaderboardMessage(listContainer, 'Loading current standings…');
+            podiumContainer.replaceChildren();
+            stickyContainer.replaceChildren();
 
             try {
-                const response = await fetch(`https://zer0life-ai-iz5n.onrender.com/leaderboard?period=${currentLbTab}`);
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com/leaderboard?period=' + encodeURIComponent(currentLbTab));
                 const data = await response.json();
-
-                if (!response.ok || !data.success || !data.leaderboard) {
-                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">No players on leaderboard yet. Start running!</div>`;
-                    podiumContainer.innerHTML = '';
-                    stickyContainer.innerHTML = '';
+                if (!response.ok || !data.success || !Array.isArray(data.leaderboard)) {
+                    addLeaderboardMessage(listContainer, 'Could not load standings. Try again in a moment.');
                     return;
                 }
 
-                const users = data.leaderboard;
-                podiumContainer.innerHTML = '';
-                listContainer.innerHTML = '';
-                stickyContainer.innerHTML = '';
-
+                const users = data.leaderboard.filter(user => user && typeof user === 'object');
                 if (users.length === 0) {
-                    listContainer.innerHTML = `<div style="text-align: center; color: #8a8d98; padding: 20px; font-size: 13px;">Leaderboard is empty.</div>`;
+                    addLeaderboardMessage(listContainer, 'No verified movement yet. Start a walk or run to appear here.');
                     return;
                 }
 
                 const topThree = [users[1], users[0], users[2]].filter(Boolean);
-                topThree.forEach((user) => {
-                    const isFirst = user.rank === 1;
-                    const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
-                    
-                    let avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background: #222736; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #a8f07a; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">${initials}</div>`;
-                    if (user.avatar) {
-                        avatarContent = `<div style="width: 44px; height: 44px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center; border: 2px solid ${isFirst ? '#f59e0b' : '#2d3345'}; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`;
-                    }
+                topThree.forEach(user => {
+                    const rank = Math.max(1, Number.parseInt(user.rank, 10) || 1);
+                    const name = typeof user.name === 'string' ? user.name.slice(0, 48) : 'Zer0Life runner';
+                    const distance = Number.isFinite(Number(user.dist)) ? Math.max(0, Number(user.dist)) : 0;
+                    const card = document.createElement('div');
+                    card.className = 'lb-podium-card' + (rank === 1 ? ' lb-podium-card--first' : '');
 
-                    const div = document.createElement('div');
-                    div.style.cssText = `
-                        background: ${isFirst ? 'linear-gradient(135deg, #1b241e 0%, #121816 100%)' : '#141721'};
-                        border: 1px solid ${isFirst ? '#f59e0b' : 'rgba(255,255,255,0.08)'};
-                        border-radius: 20px;
-                        padding: 14px 8px;
-                        text-align: center;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        position: relative;
-                        ${isFirst ? 'transform: translateY(-6px); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);' : ''}
-                    `;
-                    div.innerHTML = `
-                        <div style="font-size: 10px; color: ${isFirst ? '#f59e0b' : '#8a8d98'}; font-weight: 800; margin-bottom: 6px;">#${user.rank} (Top Prize)</div>
-                        ${avatarContent}
-                        <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; margin-bottom: 2px;">${user.name}</div>
-                        <div style="font-size: 11px; color: #a8f07a; font-weight: 600; margin-bottom: 4px;">${user.dist} km</div>
-                        <a href="https://t.me/CryptoWlodek" target="_blank" style="font-size: 9px; color: #3b82f6; font-weight: 800; text-decoration: underline;">Claim Prize 🏆</a>
-                    `;
-                    podiumContainer.appendChild(div);
+                    const rankLabel = document.createElement('div');
+                    rankLabel.className = 'lb-rank-label';
+                    rankLabel.textContent = rank === 1 ? '1st · Leader' : rank === 2 ? '2nd · Podium' : '3rd · Podium';
+                    card.appendChild(rankLabel);
+                    card.appendChild(makeLeaderboardAvatar(name, user.avatar, rank === 1 ? 56 : 48, rank === 1));
+
+                    const nameElement = document.createElement('div');
+                    nameElement.className = 'lb-player-name';
+                    nameElement.textContent = name;
+                    card.appendChild(nameElement);
+
+                    const distanceElement = document.createElement('div');
+                    distanceElement.className = 'lb-player-distance';
+                    distanceElement.textContent = distance.toFixed(2) + ' km';
+                    card.appendChild(distanceElement);
+                    const prizeLink = document.createElement('a');
+                    prizeLink.href = 'https://t.me/CryptoWlodek';
+                    prizeLink.target = '_blank';
+                    prizeLink.rel = 'noopener noreferrer';
+                    prizeLink.style.cssText = 'margin-top:8px;color:#86a9ff;font-size:10px;font-weight:750;text-decoration:underline;';
+                    prizeLink.textContent = 'Claim Prize 🏆';
+                    card.appendChild(prizeLink);
+                    podiumContainer.appendChild(card);
                 });
 
                 users.slice(3).forEach(user => {
-                    const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'ZR';
-                    let avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background: #222736; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #a8f07a;">${initials}</div>`;
-                    if (user.avatar) {
-                        avatarContent = `<div style="width: 36px; height: 36px; border-radius: 50%; background-image: url('${user.avatar}'); background-size: cover; background-position: center;"></div>`;
-                    }
-
+                    const rank = Math.max(1, Number.parseInt(user.rank, 10) || 1);
+                    const name = typeof user.name === 'string' ? user.name.slice(0, 48) : 'Zer0Life runner';
+                    const distance = Number.isFinite(Number(user.dist)) ? Math.max(0, Number(user.dist)) : 0;
+                    const earned = Number.isFinite(Number(user.zrl)) ? Math.max(0, Number(user.zrl)) : 0;
                     const row = document.createElement('div');
-                    row.style.cssText = `
-                        background: #141721;
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 16px;
-                        padding: 12px 14px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 8px;
-                    `;
-                    row.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="font-size: 13px; font-weight: 800; color: #8a8d98; width: 20px; text-align: center;">${user.rank}</div>
-                            ${avatarContent}
-                            <div>
-                                <div style="font-size: 14px; font-weight: 700; color: #fff;">${user.name}</div>
-                                <div style="font-size: 10px; color: #a8f07a;">+10,000 ZRL auto-reward</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 13px; font-weight: 700; color: #fff;">${user.dist} km</div>
-                            <div style="font-size: 11px; color: #14f195; font-weight: 600;">+${user.zrl.toLocaleString()} ZRL</div>
-                        </div>
-                    `;
+                    row.className = 'lb-row';
+
+                    const main = document.createElement('div');
+                    main.className = 'lb-row-main';
+                    const rankElement = document.createElement('div');
+                    rankElement.className = 'lb-row-rank';
+                    rankElement.textContent = String(rank);
+                    main.appendChild(rankElement);
+                    main.appendChild(makeLeaderboardAvatar(name, user.avatar, 38, false));
+
+                    const copy = document.createElement('div');
+                    copy.className = 'lb-row-copy';
+                    const nameElement = document.createElement('div');
+                    nameElement.className = 'lb-player-name';
+                    nameElement.textContent = name;
+                    const detail = document.createElement('div');
+                    detail.className = 'lb-row-sub';
+                    detail.textContent = '+10,000 ZRL auto-reward';
+                    copy.appendChild(nameElement);
+                    copy.appendChild(detail);
+                    main.appendChild(copy);
+                    row.appendChild(main);
+
+                    const metric = document.createElement('div');
+                    metric.style.textAlign = 'right';
+                    const distanceElement = document.createElement('div');
+                    distanceElement.className = 'lb-row-metric';
+                    distanceElement.textContent = distance.toFixed(2) + ' km';
+                    const earnedElement = document.createElement('div');
+                    earnedElement.className = 'lb-row-sub';
+                    earnedElement.textContent = earned.toLocaleString() + ' ZRL';
+                    metric.appendChild(distanceElement);
+                    metric.appendChild(earnedElement);
+                    row.appendChild(metric);
                     listContainer.appendChild(row);
                 });
 
-                if (data.myRank) {
-                    const myAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar') || '';
-                    const myInitials = username ? username.substring(0, 2).toUpperCase() : 'PL';
-                    let myAvatarContent = `<div style="width: 38px; height: 38px; border-radius: 50%; background: #1f2a24; border: 1.5px solid #a8f07a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: #a8f07a;">${myInitials}</div>`;
-                    if (myAvatar) {
-                        myAvatarContent = `<div style="width: 38px; height: 38px; border-radius: 50%; background-image: url('${myAvatar}'); background-size: cover; background-position: center; border: 1.5px solid #a8f07a;"></div>`;
-                    }
+                if (data.myRank && typeof data.myRank === 'object') {
+                    const rank = Math.max(1, Number.parseInt(data.myRank.rank, 10) || 1);
+                    const selfCard = document.createElement('div');
+                    selfCard.className = 'lb-self-card';
+                    const main = document.createElement('div');
+                    main.className = 'lb-row-main';
+                    const rankElement = document.createElement('div');
+                    rankElement.className = 'lb-row-rank';
+                    rankElement.textContent = String(rank);
+                    main.appendChild(rankElement);
+                    const ownAvatar = localStorage.getItem(STORAGE_PREFIX + 'custom_avatar') || '';
+                    main.appendChild(makeLeaderboardAvatar(username || 'Player', ownAvatar, 40, false));
+                    const copy = document.createElement('div');
+                    copy.className = 'lb-row-copy';
+                    const ownName = document.createElement('div');
+                    ownName.className = 'lb-player-name';
+                    ownName.textContent = (username || 'Player') + ' (You)';
+                    const selfNote = document.createElement('div');
+                    selfNote.className = 'lb-row-sub';
+                    selfNote.textContent = 'Your marathon progress';
+                    copy.appendChild(ownName);
+                    copy.appendChild(selfNote);
+                    main.appendChild(copy);
+                    selfCard.appendChild(main);
 
-                    stickyContainer.innerHTML = `
-                        <div style="background: #141721; border: 1.5px solid #a8f07a; border-radius: 18px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 20px rgba(168, 240, 122, 0.15); margin-top: 4px;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="font-size: 14px; font-weight: 800; color: #a8f07a; width: 20px; text-align: center;">${data.myRank.rank}</div>
-                                ${myAvatarContent}
-                                <div>
-                                    <div style="font-size: 14px; font-weight: 800; color: #fff;">${username || 'Player'} (You)</div>
-                                    <div style="font-size: 10px; color: #f59e0b;">${data.myRank.rank <= 3 ? 'Top 3! Write to @CryptoWlodek' : 'Eligible for +10k ZRL reward'}</div>
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 14px; font-weight: 800; color: #fff;">${totalDistance.toFixed(1)} km</div>
-                                <div style="font-size: 11px; color: #a8f07a; font-weight: 700;">+${totalBalance.toFixed(0)} ZRL</div>
-                            </div>
-                        </div>
-                    `;
+                    const metric = document.createElement('div');
+                    metric.style.textAlign = 'right';
+                    const distanceElement = document.createElement('div');
+                    distanceElement.className = 'lb-row-metric';
+                    distanceElement.textContent = Math.max(0, Number(totalDistance) || 0).toFixed(2) + ' km';
+                    const earnedElement = document.createElement('div');
+                    earnedElement.className = 'lb-row-sub';
+                    earnedElement.textContent = Math.max(0, Number(totalBalance) || 0).toLocaleString() + ' ZRL';
+                    metric.appendChild(distanceElement);
+                    metric.appendChild(earnedElement);
+                    selfCard.appendChild(metric);
+                    stickyContainer.appendChild(selfCard);
                 }
-
-            } catch (e) {}
+            } catch (error) {
+                addLeaderboardMessage(listContainer, 'Leaderboard is temporarily unavailable. Try again in a moment.');
+            }
         }
 
         const depositModal = document.getElementById('deposit-modal');
@@ -3793,6 +3883,57 @@
             tg.showAlert('✅ Address copied to clipboard!');
         };
 
+        function handleStepMotion(event) {
+            if (!isRunning) return;
+            const acceleration = event.acceleration || event.accelerationIncludingGravity;
+            if (!acceleration || !Number.isFinite(acceleration.x) || !Number.isFinite(acceleration.y) || !Number.isFinite(acceleration.z)) return;
+
+            const values = [acceleration.x, acceleration.y, acceleration.z];
+            let magnitude;
+            if (event.acceleration) {
+                magnitude = Math.hypot(values[0], values[1], values[2]);
+            } else {
+                if (!motionGravity) motionGravity = values.slice();
+                const linear = values.map((value, index) => {
+                    motionGravity[index] = motionGravity[index] * 0.82 + value * 0.18;
+                    return value - motionGravity[index];
+                });
+                magnitude = Math.hypot(linear[0], linear[1], linear[2]);
+            }
+
+            motionSignalAt = Date.now();
+            motionFilteredMagnitude = motionFilteredMagnitude * 0.65 + magnitude * 0.35;
+            if (motionFilteredMagnitude >= 1.05 && !motionPeakActive && motionSignalAt - lastMotionStepAt >= 260) {
+                motionPeakActive = true;
+                lastMotionStepAt = motionSignalAt;
+                todaySteps += 1;
+                motionStepsSinceLastGps += 1;
+                document.getElementById('steps-display').innerText = 'Steps: ' + todaySteps.toLocaleString();
+                if (todaySteps % 10 === 0) localStorage.setItem(STORAGE_PREFIX + 'today_steps', todaySteps);
+            } else if (motionFilteredMagnitude <= 0.4) {
+                motionPeakActive = false;
+            }
+        }
+
+        async function enableStepSensor() {
+            const MotionEvent = window.DeviceMotionEvent;
+            if (!MotionEvent) return false;
+            try {
+                if (typeof MotionEvent.requestPermission === 'function') {
+                    const permission = await MotionEvent.requestPermission();
+                    if (permission !== 'granted') return false;
+                }
+                if (!motionListenerAttached) {
+                    window.addEventListener('devicemotion', handleStepMotion, { passive: true });
+                    motionListenerAttached = true;
+                }
+                stepSensorPermission = true;
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -3812,55 +3953,75 @@
             const currentTime = position.timestamp;
             const accuracy = position.coords.accuracy;
 
-            if (accuracy > 25) return;
+            if (!Number.isFinite(currentLat) || !Number.isFinite(currentLon) || !Number.isFinite(currentTime) || accuracy > 25) return;
 
             if (currentEnergy <= 0 || bootsHP <= 0) {
                 stopRunning();
-                tg.showAlert("⚠ Workout stopped: Energy or Boots durability depleted.");
+                tg.showAlert('⚠ Workout stopped: Energy or Boots durability depleted.');
                 return;
             }
 
             if (lastLat !== null && lastLon !== null && lastTime !== null) {
                 const distanceKm = getDistanceFromLatLonInKm(lastLat, lastLon, currentLat, currentLon);
-                
-                if (distanceKm < 0.004) {
-                    return; 
-                }
-
                 const timeDiffSec = (currentTime - lastTime) / 1000;
                 if (timeDiffSec <= 0) return;
 
-                const speedKmh = (distanceKm / (timeDiffSec / 3600));
-                
-                if (speedKmh > MAX_SPEED_KMH || distanceKm > 0.5) {
-                    warningEl.style.display = 'block'; 
-                    warningEl.innerText = "Transport detected! Max speed is 14 km/h";
-                    
+                if (timeDiffSec > 60) {
+                    motionStepsSinceLastGps = 0;
+                    document.getElementById('tracking-status').innerText = 'GPS gap detected · this segment was skipped; keep the app open while running.';
+                    document.getElementById('tracking-status').className = 'tracking-status is-warning';
                     lastLat = currentLat;
                     lastLon = currentLon;
                     lastTime = currentTime;
-                    return; 
+                    return;
                 }
 
+                const speedKmh = distanceKm / (timeDiffSec / 3600);
+                const reportedSpeed = position.coords.speed;
+                const reportedSpeedKmh = Number.isFinite(reportedSpeed) && reportedSpeed >= 0 ? reportedSpeed * 3.6 : 0;
+
+                if (speedKmh > MAX_SPEED_KMH || reportedSpeedKmh > MAX_SPEED_KMH || distanceKm > 0.5) {
+                    warningEl.style.display = 'block';
+                    warningEl.innerText = 'Transport-like speed detected. This segment is not counted.';
+                    motionStepsSinceLastGps = 0;
+                    lastLat = currentLat;
+                    lastLon = currentLon;
+                    lastTime = currentTime;
+                    return;
+                }
+
+                if (distanceKm < 0.004) return;
                 warningEl.style.display = 'none';
-
                 todayDistance += distanceKm;
-                totalDistance += distanceKm;
-                
-                unclaimedZRL += (distanceKm * ZRL_PER_KM);
-                
-                const stepsMade = Math.round(distanceKm / METERS_PER_STEP);
-                todaySteps += stepsMade;
 
-                currentEnergy = Math.max(0, currentEnergy - (distanceKm * 2));
-                bootsHP = Math.max(0, bootsHP - (distanceKm * 5));
+                const detectedSteps = motionStepsSinceLastGps;
+                motionStepsSinceLastGps = 0;
+                const motionIsFresh = stepSensorPermission && (Date.now() - motionSignalAt) <= 3000;
+                const cadence = detectedSteps / timeDiffSec;
+                const walkingCadenceDetected = motionIsFresh && cadence >= MIN_WALK_STEPS_PER_SECOND && cadence <= MAX_WALK_STEPS_PER_SECOND;
+                const estimatedSteps = Math.round(distanceKm / KM_PER_ESTIMATED_STEP);
+
+                if (!motionIsFresh) {
+                    todaySteps += Math.max(0, estimatedSteps - detectedSteps);
+                    document.getElementById('tracking-status').innerText = 'GPS distance recorded · motion data missing, so this segment earns no ZRL and adds no leaderboard distance.';
+                    document.getElementById('tracking-status').className = 'tracking-status is-warning';
+                } else if (!walkingCadenceDetected) {
+                    document.getElementById('tracking-status').innerText = 'No walking/running step rhythm detected · this GPS segment earns no ZRL and adds no leaderboard distance.';
+                    document.getElementById('tracking-status').className = 'tracking-status is-warning';
+                } else {
+                    totalDistance += distanceKm;
+                    unclaimedZRL += (distanceKm * ZRL_PER_KM);
+                    currentEnergy = Math.max(0, currentEnergy - (distanceKm * 2));
+                    bootsHP = Math.max(0, bootsHP - (distanceKm * 5));
+                    document.getElementById('tracking-status').innerText = 'Walking/running cadence detected · GPS distance · ' + ZRL_PER_KM + ' ZRL/km';
+                    document.getElementById('tracking-status').className = 'tracking-status is-ready';
+                }
 
                 if (Math.floor(todayDistance * 2) > Math.floor(lastSpokenKm * 2)) {
                     lastSpokenKm = todayDistance;
-                    speak(`Covered ${todayDistance.toFixed(1)} kilometers. Great pace!`);
+                    speak('Covered ' + todayDistance.toFixed(1) + ' kilometers. Great pace!');
                 }
 
-                triggerHaptic('light');
                 updateUI();
                 updateEnergyUI();
                 checkRandomMysteryBox();
@@ -3887,39 +4048,49 @@
         startBtn.addEventListener('click', async () => {
             triggerHaptic('heavy');
             playSound('click');
-            
+
             if (!isRunning) {
                 if (currentEnergy <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("⚡ Your energy is depleted! Wait for it to recover.");
+                    tg.showAlert('⚡ Your energy is depleted! Wait for it to recover.');
                     return;
                 }
                 if (bootsHP <= 0) {
                     triggerHaptic('error');
-                    tg.showAlert("👟 Sneakers are broken (0 HP)! Repair them first.");
+                    tg.showAlert('👟 Sneakers are broken (0 HP)! Repair them first.');
                     return;
                 }
 
-                if ("geolocation" in navigator) {
+                if ('geolocation' in navigator) {
                     lastLat = null;
                     lastLon = null;
                     lastTime = null;
+                    motionStepsSinceLastGps = 0;
+                    motionGravity = null;
+                    motionFilteredMagnitude = 0;
+                    motionPeakActive = false;
+                    const sensorReady = await enableStepSensor();
+                    if (!sensorReady) {
+                        const status = document.getElementById('tracking-status');
+                        status.innerText = 'Motion sensor unavailable · GPS distance is shown, but ZRL rewards and leaderboard only count sensor-verified walking/running.';
+                        status.className = 'tracking-status is-warning';
+                    }
 
                     watchId = navigator.geolocation.watchPosition(
-                        handlePositionUpdate, 
+                        handlePositionUpdate,
                         (err) => {
                             console.log(err);
-                            if (err.code === 1) tg.showAlert("⚠ Please enable GPS/Location access to track your run.");
-                        }, 
+                            if (err.code === 1) tg.showAlert('⚠ Please enable GPS/Location access to track your run.');
+                        },
                         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                     );
-                    
+
                     isRunning = true;
                     startBtn.classList.add('active-run');
                     startBtnText.innerText = 'Stop Run';
-                    speak("Workout started. Keep up the pace!");
+                    speak('Workout started. Keep up the pace!');
                 } else {
-                    tg.showAlert("⚠ Geolocation is not supported by your device/browser.");
+                    tg.showAlert('⚠ Geolocation is not supported by your device/browser.');
                 }
             } else {
                 stopRunning();
@@ -4002,7 +4173,7 @@
 
         function updateUI() {
             todayDistEl.innerText = todayDistance.toFixed(2) + ' km';
-            stepsEl.innerText = 'Steps: ' + todaySteps;
+            stepsEl.innerText = 'Steps: ' + todaySteps.toLocaleString();
             todayEarnedEl.innerText = '+' + unclaimedZRL.toFixed(2) + ' ZRL (Rate: ' + ZRL_PER_KM + '/km)';
 
             let currentLevelObj = getCurrentLevelObj();
@@ -4025,6 +4196,8 @@
         updateEnergyUI();
         updateUI();
         calculateFarmingEstimation();
+        // Repopulate the server leaderboard from this account's unchanged local progress after a server restart.
+        if (username) setTimeout(syncStatsToServer, 1500);
     </script>
 </body>
 </html>

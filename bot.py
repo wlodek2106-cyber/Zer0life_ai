@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import os
+import shutil
 import threading
 import asyncio
 import base58
@@ -59,8 +60,31 @@ ADMIN_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
-USERS_FILE = "users.json"
-STATS_FILE = "leaderboard_stats.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RENDER_DISK_DIR = os.getenv("RENDER_DISK_PATH", "/var/data")
+DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def migrate_legacy_data_file(filename):
+    target_path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(target_path):
+        return
+    legacy_paths = [os.path.join(os.getcwd(), filename), os.path.join(BASE_DIR, filename)]
+    for legacy_path in legacy_paths:
+        if os.path.abspath(legacy_path) == os.path.abspath(target_path):
+            continue
+        if os.path.isfile(legacy_path):
+            try:
+                shutil.copy2(legacy_path, target_path)
+                logging.info("Copied existing %s to persistent data directory.", filename)
+            except Exception as exc:
+                logging.error("Could not migrate existing %s: %s", filename, exc)
+            return
+
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
+STATS_FILE = os.path.join(DATA_DIR, "leaderboard_stats.json")
+migrate_legacy_data_file("users.json")
+migrate_legacy_data_file("leaderboard_stats.json")
 
 def get_pool_pubkey_str():
     try:
@@ -93,6 +117,8 @@ def save_user(user_id):
 def get_total_users():
     return len(load_users())
 
+stats_write_lock = threading.Lock()
+
 def load_stats():
     if os.path.exists(STATS_FILE):
         try:
@@ -103,26 +129,19 @@ def load_stats():
     return {}
 
 def save_stats_data(stats):
+    temporary_path = STATS_FILE + "." + str(os.getpid()) + ".tmp"
     try:
-        with open(STATS_FILE, "w") as f:
+        with open(temporary_path, "w") as f:
             json.dump(stats, f)
+        os.replace(temporary_path, STATS_FILE)
     except Exception as e:
+        try:
+            if os.path.exists(temporary_path):
+                os.remove(temporary_path)
+        except OSError:
+            pass
         logging.error(f"Error saving stats: {e}")
-
-# ЖЕСТКИЙ СБРОС ВСЕХ КИЛОМЕТРОВ ДО 0.0 ДЛЯ ВСЕХ УЧАСТНИКОВ
-def force_reset_all_distances():
-    try:
-        # Полностью удаляем старый файл статистики со старыми накрученными километрами
-        if os.path.exists(STATS_FILE):
-            os.remove(STATS_FILE)
-            logging.info("Old leaderboard_stats.json successfully deleted.")
-        
-        # Создаем пустой файл заново
-        with open(STATS_FILE, "w") as f:
-            json.dump({}, f)
-        logging.info("SUCCESS: Leaderboard completely wiped to 0.0 for all participants.")
-    except Exception as e:
-        logging.error(f"Failed to reset leaderboard: {e}")
+# Marathon progress and leaderboard records must remain persistent across restarts.
 
 bot_loop = asyncio.new_event_loop()
 def start_background_loop(loop):
@@ -222,17 +241,20 @@ async def crypto_market_price_alerts():
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
 
 async def send_marathon_start_push():
-    force_reset_all_distances()
+    # Announce the event without modifying any participant progress.
     text = (
         "🚨 <b>MARATHON STARTED!</b> 🚨\n\n"
         "The 30-day ZRL marathon has officially begun! 🏆\n"
-        "All kilometers have been reset, and the 1,000,000 ZRL prize pool is up for grabs. "
+        "The marathon is underway. Existing participant distances remain saved, and the 1,000,000 ZRL prize pool is up for grabs. "
         "Lace up your sneakers and start running right now! 🚀"
     )
     await send_broadcast_to_all(text)
 
 def schedule_marathon_start():
-    marathon_time = datetime.datetime(2026, 10, 7, 0, 0, 0)
+    marathon_time = datetime.datetime(2026, 10, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    if marathon_time <= datetime.datetime.now(datetime.timezone.utc):
+        logging.info("Marathon already started; skipping old start notification and preserving all progress.")
+        return
     marathon_scheduler.add_job(
         send_marathon_start_push,
         'date',
@@ -253,17 +275,24 @@ def update_stats():
         data = request.json
         if not data or 'telegramId' not in data:
             return jsonify({"error": "Invalid data"}), 400
-        
+
         tg_id = str(data['telegramId'])
-        stats = load_stats()
-        
-        stats[tg_id] = {
-            "name": data.get('username', 'Runner'),
-            "wallet": data.get('walletAddress', ''),
-            "distance": float(data.get('distance', 0.0)),
-            "balance": float(data.get('balance', 0.0))
-        }
-        save_stats_data(stats)
+        incoming_distance = max(0.0, float(data.get('distance', 0.0)))
+
+        with stats_write_lock:
+            stats = load_stats()
+            previous = stats.get(tg_id, {}) if isinstance(stats, dict) else {}
+            try:
+                previous_distance = max(0.0, float(previous.get('distance', 0.0))) if isinstance(previous, dict) else 0.0
+            except (TypeError, ValueError):
+                previous_distance = 0.0
+            stats[tg_id] = {
+                "name": data.get('username', 'Runner'),
+                "wallet": data.get('walletAddress', ''),
+                "distance": max(previous_distance, incoming_distance),
+                "balance": float(data.get('balance', 0.0))
+            }
+            save_stats_data(stats)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -554,8 +583,7 @@ def setup_webhook_sync():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     
-    # СБРОС ВСЕХ КИЛОМЕТРОВ ПРИ СТАРТЕ СЕРВЕРА
-    force_reset_all_distances()
+    # Preserve existing leaderboard records and participant progress on every startup.
 
     if TOKEN:
         setup_webhook_sync()
