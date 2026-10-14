@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import os
+import shutil
 import threading
 import asyncio
 import base58
@@ -59,8 +60,31 @@ ADMIN_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 dp = Dispatcher()
 bot = Bot(token=TOKEN) if TOKEN else None
 
-USERS_FILE = "users.json"
-STATS_FILE = "leaderboard_stats.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RENDER_DISK_DIR = os.getenv("RENDER_DISK_PATH", "/var/data")
+DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def migrate_legacy_data_file(filename):
+    target_path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(target_path):
+        return
+    legacy_paths = [os.path.join(os.getcwd(), filename), os.path.join(BASE_DIR, filename)]
+    for legacy_path in legacy_paths:
+        if os.path.abspath(legacy_path) == os.path.abspath(target_path):
+            continue
+        if os.path.isfile(legacy_path):
+            try:
+                shutil.copy2(legacy_path, target_path)
+                logging.info("Copied existing %s to persistent data directory.", filename)
+            except Exception as exc:
+                logging.error("Could not migrate existing %s: %s", filename, exc)
+            return
+
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
+STATS_FILE = os.path.join(DATA_DIR, "leaderboard_stats.json")
+migrate_legacy_data_file("users.json")
+migrate_legacy_data_file("leaderboard_stats.json")
 
 def get_pool_pubkey_str():
     try:
