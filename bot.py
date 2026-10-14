@@ -117,6 +117,8 @@ def save_user(user_id):
 def get_total_users():
     return len(load_users())
 
+stats_write_lock = threading.Lock()
+
 def load_stats():
     if os.path.exists(STATS_FILE):
         try:
@@ -127,12 +129,18 @@ def load_stats():
     return {}
 
 def save_stats_data(stats):
+    temporary_path = STATS_FILE + "." + str(os.getpid()) + ".tmp"
     try:
-        with open(STATS_FILE, "w") as f:
+        with open(temporary_path, "w") as f:
             json.dump(stats, f)
+        os.replace(temporary_path, STATS_FILE)
     except Exception as e:
+        try:
+            if os.path.exists(temporary_path):
+                os.remove(temporary_path)
+        except OSError:
+            pass
         logging.error(f"Error saving stats: {e}")
-
 # Marathon progress and leaderboard records must remain persistent across restarts.
 
 bot_loop = asyncio.new_event_loop()
@@ -267,17 +275,24 @@ def update_stats():
         data = request.json
         if not data or 'telegramId' not in data:
             return jsonify({"error": "Invalid data"}), 400
-        
+
         tg_id = str(data['telegramId'])
-        stats = load_stats()
-        
-        stats[tg_id] = {
-            "name": data.get('username', 'Runner'),
-            "wallet": data.get('walletAddress', ''),
-            "distance": float(data.get('distance', 0.0)),
-            "balance": float(data.get('balance', 0.0))
-        }
-        save_stats_data(stats)
+        incoming_distance = max(0.0, float(data.get('distance', 0.0)))
+
+        with stats_write_lock:
+            stats = load_stats()
+            previous = stats.get(tg_id, {}) if isinstance(stats, dict) else {}
+            try:
+                previous_distance = max(0.0, float(previous.get('distance', 0.0))) if isinstance(previous, dict) else 0.0
+            except (TypeError, ValueError):
+                previous_distance = 0.0
+            stats[tg_id] = {
+                "name": data.get('username', 'Runner'),
+                "wallet": data.get('walletAddress', ''),
+                "distance": max(previous_distance, incoming_distance),
+                "balance": float(data.get('balance', 0.0))
+            }
+            save_stats_data(stats)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
