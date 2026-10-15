@@ -6,6 +6,10 @@
     <meta name="author" content="V Palamarchuk">
     <title>Zer0life Run - Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="icon" type="image/svg+xml" href="./assets/zerolife-run-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body, html {
             margin: 0;
@@ -757,6 +761,571 @@
         .tracking-status.is-warning{color:#f4bd4f}
         @media(max-width:380px){.lb-podium-card{padding:13px 6px}.lb-avatar{width:42px;height:42px;flex-basis:42px}.lb-podium-card--first .lb-avatar{width:50px;height:50px;flex-basis:50px}}
 
+        /* Zer0Life Run 3D visual layer. Existing tracking, reward and wallet logic stays in place. */
+        :root {
+            --zr-ink: #f2f4e9;
+            --zr-muted: #8e978c;
+            --zr-lime: #c5ff56;
+            --zr-panel: #141a14;
+            --zr-line: rgba(231, 245, 218, 0.1);
+        }
+
+        html, body {
+            background-color: #080b08;
+            color: var(--zr-ink);
+            font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            background-image: radial-gradient(ellipse at 70% 12%, rgba(81, 125, 36, 0.15), transparent 38%);
+        }
+
+        .dashboard-container {
+            gap: 0;
+            padding: calc(14px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            background: radial-gradient(ellipse at 76% 18%, rgba(69, 108, 27, 0.12), transparent 38%);
+        }
+
+        .dashboard-container > * {
+            order: 10;
+        }
+
+        .dashboard-container > .header {
+            order: 0;
+            margin-bottom: 8px;
+        }
+
+        .dashboard-container > .zr-hero {
+            order: 1;
+        }
+
+        .dashboard-container > .online-badge {
+            order: 2;
+        }
+
+        .dashboard-container > .zr-today-run {
+            order: 3;
+        }
+
+        .dashboard-container > .zr-primary-energy {
+            order: 4;
+        }
+
+        .dashboard-container > .zr-leaderboard-card {
+            order: 6;
+        }
+
+        .dashboard-container > #start-run-btn {
+            order: 5;
+        }
+
+        .dashboard-container > .share-card-top-btn {
+            order: 7;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(197, 255, 86, 0.55);
+            box-shadow: 0 0 0 4px rgba(197, 255, 86, 0.08);
+        }
+
+        .balance-label {
+            color: var(--zr-lime);
+            font: 500 9px "DM Mono", monospace;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .balance-amount {
+            font: 700 17px "Barlow Condensed", sans-serif;
+            letter-spacing: 0.02em;
+        }
+
+        .wallet-btn {
+            background: linear-gradient(145deg, #1a2119, #111710);
+            border: 1px solid rgba(197, 255, 86, 0.24);
+            border-radius: 13px;
+            color: var(--zr-lime);
+            box-shadow: inset 0 1px rgba(255,255,255,0.05), 0 7px 18px rgba(0,0,0,0.25);
+        }
+
+        .sol-icon {
+            background: var(--zr-lime);
+        }
+
+        .zr-hero {
+            height: 220px;
+            min-height: 220px;
+            margin: 2px -2px 11px;
+            border: 1px solid rgba(197, 255, 86, 0.17);
+            border-radius: 23px;
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            background:
+                radial-gradient(ellipse at 72% 55%, rgba(126, 186, 43, 0.18), transparent 48%),
+                linear-gradient(145deg, #151d12 0%, #0d120d 58%, #0a0d0a 100%);
+            box-shadow: inset 0 1px rgba(255,255,255,0.05), 0 14px 30px rgba(0,0,0,0.32);
+        }
+
+        .zr-hero::before {
+            content: "";
+            position: absolute;
+            inset: 15px 6px 2px 40%;
+            border: 1px solid rgba(197, 255, 86, 0.12);
+            border-radius: 50%;
+            transform: rotate(-16deg) scaleY(0.43);
+            box-shadow: 0 0 34px rgba(197, 255, 86, 0.07);
+        }
+
+        .zr-hero::after {
+            content: "";
+            position: absolute;
+            left: 45%;
+            right: 6%;
+            bottom: 15px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(169, 243, 62, 0.18);
+            filter: blur(18px);
+            z-index: -1;
+        }
+
+        .zr-hero-art {
+            position: absolute;
+            width: 112%;
+            height: 116%;
+            right: -27%;
+            top: -8%;
+            object-fit: contain;
+            mix-blend-mode: screen;
+            opacity: 0.94;
+            filter: drop-shadow(0 18px 24px rgba(0,0,0,0.65));
+            animation: zrShoeFloat 5s ease-in-out infinite;
+        }
+
+        .zr-hero-copy {
+            position: absolute;
+            z-index: 1;
+            inset: 18px auto 17px 16px;
+            width: 58%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .zr-hero-kicker,
+        .zr-hero-note {
+            color: #aeb99f;
+            font: 500 8px "DM Mono", monospace;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .zr-hero-title {
+            margin: 0;
+            color: var(--zr-ink);
+            font: 800 clamp(31px, 9vw, 39px)/0.94 "Barlow Condensed", Impact, sans-serif;
+            letter-spacing: 0.015em;
+            text-transform: uppercase;
+            text-shadow: 0 3px 18px rgba(0,0,0,0.45);
+        }
+
+        .zr-hero-title em {
+            color: var(--zr-lime);
+            font-style: normal;
+        }
+
+        .zr-hero-note {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #d0e2b7;
+            letter-spacing: 0.08em;
+        }
+
+        .zr-hero-note::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--zr-lime);
+            box-shadow: 0 0 10px var(--zr-lime);
+        }
+
+        .online-badge {
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            background: rgba(197, 255, 86, 0.06);
+            border-color: rgba(197, 255, 86, 0.2);
+            color: #c5e9a0;
+            font: 500 9px "DM Mono", monospace;
+            letter-spacing: 0.04em;
+        }
+
+        .online-dot {
+            background-color: var(--zr-lime);
+            box-shadow: 0 0 8px var(--zr-lime);
+        }
+
+        .dashboard-container .run-card,
+        .dashboard-container .energy-card {
+            border: 1px solid var(--zr-line) !important;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #192018, #111611) !important;
+            box-shadow: inset 0 1px rgba(255,255,255,0.035), 0 10px 22px rgba(0,0,0,0.25);
+        }
+
+        .dashboard-container .run-card {
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .dashboard-container .zr-today-run {
+            border-color: rgba(197, 255, 86, 0.28) !important;
+            background:
+                radial-gradient(ellipse at 0% 0%, rgba(108, 150, 47, 0.12), transparent 55%),
+                linear-gradient(145deg, #1a2118, #111611) !important;
+        }
+
+        .zr-today-run .run-header {
+            color: #aeb99f;
+            font: 500 10px "DM Mono", monospace;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .zr-today-run #speed-warning {
+            max-width: 55%;
+            text-align: right;
+            font: 500 9px "DM Mono", monospace;
+            letter-spacing: normal;
+        }
+
+        .zr-today-run .run-stats-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 9px;
+            align-items: stretch;
+        }
+
+        .zr-today-run .run-stats {
+            display: grid;
+            width: 100%;
+            min-width: 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .zr-stat-card {
+            min-width: 0;
+            min-height: 74px;
+            padding: 10px 11px;
+            border: 1px solid rgba(231, 245, 218, 0.08);
+            border-radius: 14px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012));
+        }
+
+        .zr-stat-card-reward {
+            grid-column: 1 / -1;
+            min-height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-color: rgba(197, 255, 86, 0.17);
+            background: rgba(197, 255, 86, 0.045);
+        }
+
+        .zr-stat-label {
+            display: block;
+            margin-bottom: 7px;
+            color: #8e978c;
+            font: 500 8px "DM Mono", monospace;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .zr-today-run .distance {
+            display: block;
+            margin: 0;
+            color: var(--zr-ink);
+            font: 700 30px/0.95 "Barlow Condensed", sans-serif;
+            letter-spacing: 0.01em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .zr-today-run .steps-count {
+            display: block;
+            margin: 0;
+            color: var(--zr-ink);
+            font: 700 17px/1.1 "Barlow Condensed", sans-serif;
+            letter-spacing: 0.01em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .zr-today-run .earned-tokens {
+            display: block;
+            margin: 0;
+            color: var(--zr-lime);
+            font: 700 16px/1.1 "Barlow Condensed", sans-serif;
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+            text-align: right;
+        }
+
+        .zr-today-run #claim-btn {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 13px;
+            background: linear-gradient(112deg, #d8ff86, #b7f54a 58%, #a5e43b);
+            box-shadow: inset 0 1px #f7ffda, 0 7px 20px rgba(156, 227, 65, 0.16);
+            font: 800 11px Manrope, sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .tracking-status {
+            margin-top: 9px;
+            color: #8e978c;
+            font: 9px/1.45 "DM Mono", monospace;
+        }
+
+        .tracking-status.is-ready {
+            color: #c5e9a0;
+        }
+
+        .tracking-status.is-warning {
+            color: #f0c86f;
+        }
+
+        .active-booster-badge {
+            border: 1px solid rgba(197, 255, 86, 0.19);
+            border-radius: 12px;
+            background: rgba(197, 255, 86, 0.055);
+            color: #c5e9a0;
+            font: 500 9px "DM Mono", monospace;
+        }
+
+        .zr-primary-energy {
+            padding: 12px 14px;
+            margin-bottom: 12px;
+        }
+
+        .zr-primary-energy .energy-header {
+            color: #c5e9a0;
+            font: 500 9px "DM Mono", monospace;
+            letter-spacing: 0.1em;
+        }
+
+        .zr-primary-energy .energy-bar-bg {
+            background: #273024;
+            height: 6px;
+        }
+
+        .zr-primary-energy .energy-bar-fill {
+            background: linear-gradient(90deg, #78a73a, var(--zr-lime));
+            box-shadow: 0 0 12px rgba(197, 255, 86, 0.25);
+        }
+
+        .zr-leaderboard-card {
+            order: 6;
+            display: flex;
+            width: 100%;
+            min-height: 58px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            margin: 0 0 11px;
+            border: 1px solid rgba(231, 245, 218, 0.09);
+            border-radius: 16px;
+            background: linear-gradient(120deg, #171e16, #111611);
+            color: var(--zr-ink);
+            text-align: left;
+            cursor: pointer;
+            box-shadow: inset 0 1px rgba(255,255,255,0.04);
+        }
+
+        .zr-leaderboard-card:active {
+            transform: scale(0.99);
+        }
+
+        .zr-leaderboard-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .zr-leaderboard-title {
+            color: #dce5d5;
+            font: 600 9px "DM Mono", monospace;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .zr-leaderboard-note {
+            color: #879180;
+            font-size: 9px;
+        }
+
+        .zr-leaderboard-action {
+            color: var(--zr-lime);
+            font: 600 8px "DM Mono", monospace;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .start-run-btn {
+            min-height: 58px;
+            padding: 14px 18px;
+            margin: 0 0 12px;
+            border-radius: 16px;
+            background: linear-gradient(112deg, #d8ff86, #b7f54a 58%, #a5e43b);
+            color: #11180c;
+            box-shadow: inset 0 1px #f7ffda, 0 9px 25px rgba(156, 227, 65, 0.18);
+            font: 800 12px Manrope, sans-serif;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+        }
+
+        .start-run-btn.active-run {
+            background: linear-gradient(112deg, #f0d47c, #e8bc52) !important;
+            color: #251d08 !important;
+            box-shadow: inset 0 1px #fff1c6, 0 8px 22px rgba(219, 185, 87, 0.16);
+        }
+
+        .share-card-top-btn {
+            min-height: 40px;
+            border-radius: 13px;
+            background: rgba(197, 255, 86, 0.055);
+            border-color: rgba(197, 255, 86, 0.17);
+            color: #c5e9a0;
+            box-shadow: none;
+            font: 600 9px "DM Mono", monospace;
+            letter-spacing: 0.04em;
+        }
+
+        .dashboard-container > .hero-image-container {
+            display: none !important;
+        }
+
+        .dashboard-container .level-section {
+            padding: 13px 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--zr-line);
+            border-radius: 16px;
+            background: linear-gradient(145deg, #171e16, #111611);
+        }
+
+        .dashboard-container .progress-bar-bg {
+            background: #273024;
+        }
+
+        .dashboard-container .progress-bar-fill {
+            background: linear-gradient(90deg, #78a73a, var(--zr-lime));
+        }
+
+        .bottom-nav {
+            padding: 10px 5px calc(10px + env(safe-area-inset-bottom));
+            background: rgba(9, 13, 9, 0.94);
+            border-top: 1px solid rgba(231, 245, 218, 0.09);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .nav-item {
+            min-width: 0;
+            gap: 4px;
+            color: #788273;
+            font: 500 8px "DM Mono", monospace;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .nav-item.active {
+            color: var(--zr-lime);
+        }
+
+        .nav-icon {
+            width: 19px;
+            height: 19px;
+        }
+
+        .nav-item-button {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            font-family: inherit;
+        }
+
+        .modal-overlay {
+            background-color: rgba(4, 8, 4, 0.86);
+        }
+
+        .modal-content {
+            background: linear-gradient(165deg, #192119, #0f140f 78%) !important;
+            border-color: rgba(197, 255, 86, 0.2) !important;
+        }
+
+        .leaderboard-tabs {
+            background: #101510;
+            border-color: rgba(231, 245, 218, 0.09);
+        }
+
+        .lb-tab.active {
+            background: var(--zr-lime);
+            color: #11180c;
+        }
+
+        @keyframes zrShoeFloat {
+            0%, 100% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(-6px) rotate(-1deg); }
+        }
+
+        @media (max-width: 360px) {
+            .dashboard-container {
+                padding-right: 14px;
+                padding-left: 14px;
+            }
+
+            .zr-hero {
+                height: 204px;
+                min-height: 204px;
+            }
+
+            .zr-hero-copy {
+                width: 61%;
+            }
+
+            .zr-stat-card {
+                padding: 9px;
+            }
+
+            .bottom-nav {
+                padding-right: 2px;
+                padding-left: 2px;
+            }
+
+            .nav-item {
+                font-size: 7px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .zr-hero-art,
+            .online-dot {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
+
         </style>
 </head>
 <body>
@@ -786,6 +1355,15 @@
             </div>
         </div>
 
+        <section class="zr-hero" aria-label="Zer0Life Run brand artwork">
+            <div class="zr-hero-copy">
+                <span class="zr-hero-kicker">ZER0LIFE RUN · MOVE TO EARN</span>
+                <h1 class="zr-hero-title">Make today<br><em>count.</em></h1>
+                <span class="zr-hero-note">Movement, reimagined</span>
+            </div>
+            <img class="zr-hero-art" src="./assets/zerolife-run-3d-shoe.webp" alt="Black running shoe with luminous lime motion trails">
+        </section>
+
         <button class="share-card-top-btn" onclick="openShareModal()">
             <span>📸</span> Share Run Card (TG Stories)
         </button>
@@ -795,7 +1373,7 @@
             <span id="online-users-count">Online: 2,480 runners</span>
         </div>
 
-        <div class="energy-card">
+        <div class="energy-card zr-primary-energy">
             <div class="energy-header">
                 <span>⚡ ENERGY / STAMINA</span>
                 <span id="energy-text">100.0 / 100.0h</span>
@@ -829,16 +1407,25 @@
             </div>
         </div>
 
-        <div class="run-card">
+        <div class="run-card zr-today-run">
             <div class="run-header">
-                Today's Run
+                Today’s Run
                 <span id="speed-warning">Transport detected! Max speed is 14 km/h</span>
             </div>
             <div class="run-stats-container">
                 <div class="run-stats">
-                    <span class="distance" id="today-distance">0.00 km</span>
-                    <span class="steps-count" id="steps-display">Steps: 0</span>
-                    <span class="earned-tokens" id="today-earned">+0.00 ZRL</span>
+                    <div class="zr-stat-card">
+                        <span class="zr-stat-label">Distance</span>
+                        <span class="distance" id="today-distance">0.00 km</span>
+                    </div>
+                    <div class="zr-stat-card">
+                        <span class="zr-stat-label">Today’s total</span>
+                        <span class="steps-count" id="steps-display">Steps: 0</span>
+                    </div>
+                    <div class="zr-stat-card zr-stat-card-reward">
+                        <span class="zr-stat-label">Unclaimed reward</span>
+                        <span class="earned-tokens" id="today-earned">+0.00 ZRL</span>
+                    </div>
                 </div>
                 <button class="claim-btn" id="claim-btn">Claim</button>
             </div>
@@ -849,6 +1436,14 @@
                 <span style="font-size: 10px; background: rgba(168, 240, 122, 0.2); padding: 2px 6px; border-radius: 6px;" id="booster-tier-label">VIP</span>
             </div>
         </div>
+
+        <button class="zr-leaderboard-card" type="button" onclick="document.getElementById('nav-rewards').click()">
+            <span class="zr-leaderboard-copy">
+                <span class="zr-leaderboard-title">Leaderboard</span>
+                <span class="zr-leaderboard-note">See how the running community is moving</span>
+            </span>
+            <span class="zr-leaderboard-action">View ranks →</span>
+        </button>
 
         <div class="run-card" style="border-color: rgba(20, 241, 149, 0.3); background: linear-gradient(135deg, #15171e 0%, #161f22 100%);">
             <div class="run-header">
@@ -1426,17 +2021,21 @@
 
     <!-- BOTTOM NAVIGATION -->
     <div class="bottom-nav">
+        <button class="nav-item nav-item-button active" id="nav-run-home" type="button" aria-label="Back to run dashboard" onclick="document.querySelector('.dashboard-container').scrollTo({ top: 0, behavior: 'smooth' })">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h3l2-5 4 2 3-4 6 1"></path><path d="M5 20h14"></path><path d="M7 16l-2 4"></path><path d="M17 15l2 5"></path></svg>
+            Run
+        </button>
         <div class="nav-item" id="nav-rewards">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="M12 8v12"></path><path d="M19 12H5"></path><path d="M12 8V4a2 2 0 0 1 2-2h4"></path></svg>
-            Leaderboard
+            Ranks
         </div>
-        <div class="nav-item active" id="nav-wallet">
+        <div class="nav-item" id="nav-wallet">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
             Wallet
         </div>
         <div class="nav-item" id="nav-farming" onclick="openFarmingModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-            Farming
+            Farm
         </div>
         <div class="nav-item" id="nav-fortune" onclick="openFortuneModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -1444,7 +2043,7 @@
         </div>
         <div class="nav-item" id="nav-more">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            Boosters
+            Boosts
         </div>
         <div class="nav-item" id="nav-dao" onclick="openDaoModal()">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
