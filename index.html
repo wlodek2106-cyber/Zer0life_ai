@@ -140,13 +140,16 @@
 
         .zl-art {
             position: absolute;
-            inset: 4% -5% 19%;
+            inset: 0;
             z-index: 1;
-            width: 110%;
-            height: 78%;
-            overflow: visible;
-            transform-style: preserve-3d;
-            animation: zl-art-arrive 1s cubic-bezier(.18,.76,.24,1) both, zl-art-float 7s ease-in-out 1s infinite alternate;
+            display: block;
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            object-fit: cover;
+            object-position: 28% 50%;
+            transform: scale(1);
+            animation: zl-art-arrive 850ms cubic-bezier(.18,.76,.24,1) both;
         }
 
         .zl-shade {
@@ -307,40 +310,9 @@
             font: 700 14px/1 "Manrope", sans-serif;
         }
 
-        .zl-orbit {
-            position: absolute;
-            left: 50%;
-            bottom: calc(100% + 19px);
-            width: min(76%, 275px);
-            height: 37px;
-            border: 1px solid #c9ff5550;
-            border-radius: 50%;
-            transform: translateX(-50%) perspective(300px) rotateX(66deg) translateZ(-14px);
-            box-shadow: 0 0 24px #b4ff3025, inset 0 0 20px #b4ff3017;
-            pointer-events: none;
-        }
-
-        .zl-orbit::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 15%;
-            width: 6px;
-            height: 6px;
-            transform: translateY(-50%);
-            border-radius: 50%;
-            background: #eaffaf;
-            box-shadow: 0 0 13px 3px #c8ff55a0;
-        }
-
         @keyframes zl-art-arrive {
-            from { transform: translateY(20px) scale(.94) rotateX(5deg); opacity: .55; }
-            to { transform: translateY(0) scale(1) rotateX(0); opacity: 1; }
-        }
-
-        @keyframes zl-art-float {
-            from { translate: 0 0; }
-            to { translate: 0 -8px; }
+            from { transform: scale(1.04); opacity: .65; }
+            to { transform: scale(1); opacity: 1; }
         }
 
         @keyframes zl-panel-in {
@@ -355,12 +327,10 @@
         @media (max-height: 700px) {
             .zl-device { min-height: 0; }
             .zl-head { top: max(17px, calc(env(safe-area-inset-top) + 7px)); }
-            .zl-art { inset: 1% -7% 14%; height: 78%; }
             .zl-content { padding: 19px 18px 14px; bottom: max(12px, calc(env(safe-area-inset-bottom) + 5px)); }
             .zl-title { font-size: clamp(34px, 8vw, 41px); }
             .zl-promise { margin: 16px 0 17px; }
             .zl-cta { min-height: 52px; }
-            .zl-orbit { bottom: calc(100% + 12px); }
         }
 
         @media (max-height: 590px) {
@@ -369,7 +339,6 @@
             .zl-title { font-size: clamp(30px, 7vw, 36px); }
             .zl-promise { margin: 12px 0 13px; }
             .zl-cta { min-height: 47px; }
-            .zl-art { inset: -4% -8% 11%; height: 78%; }
         }
 
         @media (max-width: 360px) {
@@ -390,76 +359,7 @@
         <main class="zl-device" aria-label="Zer0Life Run welcome">
             <div class="zl-art-halo" aria-hidden="true"></div>
             <div class="zl-art-grid" aria-hidden="true"></div>
-            <svg class="zl-art" viewBox="0 0 440 590" role="img" aria-label="Sculpted three-dimensional running track in electric lime">
-                <defs>
-                    <linearGradient id="zl-track-top" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0" stop-color="#d9ff83"/>
-                        <stop offset=".34" stop-color="#9be640"/>
-                        <stop offset=".72" stop-color="#497a2d"/>
-                        <stop offset="1" stop-color="#203d22"/>
-                    </linearGradient>
-                    <linearGradient id="zl-track-side" x1="0" y1="0" x2=".85" y2="1">
-                        <stop offset="0" stop-color="#8edc45"/>
-                        <stop offset=".36" stop-color="#436d2e"/>
-                        <stop offset="1" stop-color="#101d14"/>
-                    </linearGradient>
-                    <linearGradient id="zl-runner" x1=".15" y1="0" x2=".88" y2="1">
-                        <stop offset="0" stop-color="#f1ffd3"/>
-                        <stop offset=".39" stop-color="#c8ff55"/>
-                        <stop offset="1" stop-color="#639b35"/>
-                    </linearGradient>
-                    <linearGradient id="zl-reflect" x1="0" y1="0" x2="1" y2=".2">
-                        <stop offset="0" stop-color="#e6ffac" stop-opacity=".85"/>
-                        <stop offset="1" stop-color="#e6ffac" stop-opacity="0"/>
-                    </linearGradient>
-                    <filter id="zl-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="12"/>
-                    </filter>
-                    <filter id="zl-soft" x="-40%" y="-40%" width="180%" height="180%">
-                        <feGaussianBlur stdDeviation="3"/>
-                    </filter>
-                </defs>
-                <ellipse cx="222" cy="432" rx="150" ry="36" fill="#000" opacity=".68" filter="url(#zl-shadow)"/>
-                <g transform="translate(220 300) rotate(-18) skewX(-12) scale(1 .72) translate(-220 -300)">
-                    <ellipse cx="220" cy="310" rx="164" ry="213" fill="none" stroke="#7eff43" stroke-opacity=".2" stroke-width="2" filter="url(#zl-soft)"/>
-                    <path d="M220 104 C321 104 390 183 390 285 C390 389 322 461 220 461 C118 461 50 389 50 285 C50 183 119 104 220 104 Z M220 162 C151 162 108 212 108 285 C108 358 151 403 220 403 C289 403 332 358 332 285 C332 212 289 162 220 162 Z"
-                        fill="url(#zl-track-side)" fill-rule="evenodd" transform="translate(0 19)"/>
-                    <path d="M220 104 C321 104 390 183 390 285 C390 389 322 461 220 461 C118 461 50 389 50 285 C50 183 119 104 220 104 Z M220 162 C151 162 108 212 108 285 C108 358 151 403 220 403 C289 403 332 358 332 285 C332 212 289 162 220 162 Z"
-                        fill="url(#zl-track-top)" fill-rule="evenodd"/>
-                    <path d="M220 113 C313 113 380 186 380 285 C380 374 321 449 220 449 C119 449 60 374 60 285 C60 186 127 113 220 113 Z M220 154 C146 154 100 208 100 285 C100 364 146 412 220 412 C294 412 340 364 340 285 C340 208 294 154 220 154 Z"
-                        fill="none" stroke="url(#zl-reflect)" stroke-width="2" opacity=".76"/>
-                    <path d="M220 169 C153 169 115 219 115 285 C115 350 154 396 220 396 C286 396 325 350 325 285 C325 219 287 169 220 169 Z"
-                        fill="none" stroke="#d4ff8b" stroke-opacity=".45" stroke-width="2" stroke-dasharray="3 9"/>
-                    <path d="M51 285 C51 183 119 104 220 104 C285 104 336 136 367 185" fill="none" stroke="#ecffba" stroke-width="3" stroke-linecap="round" opacity=".77"/>
-                    <path d="M88 165 C113 131 151 110 194 106" fill="none" stroke="#f3ffd0" stroke-width="5" stroke-linecap="round" opacity=".48"/>
-                    <path d="M116 374 C141 408 177 426 220 426" fill="none" stroke="#a5f354" stroke-width="3" stroke-linecap="round" opacity=".62"/>
-                </g>
-                <g transform="translate(4 -12)">
-                    <ellipse cx="236" cy="329" rx="36" ry="12" fill="#050805" opacity=".7" filter="url(#zl-soft)"/>
-                    <path d="M225 238 C210 222 206 201 218 186 C228 174 246 176 254 188 C262 201 256 216 246 225 L257 243 L279 259 L302 267 L307 283 L279 286 L254 273 L245 257 L236 282 L218 304 L195 303 L210 276 L214 257 L197 269 L176 288 L157 278 L182 248 L207 230 Z"
-                        fill="#355126" opacity=".75" transform="translate(7 13)"/>
-                    <path d="M225 238 C210 222 206 201 218 186 C228 174 246 176 254 188 C262 201 256 216 246 225 L257 243 L279 259 L302 267 L307 283 L279 286 L254 273 L245 257 L236 282 L218 304 L195 303 L210 276 L214 257 L197 269 L176 288 L157 278 L182 248 L207 230 Z"
-                        fill="url(#zl-runner)" stroke="#efffc1" stroke-opacity=".65" stroke-width="1.4" stroke-linejoin="round"/>
-                    <path d="M223 240 L248 227 L264 245 L286 260 L304 266 L308 279 L281 280 L256 268 L242 253 L232 281 L215 298 L199 298 L215 272 L216 254 L195 267 L177 282 L164 276 L185 251 L208 234 Z"
-                        fill="#d8ff8c" opacity=".28"/>
-                    <path d="M226 238 L242 247 L254 268 M216 254 L230 267 L215 291 M197 268 L210 276" fill="none" stroke="#294522" stroke-opacity=".72" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M223 237 C214 224 212 207 221 194 C228 184 241 184 248 193 C255 203 251 215 242 224 Z" fill="#f0ffd0"/>
-                    <path d="M218 191 C229 178 246 182 252 193 C243 188 234 190 227 198 C221 205 219 212 219 217 C212 208 212 199 218 191Z" fill="#faffea"/>
-                    <path d="M195 300 L218 302 L217 310 L190 313 L175 307 L178 302 Z" fill="#17271a" stroke="#bdff68" stroke-opacity=".75" stroke-width="1.5"/>
-                    <path d="M275 281 L301 280 L314 286 L311 292 L280 291 L268 287 Z" fill="#17271a" stroke="#bdff68" stroke-opacity=".75" stroke-width="1.5"/>
-                    <path d="M195 306 L216 306 M282 286 L307 287" stroke="#eaffac" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
-                </g>
-                <g fill="none" stroke="#caff69" stroke-linecap="round">
-                    <path d="M69 220 L104 204" stroke-opacity=".38" stroke-width="2"/>
-                    <path d="M74 232 L95 222" stroke-opacity=".58" stroke-width="3"/>
-                    <path d="M333 211 L365 195" stroke-opacity=".32" stroke-width="2"/>
-                    <path d="M319 202 L342 190" stroke-opacity=".55" stroke-width="3"/>
-                    <path d="M300 354 L342 339" stroke-opacity=".3" stroke-width="2"/>
-                </g>
-                <circle cx="350" cy="165" r="3" fill="#e9ffb5"/>
-                <circle cx="350" cy="165" r="10" fill="#c8ff55" opacity=".3" filter="url(#zl-soft)"/>
-                <circle cx="91" cy="337" r="2.5" fill="#c8ff55" opacity=".8"/>
-            </svg>
+            <img class="zl-art" src="./assets/welcome-runner-3d.jpg" alt="A runner on a futuristic illuminated track" fetchpriority="high">
             <div class="zl-shade" aria-hidden="true"></div>
             <header class="zl-head" aria-label="Zer0Life Run 2.0">
                 <div class="zl-brand">
@@ -469,7 +369,6 @@
                 <span class="zl-edition">RUN 2.0</span>
             </header>
             <section class="zl-content">
-                <div class="zl-orbit" aria-hidden="true"></div>
                 <h1 class="zl-title">
                     <span>ZERØLIFE</span>
                     <span class="zl-title-run">RUN</span>
