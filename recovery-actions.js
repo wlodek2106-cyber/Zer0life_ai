@@ -42,7 +42,7 @@
                 const values = document.createElement('div');
                 values.textContent = `К возврату: ${Number(record.totalZrl).toFixed(2)} ZRL и ${Number(record.totalSol).toFixed(9)} SOL. Старых ферм: ${record.farmCount}.`;
                 const note = document.createElement('div');
-                note.textContent = `ZRL-фермы: ${Number(record.farmZrlAlreadyInBalance).toFixed(2)} ZRL уже учитывались в балансе — повторно не добавляются.`;
+                note.textContent = `Возврат вкладов ферм: ${Number(record.farmZrl).toFixed(2)} ZRL и ${Number(record.farmSol).toFixed(9)} SOL. Неполученный доход: +${Number(record.farmYieldZrl).toFixed(6)} ZRL.${record.yieldPendingCount ? ` Для ${record.yieldPendingCount} позиций нет подтверждённой ставки: их доход остаётся на сверке, не считается нулевым.` : ''}`;
                 row.append(title, values, note);
                 list.appendChild(row);
             });
@@ -62,7 +62,7 @@
         const frozen = snapshots.map(row => ({ requestId: row.requestId, digest: row.digest }));
         const zrl = snapshots.reduce((sum, row) => sum + Number(row.totalZrl), 0);
         const sol = snapshots.reduce((sum, row) => sum + Number(row.totalSol), 0);
-        if (!await confirm(`Одобрить непроверенный архив: ${zrl.toFixed(2)} ZRL и ${sol.toFixed(9)} SOL на основные балансы ${frozen.length} игроков?\nСтарые фермы будут закрыты при восстановлении. Выплаченные награды и ZRL-вклады не начисляются повторно. Вы разрешаете вывод этих сумм из реальных средств проекта.`)) return;
+        if (!await confirm(`Одобрить архив: ${zrl.toFixed(6)} ZRL и ${sol.toFixed(9)} SOL на основные балансы ${frozen.length} игроков?\nУчтены ещё не возвращённые вклады ZRL/SOL и рассчитанный неполученный доход. Уже возвращённые суммы и полученные награды исключены. Доход без сохранённой ставки остаётся на сверке. Позиции закрываются на момент расчёта; для уже закрытых используется прежняя дата закрытия. Вы разрешаете вывод из реальных средств проекта.`)) return;
         submitting = true;
         node('recovery-admin-apply').disabled = true;
         try {

@@ -47,6 +47,28 @@ test('shows saved principal, dates and recorded rewards with pending status, wit
     const descendants = node => [node, ...node.children.flatMap(descendants)];
     assert(!descendants(list).some(node => ['button', 'a', 'input'].includes(node.tag)));
 });
+test('historical yield uses the saved daily rate, subtracts claims and stops at original closure', () => {
+    const result = view({});
+    const now = Date.now();
+    const archived = { ...farm, id: 'closed-yield', amount: 1000, asset: 'zrl', dailyRate: .01,
+        startTime: now - 10*86400000, endTime: now + 30*86400000, claimedReward: 25 };
+    const api = result.context.window.legacyFarmReview;
+    api.setState({ legacyFarmSettlements: [{ id: 'closed-yield', cutoffMs: now, principalReturned: true, yieldReviewed: false }] });
+    assert.equal(api.income(archived, now + 20*86400000), 75);
+    assert.equal(api.income({ ...archived, dailyRate: null }), null);
+    assert.equal(api.income({ ...archived, dailyRate: 'NaN' }), null);
+    assert.equal(api.income({ ...archived, claimedReward: 1000 }), 0);
+});
+test('principal returned without a known yield rate remains visibly unresolved', () => {
+    const result = view({ [key]: JSON.stringify([farm]) });
+    result.context.window.legacyFarmReview.setState({
+        restoredLegacyFarmIds: [],
+        legacyFarmSettlements: [{ id: farm.id, principalReturned: true, yieldReviewed: false, cutoffMs: Date.now() }],
+    });
+    assert.equal(result.count.text, '1 · на проверке');
+    assert.match(result.list.text, /Вклад уже возвращён; неполученный доход ещё требует сверки/);
+    assert.doesNotMatch(result.list.text, /ZRL-вклад уже учитывался/);
+});
 test('missing storage explains device-local limitation instead of claiming there were no farms', () => {
     assert.match(view({}).list.text, /не подтверждает отсутствие вкладов/);
 });

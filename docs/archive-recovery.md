@@ -24,19 +24,32 @@ not a client-supplied nickname. Other players cannot list or approve recoveries.
 ## What is credited
 
 - The account's server-held pending ZRL and pending SOL, exactly once.
-- Approved SOL principal from old device farms that has not already been
+- Approved ZRL and SOL principal from old device farms that has not already been
   returned or migrated into verified farming.
+- Accrued unclaimed ZRL yield, using the saved daily rate and original dates,
+  minus already claimed rewards and any previously restored yield.
 - Existing spendable balances remain additive and are not overwritten.
 
-In the inspected legacy client, SOL farm principal was removed through pool
-turnover, but creating a ZRL farm did **not** subtract its nominal amount from
-the ZRL account balance. Therefore ZRL farm nominals are retained in the audit
-history but are not minted a second time. A different historical implementation
-requires debit evidence and separate reconciliation before an additional credit.
+Historical deployed clients did debit ZRL farming principal. The disabled
+compatibility wrapper inspected during the initial recovery was not reliable
+evidence of historical debit behavior. The original recovery consequently
+omitted ZRL principal and unclaimed yield; this reconciliation corrects those
+omissions additively, including positions it already marked closed.
+
+The registry distinguishes nominal principal from principal actually credited.
+For old settlements only SOL principal was paid. Original closure timestamps
+remain the yield cutoff, so waiting for the correction does not create extra
+post-closure interest. Missing daily rates stay explicitly unresolved; they
+are never silently interpreted as zero. Original approved dates, principal,
+asset and claimed rewards cannot be changed by a new device submission.
 
 Already claimed rewards are not paid twice. Historical farm records closed by
 recovery do not continue accruing yield. Existing verified farms are unchanged.
-Original device archives remain intact and are labelled as resolved.
+Original device archives remain intact. A position is fully resolved only
+after both its principal and yield have been reconciled. Restoring principal
+first does not block a later, separately approved missing-yield adjustment.
+Owner review freezes the calculation and exact totals for fifteen minutes;
+an old cached review from before the correction is rejected before any credit.
 
 ## Safeguards and backup limits
 

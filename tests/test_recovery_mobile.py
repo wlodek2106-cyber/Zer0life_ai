@@ -58,8 +58,8 @@ class RecoveryTests(unittest.TestCase):
                        legacy_pending_sol_lamports=10000000,legacy_recorded=1,
                        sol_lamports=500000,registration_claimed=1 WHERE telegram_id='200'""")
         self.farms = [
-            {"id": "old-zrl", "asset": "zrl", "amount": 1000, "startTime": 1, "endTime": 2, "claimedReward": 5},
-            {"id": "old-sol", "asset": "sol", "amount": .001, "startTime": 1, "endTime": 2, "claimedReward": 2},
+            {"id": "old-zrl", "asset": "zrl", "amount": 1000, "startTime": 1, "endTime": 2, "claimedReward": 5, "dailyRate": .001},
+            {"id": "old-sol", "asset": "sol", "amount": .001, "startTime": 1, "endTime": 2, "claimedReward": 2, "dailyRate": .001},
         ]
 
     def post(self, path, body=None, user="200", client=None):
@@ -73,12 +73,109 @@ class RecoveryTests(unittest.TestCase):
     def submit(self, farms=None):
         response = self.post("/wallet/recovery/submit", {"farms": self.farms if farms is None else farms})
         self.assertEqual(response.status_code, 200, response.json)
-        return response.json["recovery"]
+        quoted = self.post("/wallet/recovery/admin/list", user="100")
+        self.assertEqual(quoted.status_code, 200, quoted.json)
+        return next(row for row in quoted.json["requests"] if row["telegramId"] == "200")
 
     def approve(self, record, user="100", client=None):
         return self.post("/wallet/recovery/admin/apply", {
             "requests": [{"requestId": record["requestId"], "digest": record["digest"]}],
         }, user=user, client=client)
+
+    def historical_farms(self, now_ms):
+        for farm, rate, claimed in zip(self.farms, [.01, 100], [25, .2]):
+            farm.update(startTime=now_ms-10*86400000, endTime=now_ms+20*86400000,
+                        dailyRate=rate, claimedReward=claimed)
+
+    def seed_incomplete_old_settlement(self, now_ms):
+        from legacy_farm_settlement import init_settlement
+        from wallet_recovery import units
+        normalized = [
+            {"id": f["id"], "asset": f["asset"], "units": units(f["amount"], 1000000 if f["asset"] == "zrl" else 1000000000),
+             "startTime": f["startTime"], "endTime": f["endTime"], "claimedZrlUnits": units(f["claimedReward"], 1000000)}
+            for f in self.farms
+        ]
+        old = json.dumps({"zrl": 100000000, "sol": 10000000, "farms": normalized})
+        with service._connect(self.path) as db:
+            db.execute("""INSERT INTO wallet_recovery_requests
+                (request_id,telegram_id,username,digest,snapshot_json,status,created_at,approved_at,approved_by)
+                VALUES('old-approved','200','Fixture200',?,?,'approved',?,?,'100')""",
+                (hashlib.sha256(old.encode()).hexdigest(), old, now_ms//1000, now_ms//1000))
+            service._ledger_entry(db, "200", "legacy_restoration", 100000000, "legacy-recovery:old-approved")
+            db.execute("""UPDATE wallet_accounts SET legacy_pending_units=0,legacy_pending_sol_lamports=0,
+                       sol_lamports=sol_lamports+11000000 WHERE telegram_id='200'""")
+            for farm in normalized:
+                db.execute("""INSERT INTO wallet_legacy_farm_returns
+                    (telegram_id,farm_id,request_id,asset,principal_units,returned_at) VALUES('200',?,'old-approved',?,?,?)""",
+                    (farm["id"], farm["asset"], farm["units"], now_ms//1000))
+            init_settlement(db)
+
+    def test_corrects_already_closed_zrl_principal_and_yield_without_double_sol_or_claimed_rewards(self):
+        now_ms = int(time.time()) * 1000
+        self.historical_farms(now_ms)
+        self.seed_incomplete_old_settlement(now_ms)
+        with patch("wallet_recovery.time.time", return_value=now_ms/1000):
+            record = self.submit()
+            self.assertEqual(record["balanceZrl"], 0)
+            self.assertEqual(record["farmZrl"], 1000)
+            self.assertEqual(record["farmSol"], 0)
+            self.assertEqual(record["farmYieldZrl"], 75.8)
+            self.assertEqual(self.approve(record).status_code, 200)
+            self.assertEqual(self.approve(record).status_code, 200)
+        state = self.state()
+        self.assertEqual(state["availableZrl"], 1200.8)
+        self.assertAlmostEqual(state["gameSolBalance"], .0115)
+        self.assertEqual(set(state["restoredLegacyFarmIds"]), {"old-zrl", "old-sol"})
+        self.assertEqual(len(state["legacyFarmSettlements"]), 2)
+        self.assertTrue(all(row["principalReturned"] and row["yieldReviewed"] for row in state["legacyFarmSettlements"]))
+
+    def test_corrects_principal_without_device_and_later_adds_only_missing_yield(self):
+        now_ms = int(time.time()) * 1000
+        self.historical_farms(now_ms)
+        self.seed_incomplete_old_settlement(now_ms)
+        with patch("wallet_recovery.time.time", return_value=now_ms/1000):
+            rows = self.post("/wallet/recovery/admin/list", user="100").json["requests"]
+            record = next(row for row in rows if row["telegramId"] == "200")
+            self.assertEqual(record["farmZrl"], 1000)
+            self.assertGreater(record["yieldPendingCount"], 0)
+            self.assertEqual(self.approve(record).status_code, 200)
+            self.assertEqual(self.state()["availableZrl"], 1125)
+            self.assertEqual(self.state()["restoredLegacyFarmIds"], [])
+            record = self.submit()
+            self.assertEqual(record["farmZrl"], 0)
+            self.assertEqual(record["farmSol"], 0)
+            self.assertEqual(record["farmYieldZrl"], 75.8)
+            self.assertEqual(self.approve(record).status_code, 200)
+        self.assertEqual(self.state()["availableZrl"], 1200.8)
+        self.assertAlmostEqual(self.state()["gameSolBalance"], .0115)
+
+    def test_old_cached_recovery_quote_is_rejected_before_any_credit(self):
+        raw = self.post("/wallet/recovery/submit", {"farms": self.farms}).json["recovery"]
+        self.assertEqual(self.approve(raw).status_code, 409)
+        self.assertEqual(self.state()["availableZrl"], 25)
+        self.assertEqual(self.state()["legacyPendingZrl"], 100)
+
+    def test_changed_historical_claim_or_dates_cannot_change_a_closed_farm(self):
+        now_ms = int(time.time()) * 1000
+        self.historical_farms(now_ms)
+        self.seed_incomplete_old_settlement(now_ms)
+        self.farms[0]["claimedReward"] = 0
+        response = self.post("/wallet/recovery/submit", {"farms": self.farms})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.state()["availableZrl"], 125)
+
+    def test_old_closed_farms_stop_accruing_at_the_original_close_not_the_correction(self):
+        from legacy_farm_settlement import missing_principal_farms, quote_farms
+        now_ms = int(time.time()) * 1000
+        self.historical_farms(now_ms)
+        self.seed_incomplete_old_settlement(now_ms)
+        with service._connect(self.path) as db:
+            terms = missing_principal_farms(db, "200")
+            terms[0]["dailyRate"] = ".01"
+            before = quote_farms(db, "200", terms, now_ms, 1000000)
+            after = quote_farms(db, "200", terms, now_ms+15*86400000, 1000000)
+        self.assertEqual(before, after)
+        self.assertEqual(before[0]["yieldOwed"], 75000000)
 
     def test_upload_is_not_a_credit_and_only_owner_can_approve(self):
         record = self.submit()
@@ -99,14 +196,14 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.approve(farm_record).status_code, 200)
         self.assertAlmostEqual(self.state()["gameSolBalance"], .0115)
 
-    def test_restore_is_additive_once_and_zrl_farm_principal_is_not_minted_twice(self):
+    def test_restore_returns_zrl_principal_once_and_preserves_existing_balances(self):
         record = self.submit()
-        self.assertEqual(record["farmZrl"], 0)
-        self.assertEqual(record["farmZrlAlreadyInBalance"], 1000)
+        self.assertEqual(record["farmZrl"], 1000)
+        self.assertEqual(record["farmYieldZrl"], 0)
         self.assertEqual(self.approve(record).status_code, 200)
         self.assertEqual(self.approve(record).status_code, 200)
         state = self.state()
-        self.assertEqual(state["availableZrl"], 125)
+        self.assertEqual(state["availableZrl"], 1125)
         self.assertAlmostEqual(state["gameSolBalance"], .0115)
         self.assertEqual(state["legacyPendingZrl"], 0)
         self.assertEqual(state["legacyPendingSol"], 0)
@@ -125,7 +222,7 @@ class RecoveryTests(unittest.TestCase):
                 return self.approve(record, client=client).status_code
         with ThreadPoolExecutor(max_workers=2) as pool:
             self.assertEqual(list(pool.map(apply, range(2))), [200, 200])
-        self.assertEqual(self.state()["availableZrl"], 125)
+        self.assertEqual(self.state()["availableZrl"], 1125)
         self.assertAlmostEqual(self.state()["gameSolBalance"], .0115)
 
     def test_stale_or_tampered_snapshot_rolls_back_all_funds(self):

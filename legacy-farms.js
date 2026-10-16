@@ -2,6 +2,7 @@
 (() => {
     'use strict';
     let restoredIds = new Set();
+    let settlements = new Map();
 
     function savedNumber(value) {
         if (typeof value !== 'number' && typeof value !== 'string') return null;
@@ -43,12 +44,42 @@
         return Number.isFinite(date.getTime()) ? date.toLocaleDateString('ru-RU') : 'некорректная дата';
     }
 
+    function income(record, now = Date.now()) {
+        if (!record || typeof record !== 'object') return null;
+        const amount = savedNumber(record.amount), rate = savedNumber(record.dailyRate);
+        const start = savedNumber(record.startTime), end = savedNumber(record.endTime);
+        const claimed = savedNumber(record.claimedReward);
+        if ([amount, rate, start, end, claimed].some(value => value === null) || !start || end <= start) return null;
+        const cutoff = settlements.get(String(record.id))?.cutoffMs || now;
+        const elapsed = Math.max(0, Math.min(cutoff, end) - start) / 86400000;
+        const earned = Math.max(0, amount * rate * elapsed - claimed);
+        return Number.isFinite(earned) ? earned : null;
+    }
+
     function render() {
         const container = document.getElementById('legacy-farming-deposits-list');
         const count = document.getElementById('legacy-farms-count');
         if (!container || !count) return;
         container.replaceChildren();
         const snapshot = readRecords();
+        const totals = document.getElementById('legacy-farms-summary');
+        if (totals) {
+            if (snapshot.error || snapshot.missing || !snapshot.records.length) totals.textContent = 'Полный итог ферм пока недоступен: нужны сохранённые записи.';
+            else {
+                let zrl = 0, sol = 0, yieldZrl = 0, unknown = 0;
+                snapshot.records.forEach(record => {
+                    const amount = savedNumber(record?.amount);
+                    if (amount !== null && record?.asset === 'zrl') zrl += amount;
+                    if (amount !== null && record?.asset === 'sol') sol += amount;
+                    const earned = income(record);
+                    if (!settlements.get(String(record?.id))?.yieldReviewed) {
+                        if (earned === null) unknown++;
+                        else yieldZrl += earned;
+                    }
+                });
+                totals.textContent = `Все сохранённые вклады: ${zrl.toLocaleString('ru-RU')} ZRL и ${sol.toLocaleString('ru-RU', { maximumFractionDigits: 9 })} SOL. Осталось сверить доход (локальная оценка): ${yieldZrl.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL.${unknown ? ` Для ${unknown} записей расчёт пока невозможен — это не нулевой доход.` : ''} Это история и расчёт, а не дополнительный доступный баланс. Ранее полученные награды вычтены; для закрытых позиций доход ограничен датой закрытия.`;
+            }
+        }
         const pending = snapshot.records?.filter(record => !restoredIds.has(String(record?.id))).length || 0;
         count.textContent = snapshot.error ? 'Ошибка чтения' : `${pending} · на проверке`;
         if (snapshot.error || snapshot.records.length === 0) {
@@ -85,19 +116,30 @@
                 if (claimed !== null) {
                     line(card, 'Получено ранее по локальной записи', `${claimed.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL`);
                 }
+                const earned = income(record);
+                line(card, settlements.get(String(record?.id))?.yieldReviewed
+                    ? 'Доход на дату закрытия · учтён в восстановлении'
+                    : 'Неполученный доход по сохранённой ставке', earned === null
+                    ? 'нужна исходная ставка и даты; доход не считается нулевым'
+                    : `${earned.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL · локальная оценка`);
             }
             line(card, 'Статус', restored
-                ? record?.asset === 'sol'
-                    ? 'SOL-вклад возвращён на основной баланс. Повторный возврат исключён.'
-                    : 'ZRL-вклад уже учитывался в балансе и повторно не начисляется.'
-                : 'не включена в доступный баланс; начисление и вывод здесь недоступны');
+                ? 'Вклад возвращён и доход проверен. Повторное начисление исключено.'
+                : settlements.get(String(record?.id))?.principalReturned
+                    ? 'Вклад уже возвращён; неполученный доход ещё требует сверки.'
+                    : 'Возврат вклада и неполученный доход требуют проверки; история не удалена.');
             container.appendChild(card);
         });
     }
 
     window.legacyFarmReview = {
         render,
-        setState(state) { restoredIds = new Set((state.restoredLegacyFarmIds || []).map(String)); render(); },
+        income,
+        setState(state) {
+            restoredIds = new Set((state.restoredLegacyFarmIds || []).map(String));
+            settlements = new Map((state.legacyFarmSettlements || []).map(record => [String(record.id), record]));
+            render();
+        },
     };
     window.addEventListener('storage', (event) => {
         if (typeof STORAGE_PREFIX !== 'undefined' && (event.key === null
