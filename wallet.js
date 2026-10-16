@@ -37,6 +37,7 @@
 
     function preserveLegacyBalance() {
         if (typeof STORAGE_PREFIX === 'undefined') return { zrl: 0, sol: 0 };
+        if (window.legacyRecovery) return window.legacyRecovery.preserve(STORAGE_PREFIX);
         const key = STORAGE_PREFIX + 'legacy_pending_zrl';
         const solKey = STORAGE_PREFIX + 'legacy_pending_sol';
         const farmsKey = STORAGE_PREFIX + 'legacy_pending_farms';
@@ -64,6 +65,7 @@
 
     function renderWallet(nextState) {
         state = nextState;
+        window.legacyRecovery?.setState(nextState);
         const address = nextState.walletAddress || '';
         if (byId('phantom-link-label')) {
             byId('phantom-link-label').textContent = address ? 'Phantom connected and verified' : 'Phantom not connected';
@@ -130,6 +132,7 @@
             if (typeof lastCheckinDate !== 'undefined') lastCheckinDate = nextState.lastCheckinDate || '';
             if (typeof ZRL_PER_KM !== 'undefined') ZRL_PER_KM = Number(nextState.boosterRate || 300);
             if (typeof activeFarms !== 'undefined' && Array.isArray(nextState.farms)) {
+                if (typeof verifiedFarmsLoaded !== 'undefined') verifiedFarmsLoaded = true;
                 activeFarms = nextState.farms.map((farm) => ({
                     id: farm.id,
                     asset: farm.asset,
@@ -144,6 +147,9 @@
             if (typeof updateUI === 'function') updateUI();
             if (typeof updateEnergyUI === 'function') updateEnergyUI();
             if (typeof updateCheckinUI === 'function') updateCheckinUI();
+        }
+        if (byId('farming-modal')?.style.display === 'flex' && typeof window.renderFarmingDeposits === 'function') {
+            window.renderFarmingDeposits();
         }
         ['withdraw-zrl-btn', 'withdraw-sol-btn'].forEach((id) => {
             const button = byId(id);
@@ -169,8 +175,14 @@
 
     async function refresh() {
         try {
-            const legacy = preserveLegacyBalance();
-            await post('/wallet/legacy', { amount: legacy.zrl, solAmount: legacy.sol });
+            try {
+                const legacy = preserveLegacyBalance();
+                await post('/wallet/legacy', { amount: legacy.zrl, solAmount: legacy.sol });
+                window.legacyRecovery?.setWarning('');
+            } catch {
+                // A failed historical upload must not hide current server funds.
+                window.legacyRecovery?.setWarning('Старая история пока не синхронизирована с сервером. Локальная копия не удалена; текущий баланс загружен отдельно.');
+            }
             const nextState = await post('/wallet/state');
             renderWallet(nextState);
             return nextState;

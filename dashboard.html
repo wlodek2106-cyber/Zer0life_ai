@@ -1805,6 +1805,7 @@
                 <div class="balance-info">
                     <span class="balance-label" id="header-username-label">Player</span>
                     <span class="balance-amount" id="header-zrl-balance">0.00 ZRL</span>
+                    <span id="header-legacy-balance" style="font-size:9px;color:#e5d29b;line-height:1.4;"></span>
                 </div>
             </div>
             <div class="wallet-btn" id="wallet-btn">
@@ -2092,13 +2093,21 @@
 
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
                 <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span>📦 Active Farming Deposits</span>
+                    <span>📦 Verified Active Farming Deposits</span>
                     <span style="font-size: 11px; color: #14f195;" id="active-farms-count">0 active</span>
                 </div>
                 <div id="farming-deposits-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
-                    <div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>
+                    <div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No verified active farming deposits yet.</div>
                 </div>
             </div>
+            <section id="legacy-farming-review" aria-labelledby="legacy-farming-title" style="border-top:1px solid rgba(213,178,74,.25);margin-top:14px;padding-top:12px;">
+                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+                    <h3 id="legacy-farming-title" style="font-size:13px;color:#e5d29b;margin:0;">Старые фермы · Ожидают проверки</h3>
+                    <span id="legacy-farms-count" style="font-size:11px;color:#e5d29b;white-space:nowrap;">Проверяем копию…</span>
+                </div>
+                <p style="font-size:11px;line-height:1.5;color:#a6ae9e;margin:0 0 10px;">Это сохранённые записи на этом устройстве, а не подтверждённые сервером вклады. Они показаны отдельно и не меняют доступный баланс. Не очищайте данные Telegram до завершения проверки.</p>
+                <div id="legacy-farming-deposits-list" aria-live="polite" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </section>
         </div>
     </div>
 
@@ -2295,6 +2304,14 @@
                     <button class="wallet-action-btn" id="connect-phantom-btn" style="width:100%; background:linear-gradient(135deg,#d8ff62,#9de83e); color:#071005; font-weight:900;">Connect Phantom</button>
                 </div>
 
+                <section id="recovery-balances" aria-labelledby="recovery-title" style="margin:10px 0 16px;padding:14px;border-radius:18px;border:1px solid rgba(213,178,74,.3);background:linear-gradient(145deg,rgba(213,178,74,.08),rgba(10,14,10,.75));">
+                    <h3 id="recovery-title" style="font-size:14px;color:#e5d29b;margin:0 0 10px;">Сохранённые балансы · включая архив</h3>
+                    <strong id="recovery-total-zrl" style="display:block;color:#d8ff62;font-size:22px;">Ожидаем сервер</strong>
+                    <div id="recovery-split-zrl" style="font-size:11px;color:#b5bdad;margin:5px 0 12px;"></div>
+                    <strong id="recovery-total-sol" style="display:block;color:#d8ffc4;font-size:18px;">Ожидаем сервер</strong>
+                    <div id="recovery-split-sol" style="font-size:11px;color:#b5bdad;margin:5px 0 10px;"></div>
+                    <p id="recovery-status" role="status" style="font-size:11px;color:#b5bdad;line-height:1.5;margin:0;">Загружаем сохранённую историю…</p>
+                </section>
                 <section id="affiliate-panel" style="margin:10px 0 16px;padding:14px;border-radius:18px;border:1px solid rgba(168,240,122,.25);background:linear-gradient(145deg,rgba(168,240,122,.09),rgba(10,14,10,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.18);">
                     <div style="font-size:14px;font-weight:900;color:#d8ffc4;">5-level partner program</div>
                     <div style="font-size:11px;color:#9ca39a;margin:5px 0 10px;">Earn 10% · 4% · 3% · 2% · 1% on running, daily activity, farm and mystery-box rewards.</div>
@@ -2579,6 +2596,7 @@
         </div>
     </div>
 
+    <script src="./legacy-recovery.js?v=history-recovery-1"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -2586,6 +2604,14 @@
 
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
         const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
+        try {
+            if (!window.legacyRecovery) throw new Error('History module unavailable');
+            window.legacyRecovery.preserve(STORAGE_PREFIX);
+            window.legacyRecovery.render();
+        } catch {
+            console.error('Historical data could not be backed up. Do not clear Telegram storage.');
+            window.legacyRecovery?.setWarning('Не удалось сохранить историю на устройстве. Не очищайте данные Telegram.');
+        }
 
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
         const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
@@ -2936,7 +2962,10 @@
         let maxBootsHP = 100;
         let bootsHP = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'boots_hp')) || 100.0;
 
-        let activeFarms = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'active_farms') || '[]');
+        // Device-local farms belong to the separate pending-review view, never to
+        // the actionable list, even while the first server response is loading.
+        let activeFarms = [];
+        let verifiedFarmsLoaded = false;
 
         let daoProposals = JSON.parse(localStorage.getItem('global_dao_proposals') || '[]');
         if (daoProposals.length === 0) {
@@ -3644,13 +3673,19 @@
         }
 
         window.renderFarmingDeposits = function() {
+            window.legacyFarmReview?.render();
             const container = document.getElementById('farming-deposits-list');
             const countEl = document.getElementById('active-farms-count');
-            
+
+            if (!verifiedFarmsLoaded) {
+                countEl.innerText = 'Not loaded';
+                container.innerHTML = '<div style="text-align:center;color:#8a8d98;font-size:12px;padding:15px;">Verified farms have not loaded yet. Reopen Wallet to retry. Saved local records are shown separately below.</div>';
+                return;
+            }
             countEl.innerText = `${activeFarms.length} active`;
 
             if (activeFarms.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No active farming deposits yet.</div>`;
+                container.innerHTML = `<div style="text-align: center; color: #8a8d98; font-size: 12px; padding: 15px;">No verified active farming deposits yet.</div>`;
                 return;
             }
 
@@ -4243,6 +4278,7 @@
         function updateWalletUI() {
             headerUsernameLabel.innerText = username || 'Player';
             headerZrlBalanceEl.innerText = totalBalance.toFixed(2) + " ZRL";
+            window.legacyRecovery?.render();
             
             const displaySol = Math.max(0, poolDeposit + casinoTotalWon - totalCasinoTurnover);
             document.getElementById('wallet-btn-text').innerText = displaySol.toFixed(4) + " SOL";
@@ -5132,6 +5168,7 @@
 
         if (username) setTimeout(syncStatsToServer, 1500);
     </script>
-    <script src="./wallet.js"></script>
+    <script src="./legacy-farms.js?v=history-recovery-1"></script>
+    <script src="./wallet.js?v=history-recovery-1"></script>
 </body>
 </html>
