@@ -28,15 +28,10 @@ SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 RED_ROULETTE_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
 AFFILIATE_LEVELS = ((1, 1000), (2, 400), (3, 300), (4, 200), (5, 100))
 AFFILIATE_ELIGIBLE_SOURCES = {
-    "registration",
     "daily_checkin",
     "mystery_box",
     "run_reward",
     "farm_yield",
-    "casino_wheel",
-    "casino_slots",
-    "casino_roulette",
-    "casino_blackjack",
 }
 WHEEL_REWARDS = [
     {"text": "Boots x2", "type": "boots", "value": 2},
