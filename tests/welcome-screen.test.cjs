@@ -20,8 +20,16 @@ test("Get Started keeps the Telegram launch and referral handoff", () => {
   assert.match(html, /searchParams\.set\('ref', referralMatch\[1\]\.toUpperCase\(\)\)/);
 });
 
-test("welcome art has accessible text and motion can be reduced", () => {
-  assert.match(html, /alt="Zer0Life Run racing cat celebrating at the finish line"/);
+test("welcome uses original 3D track art without a mascot", () => {
+  assert.match(html, /<svg class="zl-art" viewBox="0 0 440 590"/);
+  assert.match(html, /Sculpted three-dimensional running track in electric lime/);
+  assert.match(html, /id="zl-track-top"/);
+  assert.match(html, /id="zl-runner"/);
+  assert.doesNotMatch(html, /zerolife-run-race-mascot|racing cat|<img\b/i);
+});
+
+test("welcome supports reduced motion and visible keyboard focus", () => {
   assert.match(html, /prefers-reduced-motion:\s*reduce/);
   assert.match(html, /:focus-visible/);
+  assert.match(html, /env\(safe-area-inset-(top|bottom)\)/);
 });
