@@ -84,7 +84,7 @@ class RecoveryTests(unittest.TestCase):
     def test_release_can_be_verified_without_exposing_a_player_session(self):
         response = self.client.post("/wallet/state", json={})
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "embedded-merchant-1")
+        self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-withdrawals-1")
         self.assertNotIn("availableZrl", response.json)
 
     def test_embedded_wallet_link_requires_real_signature_and_cannot_be_stolen_or_rebound(self):

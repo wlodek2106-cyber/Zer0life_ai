@@ -1555,53 +1555,6 @@
                 linear-gradient(145deg, #1b2618, #101810 57%, #090e0a) !important;
         }
 
-        #wallet-modal-body > div:first-child {
-            position: relative;
-            overflow: hidden;
-            padding: 16px !important;
-            border: 1px solid rgba(197,255,86,0.22) !important;
-            border-radius: 20px !important;
-            background:
-                radial-gradient(circle at 88% 16%, rgba(197,255,86,0.2), transparent 31%),
-                linear-gradient(135deg, rgba(37,52,29,0.96), rgba(13,20,13,0.98)) !important;
-            box-shadow: inset 0 1px rgba(255,255,255,0.16), 0 12px 22px rgba(0,0,0,0.28) !important;
-        }
-
-        #wallet-modal-body > div:first-child::before {
-            content: "ASSET OVERVIEW";
-            display: block;
-            margin: 0 0 9px;
-            color: var(--zr-lime);
-            font: 500 9px "DM Mono", monospace;
-            letter-spacing: 0.16em;
-            text-align: left;
-        }
-
-        #wallet-modal-body > div:first-child::after {
-            content: "ZRL";
-            position: absolute;
-            top: 13px;
-            right: 14px;
-            width: 31px;
-            height: 31px;
-            display: grid;
-            place-items: center;
-            border: 1px solid rgba(197,255,86,0.42);
-            border-radius: 50%;
-            background: radial-gradient(circle at 35% 25%, #e4ffad, #85b930 68%, #355018);
-            color: #14200b;
-            font: 800 9px "DM Mono", monospace;
-            box-shadow: inset 0 1px rgba(255,255,255,0.6), 0 5px 12px rgba(0,0,0,0.35), 0 0 16px rgba(197,255,86,0.14);
-        }
-
-        #wallet-modal-body > div:first-child > div {
-            margin: 0 !important;
-            color: #bdc9b4 !important;
-            font: 500 10px "DM Mono", monospace !important;
-            letter-spacing: 0.04em;
-            text-align: left !important;
-        }
-
         #wallet-actions-div {
             gap: 10px;
         }
@@ -2290,19 +2243,6 @@
                 <button class="close-modal" id="close-wallet">&times;</button>
             </div>
             <div id="wallet-modal-body">
-                <div style="text-align: center; margin-bottom: 16px; padding: 14px; border: 1px solid rgba(168,240,122,.22); border-radius: 16px; background: linear-gradient(145deg, rgba(168,240,122,.08), rgba(10,14,10,.7));">
-                    <div style="font-size:10px;letter-spacing:2px;color:#b5f33f;margin-bottom:10px;">ZER0LIFE RUN · PERSONAL WALLET</div>
-                    <div id="embedded-wallet-label" style="font-size:13px;color:#d8ffc4;font-weight:800;">Встроенный Solana-кошелёк</div>
-                    <div id="embedded-wallet-address" style="font-size:11px;color:#bbc4b1;margin:9px 0;overflow-wrap:anywhere;">Личный адрес для вашего Telegram-аккаунта</div>
-                    <p id="embedded-wallet-status" role="status" aria-live="polite" style="font-size:11px;line-height:1.5;color:#b5bdad;">Загрузка безопасного входа через Telegram…</p>
-                    <button class="wallet-action-btn" id="setup-embedded-wallet-btn" disabled style="width:100%;background:linear-gradient(135deg,#d8ff62,#9de83e) !important;color:#071005 !important;font-weight:900;">Загрузка кошелька…</button>
-                    <div id="embedded-wallet-tools" hidden style="margin-top:10px;">
-                        <button class="wallet-action-btn" id="wallet-copy-address-btn" style="width:100%;margin-bottom:8px;">Скопировать личный адрес</button>
-                        <button class="wallet-action-btn" id="wallet-export-btn" style="width:100%;font-size:11px;">Резервная копия кошелька</button>
-                    </div>
-                    <p style="font-size:10px;line-height:1.5;color:#8a9683;margin-bottom:0;">Баланс игры и средства в блокчейне показаны отдельно. Создание кошелька не переводит средства автоматически.</p>
-                </div>
-
                 <div id="wallet-withdrawal-status" role="status" style="font-size:11px;line-height:1.5;color:#b5bdad;margin:10px 0;"></div>
                 <div id="pending-withdrawals"></div>
                 <section id="affiliate-panel" style="margin:10px 0 16px;padding:14px;border-radius:18px;border:1px solid rgba(168,240,122,.25);background:linear-gradient(145deg,rgba(168,240,122,.09),rgba(10,14,10,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.18);">
@@ -2345,26 +2285,6 @@
                             <div class="asset-balance" id="asset-sol-bal">0.0000</div>
                             <div class="asset-usd" id="asset-sol-usd">$0.00</div>
                         </div>
-                    </div>
-                    <div class="crypto-asset-row">
-                        <div class="asset-left">
-                            <div class="asset-icon" style="background: rgba(120,117,255,.15); color: #aaa8ff;">◎</div>
-                            <div>
-                                <div class="asset-name">Личный кошелёк · SOL</div>
-                                <div class="asset-sub">On-chain balance in your wallet</div>
-                            </div>
-                        </div>
-                        <div class="asset-right"><div class="asset-balance" id="asset-phantom-sol">—</div></div>
-                    </div>
-                    <div class="crypto-asset-row">
-                        <div class="asset-left">
-                            <div class="asset-icon" style="background: rgba(168,240,122,.12); color: #a8f07a;">Z</div>
-                            <div>
-                                <div class="asset-name">Личный кошелёк · ZRL</div>
-                                <div class="asset-sub">ZRL already held on-chain</div>
-                            </div>
-                        </div>
-                        <div class="asset-right"><div class="asset-balance" id="asset-phantom-zrl">—</div></div>
                     </div>
                 </div>
 
@@ -5104,8 +5024,6 @@
     </script>
     <script src="./legacy-farms.js?v=farming-reconciliation-2"></script>
     <script src="./recovery-actions.js?v=telegram-confirm-3"></script>
-    <div id="embedded-wallet-root"></div>
-    <script src="./wallet.js?v=embedded-wallet-merchant-1"></script>
-    <script type="module" src="./wallet-embedded/embedded-wallet.js?v=embedded-wallet-merchant-1" onerror="window.dispatchEvent(new Event('zerolife:wallet-sdk-error'))"></script>
+    <script src="./wallet.js?v=telegram-withdrawals-1"></script>
 </body>
 </html>
