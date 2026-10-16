@@ -9,6 +9,7 @@ import time
 from decimal import Decimal, ROUND_DOWN
 
 from flask import Blueprint, jsonify, request
+from legacy_farm_settlement import init_settlement, missing_principal_farms, quote_farms, record_settlement, saved_rate, validate_original_terms
 
 
 def units(value, scale):
@@ -25,7 +26,7 @@ def units(value, scale):
 
 def recovery_state(db, user_id, admin_id):
     returned = db.execute(
-        "SELECT farm_id FROM wallet_legacy_farm_returns WHERE telegram_id=?", (user_id,)
+        "SELECT * FROM wallet_legacy_farm_returns WHERE telegram_id=?", (user_id,)
     ).fetchall()
     restored = db.execute(
         "SELECT 1 FROM wallet_recovery_requests WHERE telegram_id=? AND status='approved' LIMIT 1",
@@ -33,7 +34,13 @@ def recovery_state(db, user_id, admin_id):
     ).fetchone()
     return {
         "isRecoveryAdmin": bool(admin_id) and str(user_id) == str(admin_id),
-        "restoredLegacyFarmIds": [row["farm_id"] for row in returned],
+        "restoredLegacyFarmIds": [row["farm_id"] for row in returned
+                                  if row["principal_credited_units"] >= row["principal_units"] and row["yield_reviewed"]],
+        "legacyFarmSettlements": [
+            {"id": row["farm_id"], "principalReturned": row["principal_credited_units"] >= row["principal_units"],
+             "yieldReviewed": bool(row["yield_reviewed"]), "cutoffMs": row["closed_at_ms"]}
+            for row in returned
+        ],
         "legacyBalanceRestored": bool(restored),
     }
 
@@ -56,6 +63,7 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                 PRIMARY KEY(telegram_id,farm_id)
             );
         """)
+        init_settlement(db)
 
     def body_and_user(admin=False):
         data = request.get_json(silent=True) or {}
@@ -66,19 +74,19 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
 
     def summary(row):
         saved = json.loads(row["snapshot_json"])
-        # Old client ZRL farms never debited totalBalance. Their nominal
-        # principal is already included in the saved account balance.
-        farm_zrl = 0
-        nominal_zrl = sum(f["units"] for f in saved["farms"] if f["asset"] == "zrl")
-        farm_sol = sum(f["units"] for f in saved["farms"] if f["asset"] == "sol")
+        farm_zrl = sum(f.get("principalOwed", f["units"]) for f in saved["farms"] if f["asset"] == "zrl")
+        farm_sol = sum(f.get("principalOwed", f["units"]) for f in saved["farms"] if f["asset"] == "sol")
+        farm_yield = sum(f.get("yieldOwed", 0) for f in saved["farms"])
         return {
             "requestId": row["request_id"], "digest": row["digest"], "status": row["status"],
             "telegramId": row["telegram_id"], "username": row["username"],
             "balanceZrl": saved["zrl"] / zrl_scale,
             "balanceSol": saved["sol"] / 1_000_000_000,
             "farmZrl": farm_zrl / zrl_scale, "farmSol": farm_sol / 1_000_000_000,
-            "farmZrlAlreadyInBalance": nominal_zrl / zrl_scale,
-            "totalZrl": (saved["zrl"] + farm_zrl) / zrl_scale,
+            "farmYieldZrl": farm_yield / zrl_scale,
+            "yieldPendingCount": sum(not f.get("yieldReviewed", False) for f in saved["farms"]),
+            "quotedAtMs": saved.get("quotedAtMs"),
+            "totalZrl": (saved["zrl"] + farm_zrl + farm_yield) / zrl_scale,
             "totalSol": (saved["sol"] + farm_sol) / 1_000_000_000,
             "farmCount": len(saved["farms"]), "farms": saved["farms"],
         }
@@ -94,8 +102,8 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                 db.execute("BEGIN IMMEDIATE")
                 ensure_account(db, user["id"])
                 account = db.execute("SELECT * FROM wallet_accounts WHERE telegram_id=?", (user["id"],)).fetchone()
-                returned = {r["farm_id"] for r in db.execute(
-                    "SELECT farm_id FROM wallet_legacy_farm_returns WHERE telegram_id=?", (user["id"],)
+                returned = {r["farm_id"]: r for r in db.execute(
+                    "SELECT * FROM wallet_legacy_farm_returns WHERE telegram_id=?", (user["id"],)
                 )}
                 known = {r["farm_id"] for r in db.execute(
                     "SELECT farm_id FROM wallet_farms WHERE telegram_id=?", (user["id"],)
@@ -108,7 +116,8 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                     if not farm_id or len(farm_id) > 128 or farm_id in seen:
                         raise ValueError("Historical farm identifiers must be present and unique")
                     seen.add(farm_id)
-                    if farm_id in returned:
+                    previous = returned.get(farm_id)
+                    if previous and previous["principal_credited_units"] >= previous["principal_units"] and previous["yield_reviewed"]:
                         continue
                     if farm_id in known:
                         raise ValueError("A historical record matches an existing verified farm; manual reconciliation is required")
@@ -118,12 +127,20 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                     principal = units(farm.get("amount"), zrl_scale if asset == "zrl" else 1_000_000_000)
                     if principal <= 0:
                         raise ValueError("Historical farm principal must be positive")
-                    saved.append({
+                    if previous and (previous["principal_units"] != principal or previous["asset"] != asset):
+                        raise ValueError("Historical farm differs from the original approved principal")
+                    rate = saved_rate(farm.get("dailyRate"))
+                    if previous and previous["principal_credited_units"] >= principal and rate is None:
+                        continue  # Missing rate stays explicitly unresolved, not a new zero-credit request.
+                    normalized = {
                         "id": farm_id, "asset": asset, "units": principal,
                         "startTime": units(farm.get("startTime", 0), 1),
                         "endTime": units(farm.get("endTime", 0), 1),
                         "claimedZrlUnits": units(farm.get("claimedReward", 0), zrl_scale),
-                    })
+                        "dailyRate": rate,
+                    }
+                    validate_original_terms(db, user["id"], normalized)
+                    saved.append(normalized)
                 snapshot = {"zrl": account["legacy_pending_units"],
                             "sol": account["legacy_pending_sol_lamports"],
                             "farms": sorted(saved, key=lambda farm: farm["id"])}
@@ -173,12 +190,15 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                 # player reopening Telegram. Device-only farms arrive separately.
                 for account in db.execute("""SELECT telegram_id,legacy_pending_units,legacy_pending_sol_lamports
                     FROM wallet_accounts a
-                    WHERE (legacy_pending_units>0 OR legacy_pending_sol_lamports>0)
+                    WHERE (legacy_pending_units>0 OR legacy_pending_sol_lamports>0
+                           OR EXISTS(SELECT 1 FROM wallet_legacy_farm_returns f WHERE f.telegram_id=a.telegram_id
+                                     AND f.principal_credited_units<f.principal_units))
                     AND NOT EXISTS(SELECT 1 FROM wallet_recovery_requests r
                                    WHERE r.telegram_id=a.telegram_id AND r.status='pending')
                     LIMIT 50""").fetchall():
                     snapshot = {"zrl": account["legacy_pending_units"],
-                                "sol": account["legacy_pending_sol_lamports"], "farms": []}
+                                "sol": account["legacy_pending_sol_lamports"],
+                                "farms": missing_principal_farms(db, account["telegram_id"])}
                     encoded = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
                     digest = hashlib.sha256(encoded.encode()).hexdigest()
                     db.execute("""INSERT OR IGNORE INTO wallet_recovery_requests
@@ -186,6 +206,7 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                         VALUES(?,?,?,?,?,?)""",
                         (secrets.token_urlsafe(24), account["telegram_id"], "", digest, encoded, int(time.time())))
                 db.commit()
+                db.execute("BEGIN IMMEDIATE")
                 rows = db.execute("""
                     SELECT r.* FROM wallet_recovery_requests r
                     WHERE r.status='pending' AND r.rowid=(
@@ -193,9 +214,29 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                         WHERE other.telegram_id=r.telegram_id AND other.status='pending'
                     ) ORDER BY r.created_at LIMIT 50
                 """).fetchall()
-            return jsonify(success=True, requests=[summary(row) for row in rows])
+                quoted = []
+                for row in rows:
+                    saved = json.loads(row["snapshot_json"])
+                    now_ms = int(time.time() * 1000)
+                    if saved.get("quoteVersion") != 2 or now_ms - saved.get("quotedAtMs", 0) > 300_000:
+                        saved = {**saved, "quoteVersion": 2, "quotedAtMs": now_ms,
+                                 "farms": quote_farms(db, row["telegram_id"], saved["farms"], now_ms, zrl_scale)}
+                        encoded = json.dumps(saved, sort_keys=True, separators=(",", ":"))
+                        digest = hashlib.sha256(encoded.encode()).hexdigest()
+                        request_id = secrets.token_hex(16)
+                        db.execute("""INSERT INTO wallet_recovery_requests
+                            (request_id,telegram_id,username,digest,snapshot_json,created_at) VALUES(?,?,?,?,?,?)""",
+                            (request_id, row["telegram_id"], row["username"], digest, encoded, int(time.time())))
+                        db.execute("UPDATE wallet_recovery_requests SET status='superseded' WHERE request_id=?",
+                                   (row["request_id"],))
+                        row = db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?", (request_id,)).fetchone()
+                    quoted.append(summary(row))
+                db.commit()
+            return jsonify(success=True, requests=quoted)
         except PermissionError as error:
             return jsonify(success=False, error=str(error)), 403
+        except (ValueError, ArithmeticError) as error:
+            return jsonify(success=False, error=str(error)), 409
 
     def backup():
         folder = os.path.join(os.path.dirname(db_path), "recovery-backups")
@@ -239,6 +280,8 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                     if row["status"] != "pending":
                         raise ValueError("Recovery request is no longer pending")
                     saved = json.loads(row["snapshot_json"])
+                    if saved.get("quoteVersion") != 2 or int(time.time() * 1000) - saved.get("quotedAtMs", 0) > 900_000:
+                        raise ValueError("Recovery calculation is outdated; reload the list before approval")
                     account = db.execute("SELECT * FROM wallet_accounts WHERE telegram_id=?",
                                          (row["telegram_id"],)).fetchone()
                     if (account["legacy_pending_units"] != saved["zrl"]
@@ -249,14 +292,9 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                         if db.execute("SELECT 1 FROM wallet_farms WHERE telegram_id=? AND farm_id=?",
                                       (row["telegram_id"], farm["id"])).fetchone():
                             raise ValueError("A farm is already in verified accounting")
-                        if db.execute("SELECT 1 FROM wallet_legacy_farm_returns WHERE telegram_id=? AND farm_id=?",
-                                      (row["telegram_id"], farm["id"])).fetchone():
-                            raise ValueError("A farm principal was already returned; reload the snapshot")
-                        if farm["asset"] == "sol":
-                            totals["sol"] += farm["units"]
-                        db.execute("INSERT INTO wallet_legacy_farm_returns VALUES(?,?,?,?,?,?)",
-                                   (row["telegram_id"], farm["id"], row["request_id"],
-                                    farm["asset"], farm["units"], int(time.time())))
+                        record_settlement(db, row["telegram_id"], farm, row["request_id"], int(time.time()))
+                        totals[farm["asset"]] += farm["principalOwed"]
+                        totals["zrl"] += farm["yieldOwed"]
                     existing_zrl = db.execute(
                         "SELECT COALESCE(SUM(delta_units),0) FROM wallet_ledger WHERE telegram_id=?",
                         (row["telegram_id"],),

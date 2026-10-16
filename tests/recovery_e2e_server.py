@@ -18,6 +18,7 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 
 ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_NOW = int(time.time()) * 1000
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 import wallet_service as service
@@ -55,16 +56,24 @@ with service._connect(db_path) as db:
             legacy_pending_sol_lamports=?,legacy_recorded=1,sol_lamports=500000,
             registration_claimed=1 WHERE telegram_id=?""", (old_zrl * 1_000_000, old_sol, user))
 
+OLD_FARMS = [
+    {"id": "fixture-old-zrl", "asset": "zrl", "amount": 1000, "months": 12, "claimedReward": .25,
+     "startTime": FIXTURE_NOW-86400000, "endTime": FIXTURE_NOW+86400000, "dailyRate": .001},
+    {"id": "fixture-old-sol", "asset": "sol", "amount": .001, "months": 3, "claimedReward": .02,
+     "startTime": FIXTURE_NOW-86400000, "endTime": FIXTURE_NOW+86400000, "dailyRate": 100},
+]
+# Reproduce the actual defect: old recovery closed both positions but only
+# paid SOL principal. This temporary database is NOT the production database.
+from test_recovery_mobile import RecoveryTests
+fixture = RecoveryTests()
+fixture.path, fixture.farms = db_path, OLD_FARMS
+fixture.seed_incomplete_old_settlement(FIXTURE_NOW)
+
 
 @app.get("/")
 def home():
     user = "100" if request.args.get("user") == "100" else "200"
-    old_farms = [] if user == "100" else [
-        {"id": "fixture-old-zrl", "asset": "zrl", "amount": 1000, "months": 12, "claimedReward": 5,
-         "startTime": int(time.time() * 1000) - 86400000, "endTime": int(time.time() * 1000) + 86400000},
-        {"id": "fixture-old-sol", "asset": "sol", "amount": .001, "months": 3, "claimedReward": 2,
-         "startTime": int(time.time() * 1000) - 86400000, "endTime": int(time.time() * 1000) + 86400000},
-    ]
+    old_farms = [] if user == "100" else OLD_FARMS
     stub = """
     <script>
     window.Telegram={WebApp:{

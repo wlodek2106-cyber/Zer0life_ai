@@ -2106,6 +2106,7 @@
                     <span id="legacy-farms-count" style="font-size:11px;color:#e5d29b;white-space:nowrap;">Проверяем копию…</span>
                 </div>
                 <p style="font-size:11px;line-height:1.5;color:#a6ae9e;margin:0 0 10px;">Это сохранённые записи на этом устройстве, а не подтверждённые сервером вклады. Они показаны отдельно и не меняют доступный баланс. Не очищайте данные Telegram до завершения проверки.</p>
+                <p id="legacy-farms-summary" role="status" style="font-size:12px;line-height:1.6;color:#e5d29b;padding:12px;border:1px solid #394429;border-radius:12px;">Считаем вклады и неполученный доход…</p>
                 <div id="legacy-farming-deposits-list" aria-live="polite" style="display:flex;flex-direction:column;gap:8px;"></div>
             </section>
         </div>
@@ -2314,7 +2315,7 @@
                     <p id="recovery-action-status" role="status" style="font-size:11px;color:#e5d29b;line-height:1.5;"></p>
                     <section id="recovery-admin-panel" hidden style="border-top:1px solid #34432b;margin-top:12px;padding-top:12px;">
                         <strong style="font-size:12px;color:#e5d29b;">Восстановление · только владелец</strong>
-                        <p style="font-size:11px;line-height:1.5;color:#b5bdad;">Одобрение непроверенных архивных счетов и возврат SOL из старых ферм. ZRL-вклады и выплаченные награды повторно не добавляются. Подтверждение разрешает вывод из реальных средств проекта.</p>
+                        <p style="font-size:11px;line-height:1.5;color:#b5bdad;">Возврат архивных счетов, вкладов ZRL/SOL и неполученного дохода по сохранённым ставкам. Уже выплаченные суммы не дублируются. Для прежних переносов рассчитывается только недоплата. Доход без ставки остаётся на сверке. Подтверждение разрешает вывод из реальных средств проекта.</p>
                         <button id="recovery-admin-load" class="wallet-action-btn" style="width:100%;margin:8px 0;">Загрузить архив игроков</button>
                         <div id="recovery-admin-list"></div>
                         <button id="recovery-admin-apply" class="wallet-action-btn" style="width:100%;" disabled>Вернуть архив на основные балансы</button>
@@ -2606,7 +2607,7 @@
         </div>
     </div>
 
-    <script src="./legacy-recovery.js?v=recovery-withdrawals-1"></script>
+    <script src="./legacy-recovery.js?v=farming-reconciliation-2"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -5178,9 +5179,9 @@
 
         if (username) setTimeout(syncStatsToServer, 1500);
     </script>
-    <script src="./legacy-farms.js?v=recovery-withdrawals-1"></script>
-    <script src="./recovery-actions.js?v=recovery-withdrawals-1"></script>
-    <script src="./phantom-mobile.js?v=recovery-withdrawals-1"></script>
-    <script src="./wallet.js?v=recovery-withdrawals-1"></script>
+    <script src="./legacy-farms.js?v=farming-reconciliation-2"></script>
+    <script src="./recovery-actions.js?v=farming-reconciliation-2"></script>
+    <script src="./phantom-mobile.js?v=farming-reconciliation-2"></script>
+    <script src="./wallet.js?v=farming-reconciliation-2"></script>
 </body>
 </html>
