@@ -24,14 +24,14 @@
 
         .main-container {
             flex-grow: 1;
-            /* Твоя новая ссылка с postimages */
-            background-image: url('https://i.postimg.cc/jdTV1V2m/IMG-0004.png'); 
+            background-image: url('./assets/zerolife-run-race-mascot.jpeg');
             background-size: cover;
-            background-position: center;
+            background-position: center center;
             position: relative;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
+            isolation: isolate;
         }
 
         .main-container::before {
@@ -117,6 +117,85 @@
         .btn-primary {
             background-color: #9bf864;
             color: #000000;
+        }
+
+        /* Welcome screen: keep the race mascot before entry, with the existing start flow intact. */
+        .main-container::before {
+            top: 0;
+            bottom: 0;
+            height: auto;
+            background:
+                linear-gradient(180deg, rgba(4,8,4,0.08) 0%, rgba(4,8,4,0.03) 34%, rgba(5,7,10,0.48) 68%, #05070a 100%),
+                linear-gradient(90deg, rgba(4,8,4,0.12), transparent 54%, rgba(4,8,4,0.12));
+        }
+
+        .content {
+            width: calc(100% - 28px);
+            margin: 0 14px 18px;
+            padding: 24px 18px 20px;
+            border: 1px solid rgba(197,255,86,0.26);
+            border-radius: 25px;
+            background: linear-gradient(145deg, rgba(15,22,14,0.72), rgba(5,8,6,0.9));
+            backdrop-filter: blur(14px) saturate(125%);
+            -webkit-backdrop-filter: blur(14px) saturate(125%);
+            box-shadow:
+                inset 0 1px rgba(255,255,255,0.16),
+                inset 1px 0 rgba(197,255,86,0.07),
+                0 24px 48px rgba(0,0,0,0.5),
+                0 0 26px rgba(197,255,86,0.08);
+        }
+
+        .title-group {
+            margin-bottom: 20px;
+        }
+
+        .title-white,
+        .title-green {
+            font-size: clamp(38px, 12vw, 48px);
+            text-shadow: 0 4px 18px rgba(0,0,0,0.72);
+        }
+
+        .subtitle {
+            color: #d9f2bb;
+            letter-spacing: 0.24em;
+        }
+
+        .btn {
+            min-height: 56px;
+            border-radius: 15px;
+            transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+        }
+
+        .btn-primary {
+            border: 1px solid rgba(244,255,214,0.5);
+            background: linear-gradient(115deg, #d8ff86, #b7f54a 58%, #a5e43b);
+            color: #10170a;
+            box-shadow:
+                inset 0 1px rgba(255,255,255,0.55),
+                inset 0 -3px rgba(63,99,17,0.17),
+                0 7px 0 rgba(0,0,0,0.22),
+                0 16px 28px rgba(156,227,65,0.22);
+        }
+
+        .btn:active {
+            transform: translateY(2px) scale(0.99);
+            box-shadow: inset 0 1px rgba(255,255,255,0.32), 0 4px 0 rgba(0,0,0,0.18), 0 9px 16px rgba(0,0,0,0.26);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid #e5ffb0;
+            outline-offset: 3px;
+        }
+
+        @media (max-height: 700px) {
+            .content {
+                margin-bottom: 10px;
+                padding: 17px 16px 15px;
+            }
+
+            .title-group {
+                margin-bottom: 14px;
+            }
         }
     </style>
 </head>
