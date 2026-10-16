@@ -28,7 +28,7 @@ from solders.signature import Signature
 from solders.system_program import transfer, TransferParams
 from spl.token.instructions import transfer_checked, TransferCheckedParams, get_associated_token_address, create_associated_token_account
 
-# Планировщик для марафона
+# Marathon scheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 api_app = Flask(__name__)
@@ -54,7 +54,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 APP_URL = "https://wlodek2106-cyber.github.io/Zer0life_ai/?build=affiliate-v2"
 
-# ==================== НАСТРОЙКИ АДМИНА ====================
+# ==================== ADMIN SETTINGS ====================
 ADMIN_TELEGRAM_ID = "428821665"
 ADMIN_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix" 
 # ==========================================================
@@ -155,7 +155,7 @@ def start_background_loop(loop):
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
-# ==================== СИСТЕМА МАССОВЫХ РАССЫЛОК И КУРСОВ PHANTOM / JUPITER ====================
+# ==================== BULK MESSAGING AND PHANTOM / JUPITER RATES ====================
 async def send_broadcast_to_all(text: str):
     users = load_users()
     if not bot:
@@ -183,7 +183,7 @@ def api_broadcast():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
-# Автоматический генератор игровых событий
+# Automatic game event generator
 async def automated_ecosystem_notifications():
     while True:
         await asyncio.sleep(1800)
@@ -202,10 +202,10 @@ async def automated_ecosystem_notifications():
         chosen_text = random.choice(prompts)
         await send_broadcast_to_all(chosen_text)
 
-# Сводка цен BTC, ETH, SOL и ZRL через оракулы Solana / Phantom (Jupiter Price API)
+# BTC, ETH, SOL and ZRL price summary from Solana / Phantom oracles (Jupiter Price API)
 async def crypto_market_price_alerts():
     while True:
-        await asyncio.sleep(10800) # Каждые 3 часа
+        await asyncio.sleep(10800) # Every 3 hours
         if get_total_users() == 0:
             continue
         

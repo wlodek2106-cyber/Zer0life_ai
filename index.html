@@ -1,218 +1,385 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0life Run - Onboarding</title>
+    <title>Zer0Life Run 2.0 — Move to Earn</title>
+    <meta name="theme-color" content="#080c08">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Manrope:wght@500;700;800;900&family=Montserrat:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
+        :root {
+            color-scheme: dark;
+            --lime: #c8ff55;
+            --ink: #070b08;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
             width: 100%;
             height: 100%;
-            background-color: #0b0c10;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
-            user-select: none;
+            background: var(--ink);
+            font-family: "Manrope", "Avenir Next", sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
+        body { user-select: none; }
+
         .main-container {
-            flex-grow: 1;
-            background-image: url('./assets/zerolife-run-race-mascot.jpeg');
-            background-size: cover;
-            background-position: center center;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
             isolation: isolate;
+            display: grid;
+            place-items: center;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: hidden;
+            padding: 0;
+            background:
+                radial-gradient(ellipse at 50% 42%, #1a2b1b 0%, #0d160f 42%, transparent 72%),
+                radial-gradient(ellipse at 80% 78%, #15251b 0%, transparent 45%),
+                linear-gradient(155deg, #0d130e 0%, #070a08 64%, #0a110b 100%);
         }
 
         .main-container::before {
-            content: '';
+            content: "";
             position: absolute;
-            bottom: 0;
-            left: 0;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            opacity: .1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+        }
+
+        .zl-device {
+            position: relative;
+            isolation: isolate;
             width: 100%;
-            height: 60%;
-            background: linear-gradient(to top, #05070a 15%, rgba(5,7,10,0.8) 40%, transparent 100%);
+            height: 100dvh;
+            min-height: 100dvh;
+            overflow: hidden;
+            background: radial-gradient(ellipse at 54% 35%, #20351e 0%, #101910 42%, #080c09 76%);
+            transform-style: preserve-3d;
+        }
+
+        .zl-head {
+            position: absolute;
+            z-index: 4;
+            top: max(25px, calc(env(safe-area-inset-top) + 12px));
+            left: 25px;
+            right: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .zl-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #f1f7e9;
+            font: 800 10px/1 "DM Mono", monospace;
+            letter-spacing: .17em;
+        }
+
+        .zl-mark {
+            display: grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid #d7ffa075;
+            border-radius: 10px 4px 10px 4px;
+            color: var(--lime);
+            background: linear-gradient(145deg, #273b20, #0a110b 72%);
+            box-shadow: inset 0 1px #ffffff38, 0 7px 18px #0008;
+            font: 900 17px/1 "Montserrat", sans-serif;
+            transform: rotate(-7deg) translateZ(20px);
+        }
+
+        .zl-edition {
+            padding: 9px 11px;
+            border: 1px solid #d5f6c22d;
+            border-radius: 99px;
+            color: #dae8d0;
+            background: #101810a8;
+            box-shadow: inset 0 1px #ffffff12;
+            font: 700 8px/1 "DM Mono", monospace;
+            letter-spacing: .15em;
+        }
+
+        .zl-art-halo {
+            position: absolute;
+            z-index: 0;
+            top: 16%;
+            left: 6%;
+            width: 88%;
+            height: 55%;
+            border-radius: 50%;
+            background: radial-gradient(ellipse, #a9ff4b1f 0%, #8be9430c 42%, transparent 72%);
+            filter: blur(16px);
+        }
+
+        .zl-art-grid {
+            position: absolute;
+            z-index: 0;
+            inset: 24% -35% 13%;
+            opacity: .21;
+            transform: perspective(550px) rotateX(65deg) rotateZ(-13deg) translateZ(-10px);
+            background-image:
+                linear-gradient(#a5e36f19 1px, transparent 1px),
+                linear-gradient(90deg, #a5e36f19 1px, transparent 1px);
+            background-size: 35px 35px;
+            mask-image: radial-gradient(ellipse at center, #000 0%, transparent 72%);
+        }
+
+        .zl-art {
+            position: absolute;
+            inset: 0;
             z-index: 1;
+            display: block;
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            object-fit: cover;
+            object-position: 28% 50%;
+            transform: scale(1);
+            animation: zl-art-arrive 850ms cubic-bezier(.18,.76,.24,1) both;
+        }
+
+        .zl-shade {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, #070b0863 0%, transparent 16%, transparent 42%, #080d09a8 63%, #080b09f5 83%, #080b09 100%),
+                linear-gradient(90deg, #080c0870, transparent 20%, transparent 78%, #080c0870);
+        }
+
+        .zl-content {
+            position: absolute;
+            z-index: 3;
+            left: 17px;
+            right: 17px;
+            bottom: max(17px, calc(env(safe-area-inset-bottom) + 8px));
+            padding: 26px 20px 20px;
+            border: 1px solid #baff5b4c;
+            border-radius: 25px;
+            background: linear-gradient(145deg, #1a241cef 0%, #0c110df5 62%, #090d0af7 100%);
+            -webkit-backdrop-filter: blur(22px) saturate(125%);
+            backdrop-filter: blur(22px) saturate(125%);
+            box-shadow:
+                inset 0 1px #ffffff25,
+                inset 1px 0 #c8ff5611,
+                0 26px 68px #000b,
+                0 0 38px #a7f14a10;
+            text-align: center;
+            transform: translateY(24px) translateZ(42px);
+            opacity: 0;
+            animation: zl-panel-in 760ms 180ms cubic-bezier(.18,.8,.2,1) forwards;
+        }
+
+        .zl-content::before {
+            content: "";
+            position: absolute;
+            inset: 1px;
+            border: 1px solid #ffffff0c;
+            border-radius: 23px;
             pointer-events: none;
         }
 
-        .content {
+        .zl-content::after {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: 50%;
+            width: 70px;
+            height: 1px;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, transparent, #d6ff9f, transparent);
+            box-shadow: 0 0 14px #c8ff5570;
+        }
+
+        .zl-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            color: #f2f6e9;
+            font-family: "Montserrat", "Manrope", sans-serif;
+            font-size: clamp(39px, 10vw, 49px);
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: -.075em;
+            line-height: .82;
+            text-shadow: 0 5px 20px #000c;
+        }
+
+        .zl-title-run {
             position: relative;
-            z-index: 2;
-            padding: 0 24px 40px 24px;
+            margin-top: 7px;
+            padding-inline: 5px;
+            color: var(--lime);
+            font-size: 1.17em;
+            letter-spacing: .035em;
+            text-shadow: 0 3px 25px #a5ff3b62;
+        }
+
+        .zl-title-run::after {
+            content: "";
+            position: absolute;
+            left: 7%;
+            right: -12%;
+            bottom: -6px;
+            height: 2px;
+            transform: skewX(-28deg);
+            background: linear-gradient(90deg, #d6ff8a, #b4f94d 52%, transparent);
+            box-shadow: 0 0 12px #c8ff5560;
+        }
+
+        .zl-promise {
+            margin: 21px 0 22px;
+            color: #d9eacb;
+            font: 700 10px/1 "DM Mono", monospace;
+            letter-spacing: .29em;
+            text-transform: uppercase;
+        }
+
+        .zl-cta {
+            position: relative;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             width: 100%;
-            box-sizing: border-box;
-        }
-
-        .title-group {
-            display: flex;
-            flex-direction: column;
+            min-height: 59px;
             align-items: center;
-            margin-bottom: 36px;
-            line-height: 0.95;
-            font-family: 'Montserrat', sans-serif;
-        }
-
-        .title-white {
-            color: #ffffff;
-            font-size: 52px;
-            font-weight: 900;
-            font-style: italic;
-            text-transform: uppercase;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.6);
-        }
-
-        .title-green {
-            color: #9bf864;
-            font-size: 52px;
-            font-weight: 900;
-            font-style: italic;
-            text-transform: uppercase;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            margin-top: -2px;
-        }
-
-        .subtitle {
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.3em;
-            text-transform: uppercase;
-            margin-top: 12px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-        }
-
-        .btn {
-            width: 100%;
-            padding: 18px;
-            border-radius: 14px;
-            border: none;
-            font-size: 16px;
-            font-weight: 800;
-            cursor: pointer;
-            display: flex;
             justify-content: center;
-            align-items: center;
-            transition: all 0.1s ease-in-out;
-            box-shadow: 0 4px 20px rgba(155, 248, 100, 0.2);
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        .btn-primary {
-            background-color: #9bf864;
-            color: #000000;
-        }
-
-        /* Welcome screen: keep the race mascot before entry, with the existing start flow intact. */
-        .main-container::before {
-            top: 0;
-            bottom: 0;
-            height: auto;
-            background:
-                linear-gradient(180deg, rgba(4,8,4,0.08) 0%, rgba(4,8,4,0.03) 34%, rgba(5,7,10,0.48) 68%, #05070a 100%),
-                linear-gradient(90deg, rgba(4,8,4,0.12), transparent 54%, rgba(4,8,4,0.12));
-        }
-
-        .content {
-            width: calc(100% - 28px);
-            margin: 0 14px 18px;
-            padding: 24px 18px 20px;
-            border: 1px solid rgba(197,255,86,0.26);
-            border-radius: 25px;
-            background: linear-gradient(145deg, rgba(15,22,14,0.72), rgba(5,8,6,0.9));
-            backdrop-filter: blur(14px) saturate(125%);
-            -webkit-backdrop-filter: blur(14px) saturate(125%);
-            box-shadow:
-                inset 0 1px rgba(255,255,255,0.16),
-                inset 1px 0 rgba(197,255,86,0.07),
-                0 24px 48px rgba(0,0,0,0.5),
-                0 0 26px rgba(197,255,86,0.08);
-        }
-
-        .title-group {
-            margin-bottom: 20px;
-        }
-
-        .title-white,
-        .title-green {
-            font-size: clamp(38px, 12vw, 48px);
-            text-shadow: 0 4px 18px rgba(0,0,0,0.72);
-        }
-
-        .subtitle {
-            color: #d9f2bb;
-            letter-spacing: 0.24em;
-        }
-
-        .btn {
-            min-height: 56px;
+            gap: 13px;
+            overflow: hidden;
+            border: 1px solid #edffd09c;
             border-radius: 15px;
-            transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
-        }
-
-        .btn-primary {
-            border: 1px solid rgba(244,255,214,0.5);
-            background: linear-gradient(115deg, #d8ff86, #b7f54a 58%, #a5e43b);
-            color: #10170a;
+            color: #11190b;
+            background: linear-gradient(112deg, #e1ff9e 0%, #c8ff55 49%, #a8e847 100%);
             box-shadow:
-                inset 0 1px rgba(255,255,255,0.55),
-                inset 0 -3px rgba(63,99,17,0.17),
-                0 7px 0 rgba(0,0,0,0.22),
-                0 16px 28px rgba(156,227,65,0.22);
+                inset 0 1px #ffffffad,
+                inset 0 -3px #628d2c38,
+                0 7px 0 #050805,
+                0 16px 30px #a6ee493b;
+            font: 900 14px/1 "Manrope", sans-serif;
+            letter-spacing: .015em;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
         }
 
-        .btn:active {
-            transform: translateY(2px) scale(0.99);
-            box-shadow: inset 0 1px rgba(255,255,255,0.32), 0 4px 0 rgba(0,0,0,0.18), 0 9px 16px rgba(0,0,0,0.26);
+        .zl-cta::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-120%) skewX(-24deg);
+            background: linear-gradient(90deg, transparent, #ffffff70, transparent);
+            animation: zl-glint 5.2s 1.5s ease-in-out infinite;
         }
 
-        .btn:focus-visible {
-            outline: 2px solid #e5ffb0;
-            outline-offset: 3px;
+        .zl-cta:hover { filter: brightness(1.05); transform: translateY(-1px); }
+
+        .zl-cta:active {
+            transform: translateY(3px);
+            box-shadow: inset 0 1px #ffffff8a, 0 3px 0 #050805, 0 8px 16px #a6ee4926;
+        }
+
+        .zl-cta:focus-visible {
+            outline: 2px solid #efffc5;
+            outline-offset: 5px;
+            box-shadow: 0 0 0 4px #10170d, 0 0 0 6px #c8ff55, 0 16px 30px #a6ee493b;
+        }
+
+        .zl-arrow {
+            display: grid;
+            place-items: center;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            color: #eaffcd;
+            background: #26391b;
+            box-shadow: inset 0 1px #ffffff45, 0 2px 5px #344a1b65;
+            font: 700 14px/1 "Manrope", sans-serif;
+        }
+
+        @keyframes zl-art-arrive {
+            from { transform: scale(1.04); opacity: .65; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes zl-panel-in {
+            to { transform: translateY(0) translateZ(42px); opacity: 1; }
+        }
+
+        @keyframes zl-glint {
+            0%, 68%, 100% { transform: translateX(-120%) skewX(-24deg); }
+            85% { transform: translateX(120%) skewX(-24deg); }
         }
 
         @media (max-height: 700px) {
-            .content {
-                margin-bottom: 10px;
-                padding: 17px 16px 15px;
-            }
+            .zl-device { min-height: 0; }
+            .zl-head { top: max(17px, calc(env(safe-area-inset-top) + 7px)); }
+            .zl-content { padding: 19px 18px 14px; bottom: max(12px, calc(env(safe-area-inset-bottom) + 5px)); }
+            .zl-title { font-size: clamp(34px, 8vw, 41px); }
+            .zl-promise { margin: 16px 0 17px; }
+            .zl-cta { min-height: 52px; }
+        }
 
-            .title-group {
-                margin-bottom: 14px;
-            }
+        @media (max-height: 590px) {
+            .zl-device { height: 100dvh; }
+            .zl-content { padding: 14px 17px 11px; }
+            .zl-title { font-size: clamp(30px, 7vw, 36px); }
+            .zl-promise { margin: 12px 0 13px; }
+            .zl-cta { min-height: 47px; }
+        }
+
+        @media (max-width: 360px) {
+            .zl-head { left: 20px; right: 20px; }
+            .zl-content { left: 12px; right: 12px; padding-inline: 16px; }
+            .zl-brand { gap: 8px; font-size: 9px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .zl-art, .zl-content, .zl-cta::before { animation: none !important; }
+            .zl-art { transform: none; }
+            .zl-content { transform: translateZ(42px); opacity: 1; }
         }
     </style>
 </head>
 <body>
-
     <div class="main-container" id="welcome-screen">
-        <div class="content">
-            <div class="title-group">
-                <div class="title-white">ZERØLIFE</div>
-                <div class="title-green">RUN</div>
-                <div class="subtitle">Move to Earn</div>
-            </div>
-
-            <button class="btn btn-primary" id="start-btn">
-                Get Started
-            </button>
-        </div>
+        <main class="zl-device" aria-label="Zer0Life Run welcome">
+            <div class="zl-art-halo" aria-hidden="true"></div>
+            <div class="zl-art-grid" aria-hidden="true"></div>
+            <img class="zl-art" src="./assets/welcome-runner-3d-4k.jpg" alt="A runner on a futuristic illuminated track" fetchpriority="high">
+            <div class="zl-shade" aria-hidden="true"></div>
+            <header class="zl-head" aria-label="Zer0Life Run 2.0">
+                <div class="zl-brand">
+                    <span class="zl-mark" aria-hidden="true">Ø</span>
+                    <span>ZERØLIFE / RUN</span>
+                </div>
+                <span class="zl-edition">RUN 2.0</span>
+            </header>
+            <section class="zl-content">
+                <h1 class="zl-title">
+                    <span>ZERØLIFE</span>
+                    <span class="zl-title-run">RUN</span>
+                </h1>
+                <p class="zl-promise">Move to Earn</p>
+                <button class="zl-cta" id="start-btn" type="button" aria-label="Get Started">
+                    <span>Get Started</span>
+                    <span class="zl-arrow" aria-hidden="true">↗</span>
+                </button>
+            </section>
+        </main>
     </div>
 
     <script>

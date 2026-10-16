@@ -3,9 +3,9 @@
 <title>Zer0Life — isolated withdrawal UI verification</title>
 <style>body{margin:0;padding:15px;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif}main{max-width:430px;margin:auto}#fixture-note{font-size:11px;color:#acb7a1}#fixture-calls{white-space:pre-wrap;font-size:10px}dialog{background:#172016;color:#e1f3ce;border:1px solid #84ad4e;border-radius:16px;padding:20px;width:calc(100% - 70px);max-width:350px}dialog input{width:100%;padding:10px;box-sizing:border-box}dialog button{padding:10px;margin-top:10px}</style>
 </head><body><main>
-<p id="fixture-note">ИЗОЛИРОВАННЫЙ ТЕСТ. Вымышленные балансы, код 123456. Реальные Telegram, кошельки и сеть не вызываются.</p>
+<p id="fixture-note">ISOLATED TEST. Fictional balances, code 123456. Does not call real Telegram, wallets, or the network.</p>
 <div id="preview"></div><pre id="fixture-calls"></pre>
-</main><dialog id="fixture-prompt"><h3 id="fixture-title"></h3><p id="fixture-detail"></p><input id="fixture-value"><button id="fixture-accept">Продолжить</button><button id="fixture-decline">Отмена</button></dialog>
+</main><dialog id="fixture-prompt"><h3 id="fixture-title"></h3><p id="fixture-detail"></p><input id="fixture-value"><button id="fixture-accept">Continue</button><button id="fixture-decline">Cancel</button></dialog>
 <script type="module">
 const nativeFetch=window.fetch.bind(window);
 const html=await(await nativeFetch('../dashboard.html')).text();
@@ -13,7 +13,7 @@ const doc=new DOMParser().parseFromString(html,'text/html');
 for(const style of doc.querySelectorAll('style'))document.head.appendChild(document.importNode(style,true));
 document.getElementById('preview').appendChild(document.importNode(doc.getElementById('wallet-modal-body'),true));
 window.fixtureCalls=[];window.fixtureAlerts=[];
-const state={success:true,telegramId:'200',withdrawalMode:'telegram_otp_v1',availableZrl:25,gameSolBalance:2,
+const state={success:true,telegramId:'200',withdrawalMode:'trusted_destination_v2',availableZrl:25,gameSolBalance:2,
     dailyWithdrawalRemaining:10000,referralCode:'SYNTHETIC',farms:[],affiliateLevels:[],
     pendingWithdrawals:[],pendingWithdrawalApprovals:[]};
 window.Telegram={WebApp:{initData:'synthetic-not-a-real-session',
@@ -39,7 +39,7 @@ window.fetch=async(url,settings)=>{
         const item={nonce:'synthetic-'+window.fixtureCalls.length,address:body.address,asset:body.asset,amount:body.amount};
         state.pendingWithdrawalApprovals=[item];sessionStorage.setItem('synthetic-pending',JSON.stringify(item));result={success:true,...item};
     }else if(route==='/wallet/withdrawals/confirm'){
-        if(body.code!=='123456'){status=403;result={success:false,error:'Неверный код подтверждения.'}}
+        if(body.code!=='123456'){status=403;result={success:false,error:'Incorrect verification code.'}}
         else{
             const item=state.pendingWithdrawalApprovals[0];
             if(item.asset==='SOL')state.gameSolBalance-=Number(item.amount);else state.availableZrl-=Number(item.amount);

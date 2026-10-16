@@ -39,11 +39,11 @@ const key = 'zrl_user_test_legacy_pending_farms';
 
 test('shows saved principal, dates and recorded rewards with pending status, without actions', () => {
     const { list, count } = view({ [key]: JSON.stringify([farm]) });
-    assert.equal(count.text, '1 · на проверке');
-    assert.match(list.text, /0,007 SOL/);
-    assert.match(list.text, /12 мес/);
+    assert.equal(count.text, '1 · under review');
+    assert.match(list.text, /0\.007 SOL/);
+    assert.match(list.text, /12 months/);
     assert.match(list.text, /15 ZRL/);
-    assert.match(list.text, /Ожидает проверки/);
+    assert.match(list.text, /Awaiting review/);
     const descendants = node => [node, ...node.children.flatMap(descendants)];
     assert(!descendants(list).some(node => ['button', 'a', 'input'].includes(node.tag)));
 });
@@ -65,40 +65,40 @@ test('principal returned without a known yield rate remains visibly unresolved',
         restoredLegacyFarmIds: [],
         legacyFarmSettlements: [{ id: farm.id, principalReturned: true, yieldReviewed: false, cutoffMs: Date.now() }],
     });
-    assert.equal(result.count.text, '1 · на проверке');
-    assert.match(result.list.text, /Вклад уже возвращён; неполученный доход ещё требует сверки/);
-    assert.doesNotMatch(result.list.text, /ZRL-вклад уже учитывался/);
+    assert.equal(result.count.text, '1 · under review');
+    assert.match(result.list.text, /Deposit already returned; unclaimed income still needs review/);
+    assert.doesNotMatch(result.list.text, /ZRL deposit already counted/);
 });
 test('missing storage explains device-local limitation instead of claiming there were no farms', () => {
-    assert.match(view({}).list.text, /не подтверждает отсутствие вкладов/);
+    assert.match(view({}).list.text, /does not prove that there are no deposits/);
 });
 test('an empty snapshot never falls back to a different active list', () => {
     const result = view({ [key]: '[]', zrl_user_test_active_farms: JSON.stringify([farm]) });
-    assert.equal(result.count.text, '0 · на проверке');
+    assert.equal(result.count.text, '0 · under review');
     assert.equal(result.list.children.length, 1);
-    assert.match(result.list.text, /нет старых ферм/);
+    assert.match(result.list.text, /no legacy farms/);
 });
 test('falls back to original local records only if snapshot does not exist', () => {
-    assert.match(view({ zrl_user_test_active_farms: JSON.stringify([farm]) }).list.text, /0,007 SOL/);
+    assert.match(view({ zrl_user_test_active_farms: JSON.stringify([farm]) }).list.text, /0\.007 SOL/);
 });
 test('malformed JSON and non-array snapshots remain unchanged and show errors', () => {
     for (const raw of ['{broken', '{}', 'null', '"unexpected"']) {
         const result = view({ [key]: raw, zrl_user_test_active_farms: JSON.stringify([farm]) });
-        assert.match(result.count.text, /Ошибка/);
-        assert.match(result.list.text, /Данные не изменены/);
+    assert.match(result.count.text, /Read error/);
+    assert.match(result.list.text, /No data was changed/);
         assert.equal(result.storage.get(key), raw);
     }
 });
 test('invalid records are visible as requiring review, never silently discarded', () => {
     const result = view({ [key]: JSON.stringify([null, 5, {}, { amount: -100, asset: 'zrl' }]) });
     assert.equal(result.list.children.length, 4);
-    assert.match(result.list.text, /не удалось распознать/);
-    assert.match(result.list.text, /требуют проверки/);
+    assert.match(result.list.text, /Could not read/);
+    assert.match(result.list.text, /need review/);
 });
 test('untrusted strings are never used as markup or converted into wallet actions', () => {
     const result = view({ [key]: JSON.stringify([{ ...farm, id: "');withdraw()", asset: '<img onerror=alert(1)>', amount: '<script>', months: null }]) });
     assert.doesNotMatch(result.list.text, /<img|<script>|withdraw\(\)/);
-    assert.match(result.list.text, /требуют проверки/);
+    assert.match(result.list.text, /need review/);
 });
 test('renders once per record after repeated refreshes; a different profile cannot see the snapshot', () => {
     const result = view({ [key]: JSON.stringify([farm]) });
@@ -106,13 +106,13 @@ test('renders once per record after repeated refreshes; a different profile cann
     assert.equal(result.list.children.length, 1);
     result.context.STORAGE_PREFIX = 'zrl_user_other_';
     result.context.window.legacyFarmReview.render();
-    assert.match(result.list.text, /не найдена копия/);
-    assert.doesNotMatch(result.list.text, /0,007 SOL/);
+    assert.match(result.list.text, /No legacy farm copy was found/);
+    assert.doesNotMatch(result.list.text, /0\.007 SOL/);
 });
 test('super yield is not incorrectly displayed as a 300-month plan', () => {
     const result = view({ [key]: JSON.stringify([{ ...farm, months: 300 }]) });
     assert.match(result.list.text, /Super Yield/);
-    assert.doesNotMatch(result.list.text, /300 мес/);
+    assert.doesNotMatch(result.list.text, /300 months/);
 });
 test('dashboard omits old farm cards but preserves active farms and recovery without deleting history', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');

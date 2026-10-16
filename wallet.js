@@ -7,6 +7,8 @@
     let busy = false;
     let merchantTask = null;
     let releaseGateShown = false;
+    let withdrawalStatusTimer = null;
+    let withdrawalStatusCheckBusy = false;
 
     async function post(path, payload = {}) {
         const response = await fetch(`${API_BASE}${path}`, {
@@ -25,7 +27,7 @@
     }
 
     function alertUser(message) {
-        let text = String(message || 'Не удалось выполнить действие.');
+        let text = String(message || 'Could not complete the action.');
         if (text.length > 256) {
             text = text.slice(0, 255);
             if (/[\uD800-\uDBFF]$/.test(text)) text = text.slice(0, -1);
@@ -36,7 +38,8 @@
     }
 
     function renderWithdrawalControls() {
-        const ready = Boolean(initData() && state?.telegramId && state?.withdrawalMode === 'telegram_otp_v1');
+        const ready = Boolean(initData() && state?.telegramId
+            && ['telegram_otp_v1', 'trusted_destination_v2'].includes(state?.withdrawalMode));
         ['withdraw-zrl-btn', 'withdraw-sol-btn'].forEach(id => {
             if (byId(id)) byId(id).disabled = busy || !ready;
         });
@@ -44,8 +47,8 @@
         if (state && !ready && status) {
             releaseGateShown = true;
             status.textContent = initData()
-                ? 'Ожидаем обновления сервера для вывода через Telegram. Балансы сохранены.'
-                : 'Вывод доступен внутри Telegram через @Zer0lifelabs_ai_bot.';
+                ? 'Waiting for the server update required for Telegram withdrawals. Your balances are safe.'
+                : 'Withdrawals are available inside Telegram via @Zer0lifelabs_ai_bot.';
         } else if (ready && status && releaseGateShown) {
             status.textContent = '';
             releaseGateShown = false;
@@ -53,7 +56,7 @@
     }
 
     function assertSession(owner) {
-        if (!owner || initData() !== owner) throw new Error('Профиль сменился. Откройте Wallet заново. Деньги не отправлены.');
+        if (!owner || initData() !== owner) throw new Error('Your Telegram profile changed. Reopen Wallet. No funds were sent.');
     }
 
     function preserveLegacyBalance() {
@@ -91,6 +94,19 @@
         window.legacyFarmReview?.setState(nextState);
         const address = nextState.walletAddress || '';
         renderWithdrawalControls();
+        const trustedDestination = byId('wallet-trusted-destination');
+        if (trustedDestination) {
+            const trustedAddress = String(nextState.trustedWithdrawalAddress || '');
+            trustedDestination.textContent = trustedAddress
+                ? `Saved withdrawal address (no repeat code): ${trustedAddress.slice(0, 7)}…${trustedAddress.slice(-6)}. A new address must be verified with a Telegram code.`
+                : 'Your first withdrawal address will be verified with a Telegram code. You will not need another code for that address.';
+        }
+        const pendingTransfers = nextState.pendingWithdrawals || [];
+        const withdrawalStatus = byId('wallet-withdrawal-status');
+        if (withdrawalStatus && pendingTransfers.length
+                && ['telegram_otp_v1', 'trusted_destination_v2'].includes(nextState.withdrawalMode)) {
+            withdrawalStatus.textContent = `${pendingTransfers.length} ${pendingTransfers.length === 1 ? 'transfer has' : 'transfers have'} been submitted and ${pendingTransfers.length === 1 ? 'is' : 'are'} awaiting Solana confirmation. Status updates automatically; do not submit again.`;
+        }
         if (byId('asset-zrl-bal')) byId('asset-zrl-bal').textContent = Number(nextState.availableZrl || 0).toFixed(2);
         if (byId('asset-zrl-usd')) {
             byId('asset-zrl-usd').textContent = `Daily limit remaining: ${Number(nextState.dailyWithdrawalRemaining || 0).toFixed(2)} ZRL`;
@@ -177,32 +193,39 @@
                 const row = document.createElement('div');
                 const label = document.createElement('p');
                 label.style.cssText = 'font-size:11px;overflow-wrap:anywhere;';
-                label.textContent = `${approval.amount} ${approval.asset} → ${approval.address}. Ожидает кода из Telegram; деньги ещё не списаны.`;
+                label.textContent = `${approval.amount} ${approval.asset} → ${approval.address}. Waiting for your Telegram code; funds have not been deducted.`;
                 row.appendChild(label);
                 for (const cancel of [false, true]) {
                     const button = document.createElement('button');
                     button.className = 'wallet-action-btn';
-                    button.textContent = cancel ? 'Отменить заявку' : 'Ввести код из Telegram';
+                    button.textContent = cancel ? 'Cancel request' : 'Enter Telegram code';
                     button.addEventListener('click', () => approveWithdrawal(approval.nonce, cancel));
                     row.appendChild(button);
                 }
                 pendingList.appendChild(row);
             });
-            (nextState.pendingWithdrawals || []).forEach(withdrawal => {
-                const button = document.createElement('button');
-                button.className = 'wallet-action-btn';
-                button.style.cssText = 'width:100%;margin:6px 0;font-size:11px;';
-                button.textContent = `${withdrawal.asset}: проверить ожидающий вывод`;
-                button.addEventListener('click', () => checkWithdrawal(withdrawal.nonce).catch(error => alertUser(error.message)));
-                pendingList.appendChild(button);
+            pendingTransfers.forEach(withdrawal => {
+                const row = document.createElement('div');
+                const label = document.createElement('p');
+                label.style.cssText = 'font-size:11px;line-height:1.45;overflow-wrap:anywhere;margin:8px 0;';
+                const amount = Number(withdrawal.amount || 0).toFixed(withdrawal.asset === 'SOL' ? 4 : 2);
+                const destination = String(withdrawal.address || '');
+                const shortDestination = destination ? `${destination.slice(0, 7)}…${destination.slice(-6)}` : 'address hidden';
+                const progress = withdrawal.status === 'processing'
+                    ? 'processing'
+                    : 'awaiting final Solana confirmation';
+                label.textContent = `${withdrawal.asset} ${amount} → ${shortDestination} · ${progress}${withdrawal.txHash ? ` · ${withdrawal.txHash.slice(0, 8)}…${withdrawal.txHash.slice(-6)}` : ''}`;
+                row.appendChild(label);
+                pendingList.appendChild(row);
             });
         }
+        scheduleWithdrawalStatusChecks();
         if (!merchantTask && nextState.lastMerchantPurchase) {
             const receipt = nextState.lastMerchantPurchase;
             merchantMessage(receipt.status === 'confirmed'
-                ? 'Последняя оплата Merchant подтверждена в Solana.'
-                : receipt.status === 'failed' ? 'Последняя оплата не выполнена. Стоимость возвращена.'
-                    : 'Оплата Merchant ожидает подтверждения.', receipt);
+                ? 'Your latest Merchant payment was confirmed on Solana.'
+                : receipt.status === 'failed' ? 'Your latest payment failed. The cost was refunded.'
+                    : 'Your Merchant payment is awaiting confirmation.', receipt);
         }
         if (!merchantTask && nextState.merchantPaymentsEnabled && Array.isArray(nextState.pendingPurchases)) {
             try {
@@ -244,7 +267,7 @@
                 window.legacyRecovery?.setWarning('');
             } catch {
                 // A failed historical upload must not hide current server funds.
-                window.legacyRecovery?.setWarning('Старая история пока не синхронизирована с сервером. Локальная копия не удалена; текущий баланс загружен отдельно.');
+                window.legacyRecovery?.setWarning('Your legacy history has not synced with the server yet. The local copy is preserved; your current balance was loaded separately.');
             }
             const nextState = await post('/wallet/state');
             renderWallet(nextState);
@@ -253,7 +276,7 @@
             state = null;
             renderWithdrawalControls();
             const label = byId('wallet-withdrawal-status');
-            if (label) label.textContent = 'Не удалось обновить Wallet. Балансы не изменены. Откройте Wallet снова.';
+            if (label) label.textContent = 'Could not refresh Wallet. Balances were not changed. Reopen Wallet.';
             console.warn('Zer0Life wallet state:', error.message);
             throw error;
         }
@@ -281,44 +304,61 @@
         busy = true;
         renderWithdrawalControls();
         try {
-            if (!['SOL', 'ZRL'].includes(asset)) throw new Error('Неизвестный актив.');
+            if (!['SOL', 'ZRL'].includes(asset)) throw new Error('Unknown asset.');
             const current = await refresh();
             assertSession(owner);
-            if (!current.telegramId || current.withdrawalMode !== 'telegram_otp_v1') {
-                throw new Error('Сервер ещё обновляется. Вывод будет доступен после обновления; деньги не списаны.');
+            if (!current.telegramId
+                    || !['telegram_otp_v1', 'trusted_destination_v2'].includes(current.withdrawalMode)) {
+                throw new Error('The server is still updating. Withdrawals will be available after the update; no funds were deducted.');
             }
             const pending = current.pendingWithdrawalApprovals || [];
             if (pending.length) {
-                if (pending[0].asset !== asset) throw new Error('Сначала подтвердите или отмените предыдущую заявку в Wallet.');
+                if (pending[0].asset !== asset) throw new Error('Approve or cancel your previous withdrawal request in Wallet first.');
                 await submitApproval(pending[0]);
                 return;
             }
             if ((current.pendingWithdrawals || []).some(row => row.asset === asset)) {
-                throw new Error('Предыдущий вывод ещё проверяется сетью. Нажмите «проверить ожидающий вывод» в Wallet.');
+                throw new Error('Your previous withdrawal is still awaiting Solana confirmation. No action is needed; try again after it completes.');
             }
             const maximum = asset === 'SOL' ? Number(current.gameSolBalance || 0) : Number(current.availableZrl || 0);
-            if (maximum <= 0) throw new Error(`Нет доступного баланса ${asset} для вывода.`);
+            if (maximum <= 0) throw new Error(`No available ${asset} balance to withdraw.`);
             const amountText = await askAmount(asset, maximum);
             assertSession(owner);
             if (amountText == null) return;
             const amount = Number(amountText);
             if (!Number.isFinite(amount) || amount <= 0 || amount > maximum) {
-                throw new Error(`Укажите сумму ${asset} больше нуля и не больше ${maximum}.`);
+                throw new Error(`Enter an amount greater than zero and no more than ${maximum} ${asset}.`);
             }
-            const rawAddress = await askText('Адрес получения', `Вывод ${amount} ${asset} из игры. Введите адрес Solana-кошелька получателя, не адрес токен-счёта.`, 'Solana wallet address…');
+            const rawAddress = await askText('Recipient address', `Withdraw ${amount} ${asset} from the game. Enter the recipient's Solana wallet address, not a token account address.`, 'Solana wallet address…');
             assertSession(owner);
             if (rawAddress == null) return;
             const address = String(rawAddress).trim();
-            if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) throw new Error('Некорректный адрес Solana.');
+            if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) throw new Error('Invalid Solana address.');
             const approved = telegramApp?.showConfirm
-                ? await new Promise(resolve => telegramApp.showConfirm(`Вывести ${amount} ${asset} на:\n${address}\nАдрес нельзя изменить после подтверждения.`, resolve))
-                : window.confirm(`Вывести ${amount} ${asset} на ${address}?`);
+                ? await new Promise(resolve => telegramApp.showConfirm(
+                    `Withdraw ${amount} ${asset} to:\n${address}\n${
+                        address === current.trustedWithdrawalAddress
+                            ? 'This address is already verified; you will not need another code.'
+                            : 'A new address requires a Telegram code. After verification, it will be saved as trusted.'
+                    }`, resolve))
+                : window.confirm(`Withdraw ${amount} ${asset} to ${address}? ${
+                    address === current.trustedWithdrawalAddress
+                        ? 'This address is verified.'
+                        : 'A Telegram code will verify and save the new address.'
+                }`);
             assertSession(owner);
             if (!approved) return;
             const approval = await post('/wallet/withdrawals/request', {
                 asset, address, amount: String(amountText).trim(), requestId: window.crypto.randomUUID(),
             });
             assertSession(owner);
+            if (approval.status) {
+                alertUser(approval.status === 'confirmed'
+                    ? 'Withdrawal confirmed on Solana.'
+                    : `Withdrawal submitted to Solana. The amount is reserved; do not submit it again.${approval.txHash ? '\nSolana: ' + approval.txHash : ''}`);
+                await refresh();
+                return;
+            }
             await refresh();
             await submitApproval(approval);
         } catch (error) {
@@ -341,17 +381,17 @@
     async function submitApproval(approval) {
         const owner = initData();
         const value = await askText(
-            'Подтверждение вывода',
-            `${approval.amount} ${approval.asset} → ${approval.address}\nКод отправлен в личный чат с @Zer0lifelabs_ai_bot. Он действует 5 минут. Отмена ввода не списывает деньги; заявку можно продолжить в Wallet.`,
-            '6-значный код из Telegram…',
+            'Confirm withdrawal',
+            `${approval.amount} ${approval.asset} → ${approval.address}\nA code was sent in your private chat with @Zer0lifelabs_ai_bot. It expires in 5 minutes. Cancelling does not deduct funds; you can resume this request in Wallet.`,
+            '6-digit Telegram code…',
         );
         assertSession(owner);
         if (value == null) return;
         const code = String(value).trim();
-        if (!/^\d{6}$/.test(code)) throw new Error('Введите 6 цифр из сообщения бота.');
+        if (!/^\d{6}$/.test(code)) throw new Error('Enter the 6-digit code from the bot message.');
         const result = await post('/wallet/withdrawals/confirm', { nonce: approval.nonce, code });
-        alertUser(result.status === 'confirmed' ? 'Вывод подтверждён сетью Solana.'
-            : `Перевод обрабатывается. Сумма зарезервирована; не создавайте повторный вывод.${result.txHash ? '\nSolana: ' + result.txHash : ''}`);
+        alertUser(result.status === 'confirmed' ? 'Withdrawal confirmed on Solana.'
+            : `Your transfer is processing. The amount is reserved; do not submit another withdrawal.${result.txHash ? '\nSolana: ' + result.txHash : ''}`);
         await refresh();
     }
 
@@ -362,7 +402,7 @@
         try {
             const current = await refresh();
             const item = (current.pendingWithdrawalApprovals || []).find(row => row.nonce === nonce);
-            if (!item) throw new Error('Заявка истекла или уже обработана. Обновите Wallet.');
+            if (!item) throw new Error('This request expired or was already processed. Refresh Wallet.');
             if (cancel) await post('/wallet/withdrawals/cancel', { nonce });
             else await submitApproval(item);
             await refresh();
@@ -375,15 +415,52 @@
         }
     }
 
-    async function checkWithdrawal(nonce) {
+    function scheduleWithdrawalStatusChecks() {
+        const pending = state?.pendingWithdrawals || [];
+        const ready = Boolean(initData() && state?.telegramId
+            && ['telegram_otp_v1', 'trusted_destination_v2'].includes(state?.withdrawalMode));
+        if (!pending.length || !ready) {
+            if (withdrawalStatusTimer !== null) clearTimeout(withdrawalStatusTimer);
+            withdrawalStatusTimer = null;
+            return;
+        }
+        if (withdrawalStatusTimer !== null || withdrawalStatusCheckBusy) return;
+        withdrawalStatusTimer = setTimeout(async () => {
+            withdrawalStatusTimer = null;
+            if (withdrawalStatusCheckBusy) return;
+            withdrawalStatusCheckBusy = true;
+            const owner = initData();
+            try {
+                const snapshot = (state?.pendingWithdrawals || []).slice();
+                for (const withdrawal of snapshot) {
+                    if (initData() !== owner) break;
+                    if (!(state?.pendingWithdrawals || []).some(item => item.nonce === withdrawal.nonce)) continue;
+                    await checkWithdrawal(withdrawal.nonce, false);
+                }
+                if (initData() === owner) await refresh();
+            } catch {
+                const status = byId('wallet-withdrawal-status');
+                if (status && (state?.pendingWithdrawals || []).length) {
+                    status.textContent = 'Could not refresh the status. We will retry automatically; the transfer will not be submitted again.';
+                }
+            } finally {
+                withdrawalStatusCheckBusy = false;
+                scheduleWithdrawalStatusChecks();
+            }
+        }, 15000);
+    }
+
+    async function checkWithdrawal(nonce, refreshAfter = true) {
         const result = await post('/wallet/withdrawals/status', { nonce });
         if (byId('wallet-withdrawal-status')) {
+            const amount = Number(result.amount || 0).toFixed(result.asset === 'SOL' ? 4 : 2);
             byId('wallet-withdrawal-status').textContent = result.status === 'confirmed'
-                ? 'Вывод подтверждён сетью Solana.'
-                : result.status === 'failed' ? 'Сеть отклонила перевод; сумма возвращена на баланс.'
-                    : 'Ожидаем подтверждения сети. Сумма остаётся зарезервирована.';
+                ? `${result.asset} ${amount}: confirmed on Solana.`
+                : result.status === 'failed' ? `${result.asset} ${amount}: rejected by the network; funds were returned to your balance.`
+                    : `${result.asset} ${amount}: still awaiting Solana confirmation. Do not submit it again.`;
         }
-        await refresh();
+        if (refreshAfter) await refresh();
+        return result;
     }
 
     async function playGame(game, payload = {}) {
@@ -407,44 +484,44 @@
 
     function purchaseStorageKey() {
         const user = telegramApp?.initDataUnsafe?.user?.id || state?.referralCode;
-        if (!user) throw new Error('Дождитесь загрузки вашего профиля перед покупкой.');
+        if (!user) throw new Error('Wait for your profile to load before making a purchase.');
         return `zerolife-merchant-purchase:${user}`;
     }
 
     async function monitorPurchase(purchaseId, ownerKey = purchaseStorageKey()) {
         for (let attempt = 0; attempt < 20; attempt++) {
-            if (purchaseStorageKey() !== ownerKey) throw new Error('Профиль сменился. Откройте Wallet для проверки своей покупки.');
+            if (purchaseStorageKey() !== ownerKey) throw new Error('Your profile changed. Open Wallet to check your purchase.');
             const result = await post('/wallet/purchases/status', { purchaseId });
-            if (purchaseStorageKey() !== ownerKey) throw new Error('Профиль сменился. Результат другого игрока не применён.');
+            if (purchaseStorageKey() !== ownerKey) throw new Error('Your profile changed. Another player’s result was not applied.');
             renderWallet(Object.assign({}, state || {}, result));
             if (result.status === 'confirmed' || result.status === 'failed') {
                 const key = purchaseStorageKey();
                 const saved = JSON.parse(localStorage.getItem(key) || 'null');
                 if (saved?.eventId === purchaseId) localStorage.removeItem(key);
                 if (result.status === 'failed') {
-                    merchantMessage(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.', result);
-                    throw new Error(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.');
+                    merchantMessage(result.message || 'Payment failed. The cost was returned to your game balance.', result);
+                    throw new Error(result.message || 'Payment failed. The cost was returned to your game balance.');
                 }
-                merchantMessage('Оплата Merchant подтверждена в Solana. Boots активированы.', result);
+                merchantMessage('Merchant payment confirmed on Solana. Boots activated.', result);
                 return result;
             }
-            merchantMessage('SOL зарезервированы. Ожидаем подтверждения оплаты Merchant — повторно платить не нужно.', result);
+            merchantMessage('SOL is reserved. Waiting for Merchant payment confirmation; do not pay again.', result);
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
-        merchantMessage('Перевод ещё проверяется. Boots активируются после подтверждения. При следующем открытии проверка продолжится.');
+        merchantMessage('The transfer is still being checked. Boots will activate after confirmation. Checking will resume the next time you open the app.');
         return { success: true, status: 'pending', purchaseId };
     }
 
     async function spend(purpose, payload = {}) {
         if (purpose === 'booster') {
-            if (merchantTask) throw new Error('Предыдущая оплата ещё проверяется. Повторное списание заблокировано.');
+            if (merchantTask) throw new Error('Your previous payment is still being checked. Another charge is blocked.');
             if (!state?.merchantPaymentsEnabled) {
-                throw new Error('Сервер оплаты Boots ещё не обновлён. Покупка не списана.');
+                throw new Error('The Boots payment server has not been updated yet. You were not charged.');
             }
             const key = purchaseStorageKey();
             const saved = JSON.parse(localStorage.getItem(key) || 'null');
             if (saved && Number(saved.costSol) !== Number(payload.costSol)) {
-                throw new Error('Сначала проверьте предыдущую покупку Boots. Откройте Wallet для обновления статуса.');
+                throw new Error('Check your previous Boots purchase first. Open Wallet to refresh its status.');
             }
             const eventId = saved?.eventId || (window.crypto?.randomUUID
                 ? window.crypto.randomUUID()
@@ -453,7 +530,7 @@
             // new payment ID, including after closing Telegram or reloading.
             localStorage.setItem(key, JSON.stringify({ eventId, costSol: payload.costSol }));
             merchantTask = (async () => {
-                merchantMessage('Оформляем перевод оплаты на Merchant…');
+                merchantMessage('Preparing payment to Merchant…');
                 if (byId('booster-payment-tx')) byId('booster-payment-tx').hidden = true;
                 let result;
                 try {
@@ -461,10 +538,10 @@
                 } catch (error) {
                     // Definitive validation failures cannot have reserved SOL.
                     if ([400, 401, 402, 403, 409].includes(error.status)) localStorage.removeItem(key);
-                    merchantMessage('Проверьте статус оплаты через Wallet. Не отправляйте оплату вручную повторно.');
+                    merchantMessage('Check the payment status in Wallet. Do not send another payment manually.');
                     throw error;
                 }
-                if (purchaseStorageKey() !== key) throw new Error('Профиль сменился. Результат другого игрока не применён.');
+                if (purchaseStorageKey() !== key) throw new Error('Your profile changed. Another player’s result was not applied.');
                 renderWallet(Object.assign({}, state || {}, result));
                 return monitorPurchase(result.purchaseId, key);
             })();

@@ -122,7 +122,8 @@ def _init_db(db_path):
                 run_id TEXT,
                 run_active INTEGER NOT NULL DEFAULT 0,
                 referral_code TEXT,
-                referred_by TEXT
+                referred_by TEXT,
+                trusted_withdrawal_address TEXT
             );
             CREATE TABLE IF NOT EXISTS wallet_ledger (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,6 +213,8 @@ def _init_db(db_path):
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN referral_code TEXT")
         if "referred_by" not in account_columns:
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN referred_by TEXT")
+        if "trusted_withdrawal_address" not in account_columns:
+            db.execute("ALTER TABLE wallet_accounts ADD COLUMN trusted_withdrawal_address TEXT")
         db.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS wallet_referral_code_idx "
             "ON wallet_accounts(referral_code)"
@@ -416,7 +419,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     def wallet_release_header(response):
         # Public release marker, including on 401s, enables a deployment check
         # without obtaining a player's signed Telegram session or balance.
-        response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-withdrawals-1"
+        response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-withdrawals-2"
         return response
 
     def authenticated_user(data):
@@ -516,7 +519,8 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 return jsonify({
                     "success": True,
                     "telegramId": str(user["id"]),
-                    "withdrawalMode": "telegram_otp_v1",
+                    "withdrawalMode": "trusted_destination_v2",
+                    "trustedWithdrawalAddress": account["trusted_withdrawal_address"],
                     "pendingWithdrawalApprovals": approvals.pending(str(user["id"])),
                     "merchantPaymentsEnabled": True,
                     "merchantRecipient": MERCHANT_SOL_WALLET,
@@ -541,9 +545,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     "farms": farm_items,
                     "pendingWithdrawals": [
                         {"nonce": row["nonce"], "asset": row["asset"],
-                         "txHash": row["tx_signature"], "status": row["status"]}
+                         "amount": row["amount_units"] / (1_000_000_000 if row["asset"] == "SOL" else ZRL_SCALE),
+                         "address": row["address"], "txHash": row["tx_signature"], "status": row["status"]}
                         for row in db.execute(
-                            "SELECT nonce,asset,tx_signature,status FROM wallet_withdrawals WHERE telegram_id=? AND status IN ('processing','submitted')",
+                            "SELECT nonce,asset,amount_units,address,tx_signature,status FROM wallet_withdrawals WHERE telegram_id=? AND status IN ('processing','submitted')",
                             (user["id"],),
                         )
                     ],
@@ -836,7 +841,11 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                                        ("failed" if failed else "confirmed", nonce))
                         db.commit()
                         row = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
-            return jsonify(success=True, status=row["status"], asset=row["asset"], txHash=row["tx_signature"])
+            return jsonify(
+                success=True, status=row["status"], asset=row["asset"],
+                amount=row["amount_units"] / (1_000_000_000 if row["asset"] == "SOL" else ZRL_SCALE),
+                address=row["address"], txHash=row["tx_signature"],
+            )
         except PermissionError as error:
             return _response_error(str(error), 401)
         except Exception:
@@ -848,6 +857,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             data = _json_body()
             user = authenticated_user(data)
             item = approvals.request(str(user["id"]), data)
+            if item.get("autoApproved"):
+                request_data = dict(data)
+                request_data["nonce"] = item["nonce"]
+                return execute_withdrawal(trusted_auto=True, request_data=request_data)
             return jsonify(success=True, **item)
         except PermissionError as exc:
             return _response_error(str(exc), 401)
@@ -855,7 +868,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             return _response_error(str(exc), exc.status)
         except Exception:
             # Never log request bodies, OTPs, bot API URLs or delivery responses.
-            return _response_error("Подтверждение вывода временно недоступно. Деньги не списаны.", 503)
+            return _response_error("Withdrawal verification is temporarily unavailable. No funds were deducted.", 503)
 
     @bp.post("/wallet/withdrawals/cancel")
     def cancel_telegram_withdrawal():
@@ -877,10 +890,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     def confirm_telegram_withdrawal():
         return execute_withdrawal(via_telegram=True)
 
-    def execute_withdrawal(via_telegram=False):
+    def execute_withdrawal(via_telegram=False, trusted_auto=False, request_data=None):
         nonce = ""
         try:
-            data = _json_body()
+            data = request_data if request_data is not None else _json_body()
             user = authenticated_user(data)
             nonce = str(data.get("nonce", ""))
             signature = data.get("signature", "")
@@ -911,8 +924,27 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     or challenge["purpose"] not in ("withdraw_zrl", "withdraw_sol")):
                     db.rollback()
                     return _response_error("Withdrawal confirmation expired; try again", 400)
+                _ensure_account(db, user["id"])
                 if via_telegram:
                     approvals.verify(db, str(user["id"]), nonce, data.get("code", ""))
+                    db.execute(
+                        "UPDATE wallet_accounts SET trusted_withdrawal_address = ? WHERE telegram_id = ?",
+                        (challenge["address"], user["id"]),
+                    )
+                    linked = challenge["address"]
+                elif trusted_auto:
+                    trusted = db.execute(
+                        "SELECT trusted_withdrawal_address FROM wallet_accounts WHERE telegram_id = ?",
+                        (user["id"],),
+                    ).fetchone()
+                    approval = db.execute(
+                        "SELECT delivery FROM wallet_withdrawal_approvals WHERE nonce = ? AND telegram_id = ?",
+                        (nonce, user["id"]),
+                    ).fetchone()
+                    if (not trusted or trusted["trusted_withdrawal_address"] != challenge["address"]
+                            or not approval or approval["delivery"] != "auto"):
+                        db.rollback()
+                        return _response_error("This address has not been verified for code-free withdrawals.", 403)
                     linked = challenge["address"]
                 else:
                     linked = current_wallet(db, user["id"])
@@ -928,7 +960,6 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 if amount_units <= 0:
                     db.rollback()
                     return _response_error("Invalid withdrawal amount", 400)
-                _ensure_account(db, user["id"])
                 if asset == "ZRL":
                     day_start = int(datetime.now(timezone.utc).replace(
                         hour=0, minute=0, second=0, microsecond=0
@@ -1003,7 +1034,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     db.commit()
                 return jsonify(
                     success=False,
-                    error=f'{failure["message"]} Сумма возвращена на игровой баланс. Код: {failure["code"]}. № {failure["reference"]}',
+                    error=f'{failure["message"]} The amount was returned to your game balance. Code: {failure["code"]}. Ref: {failure["reference"]}',
                     errorCode=failure["code"], supportReference=failure["reference"],
                     balanceRestored=True,
                 ), 503

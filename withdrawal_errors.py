@@ -18,17 +18,17 @@ def rpc_call(stage, operation, *args, **kwargs):
 
 KNOWN_ERRORS = {
     "Treasury signing is not configured": (
-        "TREASURY_NOT_CONFIGURED", "На сервере не настроена подпись кошелька выплат."),
+        "TREASURY_NOT_CONFIGURED", "The treasury signing key is not configured on the server."),
     "Treasury signer does not match the configured Zer0Life pool wallet": (
-        "TREASURY_SIGNER_MISMATCH", "Ключ отправителя не соответствует кошельку выплат проекта."),
+        "TREASURY_SIGNER_MISMATCH", "The signing key does not match the project's payout wallet."),
     "Treasury SOL balance is insufficient for this withdrawal and network fee": (
-        "TREASURY_SOL_INSUFFICIENT", "В кошельке выплат проекта недостаточно SOL для суммы и комиссии."),
+        "TREASURY_SOL_INSUFFICIENT", "The project's payout wallet does not have enough SOL for the withdrawal and network fee."),
     "ZRL token mint is not configured": (
-        "ZRL_MINT_NOT_CONFIGURED", "На сервере не настроен адрес токена ZRL."),
+        "ZRL_MINT_NOT_CONFIGURED", "The ZRL token mint is not configured on the server."),
     "Treasury ZRL liquidity is insufficient": (
-        "TREASURY_ZRL_INSUFFICIENT", "В кошельке выплат проекта недостаточно ZRL для перевода."),
+        "TREASURY_ZRL_INSUFFICIENT", "The project's payout wallet does not have enough ZRL for this transfer."),
     "Treasury SOL balance is insufficient for token-account rent and fee": (
-        "TREASURY_FEE_INSUFFICIENT", "В кошельке выплат проекта недостаточно SOL для комиссии и создания счёта токена."),
+        "TREASURY_FEE_INSUFFICIENT", "The project's payout wallet does not have enough SOL for the fee and token account creation."),
 }
 
 
@@ -46,18 +46,18 @@ def describe_failure(exc, nonce):
     stage = exc.stage if isinstance(exc, WithdrawalRpcError) else "prepare_transfer"
     if isinstance(exc, WithdrawalRpcError):
         if status in (401, 403):
-            code, message = "RPC_ACCESS_DENIED", "RPC Solana отклонил доступ сервера. Требуется проверить настройку RPC."
+            code, message = "RPC_ACCESS_DENIED", "The Solana RPC denied server access. Check the RPC configuration."
         elif status == 429:
-            code, message = "RPC_RATE_LIMITED", "RPC Solana ограничил запросы сервера."
+            code, message = "RPC_RATE_LIMITED", "The Solana RPC rate-limited server requests."
         elif any("Timeout" in type(item).__name__ for item in chain):
-            code, message = "RPC_TIMEOUT", "RPC Solana не ответил вовремя."
+            code, message = "RPC_TIMEOUT", "The Solana RPC did not respond in time."
         elif any(type(item).__name__ == "RPCException" for item in chain):
-            code, message = "RPC_REJECTED", "RPC Solana отклонил проверку данных перевода."
+            code, message = "RPC_REJECTED", "The Solana RPC rejected the transfer data check."
         else:
-            code, message = "RPC_UNAVAILABLE", "Не удалось получить данные от RPC Solana."
+            code, message = "RPC_UNAVAILABLE", "Could not retrieve data from the Solana RPC."
     else:
         code, message = KNOWN_ERRORS.get(str(exc), (
-            "TRANSFER_PREPARATION_FAILED", "Сервер не смог подготовить перевод."
+            "TRANSFER_PREPARATION_FAILED", "The server could not prepare the transfer."
         ))
     return {
         "code": code, "message": message, "stage": stage,

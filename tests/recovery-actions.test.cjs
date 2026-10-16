@@ -66,13 +66,13 @@ test('real Telegram popup constraint accepts exact amounts and consent before an
     await f.click('recovery-admin-apply');
     assert.equal(f.messages.length, 1);
     assert(f.messages[0].length <= 256);
-    assert.match(f.messages[0], /123456\.789123 ZRL и 0\.000000000 SOL/);
-    assert.match(f.messages[0], /реальные средства проекта/);
+    assert.match(f.messages[0], /123456\.789123 ZRL and 0\.000000000 SOL/);
+    assert.match(f.messages[0], /real project funds/);
     assert.equal(f.calls.filter(c => c.route.endsWith('/apply')).length, 1);
     assert.equal(f.calls.at(-1).body.requests[0].digest, 'frozen-a');
     assert.equal(f.refreshCount(), 1);
     assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
-    assert.match(f.nodes.get('recovery-action-status').textContent, /Перенос выполнен/);
+    assert.match(f.nodes.get('recovery-action-status').textContent, /Recovery completed/);
 });
 
 test('cancel does not call the financial endpoint and allows another explicit attempt', async () => {
@@ -82,7 +82,7 @@ test('cancel does not call the financial endpoint and allows another explicit at
     assert.equal(f.calls.length, 1);
     assert.equal(f.nodes.get('recovery-admin-apply').disabled, false);
     assert.equal(f.nodes.get('recovery-admin-load').disabled, false);
-    assert.match(f.nodes.get('recovery-action-status').textContent, /Балансы не изменены/);
+    assert.match(f.nodes.get('recovery-action-status').textContent, /Balances were not changed/);
 });
 
 test('SDK rejection is visible, never credits, and never leaves controls stuck', async () => {
@@ -119,6 +119,6 @@ test('an API error is visible and a failed refresh never claims the credit did n
     const credited = fixture({ refreshError: true });
     await credited.click('recovery-admin-load');
     await credited.click('recovery-admin-apply');
-    assert.match(credited.nodes.get('recovery-action-status').textContent, /Перенос выполнен, но/);
+    assert.match(credited.nodes.get('recovery-action-status').textContent, /Recovery completed, but/);
     assert.equal(credited.nodes.get('recovery-admin-apply').disabled, true);
 });

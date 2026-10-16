@@ -51,10 +51,10 @@ test('two Telegram users receive distinct wallets, with no shared singleton addr
     const b = fixture('201', 'wallet-201');
     assert.notEqual(await a.controller.connect({ telegramId: '200' }),
         await b.controller.connect({ telegramId: '201' }));
-    await assert.rejects(a.controller.connect({ telegramId: '201' }), /не совпадает/);
+    await assert.rejects(a.controller.connect({ telegramId: '201' }), /does not match/);
     await assert.rejects(a.controller.signMessage({
         telegramId: '201', address: 'wallet-200', message: 'never sign for another player',
-    }), /не совпадает/);
+    }), /does not match/);
     assert(!a.calls.some(call => call[0] === 'sign'));
 });
 
@@ -62,7 +62,7 @@ test('an existing different bound address cannot be replaced, even by creating a
     const f = fixture();
     await assert.rejects(f.controller.connect({
         telegramId: '200', expectedAddress: 'old-external-wallet',
-    }), /замена запрещена/);
+    }), /replacement is disabled/);
     assert.equal(f.calls.length, 0);
 });
 
@@ -79,7 +79,7 @@ test('signs the exact server challenge, visibly and only with the matching embed
     assert.equal(input.options.uiOptions.showWalletUIs, true);
     await assert.rejects(f.controller.signMessage({
         message: challenge, address: 'someone-else', telegramId: '200',
-    }), /замена запрещена/);
+    }), /replacement is disabled/);
 });
 
 test('changing Telegram account during a signature rejects its result', async () => {
@@ -92,7 +92,7 @@ test('changing Telegram account during a signature rejects its result', async ()
     f.controller.update({ ...f.sdk });
     await assert.rejects(f.controller.signMessage({
         message: 'never submit this', address: 'wallet-200', telegramId: '200',
-    }), /не совпадает/);
+    }), /does not match/);
 });
 
 test('cancellation or malformed SDK signatures are never returned as valid proof', async () => {
@@ -107,7 +107,7 @@ test('cancellation or malformed SDK signatures are never returned as valid proof
     f.controller.update({ ...f.sdk });
     await assert.rejects(f.controller.signMessage({
         message: 'bad', address: 'wallet-200', telegramId: '200',
-    }), /подпись не получена/);
+    }), /no signature was received/);
 });
 
 test('wallet discovery ignores injected external wallets and wallets absent from the Privy user', () => {
@@ -121,7 +121,7 @@ test('wallet discovery ignores injected external wallets and wallets absent from
 
 test('a missing Telegram session or unverified server identity cannot create a wallet', async () => {
     const f = fixture();
-    await assert.rejects(f.controller.connect({ telegramId: '' }), /профиль/);
+    await assert.rejects(f.controller.connect({ telegramId: '' }), /profile/);
     f.controller.update({ ...f.sdk, authenticated: false });
     await assert.rejects(f.controller.connect({ telegramId: '200' }), /Telegram/);
     assert.equal(f.calls.length, 0);
@@ -132,6 +132,6 @@ test('export only opens the provider recovery UI for the current player and exac
     await f.controller.connect({ telegramId: '200' });
     await f.controller.exportWallet({ telegramId: '200', address: 'wallet-200' });
     assert.deepEqual(f.calls.at(-1), ['export', { address: 'wallet-200' }]);
-    await assert.rejects(f.controller.exportWallet({ telegramId: '201', address: 'wallet-200' }), /не совпадает/);
-    await assert.rejects(f.controller.exportWallet({ telegramId: '200', address: 'other' }), /замена запрещена/);
+    await assert.rejects(f.controller.exportWallet({ telegramId: '201', address: 'wallet-200' }), /does not match/);
+    await assert.rejects(f.controller.exportWallet({ telegramId: '200', address: 'other' }), /replacement is disabled/);
 });

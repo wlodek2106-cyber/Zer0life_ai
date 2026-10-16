@@ -77,22 +77,22 @@ test('shows combined totals with a separate spendable amount without changing se
     view.api.setState(state);
     assert.equal(view.text('recovery-total-zrl'), '5025.00 ZRL');
     assert.equal(view.text('recovery-total-sol'), '0.020000000 SOL');
-    assert.match(view.text('recovery-split-zrl'), /^25.00 доступно · 5000.00/);
-    assert.match(view.text('recovery-status'), /не доступен для трат и вывода/);
+    assert.match(view.text('recovery-split-zrl'), /^25.00 available · 5000.00/);
+    assert.match(view.text('recovery-status'), /Archived funds are not yet available to spend or withdraw/);
     assert.equal(state.availableZrl, 25);
 });
 test('does not pretend that an unloaded server balance is zero or restored', () => {
     const view = setup(entries({ legacy_pending_zrl: '5000', legacy_pending_sol: '.015' }));
     view.api.render();
-    assert.equal(view.text('recovery-total-zrl'), 'Ожидаем сервер');
+    assert.equal(view.text('recovery-total-zrl'), 'Waiting for server');
     assert.match(view.text('header-legacy-balance'), /5000.00 ZRL/);
-    assert.match(view.text('recovery-status'), /итог не рассчитан/);
+    assert.match(view.text('recovery-status'), /no total is available/);
 });
 test('a different device snapshot is not added again on top of the authoritative server archive', () => {
     const view = setup(entries({ legacy_pending_zrl: '700', legacy_pending_sol: '0' }));
     view.api.setState({ availableZrl: 5, legacyPendingZrl: 600, gameSolBalance: 0, legacyPendingSol: 0 });
     assert.equal(view.text('recovery-total-zrl'), '605.00 ZRL');
-    assert.match(view.text('recovery-status'), /отличается от серверной/);
+    assert.match(view.text('recovery-status'), /differs from the server copy/);
 });
 test('write failure is explicit and does not alter the original data', () => {
     const original = entries({ total_balance: '99', active_farms: '[1]' });
@@ -123,7 +123,7 @@ test('history upload failure does not block the current authenticated wallet sta
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(calls, ['/wallet/legacy', '/wallet/state']);
     assert.equal(window.secureWallet.getState().availableZrl, 17);
-    assert(warnings.some(message => /не синхронизирована/.test(message)));
+    assert(warnings.some(message => /has not synced with the server yet/.test(message)));
 });
 test('archive preservation remains functional with all recovery UI removed', () => {
     const farms = '[{"id":"synthetic-hidden","asset":"zrl","amount":100}]';
@@ -141,5 +141,5 @@ test('preservation is wired before dashboard mutations and never calls a payout 
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     assert(html.indexOf('src="./legacy-recovery.js?') < html.indexOf('const STORAGE_PREFIX'));
     assert(html.indexOf('window.legacyRecovery.preserve(STORAGE_PREFIX)') < html.indexOf('let totalBalance'));
-    assert(!/\bfetch\s*\(|withdraw|secureWallet/.test(source));
+    assert(!/\bfetch\s*\(|\/wallet\/withdraw|secureWallet/.test(source));
 });

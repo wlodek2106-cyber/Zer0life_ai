@@ -54,14 +54,14 @@ test('Boots waits for finality and persists its id before a single spend request
     assert.equal(f.calls.filter(c => c.route === '/wallet/spend').length, 1);
     assert.equal(f.calls.find(c => c.route === '/wallet/spend').body.eventId, 'new-purchase-id');
     assert.equal(f.storage.size, 0);
-    assert.match(f.labels.get('booster-payment-status').textContent, /подтверждена/);
+    assert.match(f.labels.get('booster-payment-status').textContent, /confirmed/);
     assert.match(f.labels.get('booster-payment-tx').href, /^https:\/\/explorer.solana.com\/tx\//);
 });
 
 test('double click cannot create another payment while the first is running', async () => {
     const f = await fixture();
     const first = f.api.spend('booster', { costSol: .2 });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /Повторное списание заблокировано/);
+    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /Another charge is blocked/);
     await first;
     assert.equal(f.calls.filter(c => c.route === '/wallet/spend').length, 1);
 });
@@ -87,7 +87,7 @@ test('failed merchant transfer restores displayed SOL and does not activate Boot
 
 test('old backend cannot be charged by the updated purchase UI', async () => {
     const f = await fixture({ enabled: false });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /ещё не обновлён/);
+    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /has not been updated yet/);
     assert.equal(f.calls.length, 0);
     assert.equal(f.storage.size, 0);
 });
@@ -105,7 +105,7 @@ test('pending purchase never reports activation and keeps its id for the next se
     assert.equal(result.status, 'pending');
     assert.equal(f.api.getState().boosterRate, 300);
     assert.equal(f.storage.size, 1);
-    assert.match(f.labels.get('booster-payment-status').textContent, /ещё проверяется/);
+    assert.match(f.labels.get('booster-payment-status').textContent, /still being checked/);
 });
 
 test('game store requires confirmed status before showing success or closing', () => {

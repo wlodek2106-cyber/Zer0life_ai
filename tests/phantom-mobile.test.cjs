@@ -131,7 +131,7 @@ test('signing stage does not offer a second connect that could invalidate the ap
     await f.api.start('link');
     assert.equal(f.nodes.get('phantom-mobile-handoff').hidden, true);
     assert.equal(f.calls.filter(c => c.route.endsWith('/start')).length, 1);
-    assert.match(f.nodes.get('wallet-withdrawal-status').textContent, /Завершите подпись/);
+    assert.match(f.nodes.get('wallet-withdrawal-status').textContent, /Finish signing in Phantom/);
 });
 
 test('expired and cancelled approvals hide the native link without submitting funds', async () => {
@@ -182,9 +182,9 @@ test('dashboard removes personal wallet UI while retaining game balances, referr
     assert(!html.includes('src="./phantom-mobile.js?'));
     assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
     assert(!html.includes('content: "ASSET OVERVIEW"'));
-    assert(html.includes('wallet.js?v=telegram-withdrawals-1'));
+    assert(html.includes('wallet.js?v=english-withdrawal-v3'));
     assert(html.includes('if (!current.walletAddress)'));
-    assert(html.includes('Не переводите напрямую с биржи или другого адреса.'));
+    assert(html.includes('Do not send directly from an exchange or another address.'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));

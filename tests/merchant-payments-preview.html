@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Zer0Life Run · isolated Boots payment verification</title>
+</head>
+<body>
+<script type="module">
+    // Uses the exact staged release UI/controller, but no real Telegram or RPC.
+    const release = '../generated-artifacts/merchant-release/';
+    const originalFetch = window.fetch.bind(window);
+    const html = await (await originalFetch(release + 'dashboard.html')).text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    for (const original of parsed.querySelectorAll('style')) {
+        const style = document.createElement('style');
+        style.textContent = original.textContent;
+        document.head.appendChild(style);
+    }
+    const modal = parsed.getElementById('boosters-modal').cloneNode(true);
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+    const controls = document.createElement('div');
+    controls.style.cssText = 'padding:10px;background:#18231b;font-size:12px;line-height:1.5;';
+    controls.innerHTML = `<p>Isolated test: fictional SOL only. No real transfers are made.</p>
+        <p id="fixture-metrics"></p>
+        <button id="fixture-confirm">Confirm test transfer</button>
+        <button id="fixture-fail">Fail test transfer</button>
+        <p id="fixture-alerts" role="status"></p>`;
+    modal.querySelector('.modal-content').prepend(controls);
+
+    const storeKey = 'zerolife-merchant-fixture';
+    const ownerKey = 'zerolife-merchant-purchase:999999990001';
+    if (new URLSearchParams(location.search).has('reset')) {
+        sessionStorage.removeItem(storeKey);
+        localStorage.removeItem(ownerKey);
+        history.replaceState(null, '', location.pathname);
+    }
+    const state = JSON.parse(sessionStorage.getItem(storeKey) || 'null') || {
+        success: true, referralCode: 'SYNTHETIC', availableZrl: 25, gameSolBalance: 2,
+        boosterRate: 300, boosterExpires: 0, farms: [], merchantPaymentsEnabled: true,
+        pendingPurchases: [], lastMerchantPurchase: null, finality: 'pending', spends: 0,
+    };
+    window.fixtureCalls = [];
+    window.fixtureState = state;
+    function metrics() {
+        document.getElementById('fixture-metrics').textContent =
+            `Game balance: ${state.gameSolBalance} SOL · Rate: ${state.boosterRate} ZRL/km · Charges: ${state.spends}`;
+        sessionStorage.setItem(storeKey, JSON.stringify(state));
+    }
+    document.getElementById('fixture-confirm').onclick = () => { state.finality = 'confirmed'; metrics(); };
+    document.getElementById('fixture-fail').onclick = () => { state.finality = 'failed'; metrics(); };
+    window.Telegram = { WebApp: {
+        initData: 'synthetic-telegram-data', initDataUnsafe: { user: { id: 999999990001 } },
+        showAlert(message) {
+            if (String(message).length > 256) throw Error('Telegram popup limit exceeded');
+            document.getElementById('fixture-alerts').textContent = message;
+            window.fixtureLastAlert = message;
+        },
+    } };
+    window.fetch = async (url, options) => {
+        if (!String(url).startsWith('https://zer0life-ai-iz5n.onrender.com/')) {
+            throw Error('External requests are forbidden in this fixture');
+        }
+        const route = new URL(url).pathname, body = JSON.parse(options.body);
+        window.fixtureCalls.push({ route, body });
+        let result = { success: true }, status = 200;
+        if (route === '/wallet/state') result = { ...state };
+        if (route === '/wallet/spend') {
+            if (!state.purchaseId) {
+                state.purchaseId = body.eventId;
+                state.spends++;
+                state.gameSolBalance -= .2;
+                state.pendingPurchases = [{ purchaseId: state.purchaseId, status: 'pending' }];
+            }
+            result = { success: true, purchaseId: state.purchaseId, status: 'pending', gameSolBalance: state.gameSolBalance };
+            status = 202;
+        }
+        if (route === '/wallet/purchases/status') {
+            if (state.finality !== 'pending' && !state.settled) {
+                state.settled = true;
+                state.pendingPurchases = [];
+                if (state.finality === 'confirmed') {
+                    state.boosterRate = 1500;
+                    state.boosterExpires = Date.now() + 7 * 86400000;
+                } else {
+                    state.gameSolBalance += .2;
+                }
+            }
+            const receipt = {
+                purchaseId: state.purchaseId, status: state.finality,
+                recipient: '57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db',
+                txHash: 'synthetic-signature-not-a-real-transaction',
+            };
+            state.lastMerchantPurchase = receipt;
+            result = { ...state, ...receipt, message: 'Test transfer failed. SOL were refunded.' };
+            status = state.finality === 'pending' ? 202 : 200;
+        }
+        metrics();
+        return { ok: true, status, json: async () => result };
+    };
+    for (const name of ['triggerHaptic', 'playSound', 'saveData', 'updateUI', 'updateEnergyUI']) window[name] = () => {};
+    window.tg = window.Telegram.WebApp;
+    window.boosterExpiryTime = 0;
+    const controller = document.createElement('script');
+    controller.src = release + 'wallet.js';
+    await new Promise((resolve, reject) => {
+        controller.onload = resolve; controller.onerror = reject; document.body.appendChild(controller);
+    });
+    const inline = [...parsed.querySelectorAll('script:not([src])')]
+        .map(script => script.textContent).find(text => text.includes('let boosterPurchaseBusy = false;'));
+    const actions = document.createElement('script');
+    actions.textContent = inline.slice(inline.indexOf('        let boosterPurchaseBusy = false;'),
+        inline.indexOf('        window.openDaoModal = function()'));
+    document.body.appendChild(actions);
+    metrics();
+    window.fixtureReady = true;
+</script>
+</body>
+</html>

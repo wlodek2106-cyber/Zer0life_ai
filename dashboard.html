@@ -2243,6 +2243,7 @@
                 <button class="close-modal" id="close-wallet">&times;</button>
             </div>
             <div id="wallet-modal-body">
+                <div id="wallet-trusted-destination" role="status" style="font-size:11px;line-height:1.5;color:#b5bdad;margin:10px 0;"></div>
                 <div id="wallet-withdrawal-status" role="status" style="font-size:11px;line-height:1.5;color:#b5bdad;margin:10px 0;"></div>
                 <div id="pending-withdrawals"></div>
                 <section id="affiliate-panel" style="margin:10px 0 16px;padding:14px;border-radius:18px;border:1px solid rgba(168,240,122,.25);background:linear-gradient(145deg,rgba(168,240,122,.09),rgba(10,14,10,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.18);">
@@ -2277,8 +2278,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                            <div class="asset-name">SOL · доступный баланс</div>
-                            <div class="asset-sub">Баланс приложения · доступно для вывода</div>
+                            <div class="asset-name">SOL · Available balance</div>
+                            <div class="asset-sub">App balance · available to withdraw</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -2346,13 +2347,13 @@
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             <p style="font-size:11px;color:#a8f07a;overflow-wrap:anywhere;">
-                Оплата Boots → 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
+                Boots payment → 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
             </p>
             <p id="booster-payment-status" role="status" aria-live="polite" style="font-size:12px;line-height:1.5;">
-                Boots активируются после подтверждения перевода в Solana. Комиссию сети оплачивает проект.
+                Boots activate after the Solana transfer is confirmed. The project pays the network fee.
             </p>
             <a id="booster-payment-tx" hidden target="_blank" rel="noopener noreferrer"
-               style="font-size:12px;color:#a8f07a;">Открыть перевод в Solana Explorer ↗</a>
+               style="font-size:12px;color:#a8f07a;">View transfer in Solana Explorer ↗</a>
             
             <div class="booster-grid">
                 <div class="booster-card featured" onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 7d)', 168)">
@@ -2498,7 +2499,7 @@
         </div>
     </div>
 
-    <script src="./legacy-recovery.js?v=farming-reconciliation-2"></script>
+    <script src="./legacy-recovery.js?v=english-ui-3"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -2512,7 +2513,7 @@
             window.legacyRecovery.render();
         } catch {
             console.error('Historical data could not be backed up. Do not clear Telegram storage.');
-            window.legacyRecovery?.setWarning('Не удалось сохранить историю на устройстве. Не очищайте данные Telegram.');
+            window.legacyRecovery?.setWarning('Could not save the history on this device. Do not clear Telegram data.');
         }
 
         const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
@@ -3121,7 +3122,7 @@
             try {
                 const result = await window.secureWallet.spend('booster', { costSol });
                 if (result.status !== 'confirmed') {
-                    tg.showAlert('Оплата ожидает подтверждения Solana. Повторно платить не нужно. Проверка продолжится при открытии приложения.');
+                    tg.showAlert('Payment is awaiting Solana confirmation. Do not pay again. The status check will resume when you reopen the app.');
                     return;
                 }
                 boosterExpiryTime = Number(result.boosterExpires || 0);
@@ -3131,7 +3132,7 @@
                 document.getElementById('boosters-modal').style.display = 'none';
                 triggerHaptic('success');
                 playSound('success');
-                tg.showAlert(`Boots активированы: ${name}. Перевод оплаты на Merchant подтверждён.`);
+                tg.showAlert(`Boots activated: ${name}. The payment transfer to Merchant was confirmed.`);
             } catch (error) {
                 triggerHaptic('error');
                 tg.showAlert(error.message);
@@ -4581,15 +4582,15 @@
                 try {
                     const current = await window.secureWallet.refresh();
                     if (!current.walletAddress) {
-                        throw new Error('Для этого способа депозита нужен ранее подтверждённый адрес отправителя. Пока его нет, не отправляйте SOL в общий пул. Вывод с игрового баланса доступен отдельно.');
+                        throw new Error('This deposit method requires a previously verified sender address. Until one is verified, do not send SOL to the shared pool. Game-balance withdrawals are separate.');
                     }
                     document.getElementById('deposit-source-warning').textContent =
-                        `Этот депозит принимается только с подтверждённого адреса: ${current.walletAddress}. Не переводите напрямую с биржи или другого адреса.`;
+                        `This deposit is accepted only from the verified address: ${current.walletAddress}. Do not send directly from an exchange or another address.`;
                     document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                     document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                     document.getElementById('deposit-details-box').style.display = 'block';
                 } catch (error) {
-                    document.getElementById('deposit-status-msg').textContent = error.message || 'Не удалось проверить адрес отправителя. Не отправляйте перевод.';
+                    document.getElementById('deposit-status-msg').textContent = error.message || 'Could not verify the sender address. Do not send the transfer.';
                 }
             };
 
@@ -5033,8 +5034,8 @@
 
         if (username) setTimeout(syncStatsToServer, 1500);
     </script>
-    <script src="./legacy-farms.js?v=farming-reconciliation-2"></script>
-    <script src="./recovery-actions.js?v=telegram-confirm-3"></script>
-    <script src="./wallet.js?v=telegram-withdrawals-1"></script>
+    <script src="./legacy-farms.js?v=english-ui-3"></script>
+    <script src="./recovery-actions.js?v=english-ui-3"></script>
+    <script src="./wallet.js?v=english-withdrawal-v3"></script>
 </body>
 </html>
