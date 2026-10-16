@@ -183,6 +183,8 @@ test('dashboard removes personal wallet UI while retaining game balances, referr
     assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
     assert(!html.includes('content: "ASSET OVERVIEW"'));
     assert(html.includes('wallet.js?v=telegram-withdrawals-1'));
+    assert(html.includes('if (!current.walletAddress)'));
+    assert(html.includes('Не переводите напрямую с биржи или другого адреса.'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));

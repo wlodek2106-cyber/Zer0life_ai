@@ -2317,6 +2317,7 @@
                 </button>
 
                 <div id="deposit-details-box" style="display: none;">
+                    <p id="deposit-source-warning" style="font-size:11px;color:#d8ffc4;overflow-wrap:anywhere;"></p>
                     <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Transfer funds to address:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="QR Code" style="width: 140px; height: 140px; display: block;" />
@@ -4573,13 +4574,23 @@
                 document.getElementById('deposit-status-msg').innerText = '';
             };
 
-            document.getElementById('generate-deposit-addr-btn').onclick = () => {
+            document.getElementById('generate-deposit-addr-btn').onclick = async () => {
                 triggerHaptic('success');
                 playSound('click');
-
-                document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
-                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
-                document.getElementById('deposit-details-box').style.display = 'block';
+                document.getElementById('deposit-details-box').style.display = 'none';
+                try {
+                    const current = await window.secureWallet.refresh();
+                    if (!current.walletAddress) {
+                        throw new Error('Для этого способа депозита нужен ранее подтверждённый адрес отправителя. Пока его нет, не отправляйте SOL в общий пул. Вывод с игрового баланса доступен отдельно.');
+                    }
+                    document.getElementById('deposit-source-warning').textContent =
+                        `Этот депозит принимается только с подтверждённого адреса: ${current.walletAddress}. Не переводите напрямую с биржи или другого адреса.`;
+                    document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
+                    document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
+                    document.getElementById('deposit-details-box').style.display = 'block';
+                } catch (error) {
+                    document.getElementById('deposit-status-msg').textContent = error.message || 'Не удалось проверить адрес отправителя. Не отправляйте перевод.';
+                }
             };
 
             document.getElementById('check-deposit-status-btn').onclick = async () => {
