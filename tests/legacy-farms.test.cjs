@@ -114,10 +114,15 @@ test('super yield is not incorrectly displayed as a 300-month plan', () => {
     assert.match(result.list.text, /Super Yield/);
     assert.doesNotMatch(result.list.text, /300 мес/);
 });
-test('dashboard wires read-only section and renderer without changing financial routes', () => {
+test('dashboard omits old farm cards but preserves active farms and recovery without deleting history', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     const wallet = fs.readFileSync(path.join(__dirname, '../wallet.js'), 'utf8');
-    assert.equal((html.match(/id="legacy-farming-review"/g) || []).length, 1);
+    assert.equal((html.match(/id="legacy-farming-review"/g) || []).length, 0);
+    assert(!html.includes('id="legacy-farming-deposits-list"'));
+    assert(!html.includes('id="legacy-farms-summary"'));
+    assert(html.includes('id="farming-deposits-list"'));
+    assert(html.includes('id="active-farms-count"'));
+    assert(html.includes('id="recovery-admin-apply"'));
     assert(html.indexOf('src="./legacy-farms.js?') < html.indexOf('src="./wallet.js?'));
     assert(html.includes('window.legacyFarmReview?.render();'));
     assert(html.includes('let activeFarms = [];'));

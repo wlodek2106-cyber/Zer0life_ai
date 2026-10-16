@@ -35,7 +35,8 @@
             const html = await (await fetch('../dashboard.html')).text();
             const doc = new DOMParser().parseFromString(html,'text/html');
             for (const id of ['recovery-balances', 'legacy-farming-review']) {
-                document.getElementById('preview').appendChild(document.importNode(doc.getElementById(id),true));
+                const section = doc.getElementById(id);
+                if (section) document.getElementById('preview').appendChild(document.importNode(section,true));
             }
             const recovery = document.createElement('script');
             recovery.src = '../legacy-recovery.js';
