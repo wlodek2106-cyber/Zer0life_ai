@@ -99,7 +99,7 @@
         if (byId('affiliate-code')) byId('affiliate-code').textContent = referralCode || 'Unavailable';
         if (byId('affiliate-link')) {
             byId('affiliate-link').value = referralCode
-                ? `https://t.me/Zer0lifeGenesis_bot?start=ref_${encodeURIComponent(referralCode)}`
+                ? `https://t.me/Zer0lifelabs_ai_bot?start=ref_${encodeURIComponent(referralCode)}`
                 : '';
         }
         if (byId('affiliate-levels')) {
