@@ -52,6 +52,7 @@ def add_cors_headers(response):
 
 TOKEN = os.getenv("BOT_TOKEN")
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
+APP_URL = "https://wlodek2106-cyber.github.io/Zer0life_ai/?build=affiliate-v2"
 
 # ==================== НАСТРОЙКИ АДМИНА ====================
 ADMIN_TELEGRAM_ID = "428821665"
@@ -162,7 +163,7 @@ async def send_broadcast_to_all(text: str):
     for user_id in users:
         try:
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🚀 Open Zer0Life Run & Casino", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+                [InlineKeyboardButton(text="🚀 Open Zer0Life Run & Casino", web_app=WebAppInfo(url=APP_URL))]
             ])
             await bot.send_message(chat_id=int(user_id), text=text, reply_markup=keyboard, parse_mode="HTML")
             await asyncio.sleep(0.05)
@@ -415,9 +416,9 @@ async def cmd_start(message: types.Message):
     total_users = get_total_users()
     start_args = (message.text or "").split(maxsplit=1)
     referral_match = re.fullmatch(r"ref_([A-Fa-f0-9]{10})", start_args[1].strip()) if len(start_args) > 1 else None
-    app_url = "https://wlodek2106-cyber.github.io/Zer0life_ai/"
+    app_url = APP_URL
     if referral_match:
-        app_url += f"?ref={referral_match.group(1).upper()}"
+        app_url += f"&ref={referral_match.group(1).upper()}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url=app_url))]
     ])
@@ -440,7 +441,7 @@ def setup_webhook_sync():
             menu_future = asyncio.run_coroutine_threadsafe(bot.set_chat_menu_button(
                 menu_button=MenuButtonWebApp(
                     text="🏃 Zer0Life Run",
-                    web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/")
+                    web_app=WebAppInfo(url=APP_URL)
                 )
             ), bot_loop)
             menu_future.result(timeout=5)

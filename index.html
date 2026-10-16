@@ -226,13 +226,21 @@
         tg.ready(); 
 
         const startBtn = document.getElementById('start-btn');
+        const incomingParams = new URLSearchParams(window.location.search);
+        const incomingReferral = incomingParams.get('ref') || tg.initDataUnsafe?.start_param || '';
+        const referralMatch = String(incomingReferral).match(/(?:ref[_-]?)?([A-F0-9]{10})$/i);
         startBtn.addEventListener('click', () => {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
             startBtn.innerText = "Loading...";
             startBtn.style.opacity = "0.7";
             
             setTimeout(() => { 
-                window.location.href = "dashboard.html"; 
+                const dashboardUrl = new URL('dashboard.html', window.location.href);
+                dashboardUrl.searchParams.set('build', 'affiliate-v2');
+                if (referralMatch) {
+                    dashboardUrl.searchParams.set('ref', referralMatch[1].toUpperCase());
+                }
+                window.location.href = dashboardUrl.toString();
             }, 500);
         });
     </script>
