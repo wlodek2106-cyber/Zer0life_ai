@@ -474,7 +474,10 @@
 
     function merchantMessage(message, result) {
         const label = byId('booster-payment-status');
-        if (label) label.textContent = message;
+        if (label) {
+            label.textContent = String(message || '');
+            label.hidden = !label.textContent;
+        }
         const link = byId('booster-payment-tx');
         if (link && result?.txHash) {
             link.href = `https://explorer.solana.com/tx/${encodeURIComponent(result.txHash)}`;
@@ -538,7 +541,7 @@
                 } catch (error) {
                     // Definitive validation failures cannot have reserved SOL.
                     if ([400, 401, 402, 403, 409].includes(error.status)) localStorage.removeItem(key);
-                    merchantMessage('Check the payment status in Wallet. Do not send another payment manually.');
+                    merchantMessage('');
                     throw error;
                 }
                 if (purchaseStorageKey() !== key) throw new Error('Your profile changed. Another player’s result was not applied.');

@@ -13,6 +13,9 @@ test("welcome screen is English and branded for Zer0Life Run 2.0", () => {
 });
 
 test("Get Started keeps the Telegram launch and referral handoff", () => {
+  const cta = html.match(/<button class="zl-cta"[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.match(cta, /<span>Get Started<\/span>/);
+  assert.doesNotMatch(cta, /zl-arrow|↗/);
   assert.match(html, /id="start-btn"/);
   assert.match(html, /tg\.HapticFeedback\.impactOccurred\('medium'\)/);
   assert.match(html, /new URL\('dashboard\.html', window\.location\.href\)/);

@@ -55,6 +55,7 @@ test('Boots waits for finality and persists its id before a single spend request
     assert.equal(f.calls.find(c => c.route === '/wallet/spend').body.eventId, 'new-purchase-id');
     assert.equal(f.storage.size, 0);
     assert.match(f.labels.get('booster-payment-status').textContent, /confirmed/);
+    assert.equal(f.labels.get('booster-payment-status').hidden, false);
     assert.match(f.labels.get('booster-payment-tx').href, /^https:\/\/explorer.solana.com\/tx\//);
 });
 
@@ -71,6 +72,8 @@ test('lost spend response keeps the payment id so a retry cannot debit a second 
     await assert.rejects(f.api.spend('booster', { costSol: .2 }), /response lost/);
     const saved = JSON.parse([...f.storage.values()][0]);
     assert.equal(saved.eventId, 'new-purchase-id');
+    assert.equal(f.labels.get('booster-payment-status').textContent, '');
+    assert.equal(f.labels.get('booster-payment-status').hidden, true);
     await assert.rejects(f.api.spend('booster', { costSol: .2 }));
     assert.deepEqual(f.calls.filter(c => c.route === '/wallet/spend').map(c => c.body.eventId),
         ['new-purchase-id', 'new-purchase-id']);
@@ -113,5 +116,8 @@ test('game store requires confirmed status before showing success or closing', (
     const purchase = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
     assert(purchase.indexOf("result.status !== 'confirmed'") < purchase.indexOf("boosters-modal').style.display = 'none'"));
     assert.match(purchase, /finally\s*\{\s*boosterPurchaseBusy = false/);
-    assert.match(html, /id="booster-payment-status" role="status"/);
+    assert.match(html, /<p id="booster-payment-status" role="status" aria-live="polite" hidden/);
+    assert.match(html, /VIP Boosters Store<\/span>/);
+    assert.doesNotMatch(html, /Merchant Flow|Boots payment\s*→\s*57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db/);
+    assert.doesNotMatch(source, /Check the payment status in Wallet\. Do not send another payment manually\./);
 });
