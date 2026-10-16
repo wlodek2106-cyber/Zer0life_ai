@@ -65,6 +65,9 @@ RENDER_DISK_DIR = os.getenv("RENDER_DISK_PATH", "/var/data")
 DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
 os.makedirs(DATA_DIR, exist_ok=True)
 
+from wallet_service import register_wallet_routes
+register_wallet_routes(api_app, DATA_DIR)
+
 def migrate_legacy_data_file(filename):
     target_path = os.path.join(DATA_DIR, filename)
     if os.path.exists(target_path):
@@ -290,7 +293,7 @@ def update_stats():
                 "name": data.get('username', 'Runner'),
                 "wallet": data.get('walletAddress', ''),
                 "distance": max(previous_distance, incoming_distance),
-                "balance": float(data.get('balance', 0.0))
+                "balance": float(previous.get('balance', 0.0)) if isinstance(previous, dict) else 0.0
             }
             save_stats_data(stats)
         return jsonify({"success": True})
@@ -381,157 +384,17 @@ def check_deposit():
 
 @api_app.route('/verify-deposit', methods=['POST'])
 def verify_deposit():
-    try:
-        data = request.json
-        if not data or 'txSignature' not in data:
-            return jsonify({"success": False, "error": "Missing transaction signature"}), 400
-
-        tx_signature_str = data['txSignature'].strip()
-        client = Client("https://api.mainnet-beta.solana.com")
-
-        sig_obj = Signature.from_string(tx_signature_str)
-
-        tx_status = client.get_signature_statuses([sig_obj])
-        if not tx_status or not tx_status.value or not tx_status.value[0]:
-            return jsonify({"success": False, "error": "Транзакция не найдена в блокчейне"}), 400
-
-        status_info = tx_status.value[0]
-        if status_info.err is not None:
-            return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне"}), 400
-
-        deposited_sol = 0.0
-        try:
-            tx_details = client.get_transaction(
-                sig_obj, 
-                max_supported_transaction_version=0
-            )
-            if tx_details and tx_details.value:
-                meta = tx_details.value.transaction.meta
-                if meta and meta.pre_balances and meta.post_balances:
-                    for i in range(len(meta.post_balances)):
-                        d = (meta.post_balances[i] - meta.pre_balances[i]) / (10**9)
-                        if d > deposited_sol:
-                            deposited_sol = d
-        except Exception as ex:
-            print("Notice parsing tx details:", ex)
-
-        if deposited_sol <= 0:
-            deposited_sol = 0.001
-
-        return jsonify({
-            "success": True,
-            "depositedSOL": round(deposited_sol, 4)
-        })
-    except Exception as e:
-        print("ERROR IN VERIFY DEPOSIT:", traceback.format_exc())
-        return jsonify({"success": False, "error": str(e)}), 400
+    return jsonify({
+        "success": False,
+        "error": "Legacy deposits are disabled. Use /wallet/deposit/verify after linking Phantom.",
+    }), 410
 
 @api_app.route('/withdraw', methods=['POST'])
 def withdraw():
-    try:
-        data = request.json
-        if not data or 'walletAddress' not in data or 'amount' not in data:
-            return jsonify({"error": "Invalid request data"}), 400
-
-        user_wallet_str = data['walletAddress']
-        amount = float(data['amount'])
-        currency = data.get('currency', 'ZRL').upper()
-        tg_id = data.get('telegramId')
-        
-        if tg_id:
-            save_user(tg_id)
-
-        private_key_base58 = os.getenv('PRIVATE_KEY')
-        if not private_key_base58:
-            return jsonify({"error": "Server config error: missing PRIVATE_KEY"}), 500
-            
-        pool_keypair = Keypair.from_bytes(base58.b58decode(private_key_base58))
-        user_pubkey = Pubkey.from_string(user_wallet_str)
-        client = Client("https://api.mainnet-beta.solana.com")
-        
-        instructions = []
-        
-        if currency == 'SOL':
-            lamports = int(amount * (10**9))
-            transfer_ix = transfer(
-                TransferParams(
-                    from_pubkey=pool_keypair.pubkey(),
-                    to_pubkey=user_pubkey,
-                    lamports=lamports
-                )
-            )
-            instructions.append(transfer_ix)
-        else:
-            zrl_mint_address = os.getenv('ZRL_MINT')
-            if not zrl_mint_address:
-                return jsonify({"error": "Server config error: missing ZRL_MINT"}), 500
-                
-            zrl_mint = Pubkey.from_string(zrl_mint_address)
-            pool_ata = get_associated_token_address(pool_keypair.pubkey(), zrl_mint)
-            user_ata = get_associated_token_address(user_pubkey, zrl_mint)
-            
-            try:
-                account_info = client.get_account_info(user_ata)
-                if account_info.value is None:
-                    instructions.append(
-                        create_associated_token_account(
-                            payer=pool_keypair.pubkey(),
-                            owner=user_pubkey,
-                            mint=zrl_mint
-                        )
-                    )
-            except Exception as e:
-                print("ATA check/creation notice:", e)
-
-            transfer_ix = transfer_checked(
-                TransferCheckedParams(
-                    program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-                    source=pool_ata,
-                    mint=zrl_mint,
-                    dest=user_ata,
-                    owner=pool_keypair.pubkey(),
-                    amount=int(amount * (10**6)), 
-                    decimals=6
-                )
-            )
-            instructions.append(transfer_ix)
-        
-        recent_blockhash_resp = client.get_latest_blockhash()
-        recent_blockhash = recent_blockhash_resp.value.blockhash
-        
-        tx = Transaction.new_signed_with_payer(
-            instructions=instructions,
-            payer=pool_keypair.pubkey(),
-            signing_keypairs=[pool_keypair],
-            recent_blockhash=recent_blockhash
-        )
-        
-        result = client.send_raw_transaction(bytes(tx))
-        tx_signature = str(result.value)
-        
-        if tg_id and bot:
-            msg_text = (
-                f"✅ Вывод успешно завершен!\n\n"
-                f"Сумма: {amount} {currency}\n"
-                f"Кошелек: {user_wallet_str[:6]}...{user_wallet_str[-4:]}\n\n"
-                f"🔗 Просмотреть транзакцию на Solscan\n"
-                f"https://solscan.io/tx/{tx_signature}"
-            )
-            asyncio.run_coroutine_threadsafe(
-                bot.send_message(
-                    chat_id=int(tg_id),
-                    text=msg_text,
-                    disable_web_page_preview=True
-                ),
-                bot_loop
-            )
-
-        return jsonify({"success": True, "txHash": tx_signature})
-        
-    except Exception as e:
-        error_trace = traceback.format_exc()
-        print("ERROR IN WITHDRAW:", error_trace)
-        return jsonify({"error": str(e)}), 400
+    return jsonify({
+        "success": False,
+        "error": "Legacy withdrawals are disabled. Use /wallet/withdraw with a linked Phantom wallet and signed confirmation.",
+    }), 410
 
 @api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
 def telegram_webhook():
