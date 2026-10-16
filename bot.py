@@ -68,7 +68,7 @@ DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
 os.makedirs(DATA_DIR, exist_ok=True)
 
 from wallet_service import register_wallet_routes
-register_wallet_routes(api_app, DATA_DIR)
+register_wallet_routes(api_app, DATA_DIR, admin_telegram_id=ADMIN_TELEGRAM_ID)
 
 def migrate_legacy_data_file(filename):
     target_path = os.path.join(DATA_DIR, filename)
