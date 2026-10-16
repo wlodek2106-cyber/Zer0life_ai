@@ -52,5 +52,11 @@ pnpm --dir wallet-embedded build:site
 
 The workflow uses a lockfile and keeps the package-age safety gate. Generated SDK/site files are ignored
 and not committed. Its public allow-list excludes Python, databases, secrets, tests and node_modules.
+The embedded-wallet rollout also retains the live merchant-payment implementation:
+Boots still reserve game SOL and settle to the configured Merchant before activating.
+Do not overwrite merchant routes, receipts, UI finality handling or its tests when
+rebasing this integration. The public `X-Zer0Life-Wallet-Schema` response header
+identifies the combined backend without authenticating as a player.
+
 Preserved Phantom mobile API routes and their tests remain for outstanding historical requests, but the
 dashboard no longer loads the external handoff script or offers its connect links.

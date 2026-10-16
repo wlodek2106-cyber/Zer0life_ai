@@ -177,7 +177,7 @@ test('dashboard replaces Phantom handoff with embedded wallet while retaining ba
     assert(!html.includes('id="connect-phantom-btn"'));
     assert(!html.includes('id="phantom-mobile-handoff"'));
     assert(!html.includes('src="./phantom-mobile.js?'));
-    assert(html.includes('wallet-embedded/embedded-wallet.js?v=embedded-wallet-1'));
+    assert(html.includes('wallet-embedded/embedded-wallet.js?v=embedded-wallet-merchant-1'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));

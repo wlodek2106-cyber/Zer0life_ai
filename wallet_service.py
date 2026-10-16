@@ -18,6 +18,7 @@ from urllib.parse import parse_qsl
 from flask import Blueprint, jsonify, request
 from wallet_recovery import recovery_state, register_recovery_routes
 from wallet_mobile import register_mobile_routes
+from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
 
 
 ZRL_DECIMALS = 6
@@ -399,7 +400,18 @@ def _create_wallet_challenge(db, telegram_id, address, purpose, amount_units=Non
 def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     db_path = os.path.join(data_dir, "wallet_ledger.sqlite3")
     _init_db(db_path)
+    merchant = MerchantPayments(
+        db_path, _connect, _ensure_account, _rpc_client, _utc_now,
+        SHARED_POOL_WALLET, app.logger,
+    )
     bp = Blueprint("zerolife_wallet", __name__)
+
+    @bp.after_request
+    def wallet_release_header(response):
+        # Public release marker, including on 401s, enables a deployment check
+        # without obtaining a player's signed Telegram session or balance.
+        response.headers["X-Zer0Life-Wallet-Schema"] = "embedded-merchant-1"
+        return response
 
     def authenticated_user(data):
         return _verify_telegram_init_data(data.get("initData"))
@@ -496,6 +508,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 return jsonify({
                     "success": True,
                     "telegramId": str(user["id"]),
+                    "merchantPaymentsEnabled": True,
+                    "merchantRecipient": MERCHANT_SOL_WALLET,
+                    "pendingPurchases": merchant.pending(str(user["id"])),
+                    "lastMerchantPurchase": merchant.receipt(str(user["id"])),
                     "walletAddress": address,
                     "referralCode": account["referral_code"],
                     "affiliateLevels": affiliate_levels,
@@ -938,6 +954,21 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             app.logger.exception("secure withdrawal failed")
             return _response_error("Withdrawal is temporarily unavailable", 503)
 
+    @bp.post("/wallet/purchases/status")
+    def merchant_purchase_status():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            result = merchant.status(str(user["id"]), str(data.get("purchaseId", "")))
+            return jsonify(result), 202 if result["status"] == "pending" else 200
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except MerchantError as exc:
+            return _response_error(str(exc), exc.status)
+        except Exception:
+            app.logger.exception("Merchant payment status unavailable")
+            return _response_error("Payment status is unavailable; check the existing purchase before retrying", 503)
+
     @bp.post("/wallet/spend")
     def wallet_spend():
         try:
@@ -947,22 +978,14 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             event_id = str(data.get("eventId", ""))
             if purpose not in ("repair", "dao_vote", "booster") or not event_id:
                 return _response_error("Invalid wallet spend request", 400)
+            if purpose == "booster":
+                try:
+                    result = merchant.purchase(str(user["id"]), event_id, data.get("costSol"))
+                    return jsonify(result), 202 if result["status"] == "pending" else 200
+                except MerchantError as exc:
+                    return _response_error(str(exc), exc.status)
 
             zrl_cost = {"repair": 50, "dao_vote": 10}
-            booster_options = {
-                "0.2": (1500, 168 * 3600),
-                "0.5": (3000, 0),
-                "1": (6000, 0),
-                "5": (13000, 0),
-                "10": (30000, 0),
-            }
-            booster = None
-            if purpose == "booster":
-                cost = Decimal(str(data.get("costSol", "0"))).normalize()
-                booster = booster_options.get(format(cost, "f"))
-                if not cost.is_finite() or booster is None:
-                    return _response_error("Unknown booster package", 400)
-
             now = _utc_now()
             with _connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
@@ -974,28 +997,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     db.rollback()
                     return _response_error("This spend request was already processed", 409)
                 _ensure_account(db, user["id"])
-                if purpose in zrl_cost:
-                    units = zrl_cost[purpose] * ZRL_SCALE
-                    balance = _balance_units(db, user["id"])
-                    if balance < units:
-                        db.rollback()
-                        return _response_error("Insufficient available ZRL balance", 402)
-                    _ledger_entry(db, user["id"], purpose, -units, event_id)
-                else:
-                    cost_lamports = int((cost * Decimal(1_000_000_000)).quantize(Decimal("1"), rounding=ROUND_DOWN))
-                    account = db.execute(
-                        "SELECT sol_lamports FROM wallet_accounts WHERE telegram_id = ?",
-                        (user["id"],),
-                    ).fetchone()
-                    if account["sol_lamports"] < cost_lamports:
-                        db.rollback()
-                        return _response_error("Insufficient verified SOL game balance", 402)
-                    rate, duration = booster
-                    expires = now + duration if duration else 0
-                    db.execute(
-                        "UPDATE wallet_accounts SET sol_lamports = sol_lamports - ?, booster_rate = ?, booster_expires = ? WHERE telegram_id = ?",
-                        (cost_lamports, rate, expires, user["id"]),
-                    )
+                units = zrl_cost[purpose] * ZRL_SCALE
+                balance = _balance_units(db, user["id"])
+                if balance < units:
+                    db.rollback()
+                    return _response_error("Insufficient available ZRL balance", 402)
+                _ledger_entry(db, user["id"], purpose, -units, event_id)
                 db.execute(
                     "INSERT INTO wallet_spend_events (event_id, telegram_id, purpose, created_at) VALUES (?, ?, ?, ?)",
                     (event_id, user["id"], purpose, now),
