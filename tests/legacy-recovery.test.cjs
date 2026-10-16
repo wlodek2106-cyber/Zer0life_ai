@@ -102,13 +102,13 @@ test('write failure is explicit and does not alter the original data', () => {
 });
 test('history upload failure does not block the current authenticated wallet state', async () => {
     const calls = [], warnings = [];
-    const window = { legacyRecovery: {
+    const window = { addEventListener() {}, legacyRecovery: {
         preserve: () => ({ zrl: 100, sol: 0 }),
         setWarning: message => warnings.push(message),
         setState() {},
     } };
     const context = {
-        window, STORAGE_PREFIX: prefix, console, setTimeout,
+        window, STORAGE_PREFIX: prefix, console, setTimeout() {},
         document: { getElementById: () => null },
         fetch: async url => {
             const route = new URL(url).pathname;

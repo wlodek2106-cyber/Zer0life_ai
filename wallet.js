@@ -5,6 +5,7 @@
     const byId = (id) => document.getElementById(id);
     let state = null;
     let busy = false;
+    let sdkFailed = false;
 
     async function post(path, payload = {}) {
         const response = await fetch(`${API_BASE}${path}`, {
@@ -23,7 +24,13 @@
     }
 
     function alertUser(message) {
-        if (telegramApp?.showAlert) telegramApp.showAlert(message);
+        let text = String(message || 'Не удалось выполнить действие.');
+        if (text.length > 256) {
+            text = text.slice(0, 255);
+            if (/[\uD800-\uDBFF]$/.test(text)) text = text.slice(0, -1);
+            text += '…';
+        }
+        if (telegramApp?.showAlert) telegramApp.showAlert(text);
         else window.alert(message);
     }
 
@@ -33,8 +40,64 @@
         return btoa(binary);
     }
 
-    function provider() {
-        return window.phantom?.solana || (window.solana?.isPhantom ? window.solana : null);
+    function embeddedProvider() {
+        if (!window.embeddedWallet) {
+            throw new Error('Встроенный кошелёк ещё не загружен. Откройте приложение заново в Telegram.');
+        }
+        return window.embeddedWallet;
+    }
+
+    function renderEmbeddedStatus() {
+        const label = byId('embedded-wallet-label');
+        const addressLabel = byId('embedded-wallet-address');
+        const status = byId('embedded-wallet-status');
+        const button = byId('setup-embedded-wallet-btn');
+        if (!button) return;
+        const sdk = window.embeddedWallet?.getStatus();
+        const sameUser = Boolean(state?.telegramId && sdk?.ready
+            && String(sdk.telegramId) === String(state.telegramId));
+        const linked = Boolean(sameUser && state.walletAddress && sdk.address === state.walletAddress);
+        let message = 'Вход через Telegram… Создание кошелька не изменяет игровой баланс.';
+        let title = 'Встроенный Solana-кошелёк';
+        let action = sdk?.address ? 'Активировать мой кошелёк' : 'Создать личный кошелёк';
+        let disabled = !sameUser || busy;
+        if (!initData()) {
+            message = 'Откройте Zer0Life Run через @Zer0lifelabs_ai_bot в Telegram.';
+            action = 'Доступно внутри Telegram';
+            disabled = true;
+        } else if (sdkFailed) {
+            message = 'Модуль кошелька не загрузился или вход не завершён. Игровые балансы сохранены.';
+            action = 'Повторить загрузку кошелька';
+            disabled = busy;
+        } else if (!state?.telegramId) {
+            message = state ? 'Сервер ещё не обновлён для встроенного кошелька. Создание и вывод временно заблокированы.'
+                : 'Загружаем ваш подтверждённый профиль и баланс…';
+        } else if (sdk?.authenticated && String(sdk.telegramId) !== String(state.telegramId)) {
+            message = 'В кошельке осталась другая сессия. Сбросьте только вход кошелька; баланс игры не меняется.';
+            action = 'Сбросить вход кошелька';
+            disabled = busy;
+        } else if (linked) {
+            title = 'Ваш личный Solana-кошелёк';
+            message = 'Адрес подтверждён сервером. Подпись для вывода выполняется внутри приложения.';
+        } else if (sameUser && state.walletAddress && sdk.address !== state.walletAddress) {
+            title = 'Сохранён ранее привязанный адрес';
+            message = 'К профилю уже привязан другой кошелёк. Автоматическая замена отключена; балансы сохранены.';
+            action = 'Требуется безопасная смена адреса';
+            disabled = true;
+        } else if (sameUser) {
+            message = 'Создайте или активируйте свой кошелёк прямо здесь — без перехода в браузер.';
+        }
+        label.textContent = title;
+        addressLabel.textContent = state?.walletAddress || (sameUser ? sdk.address : '')
+            || 'Личный адрес для вашего Telegram-аккаунта';
+        status.textContent = message;
+        button.textContent = busy ? 'Подтверждение…' : action;
+        button.disabled = disabled;
+        button.hidden = linked;
+        if (byId('embedded-wallet-tools')) byId('embedded-wallet-tools').hidden = !linked;
+        ['withdraw-zrl-btn', 'withdraw-sol-btn', 'wallet-export-btn'].forEach(id => {
+            if (byId(id)) byId(id).disabled = !linked || busy;
+        });
     }
 
     function preserveLegacyBalance() {
@@ -71,18 +134,7 @@
         window.recoveryActions?.setState(nextState);
         window.legacyFarmReview?.setState(nextState);
         const address = nextState.walletAddress || '';
-        if (byId('phantom-link-label')) {
-            byId('phantom-link-label').textContent = address ? 'Phantom connected and verified' : 'Phantom not connected';
-        }
-        if (byId('phantom-linked-address')) {
-            byId('phantom-linked-address').textContent = address
-                ? `${address.slice(0, 7)}…${address.slice(-7)}`
-                : 'Link Phantom to view balances and withdraw';
-        }
-        if (byId('connect-phantom-btn')) {
-            byId('connect-phantom-btn').textContent = address ? 'Phantom wallet linked' : 'Connect Phantom';
-            byId('connect-phantom-btn').disabled = Boolean(address);
-        }
+        renderEmbeddedStatus();
         if (byId('asset-zrl-bal')) byId('asset-zrl-bal').textContent = Number(nextState.availableZrl || 0).toFixed(2);
         if (byId('asset-zrl-usd')) {
             byId('asset-zrl-usd').textContent = `Daily limit remaining: ${Number(nextState.dailyWithdrawalRemaining || 0).toFixed(2)} ZRL`;
@@ -155,10 +207,6 @@
         if (byId('farming-modal')?.style.display === 'flex' && typeof window.renderFarmingDeposits === 'function') {
             window.renderFarmingDeposits();
         }
-        ['withdraw-zrl-btn', 'withdraw-sol-btn'].forEach((id) => {
-            const button = byId(id);
-            if (button) button.disabled = !address;
-        });
         const pendingList = byId('pending-withdrawals');
         if (pendingList) {
             pendingList.replaceChildren();
@@ -167,7 +215,7 @@
                 button.className = 'wallet-action-btn';
                 button.style.cssText = 'width:100%;margin:6px 0;font-size:11px;';
                 button.textContent = `${withdrawal.asset}: проверить ожидающий вывод`;
-                button.addEventListener('click', () => window.phantomMobile.checkWithdrawal(withdrawal.nonce).catch(error => alertUser(error.message)));
+                button.addEventListener('click', () => checkWithdrawal(withdrawal.nonce).catch(error => alertUser(error.message)));
                 pendingList.appendChild(button);
             });
         }
@@ -204,47 +252,49 @@
             renderWallet(nextState);
             return nextState;
         } catch (error) {
-            const label = byId('phantom-link-label');
+            const label = byId('embedded-wallet-label');
             if (label) label.textContent = 'Wallet service unavailable';
             console.warn('Zer0Life wallet state:', error.message);
             throw error;
         }
     }
 
-    async function signMessage(message, connectedAddress) {
-        const wallet = provider();
-        if (!wallet?.signMessage) {
-            throw new Error('This Phantom provider cannot sign messages. Reconnect Phantom from Telegram.');
-        }
-        const result = await wallet.signMessage(new TextEncoder().encode(message), 'utf8');
-        const activeAddress = wallet.publicKey?.toString();
-        if (!result?.signature || activeAddress !== connectedAddress) {
-            throw new Error('Phantom signature did not match the linked wallet.');
-        }
-        return toBase64(result.signature);
+    async function signMessage(message, connectedAddress, telegramId, title) {
+        return toBase64(await embeddedProvider().signMessage({
+            message, address: connectedAddress, telegramId, title,
+        }));
     }
 
     async function connect() {
         if (busy) return;
         busy = true;
+        renderEmbeddedStatus();
         try {
-            const wallet = provider();
-            if (!wallet) {
-                await window.phantomMobile.start('link');
+            if (sdkFailed) {
+                window.location.reload();
                 return;
             }
-            const connection = await wallet.connect();
-            const address = connection.publicKey?.toString() || wallet.publicKey?.toString();
-            if (!address) throw new Error('Phantom did not return a wallet address.');
+            const current = await refresh();
+            const wallet = embeddedProvider();
+            const sdk = wallet.getStatus();
+            if (sdk.authenticated && String(sdk.telegramId) !== String(current.telegramId)) {
+                await wallet.resetSession();
+                window.location.reload();
+                return;
+            }
+            const address = await wallet.connect({
+                telegramId: current.telegramId, expectedAddress: current.walletAddress || '',
+            });
             const challenge = await post('/wallet/challenge', { purpose: 'link', address });
-            const signature = await signMessage(challenge.message, address);
+            const signature = await signMessage(challenge.message, address, current.telegramId, 'Активировать личный кошелёк');
             await post('/wallet/link', { address, nonce: challenge.nonce, signature });
-            alertUser('Phantom wallet linked. Your balances are now verified.');
             await refresh();
+            alertUser('Личный Solana-кошелёк подключён. Игровой баланс не изменён.');
         } catch (error) {
-            alertUser(error.message || 'Could not connect Phantom.');
+            alertUser(error.message || 'Не удалось активировать встроенный кошелёк.');
         } finally {
             busy = false;
+            renderEmbeddedStatus();
         }
     }
 
@@ -266,33 +316,28 @@
 
     async function withdraw(asset) {
         if (busy) return;
-        if (!state?.walletAddress) {
-            alertUser('Connect and verify Phantom before withdrawing.');
-            return;
-        }
-        const maximum = asset === 'SOL' ? Number(state.gameSolBalance || 0) : Number(state.availableZrl || 0);
-        if (maximum <= 0) {
-            alertUser(`No verified ${asset} balance is available to withdraw.`);
-            return;
-        }
-        const amountText = await askAmount(asset, maximum);
-        if (amountText == null) return;
-        const amount = Number(amountText);
-        if (!Number.isFinite(amount) || amount <= 0 || amount > maximum) {
-            alertUser(`Enter a valid ${asset} amount up to ${maximum}.`);
-            return;
-        }
         busy = true;
+        renderEmbeddedStatus();
         try {
+            if (!['SOL', 'ZRL'].includes(asset)) throw new Error('Неизвестный актив.');
+            const current = await refresh();
+            if (!current.walletAddress) throw new Error('Сначала создайте и подтвердите личный Solana-кошелёк.');
+            const address = await embeddedProvider().connect({
+                telegramId: current.telegramId, expectedAddress: current.walletAddress,
+            });
+            const maximum = asset === 'SOL' ? Number(current.gameSolBalance || 0) : Number(current.availableZrl || 0);
+            if (maximum <= 0) throw new Error(`Нет доступного баланса ${asset} для вывода.`);
+            const amountText = await askAmount(asset, maximum);
+            if (amountText == null) return;
+            const amount = Number(amountText);
+            if (!Number.isFinite(amount) || amount <= 0 || amount > maximum) {
+                throw new Error(`Укажите сумму ${asset} больше нуля и не больше ${maximum}.`);
+            }
             const purpose = asset === 'SOL' ? 'withdraw_sol' : 'withdraw_zrl';
             const challenge = await post('/wallet/challenge', {
-                purpose, address: state.walletAddress, amount,
+                purpose, address, amount,
             });
-            if (!provider()) {
-                await window.phantomMobile.start(purpose, challenge.nonce);
-                return;
-            }
-            const signature = await signMessage(challenge.message, state.walletAddress);
+            const signature = await signMessage(challenge.message, address, current.telegramId, `Подтвердить вывод ${amount} ${asset}`);
             const result = await post('/wallet/withdraw', {
                 nonce: challenge.nonce, signature,
             });
@@ -305,6 +350,39 @@
             await refresh().catch(() => {});
         } finally {
             busy = false;
+            renderEmbeddedStatus();
+        }
+    }
+
+    async function checkWithdrawal(nonce) {
+        const result = await post('/wallet/withdrawals/status', { nonce });
+        if (byId('wallet-withdrawal-status')) {
+            byId('wallet-withdrawal-status').textContent = result.status === 'confirmed'
+                ? 'Вывод подтверждён сетью Solana.'
+                : result.status === 'failed' ? 'Сеть отклонила перевод; сумма возвращена на баланс.'
+                    : 'Ожидаем подтверждения сети. Сумма остаётся зарезервирована.';
+        }
+        await refresh();
+    }
+
+    async function exportEmbeddedWallet() {
+        if (busy) return;
+        busy = true;
+        renderEmbeddedStatus();
+        try {
+            const warning = 'Секретный ключ даёт полный доступ к кошельку. Не отправляйте его никому, включая поддержку. Открыть резервную копию?';
+            const approved = telegramApp?.showConfirm
+                ? await new Promise(resolve => telegramApp.showConfirm(warning, resolve))
+                : window.confirm(warning);
+            if (!approved) return;
+            await embeddedProvider().exportWallet({
+                address: state?.walletAddress, telegramId: state?.telegramId,
+            });
+        } catch (error) {
+            alertUser(error.message);
+        } finally {
+            busy = false;
+            renderEmbeddedStatus();
         }
     }
 
@@ -331,6 +409,7 @@
         refresh,
         connect,
         withdraw,
+        checkWithdrawal,
         playGame,
         spend,
         applyResult: (result) => renderWallet(Object.assign({}, state || {}, result)),
@@ -348,7 +427,31 @@
         totalCasinoTurnover = 0;
         freeSpins = 0;
     }
-    byId('connect-phantom-btn')?.addEventListener('click', connect);
+    byId('setup-embedded-wallet-btn')?.addEventListener('click', connect);
+    byId('wallet-export-btn')?.addEventListener('click', exportEmbeddedWallet);
+    byId('wallet-copy-address-btn')?.addEventListener('click', async () => {
+        try {
+            if (!state?.walletAddress) throw new Error('Личный адрес ещё не подтверждён.');
+            await navigator.clipboard.writeText(state.walletAddress);
+            alertUser('Личный Solana-адрес скопирован.');
+        } catch (error) {
+            alertUser(error.message || 'Не удалось скопировать адрес.');
+        }
+    });
+    window.addEventListener('zerolife:embedded-wallet', () => {
+        if (window.embeddedWallet?.getStatus().ready) sdkFailed = false;
+        renderEmbeddedStatus();
+    });
+    window.addEventListener('zerolife:wallet-sdk-error', () => {
+        sdkFailed = true;
+        renderEmbeddedStatus();
+    });
+    setTimeout(() => {
+        if (initData() && !window.embeddedWallet?.getStatus().ready) {
+            sdkFailed = true;
+            renderEmbeddedStatus();
+        }
+    }, 35000);
     byId('affiliate-copy-btn')?.addEventListener('click', copyReferralLink);
     ['wallet-btn', 'nav-wallet'].forEach((id) => {
         byId(id)?.addEventListener('click', () => { setTimeout(() => refresh().catch(() => {}), 0); });

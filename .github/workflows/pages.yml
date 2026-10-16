@@ -1,0 +1,49 @@
+name: Build Telegram wallet and Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: wallet-embedded/pnpm-lock.yaml
+      - run: pnpm --dir wallet-embedded install --frozen-lockfile
+      - run: node --test tests/*.test.cjs
+      - run: pnpm --dir wallet-embedded test
+      - run: pnpm --dir wallet-embedded build:site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: generated-artifacts/site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
