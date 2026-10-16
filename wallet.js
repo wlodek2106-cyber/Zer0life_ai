@@ -372,6 +372,7 @@
                 const saved = JSON.parse(localStorage.getItem(key) || 'null');
                 if (saved?.eventId === purchaseId) localStorage.removeItem(key);
                 if (result.status === 'failed') {
+                    merchantMessage(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.', result);
                     throw new Error(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.');
                 }
                 merchantMessage('Оплата Merchant подтверждена в Solana. Boots активированы.', result);

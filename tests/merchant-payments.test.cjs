@@ -82,6 +82,7 @@ test('failed merchant transfer restores displayed SOL and does not activate Boot
     assert.equal(f.api.getState().gameSolBalance, 2);
     assert.equal(f.api.getState().boosterRate, 300);
     assert.equal(f.storage.size, 0);
+    assert.match(f.labels.get('booster-payment-status').textContent, /SOL restored/);
 });
 
 test('old backend cannot be charged by the updated purchase UI', async () => {
