@@ -5,6 +5,7 @@
     const byId = (id) => document.getElementById(id);
     let state = null;
     let busy = false;
+    let merchantTask = null;
 
     async function post(path, payload = {}) {
         const response = await fetch(`${API_BASE}${path}`, {
@@ -135,6 +136,13 @@
             if (typeof currentDay !== 'undefined') currentDay = Number(nextState.checkinDay || 1);
             if (typeof lastCheckinDate !== 'undefined') lastCheckinDate = nextState.lastCheckinDate || '';
             if (typeof ZRL_PER_KM !== 'undefined') ZRL_PER_KM = Number(nextState.boosterRate || 300);
+            if (typeof boosterExpiryTime !== 'undefined') boosterExpiryTime = Number(nextState.boosterExpires || 0);
+            if (typeof activeBoosterName !== 'undefined') {
+                const rate = Number(nextState.boosterRate || 300);
+                const names = { 300: 'Standard', 1500: 'Boots x2', 3000: 'Starter',
+                    6000: 'Standard', 13000: 'Pro Tier', 30000: 'Whale' };
+                activeBoosterName = `${names[rate] || 'Booster'} (${rate.toLocaleString()} ZRL/km)`;
+            }
             if (typeof activeFarms !== 'undefined' && Array.isArray(nextState.farms)) {
                 if (typeof verifiedFarmsLoaded !== 'undefined') verifiedFarmsLoaded = true;
                 activeFarms = nextState.farms.map((farm) => ({
@@ -170,6 +178,26 @@
                 button.addEventListener('click', () => window.phantomMobile.checkWithdrawal(withdrawal.nonce).catch(error => alertUser(error.message)));
                 pendingList.appendChild(button);
             });
+        }
+        if (!merchantTask && nextState.lastMerchantPurchase) {
+            const receipt = nextState.lastMerchantPurchase;
+            merchantMessage(receipt.status === 'confirmed'
+                ? 'Последняя оплата Merchant подтверждена в Solana.'
+                : receipt.status === 'failed' ? 'Последняя оплата не выполнена. Стоимость возвращена.'
+                    : 'Оплата Merchant ожидает подтверждения.', receipt);
+        }
+        if (!merchantTask && nextState.merchantPaymentsEnabled && Array.isArray(nextState.pendingPurchases)) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(purchaseStorageKey()) || 'null');
+                const purchaseId = nextState.pendingPurchases[0]?.purchaseId || saved?.eventId;
+                if (purchaseId) {
+                    merchantTask = monitorPurchase(purchaseId)
+                        .catch(error => merchantMessage(error.message))
+                        .finally(() => { merchantTask = null; });
+                }
+            } catch (error) {
+                merchantMessage(error.message);
+            }
         }
     }
 
@@ -317,7 +345,85 @@
         return result;
     }
 
+    function merchantMessage(message, result) {
+        const label = byId('booster-payment-status');
+        if (label) label.textContent = message;
+        const link = byId('booster-payment-tx');
+        if (link && result?.txHash) {
+            link.href = `https://explorer.solana.com/tx/${encodeURIComponent(result.txHash)}`;
+            link.hidden = false;
+        }
+    }
+
+    function purchaseStorageKey() {
+        const user = telegramApp?.initDataUnsafe?.user?.id || state?.referralCode;
+        if (!user) throw new Error('Дождитесь загрузки вашего профиля перед покупкой.');
+        return `zerolife-merchant-purchase:${user}`;
+    }
+
+    async function monitorPurchase(purchaseId, ownerKey = purchaseStorageKey()) {
+        for (let attempt = 0; attempt < 20; attempt++) {
+            if (purchaseStorageKey() !== ownerKey) throw new Error('Профиль сменился. Откройте Wallet для проверки своей покупки.');
+            const result = await post('/wallet/purchases/status', { purchaseId });
+            if (purchaseStorageKey() !== ownerKey) throw new Error('Профиль сменился. Результат другого игрока не применён.');
+            renderWallet(Object.assign({}, state || {}, result));
+            if (result.status === 'confirmed' || result.status === 'failed') {
+                const key = purchaseStorageKey();
+                const saved = JSON.parse(localStorage.getItem(key) || 'null');
+                if (saved?.eventId === purchaseId) localStorage.removeItem(key);
+                if (result.status === 'failed') {
+                    merchantMessage(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.', result);
+                    throw new Error(result.message || 'Перевод не выполнен. Стоимость возвращена на игровой баланс.');
+                }
+                merchantMessage('Оплата Merchant подтверждена в Solana. Boots активированы.', result);
+                return result;
+            }
+            merchantMessage('SOL зарезервированы. Ожидаем подтверждения оплаты Merchant — повторно платить не нужно.', result);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+        merchantMessage('Перевод ещё проверяется. Boots активируются после подтверждения. При следующем открытии проверка продолжится.');
+        return { success: true, status: 'pending', purchaseId };
+    }
+
     async function spend(purpose, payload = {}) {
+        if (purpose === 'booster') {
+            if (merchantTask) throw new Error('Предыдущая оплата ещё проверяется. Повторное списание заблокировано.');
+            if (!state?.merchantPaymentsEnabled) {
+                throw new Error('Сервер оплаты Boots ещё не обновлён. Покупка не списана.');
+            }
+            const key = purchaseStorageKey();
+            const saved = JSON.parse(localStorage.getItem(key) || 'null');
+            if (saved && Number(saved.costSol) !== Number(payload.costSol)) {
+                throw new Error('Сначала проверьте предыдущую покупку Boots. Откройте Wallet для обновления статуса.');
+            }
+            const eventId = saved?.eventId || (window.crypto?.randomUUID
+                ? window.crypto.randomUUID()
+                : `zr-boots-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+            // Persist BEFORE the request: a lost HTTP response must not cause a
+            // new payment ID, including after closing Telegram or reloading.
+            localStorage.setItem(key, JSON.stringify({ eventId, costSol: payload.costSol }));
+            merchantTask = (async () => {
+                merchantMessage('Оформляем перевод оплаты на Merchant…');
+                if (byId('booster-payment-tx')) byId('booster-payment-tx').hidden = true;
+                let result;
+                try {
+                    result = await post('/wallet/spend', { ...payload, purpose, eventId });
+                } catch (error) {
+                    // Definitive validation failures cannot have reserved SOL.
+                    if ([400, 401, 402, 403, 409].includes(error.status)) localStorage.removeItem(key);
+                    merchantMessage('Проверьте статус оплаты через Wallet. Не отправляйте оплату вручную повторно.');
+                    throw error;
+                }
+                if (purchaseStorageKey() !== key) throw new Error('Профиль сменился. Результат другого игрока не применён.');
+                renderWallet(Object.assign({}, state || {}, result));
+                return monitorPurchase(result.purchaseId, key);
+            })();
+            try {
+                return await merchantTask;
+            } finally {
+                merchantTask = null;
+            }
+        }
         const eventId = window.crypto?.randomUUID
             ? window.crypto.randomUUID()
             : `zr-spend-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -333,6 +439,11 @@
         withdraw,
         playGame,
         spend,
+        checkPurchase: async (purchaseId) => {
+            if (merchantTask) return merchantTask;
+            merchantTask = monitorPurchase(purchaseId);
+            try { return await merchantTask; } finally { merchantTask = null; }
+        },
         applyResult: (result) => renderWallet(Object.assign({}, state || {}, result)),
         getState: () => state,
         setState: renderWallet,

@@ -2427,6 +2427,15 @@
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
             
+            <p style="font-size:11px;color:#a8f07a;overflow-wrap:anywhere;">
+                Оплата Boots → 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
+            </p>
+            <p id="booster-payment-status" role="status" aria-live="polite" style="font-size:12px;line-height:1.5;">
+                Boots активируются после подтверждения перевода в Solana. Комиссию сети оплачивает проект.
+            </p>
+            <a id="booster-payment-tx" hidden target="_blank" rel="noopener noreferrer"
+               style="font-size:12px;color:#a8f07a;">Открыть перевод в Solana Explorer ↗</a>
+            
             <div class="booster-grid">
                 <div class="booster-card featured" onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 7d)', 168)">
                     <div class="booster-badge" style="color: #14f195; background: rgba(20,241,149,0.15);">⏳ Boots 7 Days</div>
@@ -3186,66 +3195,17 @@
             });
         };
 
-        window.buyBooster = function(costSol, rate, name) {
-            triggerHaptic('medium');
-            playSound('click');
-
-            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
-            if (effectiveSolBalance < costSol) {
-                triggerHaptic('error');
-                tg.showAlert(`❌ Insufficient SOL balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Required: ${costSol} SOL.`);
-                return;
-            }
-
-            totalCasinoTurnover += costSol;
-            reportCasinoAction(costSol, 0); 
-            ZRL_PER_KM = rate;
-            activeBoosterName = name;
-            boosterExpiryTime = 0;
-
-            saveData();
-            updateUI();
-            updateEnergyUI();
-            document.getElementById('boosters-modal').style.display = 'none';
-
-            triggerHaptic('success');
-            playSound('success');
-            tg.showAlert(`🚀 VIP Booster Activated!\n\nPackage: ${name}\nFunds routed to Merchant wallet.`);
-        };
-
-        window.buyTimedBooster = function(costSol, rate, name, durationHours) {
-            triggerHaptic('medium');
-            playSound('click');
-
-            const effectiveSolBalance = poolDeposit + casinoTotalWon - totalCasinoTurnover;
-            if (effectiveSolBalance < costSol) {
-                triggerHaptic('error');
-                tg.showAlert(`❌ Insufficient SOL balance!\n\nAvailable: ${Math.max(0, effectiveSolBalance).toFixed(4)} SOL. Required: ${costSol} SOL.`);
-                return;
-            }
-
-            totalCasinoTurnover += costSol;
-            reportCasinoAction(costSol, 0); 
-            ZRL_PER_KM = rate;
-            activeBoosterName = name;
-            boosterExpiryTime = Date.now() + (durationHours * 60 * 60 * 1000);
-
-            localStorage.setItem(STORAGE_PREFIX + 'booster_expiry', boosterExpiryTime);
-            saveData();
-            updateUI();
-            updateEnergyUI();
-            document.getElementById('boosters-modal').style.display = 'none';
-
-            triggerHaptic('success');
-            playSound('success');
-            tg.showAlert(`⏳ Timed Booster Activated!\n\nPackage: ${name}\nValid for 7 days.`);
-        };
-
+        let boosterPurchaseBusy = false;
         async function purchaseVerifiedBooster(costSol, name) {
+            if (boosterPurchaseBusy) return;
+            boosterPurchaseBusy = true;
             triggerHaptic('medium');
             try {
                 const result = await window.secureWallet.spend('booster', { costSol });
-                activeBoosterName = name;
+                if (result.status !== 'confirmed') {
+                    tg.showAlert('Оплата ожидает подтверждения Solana. Повторно платить не нужно. Проверка продолжится при открытии приложения.');
+                    return;
+                }
                 boosterExpiryTime = Number(result.boosterExpires || 0);
                 saveData();
                 updateUI();
@@ -3253,10 +3213,12 @@
                 document.getElementById('boosters-modal').style.display = 'none';
                 triggerHaptic('success');
                 playSound('success');
-                tg.showAlert(`Booster activated: ${name}. Paid from your verified SOL game balance.`);
+                tg.showAlert(`Boots активированы: ${name}. Перевод оплаты на Merchant подтверждён.`);
             } catch (error) {
                 triggerHaptic('error');
                 tg.showAlert(error.message);
+            } finally {
+                boosterPurchaseBusy = false;
             }
         }
 
@@ -5146,6 +5108,6 @@
     <script src="./legacy-farms.js?v=farming-reconciliation-2"></script>
     <script src="./recovery-actions.js?v=telegram-confirm-3"></script>
     <script src="./phantom-mobile.js?v=phantom-native-handoff-1"></script>
-    <script src="./wallet.js?v=farming-reconciliation-2"></script>
+    <script src="./wallet.js?v=merchant-payments-1"></script>
 </body>
 </html>
