@@ -122,7 +122,8 @@ test('dashboard omits old farm cards but preserves active farms and recovery wit
     assert(!html.includes('id="legacy-farms-summary"'));
     assert(html.includes('id="farming-deposits-list"'));
     assert(html.includes('id="active-farms-count"'));
-    assert(html.includes('id="recovery-admin-apply"'));
+    assert(!html.includes('id="recovery-balances"'));
+    assert(!html.includes('id="recovery-admin-apply"'));
     assert(html.indexOf('src="./legacy-farms.js?') < html.indexOf('src="./wallet.js?'));
     assert(html.includes('window.legacyFarmReview?.render();'));
     assert(html.includes('let activeFarms = [];'));

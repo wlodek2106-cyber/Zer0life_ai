@@ -15,7 +15,9 @@ function fixture(options = {}) {
         addEventListener(name, handler) { this.handlers[name] = handler; },
     });
     for (const id of ['recovery-action-status', 'recovery-admin-load', 'recovery-admin-apply',
-        'recovery-admin-list', 'recovery-admin-panel']) nodes.set(id, element());
+        'recovery-admin-list', 'recovery-admin-panel']) {
+        if (!options.noPanel) nodes.set(id, element());
+    }
     const calls = [], messages = [], confirmations = [];
     let refreshCount = 0;
     const records = [{ requestId: 'review-a', digest: 'frozen-a', username: 'Synthetic',
@@ -49,6 +51,14 @@ function fixture(options = {}) {
     return { nodes, calls, messages, confirmations, window, records,
         click: id => nodes.get(id).handlers.click(), refreshCount: () => refreshCount };
 }
+
+test('removed recovery panel is safe and cannot automatically trigger financial actions', () => {
+    const f = fixture({ noPanel: true });
+    assert.doesNotThrow(() => f.window.recoveryActions.setState({ isRecoveryAdmin: true }));
+    assert.equal(typeof f.window.recoveryActions.submit, 'function');
+    assert.equal(f.calls.length, 0);
+    assert.equal(f.messages.length, 0);
+});
 
 test('real Telegram popup constraint accepts exact amounts and consent before any credit', async () => {
     const f = fixture();
