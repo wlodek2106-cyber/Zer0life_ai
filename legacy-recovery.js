@@ -67,7 +67,9 @@
             text('header-legacy-balance', savedZrl > 0 ? `Архив: ${savedZrl.toFixed(2)} ZRL · на проверке` : '');
             const mismatch = serverState && ((localZrl > 0 && localZrl !== savedZrl)
                 || (localSol > 0 && localSol !== savedSol));
-            text('recovery-status', warning || (mismatch
+            text('recovery-status', warning || (serverState?.legacyBalanceRestored
+                ? 'Архив перенесён на основной баланс. Историческая копия сохранена и повторно не начисляется.'
+                : mismatch
                 ? 'Локальная копия отличается от серверной и сохранена отдельно. Суммы не складываются повторно.'
                 : serverState
                     ? 'Итог включает доступный баланс и старый архив. Архив пока не доступен для трат и вывода. Средства в Farming считаются отдельно.'

@@ -2311,7 +2311,17 @@
                     <strong id="recovery-total-sol" style="display:block;color:#d8ffc4;font-size:18px;">Ожидаем сервер</strong>
                     <div id="recovery-split-sol" style="font-size:11px;color:#b5bdad;margin:5px 0 10px;"></div>
                     <p id="recovery-status" role="status" style="font-size:11px;color:#b5bdad;line-height:1.5;margin:0;">Загружаем сохранённую историю…</p>
+                    <p id="recovery-action-status" role="status" style="font-size:11px;color:#e5d29b;line-height:1.5;"></p>
+                    <section id="recovery-admin-panel" hidden style="border-top:1px solid #34432b;margin-top:12px;padding-top:12px;">
+                        <strong style="font-size:12px;color:#e5d29b;">Восстановление · только владелец</strong>
+                        <p style="font-size:11px;line-height:1.5;color:#b5bdad;">Одобрение непроверенных архивных счетов и возврат SOL из старых ферм. ZRL-вклады и выплаченные награды повторно не добавляются. Подтверждение разрешает вывод из реальных средств проекта.</p>
+                        <button id="recovery-admin-load" class="wallet-action-btn" style="width:100%;margin:8px 0;">Загрузить архив игроков</button>
+                        <div id="recovery-admin-list"></div>
+                        <button id="recovery-admin-apply" class="wallet-action-btn" style="width:100%;" disabled>Вернуть архив на основные балансы</button>
+                    </section>
                 </section>
+                <div id="wallet-withdrawal-status" role="status" style="font-size:11px;line-height:1.5;color:#b5bdad;margin:10px 0;"></div>
+                <div id="pending-withdrawals"></div>
                 <section id="affiliate-panel" style="margin:10px 0 16px;padding:14px;border-radius:18px;border:1px solid rgba(168,240,122,.25);background:linear-gradient(145deg,rgba(168,240,122,.09),rgba(10,14,10,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.18);">
                     <div style="font-size:14px;font-weight:900;color:#d8ffc4;">5-level partner program</div>
                     <div style="font-size:11px;color:#9ca39a;margin:5px 0 10px;">Earn 10% · 4% · 3% · 2% · 1% on running, daily activity, farm and mystery-box rewards.</div>
@@ -2344,8 +2354,8 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(20,241,149,0.15); color: #14f195;">S</div>
                             <div>
-                                <div class="asset-name">Verified SOL balance</div>
-                                <div class="asset-sub">App deposit balance · available to withdraw</div>
+                            <div class="asset-name">SOL · доступный баланс</div>
+                            <div class="asset-sub">Баланс приложения · доступно для вывода</div>
                             </div>
                         </div>
                         <div class="asset-right">
@@ -2596,7 +2606,7 @@
         </div>
     </div>
 
-    <script src="./legacy-recovery.js?v=history-recovery-1"></script>
+    <script src="./legacy-recovery.js?v=recovery-withdrawals-1"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -5168,7 +5178,9 @@
 
         if (username) setTimeout(syncStatsToServer, 1500);
     </script>
-    <script src="./legacy-farms.js?v=history-recovery-1"></script>
-    <script src="./wallet.js?v=history-recovery-1"></script>
+    <script src="./legacy-farms.js?v=recovery-withdrawals-1"></script>
+    <script src="./recovery-actions.js?v=recovery-withdrawals-1"></script>
+    <script src="./phantom-mobile.js?v=recovery-withdrawals-1"></script>
+    <script src="./wallet.js?v=recovery-withdrawals-1"></script>
 </body>
 </html>

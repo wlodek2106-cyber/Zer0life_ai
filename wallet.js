@@ -15,7 +15,9 @@
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) {
-            throw new Error(result.error || `Wallet request failed (${response.status})`);
+            const error = new Error(result.error || `Wallet request failed (${response.status})`);
+            error.status = response.status;
+            throw error;
         }
         return result;
     }
@@ -66,6 +68,8 @@
     function renderWallet(nextState) {
         state = nextState;
         window.legacyRecovery?.setState(nextState);
+        window.recoveryActions?.setState(nextState);
+        window.legacyFarmReview?.setState(nextState);
         const address = nextState.walletAddress || '';
         if (byId('phantom-link-label')) {
             byId('phantom-link-label').textContent = address ? 'Phantom connected and verified' : 'Phantom not connected';
@@ -155,6 +159,18 @@
             const button = byId(id);
             if (button) button.disabled = !address;
         });
+        const pendingList = byId('pending-withdrawals');
+        if (pendingList) {
+            pendingList.replaceChildren();
+            (nextState.pendingWithdrawals || []).forEach(withdrawal => {
+                const button = document.createElement('button');
+                button.className = 'wallet-action-btn';
+                button.style.cssText = 'width:100%;margin:6px 0;font-size:11px;';
+                button.textContent = `${withdrawal.asset}: проверить ожидающий вывод`;
+                button.addEventListener('click', () => window.phantomMobile.checkWithdrawal(withdrawal.nonce).catch(error => alertUser(error.message)));
+                pendingList.appendChild(button);
+            });
+        }
     }
 
     async function copyReferralLink() {
@@ -178,6 +194,7 @@
             try {
                 const legacy = preserveLegacyBalance();
                 await post('/wallet/legacy', { amount: legacy.zrl, solAmount: legacy.sol });
+                if (window.recoveryActions) await window.recoveryActions.submit();
                 window.legacyRecovery?.setWarning('');
             } catch {
                 // A failed historical upload must not hide current server funds.
@@ -197,7 +214,7 @@
     async function signMessage(message, connectedAddress) {
         const wallet = provider();
         if (!wallet?.signMessage) {
-            throw new Error('Open this app in Phantom’s browser to sign wallet messages.');
+            throw new Error('This Phantom provider cannot sign messages. Reconnect Phantom from Telegram.');
         }
         const result = await wallet.signMessage(new TextEncoder().encode(message), 'utf8');
         const activeAddress = wallet.publicKey?.toString();
@@ -213,7 +230,8 @@
         try {
             const wallet = provider();
             if (!wallet) {
-                throw new Error('Phantom was not detected. Open Zer0Life Run in Phantom’s in-app browser, then connect again.');
+                await window.phantomMobile.start('link');
+                return;
             }
             const connection = await wallet.connect();
             const address = connection.publicKey?.toString() || wallet.publicKey?.toString();
@@ -270,11 +288,17 @@
             const challenge = await post('/wallet/challenge', {
                 purpose, address: state.walletAddress, amount,
             });
+            if (!provider()) {
+                await window.phantomMobile.start(purpose, challenge.nonce);
+                return;
+            }
             const signature = await signMessage(challenge.message, state.walletAddress);
             const result = await post('/wallet/withdraw', {
                 nonce: challenge.nonce, signature,
             });
-            alertUser(`${amount} ${asset} transfer submitted.\nSolana signature: ${result.txHash}`);
+            alertUser(result.status === 'processing'
+                ? `Перевод проверяется сетью. Средства зарезервированы.\nSolana: ${result.txHash}`
+                : `${amount} ${asset} transfer submitted.\nSolana signature: ${result.txHash}`);
             await refresh();
         } catch (error) {
             alertUser(error.message || 'Withdrawal could not be processed.');

@@ -16,6 +16,8 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import parse_qsl
 
 from flask import Blueprint, jsonify, request
+from wallet_recovery import recovery_state, register_recovery_routes
+from wallet_mobile import register_mobile_routes
 
 
 ZRL_DECIMALS = 6
@@ -74,8 +76,16 @@ def _today_utc():
     return datetime.now(timezone.utc).date().isoformat()
 
 
+class _ClosingConnection(sqlite3.Connection):
+    def __exit__(self, *args):
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
+
+
 def _connect(db_path):
-    connection = sqlite3.connect(db_path, timeout=20, isolation_level=None)
+    connection = sqlite3.connect(db_path, timeout=20, isolation_level=None, factory=_ClosingConnection)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute("PRAGMA journal_mode = WAL")
@@ -370,7 +380,23 @@ def _onchain_balances(address):
     return balances
 
 
-def register_wallet_routes(app, data_dir):
+def _create_wallet_challenge(db, telegram_id, address, purpose, amount_units=None):
+    nonce = secrets.token_urlsafe(24)
+    expiry = _utc_now() + 300
+    asset = "SOL" if purpose == "withdraw_sol" else "ZRL"
+    amount = (amount_units / (1_000_000_000 if asset == "SOL" else ZRL_SCALE)) if amount_units is not None else "—"
+    message = (
+        "Zer0Life Run wallet verification\n"
+        f"Purpose: {purpose}\nTelegram user: {telegram_id}\nWallet: {address}\n"
+        f"Amount: {amount} {asset}\nNonce: {nonce}\nExpires: {expiry}"
+    )
+    db.execute("""INSERT INTO wallet_challenges
+               (nonce,telegram_id,address,purpose,amount_units,message,expires_at)
+               VALUES(?,?,?,?,?,?,?)""", (nonce, telegram_id, address, purpose, amount_units, message, expiry))
+    return {"nonce": nonce, "message": message, "expiresAt": expiry}
+
+
+def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     db_path = os.path.join(data_dir, "wallet_ledger.sqlite3")
     _init_db(db_path)
     bp = Blueprint("zerolife_wallet", __name__)
@@ -486,6 +512,15 @@ def register_wallet_routes(app, data_dir):
                     "boosterRate": account["booster_rate"] if account["booster_expires"] == 0 or account["booster_expires"] > now else 300,
                     "boosterExpires": account["booster_expires"] * 1000,
                     "farms": farm_items,
+                    "pendingWithdrawals": [
+                        {"nonce": row["nonce"], "asset": row["asset"],
+                         "txHash": row["tx_signature"], "status": row["status"]}
+                        for row in db.execute(
+                            "SELECT nonce,asset,tx_signature,status FROM wallet_withdrawals WHERE telegram_id=? AND status IN ('processing','submitted')",
+                            (user["id"],),
+                        )
+                    ],
+                    **recovery_state(db, user["id"], admin_telegram_id),
                     **chain,
                 })
         except PermissionError as exc:
@@ -539,26 +574,9 @@ def register_wallet_routes(app, data_dir):
                 amount_units = int((amount * Decimal(1_000_000_000)).quantize(Decimal("1"), rounding=ROUND_DOWN))
             else:
                 amount_units = None
-            nonce = secrets.token_urlsafe(24)
-            expiry = _utc_now() + 300
-            asset = "SOL" if purpose == "withdraw_sol" else "ZRL"
-            message = (
-                "Zer0Life Run wallet verification\n"
-                f"Purpose: {purpose}\n"
-                f"Telegram user: {user['id']}\n"
-                f"Wallet: {address}\n"
-                f"Amount: {(amount_units / 1_000_000_000 if asset == 'SOL' else _zrl(amount_units)) if amount_units is not None else '—'} {asset}\n"
-                f"Nonce: {nonce}\n"
-                f"Expires: {expiry}"
-            )
             with _connect(db_path) as db:
-                db.execute(
-                    """INSERT INTO wallet_challenges
-                       (nonce, telegram_id, address, purpose, amount_units, message, expires_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (nonce, user["id"], address, purpose, amount_units, message, expiry),
-                )
-            return jsonify({"success": True, "nonce": nonce, "message": message, "expiresAt": expiry})
+                challenge = _create_wallet_challenge(db, user["id"], address, purpose, amount_units)
+            return jsonify({"success": True, **challenge})
         except PermissionError as exc:
             return _response_error(str(exc), 401)
         except (KeyError, ValueError):
@@ -682,7 +700,7 @@ def register_wallet_routes(app, data_dir):
             app.logger.exception("deposit verification failed")
             return _response_error("Deposit could not be verified", 400)
 
-    def send_withdrawal(asset, address, amount_units):
+    def send_withdrawal(asset, address, amount_units, nonce):
         private_key = os.getenv("PRIVATE_KEY")
         if not private_key:
             raise RuntimeError("Treasury signing is not configured")
@@ -690,11 +708,6 @@ def register_wallet_routes(app, data_dir):
         from solders.pubkey import Pubkey
         from solders.transaction import Transaction
         from solders.system_program import transfer, TransferParams
-        from spl.token.instructions import (
-            transfer_checked, TransferCheckedParams,
-            get_associated_token_address, create_associated_token_account,
-        )
-
         from base58 import b58decode
         treasury = Keypair.from_bytes(b58decode(private_key))
         if str(treasury.pubkey()) != SHARED_POOL_WALLET:
@@ -711,6 +724,10 @@ def register_wallet_routes(app, data_dir):
                 from_pubkey=treasury.pubkey(), to_pubkey=recipient, lamports=lamports
             )))
         else:
+            from spl.token.instructions import (
+                transfer_checked, TransferCheckedParams,
+                get_associated_token_address, create_associated_token_account,
+            )
             mint_text = os.getenv("ZRL_MINT")
             if not mint_text:
                 raise RuntimeError("ZRL token mint is not configured")
@@ -733,7 +750,59 @@ def register_wallet_routes(app, data_dir):
             signing_keypairs=[treasury],
             recent_blockhash=blockhash,
         )
-        return str(client.send_raw_transaction(bytes(tx)).value)
+        signature = str(tx.signatures[0])
+        # Persist the deterministic signature BEFORE broadcast. A network timeout
+        # may occur after Solana accepted a transaction: never blindly refund it.
+        with _connect(db_path) as db:
+            changed = db.execute("""UPDATE wallet_withdrawals SET tx_signature=?
+                                   WHERE nonce=? AND status='processing'""", (signature, nonce)).rowcount
+            if changed != 1:
+                raise RuntimeError("Withdrawal reservation is no longer active")
+        submitted = str(client.send_raw_transaction(bytes(tx)).value)
+        if submitted != signature:
+            raise RuntimeError("RPC returned an unexpected transaction signature")
+        return signature
+
+    @bp.post("/wallet/withdrawals/status")
+    def withdrawal_status():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            nonce = str(data.get("nonce", ""))
+            with _connect(db_path) as db:
+                row = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=? AND telegram_id=?",
+                                 (nonce, user["id"])).fetchone()
+            if not row:
+                return _response_error("Withdrawal not found", 404)
+            if row["status"] in ("processing", "submitted") and row["tx_signature"]:
+                response = requests.post(
+                    os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),
+                    json={"jsonrpc": "2.0", "id": 1, "method": "getSignatureStatuses",
+                          "params": [[row["tx_signature"]], {"searchTransactionHistory": True}]},
+                    timeout=15,
+                )
+                response.raise_for_status()
+                chain = response.json().get("result", {}).get("value", [None])[0]
+                if chain and (chain.get("err") is not None or chain.get("confirmationStatus") in ("confirmed", "finalized")):
+                    with _connect(db_path) as db:
+                        db.execute("BEGIN IMMEDIATE")
+                        current = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
+                        if current["status"] in ("processing", "submitted"):
+                            failed = chain.get("err") is not None
+                            if failed and current["asset"] == "ZRL":
+                                _ledger_entry(db, user["id"], "withdrawal_refund", current["amount_units"], f"withdraw-refund:{nonce}")
+                            elif failed:
+                                db.execute("UPDATE wallet_accounts SET sol_lamports=sol_lamports+? WHERE telegram_id=?",
+                                           (current["amount_units"], user["id"]))
+                            db.execute("UPDATE wallet_withdrawals SET status=? WHERE nonce=?",
+                                       ("failed" if failed else "confirmed", nonce))
+                        db.commit()
+                        row = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
+            return jsonify(success=True, status=row["status"], asset=row["asset"], txHash=row["tx_signature"])
+        except PermissionError as error:
+            return _response_error(str(error), 401)
+        except Exception:
+            return _response_error("Chain confirmation is unavailable; funds remain reserved to prevent a duplicate payment", 503)
 
     @bp.post("/wallet/withdraw")
     def wallet_withdraw():
@@ -756,7 +825,10 @@ def register_wallet_routes(app, data_dir):
                     "SELECT * FROM wallet_withdrawals WHERE nonce = ?",
                     (nonce,),
                 ).fetchone()
-                if previous and previous["status"] in ("submitted", "confirmed"):
+                if challenge["telegram_id"] != user["id"]:
+                    db.rollback()
+                    return _response_error("Withdrawal belongs to another account", 403)
+                if previous and previous["status"] in ("processing", "submitted", "confirmed"):
                     db.rollback()
                     return jsonify({
                         "success": True, "status": previous["status"],
@@ -825,10 +897,16 @@ def register_wallet_routes(app, data_dir):
                 db.commit()
 
             try:
-                tx_signature = send_withdrawal(asset, linked, amount_units)
+                tx_signature = send_withdrawal(asset, linked, amount_units, nonce)
             except Exception as exc:
                 with _connect(db_path) as db:
                     db.execute("BEGIN IMMEDIATE")
+                    reserved = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
+                    if reserved["tx_signature"]:
+                        db.commit()
+                        return jsonify(success=True, status="processing", asset=asset,
+                                       txHash=reserved["tx_signature"],
+                                       message="Broadcast confirmation is uncertain; funds remain reserved until chain verification"), 202
                     if asset == "ZRL":
                         _ledger_entry(db, user["id"], "withdrawal_refund", amount_units, f"withdraw-refund:{nonce}")
                     else:
@@ -1688,3 +1766,7 @@ def register_wallet_routes(app, data_dir):
             return _response_error(str(exc), 401)
 
     app.register_blueprint(bp)
+    register_recovery_routes(app, db_path, _connect, authenticated_user,
+                             _ensure_account, _ledger_entry, admin_telegram_id, ZRL_SCALE)
+    register_mobile_routes(app, db_path, _connect, authenticated_user,
+                           _create_wallet_challenge, _verify_phantom_signature)

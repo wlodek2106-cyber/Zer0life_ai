@@ -1,6 +1,7 @@
 /* Read-only view of device-local farming records. Never credits or unlocks funds. */
 (() => {
     'use strict';
+    let restoredIds = new Set();
 
     function savedNumber(value) {
         if (typeof value !== 'number' && typeof value !== 'string') return null;
@@ -48,7 +49,8 @@
         if (!container || !count) return;
         container.replaceChildren();
         const snapshot = readRecords();
-        count.textContent = snapshot.error ? 'Ошибка чтения' : `${snapshot.records.length} · на проверке`;
+        const pending = snapshot.records?.filter(record => !restoredIds.has(String(record?.id))).length || 0;
+        count.textContent = snapshot.error ? 'Ошибка чтения' : `${pending} · на проверке`;
         if (snapshot.error || snapshot.records.length === 0) {
             const message = document.createElement('p');
             message.style.cssText = 'font-size:12px;color:#b5bdad;line-height:1.5;margin:0;';
@@ -63,7 +65,8 @@
             card.style.cssText = 'padding:12px;border-radius:14px;border:1px solid rgba(213,178,74,.3);background:linear-gradient(145deg,rgba(213,178,74,.08),rgba(10,14,10,.75));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);';
             const title = document.createElement('strong');
             title.style.cssText = 'display:block;font-size:13px;color:#e5d29b;margin-bottom:5px;';
-            title.textContent = `Старая ферма №${index + 1} · Ожидает проверки`;
+            const restored = restoredIds.has(String(record?.id));
+            title.textContent = `Старая ферма №${index + 1} · ${restored ? 'Закрыта при восстановлении' : 'Ожидает проверки'}`;
             card.appendChild(title);
             if (!record || typeof record !== 'object' || Array.isArray(record)) {
                 line(card, 'Запись', 'не удалось распознать; оригинал сохранён без изменений');
@@ -83,12 +86,19 @@
                     line(card, 'Получено ранее по локальной записи', `${claimed.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL`);
                 }
             }
-            line(card, 'Статус', 'не включена в доступный баланс; начисление и вывод здесь недоступны');
+            line(card, 'Статус', restored
+                ? record?.asset === 'sol'
+                    ? 'SOL-вклад возвращён на основной баланс. Повторный возврат исключён.'
+                    : 'ZRL-вклад уже учитывался в балансе и повторно не начисляется.'
+                : 'не включена в доступный баланс; начисление и вывод здесь недоступны');
             container.appendChild(card);
         });
     }
 
-    window.legacyFarmReview = { render };
+    window.legacyFarmReview = {
+        render,
+        setState(state) { restoredIds = new Set((state.restoredLegacyFarmIds || []).map(String)); render(); },
+    };
     window.addEventListener('storage', (event) => {
         if (typeof STORAGE_PREFIX !== 'undefined' && (event.key === null
             || event.key === STORAGE_PREFIX + 'legacy_pending_farms'
