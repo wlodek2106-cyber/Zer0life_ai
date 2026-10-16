@@ -125,6 +125,18 @@ test('history upload failure does not block the current authenticated wallet sta
     assert.equal(window.secureWallet.getState().availableZrl, 17);
     assert(warnings.some(message => /не синхронизирована/.test(message)));
 });
+test('archive preservation remains functional with all recovery UI removed', () => {
+    const farms = '[{"id":"synthetic-hidden","asset":"zrl","amount":100}]';
+    const view = setup(entries({ total_balance: '150', active_farms: farms }));
+    view.context.document.getElementById = () => null;
+    assert.doesNotThrow(() => view.api.preserve(prefix));
+    assert.doesNotThrow(() => view.api.setState({ availableZrl: 150, gameSolBalance: 0,
+        legacyPendingZrl: 0, legacyPendingSol: 0, legacyBalanceRestored: true }));
+    assert.equal(view.storage.get(prefix + 'total_balance'), '150');
+    assert.equal(view.storage.get(prefix + 'active_farms'), farms);
+    assert.equal(view.storage.get(prefix + 'legacy_pending_farms'), farms);
+});
+
 test('preservation is wired before dashboard mutations and never calls a payout API', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     assert(html.indexOf('src="./legacy-recovery.js?') < html.indexOf('const STORAGE_PREFIX'));

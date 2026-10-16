@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zer0Life Run — isolated Phantom handoff preview</title>
+    <style>
+        body { margin:0;padding:18px;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif; }
+        main { max-width:430px;margin:auto;padding:18px;border-radius:24px;border:1px solid #3a482c;background:linear-gradient(135deg,#151c13,#0b100c); }
+        .note { color:#b5bdad;font-size:12px;line-height:1.5; }
+    </style>
+</head>
+<body>
+    <main>
+        <p class="note">Тестовый экран подключения. Реальные счета не используются; внешние переходы отключены.</p>
+        <div id="preview"></div>
+    </main>
+    <script>
+        const STORAGE_PREFIX = 'isolated_native_preview_';
+        const storage = new Map();
+        Object.defineProperty(window, 'localStorage', { value: {
+            getItem(key) { return storage.get(key) ?? null; },
+            setItem(key, value) { storage.set(key, String(value)); },
+            removeItem(key) { storage.delete(key); },
+        }});
+        document.addEventListener('click', event => {
+            if (event.target.closest('a,button')) event.preventDefault();
+        }, true);
+        window.secureWallet = {
+            async request(route) {
+                if (route === '/wallet/mobile/start') return {
+                    sessionId: 'isolated-visual-fixture', expiresAt: Date.now() / 1000 + 300,
+                    url: 'https://phantom.com/ul/v1/connect?app_url=https%3A%2F%2Fexample.invalid&redirect_link=https%3A%2F%2Fexample.invalid%2Fcallback',
+                };
+                if (route === '/wallet/mobile/status') return { status: 'connecting' };
+                throw Error('Financial requests are disabled in this preview');
+            },
+        };
+        (async () => {
+            const response = await fetch('../dashboard.html');
+            if (!response.ok) throw Error('Cannot load dashboard markup');
+            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+            for (const style of doc.querySelectorAll('style')) document.head.appendChild(document.importNode(style, true));
+            document.getElementById('preview').appendChild(document.importNode(doc.getElementById('wallet-modal-body'), true));
+            const script = document.createElement('script');
+            script.src = '../phantom-mobile.js';
+            script.onload = async () => { await window.phantomMobile.start('link'); };
+            document.body.appendChild(script);
+        })().catch(error => { document.getElementById('preview').textContent = error.message; });
+    </script>
+</body>
+</html>
