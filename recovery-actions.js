@@ -2,8 +2,6 @@
     'use strict';
     let snapshots = [], submitting = false;
     const node = id => document.getElementById(id);
-    const alertUser = message => window.Telegram?.WebApp?.showAlert
-        ? window.Telegram.WebApp.showAlert(message) : window.alert(message);
     const api = (path, body) => window.secureWallet.request(path, body);
     const confirm = message => new Promise(resolve => {
         if (window.Telegram?.WebApp?.showConfirm) window.Telegram.WebApp.showConfirm(message, resolve);
@@ -62,20 +60,35 @@
         const frozen = snapshots.map(row => ({ requestId: row.requestId, digest: row.digest }));
         const zrl = snapshots.reduce((sum, row) => sum + Number(row.totalZrl), 0);
         const sol = snapshots.reduce((sum, row) => sum + Number(row.totalSol), 0);
-        if (!await confirm(`Одобрить архив: ${zrl.toFixed(6)} ZRL и ${sol.toFixed(9)} SOL на основные балансы ${frozen.length} игроков?\nУчтены ещё не возвращённые вклады ZRL/SOL и рассчитанный неполученный доход. Уже возвращённые суммы и полученные награды исключены. Доход без сохранённой ставки остаётся на сверке. Позиции закрываются на момент расчёта; для уже закрытых используется прежняя дата закрытия. Вы разрешаете вывод из реальных средств проекта.`)) return;
         submitting = true;
-        node('recovery-admin-apply').disabled = true;
+        const applyButton = node('recovery-admin-apply');
+        const loadButton = node('recovery-admin-load');
+        if (applyButton) applyButton.disabled = true;
+        if (loadButton) loadButton.disabled = true;
+        let credited = false;
         try {
+            // Telegram's real showConfirm/showPopup rejects messages >256 UTF-16 units.
+            const approved = await confirm(`Вернуть ${zrl.toFixed(6)} ZRL и ${sol.toFixed(9)} SOL (${frozen.length} игроков)? Уже выплаченное исключено. Подтверждение разрешит тратить и выводить реальные средства проекта.`);
+            if (!approved) {
+                setStatus('Подтверждение отменено. Балансы не изменены.');
+                return;
+            }
             const result = await api('/wallet/recovery/admin/apply', { requests: frozen });
+            credited = true;
             snapshots = [];
             node('recovery-admin-list').replaceChildren();
-            setStatus(`Перенос выполнен: ${result.receipts.length} счетов. Повторное подтверждение не начислит суммы ещё раз.`);
             await window.secureWallet.refresh();
-            alertUser('Архив перенесён на основные балансы. Для вывода подключите Phantom и подтвердите подпись.');
+            setStatus(`Перенос выполнен: ${result.receipts.length} счетов. Повторное подтверждение не начислит суммы ещё раз. Для вывода подключите Phantom и подтвердите подпись.`);
         } catch (error) {
-            setStatus(error.message);
+            setStatus(credited
+                ? 'Перенос выполнен, но не удалось обновить экран. Откройте Wallet заново — повторное начисление не требуется.'
+                : error.message === 'WebAppPopupOpened'
+                    ? 'В Telegram уже открыто другое окно. Закройте его и нажмите подтверждение ещё раз.'
+                    : `Не удалось подтвердить перенос: ${error.message}. Балансы не изменены, если сервер ещё не принял запрос. При сетевой ошибке обновите Wallet перед повтором.`);
         } finally {
             submitting = false;
+            if (applyButton) applyButton.disabled = snapshots.length === 0;
+            if (loadButton) loadButton.disabled = false;
         }
     }
 
