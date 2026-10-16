@@ -21,10 +21,10 @@ test("Get Started keeps the Telegram launch and referral handoff", () => {
 });
 
 test("welcome uses realistic runner artwork without a cartoon mascot", () => {
-  assert.match(html, /<img class="zl-art" src="\.\/assets\/welcome-runner-3d\.jpg"/);
+  assert.match(html, /<img class="zl-art" src="\.\/assets\/welcome-runner-3d-4k\.jpg"/);
   assert.match(html, /alt="A runner on a futuristic illuminated track"/);
   assert.match(html, /object-fit:\s*cover/);
-  assert.equal(existsSync(join(__dirname, "..", "assets", "welcome-runner-3d.jpg")), true);
+  assert.equal(existsSync(join(__dirname, "..", "assets", "welcome-runner-3d-4k.jpg")), true);
   assert.doesNotMatch(html, /zerolife-run-race-mascot|racing cat|<svg class="zl-art"/i);
 });
 
