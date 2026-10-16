@@ -193,6 +193,30 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(self.post("/wallet/state").json["availableZrl"], 20000)
         self.assertEqual(self.chain.sent, [])
 
+    def test_blank_rpc_failure_is_explained_and_refunded_only_once(self):
+        nonce = self.request(asset="ZRL").json["nonce"]
+        class EmptyRpcError(Exception):
+            pass
+        def broken(*args, **kwargs):
+            try:
+                root = RuntimeError("synthetic-sensitive-rpc-url")
+                root.response = NS(status_code=403)
+                raise root
+            except Exception as exc:
+                raise EmptyRpcError() from exc
+        self.chain.get_token_account_balance = broken
+        with self.assertLogs(self.app.logger, level="WARNING") as logs:
+            result = self.confirm(nonce)
+        self.assertEqual(result.status_code, 503)
+        self.assertEqual(result.json["errorCode"], "RPC_ACCESS_DENIED")
+        self.assertTrue(result.json["balanceRestored"])
+        self.assertIn("stage=get_zrl_balance", str(logs.output))
+        self.assertIn("http_status=403", str(logs.output))
+        self.assertNotIn("sensitive", str(logs.output) + str(result.json))
+        self.assertEqual(self.confirm(nonce).status_code, 400)
+        self.assertEqual(self.post("/wallet/state").json["availableZrl"], 20000)
+        self.assertEqual(self.chain.sent, [])
+
     def test_finalized_failure_refunds_each_asset_once_but_processed_error_does_not(self):
         for asset in ["SOL", "ZRL"]:
             nonce = self.request(asset=asset, event="synthetic-fail-" + asset).json["nonce"]
