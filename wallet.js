@@ -95,6 +95,29 @@
         }
         if (byId('asset-legacy-zrl')) byId('asset-legacy-zrl').textContent = Number(nextState.legacyPendingZrl || 0).toFixed(2);
         if (byId('asset-legacy-sol')) byId('asset-legacy-sol').textContent = Number(nextState.legacyPendingSol || 0).toFixed(4);
+        const referralCode = String(nextState.referralCode || '');
+        if (byId('affiliate-code')) byId('affiliate-code').textContent = referralCode || 'Unavailable';
+        if (byId('affiliate-link')) {
+            byId('affiliate-link').value = referralCode
+                ? `https://t.me/Zer0lifeGenesis_bot?start=ref_${encodeURIComponent(referralCode)}`
+                : '';
+        }
+        if (byId('affiliate-levels')) {
+            const levels = Array.isArray(nextState.affiliateLevels) ? nextState.affiliateLevels : [];
+            byId('affiliate-levels').replaceChildren();
+            levels.forEach((level) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:10px;background:rgba(255,255,255,.035);font-size:10px;';
+                const label = document.createElement('span');
+                label.style.color = '#9ca39a';
+                label.textContent = `Level ${Number(level.level)} · ${Number(level.ratePercent)}% · ${Number(level.users)} runners`;
+                const total = document.createElement('strong');
+                total.style.color = '#d8ff62';
+                total.textContent = `${Number(level.earnedZrl || 0).toLocaleString()} ZRL`;
+                row.append(label, total);
+                byId('affiliate-levels').appendChild(row);
+            });
+        }
         if (typeof totalBalance !== 'undefined') {
             totalBalance = Number(nextState.availableZrl || 0);
             earnedZrlBalance = totalBalance;
@@ -126,6 +149,22 @@
             const button = byId(id);
             if (button) button.disabled = !address;
         });
+    }
+
+    async function copyReferralLink() {
+        const input = byId('affiliate-link');
+        if (!input?.value) {
+            alertUser('Your invite code is still loading. Try again in a moment.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(input.value);
+            alertUser('Invite link copied. Share it with a new runner.');
+        } catch {
+            input.focus();
+            input.select();
+            window.prompt('Copy your Zer0Life Run invite link:', input.value);
+        }
     }
 
     async function refresh() {
@@ -274,6 +313,7 @@
         freeSpins = 0;
     }
     byId('connect-phantom-btn')?.addEventListener('click', connect);
+    byId('affiliate-copy-btn')?.addEventListener('click', copyReferralLink);
     ['wallet-btn', 'nav-wallet'].forEach((id) => {
         byId(id)?.addEventListener('click', () => { setTimeout(() => refresh().catch(() => {}), 0); });
     });

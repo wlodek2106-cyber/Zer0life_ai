@@ -6,6 +6,7 @@ import hmac
 import json
 import math
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -25,6 +26,18 @@ MAX_RUN_SPEED_KMH = 14.0
 MAX_RUN_SEGMENT_KM = 0.5
 SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 RED_ROULETTE_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
+AFFILIATE_LEVELS = ((1, 1000), (2, 400), (3, 300), (4, 200), (5, 100))
+AFFILIATE_ELIGIBLE_SOURCES = {
+    "registration",
+    "daily_checkin",
+    "mystery_box",
+    "run_reward",
+    "farm_yield",
+    "casino_wheel",
+    "casino_slots",
+    "casino_roulette",
+    "casino_blackjack",
+}
 WHEEL_REWARDS = [
     {"text": "Boots x2", "type": "boots", "value": 2},
     {"text": "Mystery Box", "type": "box", "value": 0},
@@ -99,7 +112,9 @@ def _init_db(db_path):
                 run_last_lon REAL,
                 run_last_at INTEGER,
                 run_id TEXT,
-                run_active INTEGER NOT NULL DEFAULT 0
+                run_active INTEGER NOT NULL DEFAULT 0,
+                referral_code TEXT,
+                referred_by TEXT
             );
             CREATE TABLE IF NOT EXISTS wallet_ledger (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,6 +200,18 @@ def _init_db(db_path):
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN legacy_pending_sol_lamports INTEGER NOT NULL DEFAULT 0")
         if "legacy_recorded" not in account_columns:
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN legacy_recorded INTEGER NOT NULL DEFAULT 0")
+        if "referral_code" not in account_columns:
+            db.execute("ALTER TABLE wallet_accounts ADD COLUMN referral_code TEXT")
+        if "referred_by" not in account_columns:
+            db.execute("ALTER TABLE wallet_accounts ADD COLUMN referred_by TEXT")
+        db.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS wallet_referral_code_idx "
+            "ON wallet_accounts(referral_code)"
+        )
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS wallet_referred_by_idx "
+            "ON wallet_accounts(referred_by)"
+        )
 
 
 def _ensure_account(db, telegram_id):
@@ -192,6 +219,24 @@ def _ensure_account(db, telegram_id):
         "INSERT OR IGNORE INTO wallet_accounts (telegram_id) VALUES (?)",
         (str(telegram_id),),
     )
+    row = db.execute(
+        "SELECT referral_code FROM wallet_accounts WHERE telegram_id = ?",
+        (str(telegram_id),),
+    ).fetchone()
+    if row and not row["referral_code"]:
+        for _ in range(10):
+            code = secrets.token_hex(5).upper()
+            try:
+                db.execute(
+                    "UPDATE wallet_accounts SET referral_code = ? "
+                    "WHERE telegram_id = ? AND referral_code IS NULL",
+                    (code, str(telegram_id)),
+                )
+                break
+            except sqlite3.IntegrityError:
+                continue
+        else:
+            raise RuntimeError("Unable to allocate a unique referral code")
 
 
 def _balance_units(db, telegram_id):
@@ -202,6 +247,33 @@ def _balance_units(db, telegram_id):
     return int(row["balance"] or 0)
 
 
+def _apply_affiliate_commissions(db, telegram_id, reward_units, event_id):
+    current_id = str(telegram_id)
+    seen = {current_id}
+    for level, rate_basis_points in AFFILIATE_LEVELS:
+        row = db.execute(
+            "SELECT referred_by FROM wallet_accounts WHERE telegram_id = ?",
+            (current_id,),
+        ).fetchone()
+        if not row or not row["referred_by"]:
+            break
+        referrer_id = str(row["referred_by"])
+        if referrer_id in seen:
+            break
+        seen.add(referrer_id)
+        commission_units = int(reward_units) * rate_basis_points // 10000
+        if commission_units <= 0:
+            break
+        _ledger_entry(
+            db,
+            referrer_id,
+            f"affiliate_l{level}",
+            commission_units,
+            f"affiliate:{event_id}:l{level}",
+        )
+        current_id = referrer_id
+
+
 def _ledger_entry(db, telegram_id, source, delta_units, event_id):
     cursor = db.execute(
         """INSERT OR IGNORE INTO wallet_ledger
@@ -209,7 +281,10 @@ def _ledger_entry(db, telegram_id, source, delta_units, event_id):
            VALUES (?, ?, ?, ?, ?)""",
         (str(telegram_id), source, int(delta_units), event_id, _utc_now()),
     )
-    return cursor.rowcount == 1
+    inserted = cursor.rowcount == 1
+    if inserted and int(delta_units) > 0 and source in AFFILIATE_ELIGIBLE_SOURCES:
+        _apply_affiliate_commissions(db, telegram_id, int(delta_units), event_id)
+    return inserted
 
 
 def _verify_telegram_init_data(init_data):
@@ -343,6 +418,40 @@ def register_wallet_routes(app, data_dir):
                     "SELECT farm_id, asset, principal_units, principal_lamports, daily_rate, start_time, end_time, claimed_units FROM wallet_farms WHERE telegram_id = ? AND status = 'active'",
                     (user["id"],),
                 ).fetchall()
+                downline_rows = db.execute(
+                    """WITH RECURSIVE downline(telegram_id, depth, visited) AS (
+                           SELECT telegram_id, 1, ',' || telegram_id || ','
+                           FROM wallet_accounts WHERE referred_by = ?
+                           UNION ALL
+                           SELECT account.telegram_id, downline.depth + 1,
+                                  downline.visited || account.telegram_id || ','
+                           FROM wallet_accounts AS account
+                           JOIN downline ON account.referred_by = downline.telegram_id
+                           WHERE downline.depth < 5
+                             AND instr(downline.visited, ',' || account.telegram_id || ',') = 0
+                       )
+                       SELECT depth, COUNT(*) AS users
+                       FROM downline GROUP BY depth""",
+                    (user["id"],),
+                ).fetchall()
+                downline_counts = {int(row["depth"]): int(row["users"]) for row in downline_rows}
+                affiliate_rows = db.execute(
+                    """SELECT source, COALESCE(SUM(delta_units), 0) AS earned
+                       FROM wallet_ledger
+                       WHERE telegram_id = ? AND source LIKE 'affiliate_l%'
+                       GROUP BY source""",
+                    (user["id"],),
+                ).fetchall()
+                affiliate_earnings = {row["source"]: int(row["earned"] or 0) for row in affiliate_rows}
+                affiliate_levels = [
+                    {
+                        "level": level,
+                        "ratePercent": rate_basis_points / 100,
+                        "users": downline_counts.get(level, 0),
+                        "earnedZrl": _zrl(affiliate_earnings.get(f"affiliate_l{level}", 0)),
+                    }
+                    for level, rate_basis_points in AFFILIATE_LEVELS
+                ]
                 farm_items = []
                 now = _utc_now()
                 for farm in farms:
@@ -366,6 +475,8 @@ def register_wallet_routes(app, data_dir):
                 return jsonify({
                     "success": True,
                     "walletAddress": address,
+                    "referralCode": account["referral_code"],
+                    "affiliateLevels": affiliate_levels,
                     "availableZrl": _zrl(balance),
                     "pendingRunZrl": _zrl(account["pending_run_units"]),
                     "legacyPendingZrl": _zrl(account["legacy_pending_units"]),
@@ -838,17 +949,57 @@ def register_wallet_routes(app, data_dir):
     @bp.post("/wallet/rewards/register")
     def reward_registration():
         try:
-            user = authenticated_user(_json_body())
+            data = _json_body()
+            user = authenticated_user(data)
+            referral_code = str(data.get("referralCode") or "").strip().upper()
+            if referral_code and not re.fullmatch(r"[A-F0-9]{10}", referral_code):
+                return _response_error("Invalid referral code", 400)
             with _connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
                 _ensure_account(db, user["id"])
                 account = db.execute(
-                    "SELECT registration_claimed FROM wallet_accounts WHERE telegram_id = ?",
+                    "SELECT registration_claimed, referred_by FROM wallet_accounts WHERE telegram_id = ?",
                     (user["id"],),
                 ).fetchone()
                 if account["registration_claimed"]:
                     db.rollback()
                     return _response_error("Registration reward was already claimed", 409)
+                if referral_code:
+                    referrer = db.execute(
+                        "SELECT telegram_id FROM wallet_accounts WHERE referral_code = ?",
+                        (referral_code,),
+                    ).fetchone()
+                    if not referrer:
+                        db.rollback()
+                        return _response_error("Referral code was not found", 400)
+                    referrer_id = str(referrer["telegram_id"])
+                    if referrer_id == str(user["id"]):
+                        db.rollback()
+                        return _response_error("You cannot use your own referral code", 400)
+                    if account["referred_by"] and str(account["referred_by"]) != referrer_id:
+                        db.rollback()
+                        return _response_error("Referral attribution is already locked", 409)
+                    ancestor_id = referrer_id
+                    seen = {str(user["id"])}
+                    for _ in range(1000):
+                        if ancestor_id in seen:
+                            db.rollback()
+                            return _response_error("Referral chain cannot contain a cycle", 400)
+                        seen.add(ancestor_id)
+                        ancestor = db.execute(
+                            "SELECT referred_by FROM wallet_accounts WHERE telegram_id = ?",
+                            (ancestor_id,),
+                        ).fetchone()
+                        if not ancestor or not ancestor["referred_by"]:
+                            break
+                        ancestor_id = str(ancestor["referred_by"])
+                    else:
+                        db.rollback()
+                        return _response_error("Referral chain is too deep", 400)
+                    db.execute(
+                        "UPDATE wallet_accounts SET referred_by = ? WHERE telegram_id = ?",
+                        (referrer_id, str(user["id"])),
+                    )
                 _ledger_entry(db, user["id"], "registration", 1000 * ZRL_SCALE, f"registration:{user['id']}")
                 db.execute(
                     "UPDATE wallet_accounts SET registration_claimed = 1 WHERE telegram_id = ?",

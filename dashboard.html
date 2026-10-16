@@ -2271,6 +2271,10 @@
                 <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Player Nickname:</label>
                 <input type="text" id="reg-username" class="custom-input-field" placeholder="e.g. CyberRunner" />
             </div>
+            <div class="custom-input-group" style="margin-top: 14px;">
+                <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Referral code (optional):</label>
+                <input type="text" id="reg-referral-code" class="custom-input-field" placeholder="Enter your inviter's code" maxlength="10" autocomplete="off" />
+            </div>
             <div style="margin-top: 25px;">
                 <button class="wallet-action-btn" id="reg-submit-btn" style="width: 100%; background: #a8f07a; color: #000; border: none; font-size: 16px;">Create Profile & Claim 1,000 ZRL</button>
             </div>
@@ -2359,6 +2363,16 @@
                         <div class="asset-right"><div class="asset-balance" id="asset-legacy-sol">0.0000</div></div>
                     </div>
                 </div>
+
+                <section id="affiliate-panel" style="margin:16px 0;padding:16px;border-radius:18px;border:1px solid rgba(168,240,122,.25);background:linear-gradient(145deg,rgba(168,240,122,.09),rgba(10,14,10,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.18);">
+                    <div style="font-size:14px;font-weight:900;color:#d8ffc4;">5-level partner program</div>
+                    <div style="font-size:11px;color:#9ca39a;margin:6px 0 12px;">Earn 10% · 4% · 3% · 2% · 1% of qualifying ZRL rewards. Codes lock at registration; deposits, bets, withdrawals and affiliate bonuses do not qualify.</div>
+                    <div style="font-size:11px;color:#9ca39a;">Your invite code</div>
+                    <div id="affiliate-code" style="font-size:20px;font-weight:900;letter-spacing:2px;color:#d8ff62;margin:3px 0 10px;">Loading…</div>
+                    <input id="affiliate-link" class="custom-input-field" readonly aria-label="Your referral link" style="font-size:10px;margin-bottom:8px;" />
+                    <button class="wallet-action-btn" id="affiliate-copy-btn" type="button" style="width:100%;background:rgba(168,240,122,.12);border-color:rgba(168,240,122,.3);color:#d8ffc4;">Copy invite link</button>
+                    <div id="affiliate-levels" style="display:grid;gap:6px;margin-top:12px;" aria-live="polite"></div>
+                </section>
 
                 <div class="wallet-actions" id="wallet-actions-div" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;">
                     <button class="wallet-action-btn" id="deposit-btn">📥 Deposit SOL</button>
@@ -4240,6 +4254,14 @@
             }
         }
 
+        const incomingReferral = new URLSearchParams(window.location.search).get('ref')
+            || tg.initDataUnsafe?.start_param
+            || '';
+        const incomingReferralMatch = String(incomingReferral).match(/(?:ref[_-]?)?([A-F0-9]{10})$/i);
+        if (incomingReferralMatch) {
+            document.getElementById('reg-referral-code').value = incomingReferralMatch[1].toUpperCase();
+        }
+
         document.getElementById('reg-submit-btn').onclick = async () => {
             triggerHaptic('medium');
             playSound('click');
@@ -4261,8 +4283,9 @@
             }
 
             let registrationReward = 0;
+            const referralCode = document.getElementById('reg-referral-code').value.trim().toUpperCase();
             try {
-                const rewardResult = await window.secureWallet.request('/wallet/rewards/register');
+                const rewardResult = await window.secureWallet.request('/wallet/rewards/register', { referralCode });
                 registrationReward = Number(rewardResult.reward || 0);
                 window.secureWallet.applyResult(rewardResult);
             } catch (error) {

@@ -9,6 +9,7 @@ import base58
 import traceback
 import random
 import datetime
+import re
 import aiohttp
 
 from aiogram import Bot, Dispatcher, types
@@ -412,9 +413,13 @@ def telegram_webhook():
 async def cmd_start(message: types.Message):
     save_user(message.from_user.id)
     total_users = get_total_users()
-    
+    start_args = (message.text or "").split(maxsplit=1)
+    referral_match = re.fullmatch(r"ref_([A-Fa-f0-9]{10})", start_args[1].strip()) if len(start_args) > 1 else None
+    app_url = "https://wlodek2106-cyber.github.io/Zer0life_ai/"
+    if referral_match:
+        app_url += f"?ref={referral_match.group(1).upper()}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url="https://wlodek2106-cyber.github.io/Zer0life_ai/"))]
+        [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url=app_url))]
     ])
     await message.answer(
         f"Yo! Welcome to <b>Zer0Life Run</b> ⚡️\n\n"
