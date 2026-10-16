@@ -1,4 +1,4 @@
-"""Authenticated Phantom linking, server-side reward ledger, and ZRL payouts."""
+"""Authenticated Solana wallet linking, server-side reward ledger, and payouts."""
 
 import base64
 import hashlib
@@ -406,6 +406,13 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     )
     bp = Blueprint("zerolife_wallet", __name__)
 
+    @bp.after_request
+    def wallet_release_header(response):
+        # Public release marker, including on 401s, enables a deployment check
+        # without obtaining a player's signed Telegram session or balance.
+        response.headers["X-Zer0Life-Wallet-Schema"] = "embedded-merchant-1"
+        return response
+
     def authenticated_user(data):
         return _verify_telegram_init_data(data.get("initData"))
 
@@ -500,6 +507,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 }
                 return jsonify({
                     "success": True,
+                    "telegramId": str(user["id"]),
                     "merchantPaymentsEnabled": True,
                     "merchantRecipient": MERCHANT_SOL_WALLET,
                     "pendingPurchases": merchant.pending(str(user["id"])),
@@ -613,7 +621,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     return _response_error("Wallet verification expired; try again", 400)
                 if not _verify_phantom_signature(challenge["address"], challenge["message"], signature):
                     db.rollback()
-                    return _response_error("Phantom signature could not be verified", 401)
+                    return _response_error("Solana wallet signature could not be verified", 401)
                 _ensure_account(db, user["id"])
                 existing = current_wallet(db, user["id"])
                 if existing and existing != challenge["address"]:
@@ -647,7 +655,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 ).fetchone()
                 address = account["address"] if account else None
                 if not address:
-                    return _response_error("Connect and verify Phantom before depositing", 409)
+                    return _response_error("Activate and verify your Solana wallet before depositing", 409)
                 if db.execute("SELECT 1 FROM wallet_deposits WHERE signature = ?", (signature,)).fetchone():
                     return _response_error("This deposit transaction was already credited", 409)
 
@@ -674,7 +682,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                         transfers.append(int(info.get("lamports", 0)))
             lamports = sum(transfers)
             if lamports <= 0:
-                return _response_error("Transaction does not contain a SOL transfer from the linked Phantom wallet to the Zer0Life pool", 400)
+                return _response_error("Transaction does not contain a SOL transfer from the linked Solana wallet to the Zer0Life pool", 400)
 
             with _connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
@@ -854,7 +862,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     return _response_error("Withdrawal wallet is not linked to this Telegram account", 403)
                 if not _verify_phantom_signature(linked, challenge["message"], signature):
                     db.rollback()
-                    return _response_error("Phantom signature could not be verified", 401)
+                    return _response_error("Solana wallet signature could not be verified", 401)
 
                 asset = "SOL" if challenge["purpose"] == "withdraw_sol" else "ZRL"
                 amount_units = int(challenge["amount_units"] or 0)

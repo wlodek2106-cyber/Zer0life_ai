@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/zerolife-embedded-wallet",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.26.1",
+  "scripts": {
+    "build": "vite build",
+    "test": "node --test tests/*.test.js",
+    "build:site": "pnpm run build && node scripts/build-site.mjs"
+  },
+  "devDependencies": {
+    "@privy-io/react-auth": "3.49.1",
+    "@solana-program/memo": "0.15.0",
+    "@solana-program/system": "0.15.0",
+    "@solana-program/token": "0.17.0",
+    "@solana/kit": "8.5.0",
+    "react": "19.1.10",
+    "react-dom": "19.1.10",
+    "vite": "8.3.4"
+  }
+}

@@ -70,6 +70,43 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.json)
         return response.json
 
+    def test_embedded_wallet_state_uses_verified_telegram_identity_and_separate_balances(self):
+        first = self.state("200")
+        second = self.post("/wallet/state", {"telegramId": "200"}, user="201").json
+        self.assertEqual(first["telegramId"], "200")
+        self.assertEqual(second["telegramId"], "201")
+        self.assertEqual(first["availableZrl"], 25)
+        self.assertEqual(second["availableZrl"], 0)
+        self.assertNotEqual(first["referralCode"], second["referralCode"])
+        self.assertEqual(first["gameSolBalance"], .0005)
+        self.assertEqual(second["gameSolBalance"], 0)
+
+    def test_release_can_be_verified_without_exposing_a_player_session(self):
+        response = self.client.post("/wallet/state", json={})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "embedded-merchant-1")
+        self.assertNotIn("availableZrl", response.json)
+
+    def test_embedded_wallet_link_requires_real_signature_and_cannot_be_stolen_or_rebound(self):
+        key = Keypair()
+        address = str(key.pubkey())
+        challenge = self.post("/wallet/challenge", {"purpose": "link", "address": address}).json
+        proof = base64.b64encode(bytes(key.sign_message(challenge["message"].encode()))).decode()
+        payload = {"nonce": challenge["nonce"], "signature": proof}
+        stolen = self.post("/wallet/link", payload, user="201")
+        self.assertEqual(stolen.status_code, 400)
+        self.assertFalse(self.state("201")["walletAddress"])
+        self.assertEqual(self.post("/wallet/link", payload).status_code, 200)
+        self.assertEqual(self.state()["walletAddress"], address)
+        self.assertEqual(self.state()["availableZrl"], 25)
+        self.assertEqual(self.post("/wallet/link", payload).status_code, 400)
+        other_key = Keypair()
+        replacement = self.post("/wallet/challenge", {"purpose": "link", "address": str(other_key.pubkey())}).json
+        other_proof = base64.b64encode(bytes(other_key.sign_message(replacement["message"].encode()))).decode()
+        refused = self.post("/wallet/link", {"nonce": replacement["nonce"], "signature": other_proof})
+        self.assertEqual(refused.status_code, 409)
+        self.assertEqual(self.state()["walletAddress"], address)
+
     def submit(self, farms=None):
         response = self.post("/wallet/recovery/submit", {"farms": self.farms if farms is None else farms})
         self.assertEqual(response.status_code, 200, response.json)

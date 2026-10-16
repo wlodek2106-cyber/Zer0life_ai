@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Zer0Life Run — embedded wallet isolated verification</title>
+    <style>
+        body { margin:0;padding:14px;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif; }
+        main { max-width:430px;margin:auto; }
+        #fixture-controls { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px; }
+        #fixture-controls button { background:#27341e;color:#d8ffc4;border:1px solid #566e32;border-radius:8px;padding:7px;font-size:12px; }
+        #fixture-note { color:#acb7a1;font-size:11px;line-height:1.4;margin-bottom:10px; }
+    </style>
+</head>
+<body>
+    <main>
+        <p id="fixture-note">Изолированная проверка. Только вымышленные счета. Privy и финансовая сеть не вызываются.</p>
+        <div id="fixture-controls">
+            <button id="fixture-reset">Сбросить тест</button>
+            <button id="fixture-cancel">Отменить следующую подпись</button>
+            <button id="fixture-mismatch">Другая сессия</button>
+        </div>
+        <div id="preview"></div>
+    </main>
+    <script type="module">
+        import { createWalletController } from '../wallet-embedded/src/controller.js';
+        const params = new URLSearchParams(location.search);
+        const outside = params.has('outside');
+        const realBundle = params.has('bundle');
+        const account = { success:true, telegramId:'200', walletAddress:'', availableZrl:25,
+            gameSolBalance:2, dailyWithdrawalRemaining:10000, pendingWithdrawals:[],
+            referralCode:'SYNTHETIC', affiliateLevels:[], farms:[] };
+        window.fixtureCalls = [];
+        window.fixtureAlerts = [];
+        window.fixtureSignatureCancelled = false;
+        window.fixtureUser = '200';
+        window.Telegram = { WebApp: {
+            initData: outside ? '' : 'synthetic-not-a-real-telegram-session',
+            showAlert(text) { window.fixtureAlerts.push(text); document.getElementById('fixture-note').textContent = text; },
+            showConfirm(text, done) { done(window.confirm(text)); },
+        }};
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = async (url, options) => {
+            const target = new URL(url, location.href);
+            if (target.origin === location.origin) return originalFetch(url, options);
+            if (target.origin !== 'https://zer0life-ai-iz5n.onrender.com') throw Error('External provider requests disabled in fixture');
+            const route = target.pathname;
+            const body = JSON.parse(options.body);
+            window.fixtureCalls.push({ route, body });
+            let result = {success:true};
+            if (route === '/wallet/state') result = {...account};
+            else if (route === '/wallet/challenge') result = {success:true,nonce:'synthetic-'+window.fixtureCalls.length,message:'Exact fixture challenge: '+body.purpose};
+            else if (route === '/wallet/link') account.walletAddress='wallet-only-for-200';
+            else if (route === '/wallet/withdraw') result={success:true,status:'processing',txHash:'fixture-not-a-real-transaction'};
+            else if (route === '/wallet/withdrawals/status') result={success:true,status:'confirmed'};
+            else if (route !== '/wallet/legacy') throw Error('Unexpected fixture route');
+            return {ok:true,json:async()=>result};
+        };
+        const html = await (await originalFetch('../dashboard.html')).text();
+        const doc = new DOMParser().parseFromString(html,'text/html');
+        for (const style of doc.querySelectorAll('style')) document.head.appendChild(document.importNode(style,true));
+        document.getElementById('preview').appendChild(document.importNode(doc.getElementById('wallet-modal-body'),true));
+        document.getElementById('logout-btn').hidden=true;
+        document.getElementById('deposit-btn').hidden=true;
+        const root=document.createElement('div');root.id='embedded-wallet-root';document.body.appendChild(root);
+        const bridge=createWalletController({onChange:()=>window.dispatchEvent(new Event('zerolife:embedded-wallet'))});
+        const sdk={
+            ready:true,authenticated:true,walletsReady:true,
+            user:{telegram:{telegramUserId:'200'},linkedAccounts:[]},wallets:[],
+            async createWallet(){
+                window.fixtureCalls.push({create:true,user:window.fixtureUser});
+                sdk.user={telegram:{telegramUserId:window.fixtureUser},linkedAccounts:[{type:'wallet',chainType:'solana',walletClientType:'privy',address:'wallet-only-for-200'}]};
+                sdk.wallets=[{address:'wallet-only-for-200',standardWallet:{isPrivyWallet:true}}];
+                bridge.update({...sdk});
+            },
+            async signMessage(input){
+                window.fixtureCalls.push({sign:new TextDecoder().decode(input.message)});
+                const accepted=!window.fixtureSignatureCancelled && window.confirm('Тестовая подпись. Подтвердить?');
+                window.fixtureSignatureCancelled=false;
+                if(!accepted) throw Error('Подпись отменена. Средства не отправлены.');
+                return {signature:new Uint8Array(64).fill(8)};
+            },
+            async exportWallet(){window.fixtureCalls.push({export:true});window.Telegram.WebApp.showAlert('Тест: окно резервной копии. Настоящих ключей нет.');},
+            async logout(){window.fixtureCalls.push({logout:true});},
+        };
+        if(!outside){window.embeddedWallet=bridge;bridge.update(sdk);}
+        const script=document.createElement('script');script.src='../wallet.js';
+        await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=reject;document.body.appendChild(script);});
+        document.getElementById('withdraw-zrl-btn').onclick=()=>window.secureWallet.withdraw('ZRL');
+        document.getElementById('withdraw-sol-btn').onclick=()=>window.secureWallet.withdraw('SOL');
+        document.getElementById('fixture-reset').onclick=()=>location.reload();
+        document.getElementById('fixture-cancel').onclick=()=>{window.fixtureSignatureCancelled=true;};
+        document.getElementById('fixture-mismatch').onclick=()=>{
+            window.fixtureUser='201';
+            bridge.update({...sdk,user:{telegram:{telegramUserId:'201'},linkedAccounts:[]}});
+        };
+        if(realBundle){
+            if(!outside)throw Error('Bundle smoke check requires outside mode; no provider authentication allowed.');
+            await import('../generated-artifacts/wallet-sdk/embedded-wallet.js');
+            window.fixtureBundleLoaded=true;
+        }
+        window.fixtureReady=true;
+    </script>
+</body>
+</html>

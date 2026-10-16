@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Zer0Life Run — isolated Phantom handoff preview</title>
+    <title>Zer0Life Run — retired Phantom handoff fixture</title>
     <style>
         body { margin:0;padding:18px;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif; }
         main { max-width:430px;margin:auto;padding:18px;border-radius:24px;border:1px solid #3a482c;background:linear-gradient(135deg,#151c13,#0b100c); }
@@ -12,7 +12,7 @@
 </head>
 <body>
     <main>
-        <p class="note">Тестовый экран подключения. Реальные счета не используются; внешние переходы отключены.</p>
+        <p class="note">Исторический тест Phantom. В актуальном Wallet внешнее подключение удалено. Реальные счета не используются.</p>
         <div id="preview"></div>
     </main>
     <script>
@@ -42,6 +42,7 @@
             const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
             for (const style of doc.querySelectorAll('style')) document.head.appendChild(document.importNode(style, true));
             document.getElementById('preview').appendChild(document.importNode(doc.getElementById('wallet-modal-body'), true));
+            if (!doc.getElementById('phantom-mobile-handoff')) return;
             const script = document.createElement('script');
             script.src = '../phantom-mobile.js';
             script.onload = async () => { await window.phantomMobile.start('link'); };

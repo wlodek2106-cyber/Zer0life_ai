@@ -164,17 +164,20 @@ test('SOL and ZRL approvals retain the existing signed withdrawal route, with no
     }
 });
 
-test('dashboard removes the whole archive panel and keeps Phantom, balances, partners and withdrawals', () => {
+test('dashboard replaces Phantom handoff with embedded wallet while retaining balances and withdrawals', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     for (const id of ['recovery-balances', 'recovery-admin-panel', 'recovery-admin-load', 'recovery-admin-apply']) {
         assert(!html.includes('id="' + id + '"'));
     }
-    for (const id of ['phantom-mobile-handoff', 'phantom-native-open', 'phantom-universal-open',
-        'connect-phantom-btn', 'wallet-withdrawal-status', 'pending-withdrawals', 'affiliate-levels',
+    for (const id of ['embedded-wallet-root', 'setup-embedded-wallet-btn', 'wallet-copy-address-btn',
+        'wallet-export-btn', 'wallet-withdrawal-status', 'pending-withdrawals', 'affiliate-levels',
         'withdraw-sol-btn', 'withdraw-zrl-btn', 'deposit-btn']) {
         assert(html.includes('id="' + id + '"'), 'Missing retained wallet element: ' + id);
     }
-    assert(html.includes('phantom-mobile.js?v=phantom-native-handoff-1'));
+    assert(!html.includes('id="connect-phantom-btn"'));
+    assert(!html.includes('id="phantom-mobile-handoff"'));
+    assert(!html.includes('src="./phantom-mobile.js?'));
+    assert(html.includes('wallet-embedded/embedded-wallet.js?v=embedded-wallet-merchant-1'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));

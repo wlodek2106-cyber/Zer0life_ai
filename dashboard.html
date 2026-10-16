@@ -2291,18 +2291,16 @@
             </div>
             <div id="wallet-modal-body">
                 <div style="text-align: center; margin-bottom: 16px; padding: 14px; border: 1px solid rgba(168,240,122,.22); border-radius: 16px; background: linear-gradient(145deg, rgba(168,240,122,.08), rgba(10,14,10,.7));">
-                    <div id="phantom-link-label" style="font-size: 13px; color: #d8ffc4; font-weight: 800;">Phantom not connected</div>
-                    <div id="phantom-linked-address" style="font-size: 10px; color: #8a8d98; margin: 7px 0; word-break: break-all;">Link your wallet to view balances and withdraw</div>
-                    <button class="wallet-action-btn" id="connect-phantom-btn" style="width:100%; background:linear-gradient(135deg,#d8ff62,#9de83e) !important; color:#071005 !important; font-weight:900;">Connect Phantom</button>
-                    <div id="phantom-mobile-handoff" hidden style="margin-top:12px;text-align:left;">
-                        <p style="font-size:12px;line-height:1.5;color:#d8ffc4;">Подключение готово. Нажмите ниже, чтобы открыть установленное приложение Phantom. Подтвердите подключение и подпись, затем вернитесь в Telegram — баланс обновится после проверки сервером.</p>
-                        <a id="phantom-native-open" class="wallet-action-btn" style="display:block;text-align:center;text-decoration:none;margin:8px 0;background:#c6ff55 !important;color:#071005 !important;font-weight:900;">Открыть приложение Phantom</a>
-                        <details style="font-size:11px;color:#b5bdad;line-height:1.5;">
-                            <summary>Phantom не открылся?</summary>
-                            <p>Убедитесь, что Phantom установлен. Если Telegram блокирует прямой переход, используйте системную ссылку. Она может открыть браузер перед переходом в кошелёк.</p>
-                            <a id="phantom-universal-open" target="_blank" rel="noopener noreferrer" style="color:#c6ff55;">Открыть через системную ссылку</a>
-                        </details>
+                    <div style="font-size:10px;letter-spacing:2px;color:#b5f33f;margin-bottom:10px;">ZER0LIFE RUN · PERSONAL WALLET</div>
+                    <div id="embedded-wallet-label" style="font-size:13px;color:#d8ffc4;font-weight:800;">Встроенный Solana-кошелёк</div>
+                    <div id="embedded-wallet-address" style="font-size:11px;color:#bbc4b1;margin:9px 0;overflow-wrap:anywhere;">Личный адрес для вашего Telegram-аккаунта</div>
+                    <p id="embedded-wallet-status" role="status" aria-live="polite" style="font-size:11px;line-height:1.5;color:#b5bdad;">Загрузка безопасного входа через Telegram…</p>
+                    <button class="wallet-action-btn" id="setup-embedded-wallet-btn" disabled style="width:100%;background:linear-gradient(135deg,#d8ff62,#9de83e) !important;color:#071005 !important;font-weight:900;">Загрузка кошелька…</button>
+                    <div id="embedded-wallet-tools" hidden style="margin-top:10px;">
+                        <button class="wallet-action-btn" id="wallet-copy-address-btn" style="width:100%;margin-bottom:8px;">Скопировать личный адрес</button>
+                        <button class="wallet-action-btn" id="wallet-export-btn" style="width:100%;font-size:11px;">Резервная копия кошелька</button>
                     </div>
+                    <p style="font-size:10px;line-height:1.5;color:#8a9683;margin-bottom:0;">Баланс игры и средства в блокчейне показаны отдельно. Создание кошелька не переводит средства автоматически.</p>
                 </div>
 
                 <div id="wallet-withdrawal-status" role="status" style="font-size:11px;line-height:1.5;color:#b5bdad;margin:10px 0;"></div>
@@ -2352,7 +2350,7 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(120,117,255,.15); color: #aaa8ff;">◎</div>
                             <div>
-                                <div class="asset-name">Phantom SOL</div>
+                                <div class="asset-name">Личный кошелёк · SOL</div>
                                 <div class="asset-sub">On-chain balance in your wallet</div>
                             </div>
                         </div>
@@ -2362,7 +2360,7 @@
                         <div class="asset-left">
                             <div class="asset-icon" style="background: rgba(168,240,122,.12); color: #a8f07a;">Z</div>
                             <div>
-                                <div class="asset-name">Phantom ZRL</div>
+                                <div class="asset-name">Личный кошелёк · ZRL</div>
                                 <div class="asset-sub">ZRL already held on-chain</div>
                             </div>
                         </div>
@@ -2426,7 +2424,6 @@
                 <span class="modal-title">⚡ VIP Boosters Store (Merchant Flow)</span>
                 <button class="close-modal" id="close-boosters">&times;</button>
             </div>
-            
             <p style="font-size:11px;color:#a8f07a;overflow-wrap:anywhere;">
                 Оплата Boots → 57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db
             </p>
@@ -5107,7 +5104,8 @@
     </script>
     <script src="./legacy-farms.js?v=farming-reconciliation-2"></script>
     <script src="./recovery-actions.js?v=telegram-confirm-3"></script>
-    <script src="./phantom-mobile.js?v=phantom-native-handoff-1"></script>
-    <script src="./wallet.js?v=merchant-payments-1"></script>
+    <div id="embedded-wallet-root"></div>
+    <script src="./wallet.js?v=embedded-wallet-merchant-1"></script>
+    <script type="module" src="./wallet-embedded/embedded-wallet.js?v=embedded-wallet-merchant-1" onerror="window.dispatchEvent(new Event('zerolife:wallet-sdk-error'))"></script>
 </body>
 </html>
