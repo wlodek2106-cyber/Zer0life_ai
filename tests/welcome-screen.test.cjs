@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
@@ -20,12 +20,12 @@ test("Get Started keeps the Telegram launch and referral handoff", () => {
   assert.match(html, /searchParams\.set\('ref', referralMatch\[1\]\.toUpperCase\(\)\)/);
 });
 
-test("welcome uses original 3D track art without a mascot", () => {
-  assert.match(html, /<svg class="zl-art" viewBox="0 0 440 590"/);
-  assert.match(html, /Sculpted three-dimensional running track in electric lime/);
-  assert.match(html, /id="zl-track-top"/);
-  assert.match(html, /id="zl-runner"/);
-  assert.doesNotMatch(html, /zerolife-run-race-mascot|racing cat|<img\b/i);
+test("welcome uses realistic runner artwork without a cartoon mascot", () => {
+  assert.match(html, /<img class="zl-art" src="\.\/assets\/welcome-runner-3d\.jpg"/);
+  assert.match(html, /alt="A runner on a futuristic illuminated track"/);
+  assert.match(html, /object-fit:\s*cover/);
+  assert.equal(existsSync(join(__dirname, "..", "assets", "welcome-runner-3d.jpg")), true);
+  assert.doesNotMatch(html, /zerolife-run-race-mascot|racing cat|<svg class="zl-art"/i);
 });
 
 test("welcome supports reduced motion and visible keyboard focus", () => {
