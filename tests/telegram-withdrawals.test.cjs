@@ -8,12 +8,20 @@ const address = '11111111111111111111111111111111';
 
 async function fixture(options = {}) {
     const nodes = new Map();
-    for (const id of ['withdraw-zrl-btn', 'withdraw-sol-btn', 'asset-zrl-bal', 'asset-sol-bal']) {
-        nodes.set(id, { textContent: '', disabled: false, addEventListener() {} });
+    const timers = [];
+    const makeNode = () => ({
+        textContent: '', disabled: false, style: {}, children: [],
+        addEventListener() {}, setAttribute() {},
+        replaceChildren(...children) { this.children = children; },
+        appendChild(child) { this.children.push(child); },
+    });
+    for (const id of ['withdraw-zrl-btn', 'withdraw-sol-btn', 'asset-zrl-bal', 'asset-sol-bal',
+        'wallet-trusted-destination', 'pending-withdrawals']) {
+        nodes.set(id, makeNode());
     }
     const calls = [], alerts = [];
     const answers = options.answers || ['1', address, '123456'];
-    const state = { success: true, telegramId: '200', withdrawalMode: 'telegram_otp_v1',
+    const state = { success: true, telegramId: '200', withdrawalMode: 'trusted_destination_v2',
         walletAddress: '', availableZrl: 25, gameSolBalance: 2, farms: [],
         pendingWithdrawalApprovals: [], ...options.state };
     const window = {
@@ -24,8 +32,14 @@ async function fixture(options = {}) {
         crypto: { randomUUID: () => 'synthetic-request-123456' },
         showCustomPrompt(title, detail, placeholder, done) { calls.push({ prompt: title }); done(answers.shift() ?? null); },
     };
-    const context = { window, document: { getElementById: id => nodes.get(id) || null },
-        console: { warn() {} }, setTimeout() {},
+    const context = { window, document: {
+        getElementById: id => nodes.get(id) || null,
+        createElement: makeNode,
+    },
+        console: { warn() {} }, setTimeout(callback, delay) {
+            timers.push({ callback, delay });
+            return timers.length;
+        }, clearTimeout() {},
         async fetch(url, settings) {
             const route = new URL(url).pathname, body = JSON.parse(settings.body);
             calls.push({ route, body });
@@ -33,11 +47,16 @@ async function fixture(options = {}) {
             let ok = true;
             if (route === '/wallet/state') result = { ...state };
             if (route === '/wallet/withdrawals/request') {
+                if (options.autoWithdraw) {
+                    result = { success: true, status: 'submitted', txHash: 'synthetic-tx' };
+                    state.pendingWithdrawals = [{ nonce: 'auto-nonce', asset: body.asset, status: 'submitted' }];
+                } else {
                 result = { success: true, nonce: 'server-nonce', address: body.address, amount: body.amount, asset: body.asset };
-                state.pendingWithdrawalApprovals = [result];
+                    state.pendingWithdrawalApprovals = [result];
+                }
             }
             if (route === '/wallet/withdrawals/confirm') {
-                if (options.rejectCode) { ok = false; result = { error: 'Неверный код подтверждения.' }; }
+                if (options.rejectCode) { ok = false; result = { error: 'Incorrect verification code.' }; }
                 else state.pendingWithdrawalApprovals = [];
             }
             if (route === '/wallet/withdrawals/cancel') state.pendingWithdrawalApprovals = [];
@@ -47,7 +66,7 @@ async function fixture(options = {}) {
     vm.runInNewContext(source, context);
     await new Promise(resolve => setImmediate(resolve));
     calls.length = 0;
-    return { api: window.secureWallet, state, calls, alerts, nodes, answers, window };
+    return { api: window.secureWallet, state, calls, alerts, nodes, answers, timers, window };
 }
 
 test('both assets withdraw without creating a wallet, with explicit address and Telegram code', async () => {
@@ -64,6 +83,35 @@ test('both assets withdraw without creating a wallet, with explicit address and 
         assert.equal(f.state.availableZrl, 25);
         assert.equal(f.state.gameSolBalance, 2);
     }
+});
+
+test('a saved destination sends subsequent withdrawals without another Telegram code', async () => {
+    const f = await fixture({
+        state: { trustedWithdrawalAddress: address },
+        autoWithdraw: true,
+    });
+    await f.api.withdraw('ZRL');
+    assert.equal(f.calls.filter(x => x.route === '/wallet/withdrawals/request').length, 1);
+    assert.equal(f.calls.filter(x => x.route === '/wallet/withdrawals/confirm').length, 0);
+    assert(f.alerts.some(text => text.includes('Withdrawal submitted to Solana')));
+    assert(f.nodes.get('wallet-trusted-destination').textContent.includes('no repeat code'));
+});
+
+test('pending transfers show status only and refresh automatically without a manual button', async () => {
+    const f = await fixture({
+        state: {
+            pendingWithdrawals: [{
+                nonce: 'pending-zrl', asset: 'ZRL', amount: 2000, address,
+                txHash: 'synthetic-signature', status: 'submitted',
+            }],
+        },
+    });
+    const pendingRow = f.nodes.get('pending-withdrawals').children[0];
+    assert.equal(pendingRow.children.length, 1);
+    assert(pendingRow.children[0].textContent.includes('ZRL 2000.00'));
+    assert(pendingRow.children[0].textContent.includes('awaiting final Solana confirmation'));
+    assert.equal(f.timers[0].delay, 15000);
+    assert(!f.calls.some(x => x.route === '/wallet/withdrawals/status'));
 });
 
 test('cancelling amount, address, or destination confirmation never requests payment', async () => {
@@ -87,7 +135,7 @@ test('cancelled OTP stays pending and can resume after reload without another re
 test('wrong code is shown and the server-owned request remains available', async () => {
     const f = await fixture({ rejectCode: true });
     await f.api.withdraw('SOL');
-    assert(f.alerts.includes('Неверный код подтверждения.'));
+    assert(f.alerts.includes('Incorrect verification code.'));
     assert.equal(f.state.pendingWithdrawalApprovals.length, 1);
 });
 
@@ -117,5 +165,5 @@ test('switching Telegram profile while entering an amount prevents a withdrawal 
     };
     await f.api.withdraw('SOL');
     assert(!f.calls.some(x => x.route === '/wallet/withdrawals/request'));
-    assert(f.alerts.some(text => text.includes('Профиль сменился')));
+    assert(f.alerts.some(text => text.includes('Your Telegram profile changed')));
 });

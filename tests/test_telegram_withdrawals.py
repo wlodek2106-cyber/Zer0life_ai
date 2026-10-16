@@ -60,7 +60,7 @@ class TelegramWithdrawals(unittest.TestCase):
         })
 
     def code(self):
-        return re.search(r"Код: (\d{6})", self.messages[-1]["text"]).group(1)
+        return re.search(r"Code: (\d{6})", self.messages[-1]["text"]).group(1)
 
     def confirm(self, nonce, code=None, **kwargs):
         return self.post("/wallet/withdrawals/confirm", {"nonce": nonce, "code": code or self.code()}, **kwargs)
@@ -69,11 +69,12 @@ class TelegramWithdrawals(unittest.TestCase):
         for route in ["request", "confirm", "cancel"]:
             response = self.client.post("/wallet/withdrawals/" + route, json={})
             self.assertEqual(response.status_code, 401)
-            self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-withdrawals-1")
+            self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-withdrawals-2")
         self.assertEqual(self.messages, [])
 
     def test_both_assets_are_signed_by_treasury_not_by_a_player_wallet(self):
         for asset in ["SOL", "ZRL"]:
+            self.recipient = Keypair()
             response = self.request(asset=asset, event="synthetic-approval-" + asset)
             self.assertEqual(response.status_code, 200, response.json)
             nonce = response.json["nonce"]
@@ -99,6 +100,40 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(len(state["pendingWithdrawalApprovals"]), 1)
         self.assertEqual(self.chain.sent, [])
 
+    def test_confirmed_address_skips_future_codes_and_new_address_requires_otp(self):
+        state = self.post("/wallet/state").json
+        self.assertEqual(state["withdrawalMode"], "trusted_destination_v2")
+        self.assertIsNone(state["trustedWithdrawalAddress"])
+
+        first = self.request(asset="ZRL", amount="1", event="trusted-address-first")
+        self.assertEqual(first.status_code, 200, first.json)
+        self.assertEqual(len(self.messages), 1)
+        self.assertEqual(self.confirm(first.json["nonce"]).status_code, 200)
+        with service._connect(self.path) as db:
+            trusted = db.execute(
+                "SELECT trusted_withdrawal_address FROM wallet_accounts WHERE telegram_id='200'"
+            ).fetchone()["trusted_withdrawal_address"]
+        self.assertEqual(trusted, str(self.recipient.pubkey()))
+
+        repeat = self.request(asset="SOL", amount="0.5", event="trusted-address-repeat")
+        self.assertEqual(repeat.status_code, 200, repeat.json)
+        self.assertEqual(repeat.json["status"], "submitted")
+        self.assertEqual(len(self.messages), 1)
+        self.assertEqual(len(self.chain.sent), 2)
+
+        replacement = Keypair()
+        changed = self.post("/wallet/withdrawals/request", {
+            "asset": "ZRL", "amount": "1", "address": str(replacement.pubkey()),
+            "requestId": "trusted-address-change",
+        })
+        self.assertEqual(changed.status_code, 200, changed.json)
+        self.assertIn("nonce", changed.json)
+        self.assertNotIn("status", changed.json)
+        self.assertEqual(len(self.messages), 2)
+        self.assertEqual(self.confirm(changed.json["nonce"]).status_code, 200)
+        state = self.post("/wallet/state").json
+        self.assertEqual(state["trustedWithdrawalAddress"], str(replacement.pubkey()))
+
     def test_wrong_codes_count_and_lock_without_debiting(self):
         nonce = self.request().json["nonce"]
         wrong = "000000" if self.code() != "000000" else "111111"
@@ -106,6 +141,7 @@ class TelegramWithdrawals(unittest.TestCase):
             self.assertEqual(self.confirm(nonce, wrong).status_code, 403)
         self.assertEqual(self.confirm(nonce).status_code, 429)
         self.assertEqual(self.post("/wallet/state").json["gameSolBalance"], 2)
+        self.assertIsNone(self.post("/wallet/state").json["trustedWithdrawalAddress"])
         self.assertEqual(self.chain.sent, [])
 
     def test_cross_account_code_and_request_cannot_be_used(self):
@@ -141,6 +177,7 @@ class TelegramWithdrawals(unittest.TestCase):
 
     def test_same_amount_recipient_and_blockhash_have_unique_transfer_signatures(self):
         for index in range(2):
+            self.recipient = Keypair()
             nonce = self.request(amount="0.1", event=f"synthetic-repeat-{index:04d}").json["nonce"]
             self.assertEqual(self.confirm(nonce).status_code, 200)
         self.assertNotEqual(self.chain.sent[0], self.chain.sent[1])
@@ -149,6 +186,7 @@ class TelegramWithdrawals(unittest.TestCase):
         nonce = self.request(asset="ZRL", amount="10000").json["nonce"]
         self.assertEqual(self.confirm(nonce).status_code, 200)
         self.assertEqual(self.request(asset="ZRL", amount="1", event="synthetic-over-limit").status_code, 429)
+        self.recipient = Keypair()
         nonce = self.request(asset="SOL", event="synthetic-cap-sol").json["nonce"]
         with service._connect(self.path) as db:
             db.execute("UPDATE wallet_accounts SET sol_lamports=0 WHERE telegram_id='200'")
@@ -219,6 +257,7 @@ class TelegramWithdrawals(unittest.TestCase):
 
     def test_finalized_failure_refunds_each_asset_once_but_processed_error_does_not(self):
         for asset in ["SOL", "ZRL"]:
+            self.recipient = Keypair()
             nonce = self.request(asset=asset, event="synthetic-fail-" + asset).json["nonce"]
             self.assertEqual(self.confirm(nonce).status_code, 200)
             outcome = {"err": {"InstructionError": [0, "synthetic"]}, "confirmationStatus": "processed"}

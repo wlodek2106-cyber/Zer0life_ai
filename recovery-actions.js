@@ -15,10 +15,10 @@
         const farms = raw === null ? [] : JSON.parse(raw);
         const result = await api('/wallet/recovery/submit', { farms });
         setStatus(result.status === 'nothing_pending'
-            ? 'Нет неперенесённых записей. Сохранённые оригиналы остаются на устройстве.'
+            ? 'No records are waiting for recovery. The original copies remain on the device.'
             : result.recovery?.status === 'approved'
-                ? 'Архив уже перенесён на основной баланс.'
-                : 'Снимок архива сохранён на сервере. Перенос подтверждает владелец проекта.');
+                ? 'The archive has already been moved to the main balance.'
+                : 'The archive snapshot is saved on the server. The project owner must approve the recovery.');
         return result;
     }
 
@@ -36,17 +36,17 @@
                 const row = document.createElement('div');
                 row.style.cssText = 'padding:10px;border:1px solid #34432b;border-radius:12px;margin:8px 0;font-size:11px;line-height:1.5;';
                 const title = document.createElement('strong');
-                title.textContent = `${record.username || 'Игрок'} · ${record.telegramId}`;
+                title.textContent = `${record.username || 'Player'} · ${record.telegramId}`;
                 const values = document.createElement('div');
-                values.textContent = `К возврату: ${Number(record.totalZrl).toFixed(2)} ZRL и ${Number(record.totalSol).toFixed(9)} SOL. Старых ферм: ${record.farmCount}.`;
+                values.textContent = `To return: ${Number(record.totalZrl).toFixed(2)} ZRL and ${Number(record.totalSol).toFixed(9)} SOL. Legacy farms: ${record.farmCount}.`;
                 const note = document.createElement('div');
-                note.textContent = `Возврат вкладов ферм: ${Number(record.farmZrl).toFixed(2)} ZRL и ${Number(record.farmSol).toFixed(9)} SOL. Неполученный доход: +${Number(record.farmYieldZrl).toFixed(6)} ZRL.${record.yieldPendingCount ? ` Для ${record.yieldPendingCount} позиций нет подтверждённой ставки: их доход остаётся на сверке, не считается нулевым.` : ''}`;
+                note.textContent = `Farm deposit refunds: ${Number(record.farmZrl).toFixed(2)} ZRL and ${Number(record.farmSol).toFixed(9)} SOL. Unclaimed income: +${Number(record.farmYieldZrl).toFixed(6)} ZRL.${record.yieldPendingCount ? ` ${record.yieldPendingCount} position(s) have no verified rate; income remains under review and is not treated as zero.` : ''}`;
                 row.append(title, values, note);
                 list.appendChild(row);
             });
             node('recovery-admin-apply').disabled = snapshots.length === 0;
-            setStatus(snapshots.length ? `Готово к проверке заявок: ${snapshots.length}. Подтверждение разрешит тратить и выводить указанные суммы.`
-                : 'Нет заявок для переноса. Игроку нужно открыть обновлённое приложение на устройстве со старой историей.');
+            setStatus(snapshots.length ? `${snapshots.length} recovery request(s) are ready for review. Approval makes the listed amounts spendable and withdrawable.`
+                : 'No recovery requests are waiting. The player must open the updated app on the device with the legacy history.');
         } catch (error) {
             setStatus(error.message);
         } finally {
@@ -68,9 +68,9 @@
         let credited = false;
         try {
             // Telegram's real showConfirm/showPopup rejects messages >256 UTF-16 units.
-            const approved = await confirm(`Вернуть ${zrl.toFixed(6)} ZRL и ${sol.toFixed(9)} SOL (${frozen.length} игроков)? Уже выплаченное исключено. Подтверждение разрешит тратить и выводить реальные средства проекта.`);
+            const approved = await confirm(`Restore ${zrl.toFixed(6)} ZRL and ${sol.toFixed(9)} SOL for ${frozen.length} players? Previously paid amounts are excluded. Approval makes real project funds spendable and withdrawable.`);
             if (!approved) {
-                setStatus('Подтверждение отменено. Балансы не изменены.');
+                setStatus('Approval cancelled. Balances were not changed.');
                 return;
             }
             const result = await api('/wallet/recovery/admin/apply', { requests: frozen });
@@ -78,13 +78,13 @@
             snapshots = [];
             node('recovery-admin-list').replaceChildren();
             await window.secureWallet.refresh();
-            setStatus(`Перенос выполнен: ${result.receipts.length} счетов. Повторное подтверждение не начислит суммы ещё раз. Для вывода подключите Phantom и подтвердите подпись.`);
+            setStatus(`Recovery completed for ${result.receipts.length} account(s). Repeating this action will not credit them again. Withdrawals are available from Wallet.`);
         } catch (error) {
             setStatus(credited
-                ? 'Перенос выполнен, но не удалось обновить экран. Откройте Wallet заново — повторное начисление не требуется.'
+                ? 'Recovery completed, but the screen could not be refreshed. Reopen Wallet; do not submit recovery again.'
                 : error.message === 'WebAppPopupOpened'
-                    ? 'В Telegram уже открыто другое окно. Закройте его и нажмите подтверждение ещё раз.'
-                    : `Не удалось подтвердить перенос: ${error.message}. Балансы не изменены, если сервер ещё не принял запрос. При сетевой ошибке обновите Wallet перед повтором.`);
+                    ? 'Another Telegram dialog is open. Close it and try again.'
+                    : `Could not approve recovery: ${error.message}. Balances remain unchanged unless the server accepted the request. If the network timed out, refresh Wallet before retrying.`);
         } finally {
             submitting = false;
             if (applyButton) applyButton.disabled = snapshots.length === 0;

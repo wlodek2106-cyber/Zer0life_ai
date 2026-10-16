@@ -1,6 +1,6 @@
-const TELEGRAM_ERROR = 'Откройте Zer0Life Run внутри Telegram. Вход в кошелёк ещё не завершён.';
-const ACCOUNT_ERROR = 'Аккаунт кошелька не совпадает с Telegram-профилем. Выйдите из кошелька и откройте мини-приложение заново.';
-const ADDRESS_ERROR = 'К профилю уже привязан другой адрес. Автоматическая замена запрещена; балансы сохранены.';
+const TELEGRAM_ERROR = 'Open Zer0Life Run inside Telegram. Wallet sign-in is not complete yet.';
+const ACCOUNT_ERROR = 'The wallet account does not match your Telegram profile. Sign out of the wallet and reopen the mini app.';
+const ADDRESS_ERROR = 'A different address is already linked to this profile. Automatic replacement is disabled; balances are safe.';
 
 export function createWalletController({ onChange = () => {}, timeoutMs = 30000 } = {}) {
     let sdk = {};
@@ -27,7 +27,7 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
     }
 
     function assertIdentity(expectedId) {
-        if (!expectedId) throw new Error('Сначала загрузите подтверждённый профиль с сервера.');
+        if (!expectedId) throw new Error('Load the verified profile from the server first.');
         if (!sdk.ready || !sdk.authenticated || !sdk.walletsReady) throw new Error(TELEGRAM_ERROR);
         if (String(sdk.user?.telegram?.telegramUserId || '') !== String(expectedId)) {
             throw new Error(ACCOUNT_ERROR);
@@ -35,12 +35,12 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
     }
 
     function waitUntil(predicate) {
-        if (disposed) return Promise.reject(new Error('Кошелёк закрыт.'));
+        if (disposed) return Promise.reject(new Error('The wallet is closed.'));
         if (predicate()) return Promise.resolve();
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => finish(new Error(TELEGRAM_ERROR)), timeoutMs);
             const check = () => {
-                if (disposed) finish(new Error('Кошелёк закрыт.'));
+                if (disposed) finish(new Error('The wallet is closed.'));
                 else if (predicate()) finish();
             };
             function finish(error) {
@@ -54,7 +54,7 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
     }
 
     async function readyFor(expectedId) {
-        if (!expectedId) throw new Error('Сначала загрузите подтверждённый профиль с сервера.');
+        if (!expectedId) throw new Error('Load the verified profile from the server first.');
         if (sdk.ready && sdk.authenticated
             && String(sdk.user?.telegram?.telegramUserId || '') !== String(expectedId)) {
             throw new Error(ACCOUNT_ERROR);
@@ -84,7 +84,7 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
         return address;
     }
 
-    async function signMessage({ message, address, telegramId, title = 'Подтвердите подпись' }) {
+    async function signMessage({ message, address, telegramId, title = 'Approve signature' }) {
         await readyFor(telegramId);
         const signer = wallet();
         if (!address || signer?.address !== address) throw new Error(ADDRESS_ERROR);
@@ -95,7 +95,7 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
         });
         assertIdentity(telegramId);
         if (wallet()?.address !== address || result?.signature?.length !== 64) {
-            throw new Error('Адрес изменился или подпись не получена. Перевод не отправлен.');
+            throw new Error('The address changed or no signature was received. No transfer was sent.');
         }
         return result.signature;
     }
@@ -110,8 +110,8 @@ export function createWalletController({ onChange = () => {}, timeoutMs = 30000 
             await sdk.exportWallet({ address });
         },
         async resetSession() {
-            if (creation) throw new Error('Дождитесь завершения создания кошелька.');
-            if (typeof sdk.logout !== 'function') throw new Error('Сервис входа ещё загружается.');
+            if (creation) throw new Error('Wait for wallet creation to finish.');
+            if (typeof sdk.logout !== 'function') throw new Error('The sign-in service is still loading.');
             await sdk.logout();
         },
         update(next) {

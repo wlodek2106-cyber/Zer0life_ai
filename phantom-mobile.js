@@ -14,13 +14,13 @@
         const url = new URL(pending.url);
         if (!['https://phantom.com', 'https://phantom.app'].includes(url.origin)
             || url.username || url.password || url.hash || url.pathname !== '/ul/v1/connect') {
-            throw new Error('Сервер вернул неподдерживаемую ссылку Phantom. Подключение не открыто.');
+            throw new Error('The server returned an unsupported Phantom link. The connection was not opened.');
         }
         const panel = document.getElementById('phantom-mobile-handoff');
         const native = document.getElementById('phantom-native-open');
         const universal = document.getElementById('phantom-universal-open');
         if (!panel || !native || !universal) {
-            throw new Error('Перезагрузите мини-приложение через меню Telegram, чтобы обновить подключение Phantom.');
+            throw new Error('Reload the mini app from the Telegram menu to update Phantom connection support.');
         }
         // A real anchor tap preserves iOS user activation. Never auto-open a
         // browser after awaiting an API request, and never use Phantom Browse.
@@ -36,7 +36,7 @@
         }
     }
     async function start(purpose, nonce) {
-        if (!key()) throw new Error('Откройте приложение из Telegram.');
+        if (!key()) throw new Error('Open the app from Telegram.');
         if (starting) return;
         starting = true;
         try {
@@ -45,19 +45,19 @@
             if (pending?.expiresAt * 1000 > Date.now() && pending.url
                 && pending.purpose === purpose && pending.nonce === nonce) {
                 if (pending.stage === 'signing') {
-                    status('Подключение уже одобрено. Завершите подпись в Phantom и вернитесь в Telegram.');
+                    status('The connection was approved. Finish signing in Phantom, then return to Telegram.');
                     schedule();
                     return;
                 }
                 handoff(pending);
-                status('Нажмите «Открыть приложение Phantom», затем подтвердите подключение и подпись.');
+                status('Tap “Open Phantom app,” then approve the connection and signature.');
                 schedule();
                 return;
             }
             const result = await api('/wallet/mobile/start', { purpose, nonce });
             if (!result.sessionId || !Number.isFinite(result.expiresAt)
                 || result.expiresAt * 1000 <= Date.now()) {
-                throw new Error('Не удалось подготовить действующее подключение Phantom. Попробуйте ещё раз.');
+                throw new Error('Could not prepare a valid Phantom connection. Please try again.');
             }
             const next = { id: result.sessionId, purpose, nonce, expiresAt: result.expiresAt, url: result.url };
             handoff(next);
@@ -65,9 +65,9 @@
                 localStorage.setItem(key(), JSON.stringify(next));
             } catch {
                 clearHandoff();
-                throw new Error('Не удалось сохранить подключение на устройстве. Phantom не открыт; баланс не изменён.');
+                throw new Error('Could not save the connection on this device. Phantom was not opened; your balance was not changed.');
             }
-            status('Подключение готово. Нажмите «Открыть приложение Phantom» ниже — автоматический переход в браузер отключён.');
+            status('Ready to connect. Tap “Open Phantom app” below. Automatic browser redirects are disabled.');
             schedule();
         } finally {
             starting = false;
@@ -87,36 +87,36 @@
             if (pending.expiresAt * 1000 < Date.now()) {
                 localStorage.removeItem(key());
                 clearHandoff();
-                status('Подтверждение Phantom истекло. Можно начать подключение или вывод заново.');
+                status('The Phantom approval expired. You can start the connection or withdrawal again.');
                 return;
             }
             const result = await api('/wallet/mobile/status', { sessionId: pending.id });
             if (result.status === 'failed') {
                 localStorage.removeItem(key());
                 clearHandoff();
-                status(result.error || 'Подтверждение Phantom отменено.');
+                status(result.error || 'Phantom approval was cancelled.');
                 return;
             }
             if (result.status !== 'complete') {
                 if (result.status === 'signing') {
                     localStorage.setItem(key(), JSON.stringify({ ...pending, stage: 'signing' }));
                     clearHandoff();
-                    status('Phantom принял подключение. Завершите подпись в Phantom, затем вернитесь в Telegram.');
+                    status('Phantom accepted the connection. Finish signing in Phantom, then return to Telegram.');
                 } else if (pending.url) handoff(pending);
                 schedule();
                 return;
             }
-            if (result.purpose !== pending.purpose) throw new Error('Назначение подписи Phantom не совпало.');
+            if (result.purpose !== pending.purpose) throw new Error('The Phantom signature purpose did not match.');
             const path = result.purpose === 'link' ? '/wallet/link' : '/wallet/withdraw';
             const completion = await api(path, { nonce: result.nonce, signature: result.signature, address: result.address });
             localStorage.removeItem(key());
             clearHandoff();
-            status(result.purpose === 'link' ? 'Phantom подключён. Подпись проверена сервером.'
+            status(result.purpose === 'link' ? 'Phantom connected. The signature was verified by the server.'
                 : completion.status === 'processing'
-                    ? 'Транзакция проверяется в сети. Средства зарезервированы; повторный платёж не отправляется.'
-                    : `Вывод отправлен в Solana: ${completion.txHash}`);
+                    ? 'The transaction is being checked on the network. Funds are reserved; it will not be sent again.'
+                    : `Withdrawal submitted to Solana: ${completion.txHash}`);
             await window.secureWallet.refresh();
-            if (result.purpose === 'link') alertUser('Phantom подключён к Zer0Life Run. Можно выводить ZRL и SOL.');
+            if (result.purpose === 'link') alertUser('Phantom is connected to Zer0Life Run. You can withdraw ZRL and SOL.');
         } catch (error) {
             if (error.status >= 400 && error.status < 500) {
                 localStorage.removeItem(key());
@@ -124,7 +124,7 @@
                 status(error.message);
                 await window.secureWallet.refresh().catch(() => {});
             } else {
-                status('Ответ сервера пока недоступен. Подтверждение сохранено; повторная проверка не создаёт второй платёж.');
+                status('The server is temporarily unavailable. Your approval is saved; checking again will not create a second payment.');
                 schedule();
             }
         } finally {
@@ -133,9 +133,9 @@
     }
     async function checkWithdrawal(nonce) {
         const result = await api('/wallet/withdrawals/status', { nonce });
-        status(result.status === 'confirmed' ? 'Вывод подтверждён сетью Solana.'
-            : result.status === 'failed' ? 'Сеть отклонила перевод; сумма возвращена на баланс.'
-                : 'Ожидаем подтверждения сети. Сумма остаётся зарезервирована.');
+        status(result.status === 'confirmed' ? 'Withdrawal confirmed on Solana.'
+            : result.status === 'failed' ? 'The network rejected the transfer; the amount was returned to your balance.'
+                : 'Waiting for network confirmation. The amount remains reserved.');
         await window.secureWallet.refresh();
     }
     window.phantomMobile = { start, resume, checkWithdrawal };

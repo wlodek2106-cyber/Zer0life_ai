@@ -57,25 +57,25 @@
             const availableZrl = serverState ? number(serverState.availableZrl) : null;
             const availableSol = serverState ? number(serverState.gameSolBalance) : null;
             text('recovery-total-zrl', savedZrl === null || availableZrl === null
-                ? 'Ожидаем сервер' : `${(availableZrl + savedZrl).toFixed(2)} ZRL`);
+                ? 'Waiting for server' : `${(availableZrl + savedZrl).toFixed(2)} ZRL`);
             text('recovery-total-sol', savedSol === null || availableSol === null
-                ? 'Ожидаем сервер' : `${(availableSol + savedSol).toFixed(9)} SOL`);
-            text('recovery-split-zrl', savedZrl === null ? 'Архив требует проверки'
-                : `${availableZrl === null ? '—' : availableZrl.toFixed(2)} доступно · ${savedZrl.toFixed(2)} сохранено в архиве`);
-            text('recovery-split-sol', savedSol === null ? 'Архив требует проверки'
-                : `${availableSol === null ? '—' : availableSol.toFixed(9)} доступно · ${savedSol.toFixed(9)} сохранено в архиве`);
-            text('header-legacy-balance', savedZrl > 0 ? `Архив: ${savedZrl.toFixed(2)} ZRL · на проверке` : '');
+                ? 'Waiting for server' : `${(availableSol + savedSol).toFixed(9)} SOL`);
+            text('recovery-split-zrl', savedZrl === null ? 'Archive needs review'
+                : `${availableZrl === null ? '—' : availableZrl.toFixed(2)} available · ${savedZrl.toFixed(2)} saved in archive`);
+            text('recovery-split-sol', savedSol === null ? 'Archive needs review'
+                : `${availableSol === null ? '—' : availableSol.toFixed(9)} available · ${savedSol.toFixed(9)} saved in archive`);
+            text('header-legacy-balance', savedZrl > 0 ? `Archive: ${savedZrl.toFixed(2)} ZRL · under review` : '');
             const mismatch = serverState && ((localZrl > 0 && localZrl !== savedZrl)
                 || (localSol > 0 && localSol !== savedSol));
             text('recovery-status', warning || (serverState?.legacyBalanceRestored
-                ? 'Архив перенесён на основной баланс. Историческая копия сохранена и повторно не начисляется.'
+                ? 'The archive was moved to the main balance. The historical copy is preserved and will not be credited again.'
                 : mismatch
-                ? 'Локальная копия отличается от серверной и сохранена отдельно. Суммы не складываются повторно.'
+                ? 'The local copy differs from the server copy and remains stored separately. Amounts are not added twice.'
                 : serverState
-                    ? 'Итог включает доступный баланс и старый архив. Архив пока не доступен для трат и вывода. Средства в Farming считаются отдельно.'
-                    : 'Показана локальная история. Серверный баланс ещё не загружен; итог не рассчитан.'));
+                    ? 'The total includes the available balance and legacy archive. Archived funds are not yet available to spend or withdraw. Farming funds are tracked separately.'
+                    : 'Showing local history. The server balance has not loaded yet, so no total is available.'));
         } catch {
-            text('recovery-status', 'Не удалось прочитать историю на устройстве. Не очищайте данные Telegram.');
+            text('recovery-status', 'Could not read the history on this device. Do not clear Telegram data.');
         }
     }
     window.legacyRecovery = {

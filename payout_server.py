@@ -10,13 +10,13 @@ from solana.rpc.api import Client
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Подключение к сети Solana через Helius RPC (для стабильной и быстрой индексации)
-HELIUS_RPC_URL = os.getenv("HELIUS_RPC_URL", "https://mainnet.helius-rpc.com/?api-key=ВАШ_HELIUS_КЛЮЧ")
+# Connect to Solana through Helius RPC for reliable, fast indexing.
+HELIUS_RPC_URL = os.getenv("HELIUS_RPC_URL", "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY")
 solana_client = Client(HELIUS_RPC_URL)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Целевой кошелек проекта для депозитов и кошелек мерчанта
+# Project deposit destination and merchant wallet.
 TARGET_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db"
 
@@ -90,13 +90,13 @@ def check_and_expire_boosters(user_stats):
     return False
 
 # ==========================================
-# ФОНОВЫЙ ПОТОК: АВТОМАТИЧЕСКИЙ ФАРМИНГ ZRL
+# BACKGROUND THREAD: AUTOMATIC ZRL FARMING
 # ==========================================
 def background_farming_worker():
-    """Каждую минуту пересчитывает доходность активных депозитов фарминга и начисляет ZRL"""
+    """Recalculate active farm earnings and credit ZRL every minute."""
     while True:
         try:
-            now = time.time() * 1000  # миллисекунды
+            now = time.time() * 1000  # milliseconds
             updated_any = False
             
             for uid, stats in USER_STATS.items():
@@ -126,7 +126,7 @@ def background_farming_worker():
                         
                         new_farms_list.append(farm)
                     else:
-                        # Если срок фарминга истек, возвращаем тело депозита обратно пользователю
+                        # Return the principal to the user when the farm term ends.
                         asset = farm.get("asset", "sol")
                         amount = float(farm.get("amount", 0))
                         if asset == "sol":
@@ -150,7 +150,7 @@ def background_farming_worker():
             
         time.sleep(60)
 
-# Запуск фонового потока при старте Flask
+# Start the background thread when Flask launches.
 threading.Thread(target=background_farming_worker, daemon=True).start()
 
 @app.route('/register', methods=['POST', 'OPTIONS'])
@@ -437,9 +437,9 @@ def verify_deposit():
         tx_signature = data.get('txSignature')
         
         if not telegram_id or not tx_signature:
-            return jsonify({"success": False, "error": "Не указан telegramId или txSignature"}), 400
+            return jsonify({"success": False, "error": "telegramId or txSignature is missing"}), 400
             
-        # Цикл повторных попыток для ожидания индексации транзакции через Helius RPC
+        # Retry while waiting for transaction indexing through Helius RPC.
         tx_data = None
         for attempt in range(5):
             try:
@@ -449,14 +449,14 @@ def verify_deposit():
                     break
             except Exception:
                 pass
-            time.sleep(3)  # Ждем 3 секунды перед следующей попыткой
+            time.sleep(3)  # Wait 3 seconds before retrying.
             
         if not tx_data:
-            return jsonify({"success": False, "error": "Транзакция еще не найдена в блокчейне. Подождите 10-15 секунд и попробуйте снова."}), 400
+            return jsonify({"success": False, "error": "The transaction has not appeared on-chain yet. Wait 10–15 seconds and try again."}), 400
             
         meta = tx_data.get('meta', {})
         if meta and meta.get('err') is not None:
-            return jsonify({"success": False, "error": "Транзакция завершилась с ошибкой в блокчейне Solana."}), 400
+            return jsonify({"success": False, "error": "The transaction failed on the Solana network."}), 400
             
         transaction_info = tx_data.get('transaction', {})
         message = transaction_info.get('message', {})
@@ -470,20 +470,20 @@ def verify_deposit():
                 break
                 
         if target_index == -1:
-            return jsonify({"success": False, "error": "Эта транзакция не связана с кошельком проекта."}), 400
+            return jsonify({"success": False, "error": "This transaction is not associated with the project wallet."}), 400
             
         pre_balances = meta.get('preBalances', [])
         post_balances = meta.get('postBalances', [])
         
         if len(pre_balances) <= target_index or len(post_balances) <= target_index:
-            return jsonify({"success": False, "error": "Не удалось проверить изменение баланса кошелька."}), 400
+            return jsonify({"success": False, "error": "Could not verify the wallet balance change."}), 400
             
         diff_lamports = post_balances[target_index] - pre_balances[target_index]
         diff_sol = diff_lamports / 1_000_000_000
         
         MIN_DEPOSIT = 0.01
         if diff_sol < MIN_DEPOSIT:
-            return jsonify({"success": False, "error": f"Сумма слишком мала ({diff_sol} SOL). Минимум: {MIN_DEPOSIT} SOL."}), 400
+            return jsonify({"success": False, "error": f"The amount is too small ({diff_sol} SOL). Minimum: {MIN_DEPOSIT} SOL."}), 400
             
         user_stats = USER_STATS.get(telegram_id, {})
         check_and_expire_boosters(user_stats)
@@ -497,19 +497,19 @@ def verify_deposit():
         
         send_telegram_message(
             telegram_id,
-            f"✅ <b>Депозит успешно подтвержден!</b>\n\nЗачислено: {diff_sol} SOL\nВаш новый баланс: {current_sol:.4f} SOL"
+            f"✅ <b>Deposit confirmed!</b>\n\nCredited: {diff_sol} SOL\nYour new balance: {current_sol:.4f} SOL"
         )
         
         return jsonify({
             "success": True,
             "depositedSOL": diff_sol,
             "newSolBalance": current_sol,
-            "message": f"Успешно зачислено {diff_sol} SOL!"
+            "message": f"Successfully credited {diff_sol} SOL!"
         })
         
     except Exception as e:
         print("Verify deposit error:", e)
-        return jsonify({"success": False, "error": f"Ошибка проверки транзакции: {str(e)}"}), 500
+        return jsonify({"success": False, "error": f"Could not verify transaction: {str(e)}"}), 500
 
 @app.route('/withdraw', methods=['POST', 'OPTIONS'])
 @app.route('/api/withdraw', methods=['POST', 'OPTIONS'])
@@ -524,14 +524,14 @@ def withdraw():
         telegram_id = str(data.get('telegramId'))
         
         if not telegram_id or telegram_id not in USER_STATS:
-            return jsonify({"success": False, "error": "Пользователь не найден"})
+            return jsonify({"success": False, "error": "Player not found"})
             
         user_stats = USER_STATS[telegram_id]
         
         if currency == 'SOL':
             current_sol = float(user_stats.get("solBalance", 0))
             if current_sol < amount:
-                return jsonify({"success": False, "error": "Недостаточно средств на балансе SOL"})
+                return jsonify({"success": False, "error": "Insufficient SOL balance"})
             
             user_stats["solBalance"] = current_sol - amount
             save_db()
@@ -540,14 +540,14 @@ def withdraw():
         elif currency == 'ZRL':
             current_zrl = float(user_stats.get("balance", 0))
             if current_zrl < amount:
-                return jsonify({"success": False, "error": "Недостаточно ZRL на балансе"})
+                return jsonify({"success": False, "error": "Insufficient ZRL balance"})
             user_stats["balance"] = current_zrl - amount
             save_db()
             
         if telegram_id:
             send_telegram_message(
                 telegram_id, 
-                f"✅ <b>Перевод/Вывод успешно завершен!</b>\n\nСумма: {amount} {currency}\nПолучатель: {user_wallet[:6]}...{user_wallet[-4:]}"
+                f"✅ <b>Transfer/withdrawal completed!</b>\n\nAmount: {amount} {currency}\nRecipient: {user_wallet[:6]}...{user_wallet[-4:]}"
             )
 
         return jsonify({
@@ -577,7 +577,7 @@ def buy_booster_7days():
         
         current_sol = float(user_stats.get("solBalance", 1.5))
         if current_sol < cost:
-            return jsonify({"success": False, "error": "Недостаточно SOL на балансе!"})
+            return jsonify({"success": False, "error": "Insufficient SOL balance!"})
 
         current_sol -= cost
         user_stats["solBalance"] = current_sol
@@ -591,7 +591,7 @@ def buy_booster_7days():
 
         send_telegram_message(
             telegram_id,
-            f"⚡ <b>Буст активирован на 7 дней!</b>\n\nСписано: {cost} SOL\nСредства переведены на мерчант-кошелек."
+            f"⚡ <b>Booster activated for 7 days!</b>\n\nCharged: {cost} SOL\nFunds were transferred to the merchant wallet."
         )
 
         return jsonify({
@@ -625,7 +625,7 @@ def fortune_spin():
         if current_sol < SPIN_COST:
             return jsonify({
                 "success": False, 
-                "error": f"Недостаточно SOL! Для прокрута нужно пополнить баланс минимум на {SPIN_COST} SOL."
+                "error": f"Not enough SOL! Add at least {SPIN_COST} SOL to your balance to spin."
             })
 
         current_sol -= SPIN_COST

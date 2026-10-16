@@ -13,7 +13,7 @@
 
     function readRecords() {
         if (typeof STORAGE_PREFIX === 'undefined') {
-            return { error: 'Не удалось определить профиль. Старые записи не изменены.' };
+            return { error: 'Could not identify the profile. Existing records were not changed.' };
         }
         try {
             const backup = localStorage.getItem(STORAGE_PREFIX + 'legacy_pending_farms');
@@ -26,7 +26,7 @@
             if (!Array.isArray(records)) throw new Error('Invalid farming snapshot');
             return { records };
         } catch {
-            return { error: 'Не удалось прочитать старые записи на этом устройстве. Данные не изменены. Не очищайте хранилище Telegram.' };
+            return { error: 'Could not read legacy farming records on this device. No data was changed. Do not clear Telegram storage.' };
         }
     }
 
@@ -39,9 +39,9 @@
 
     function savedDate(value) {
         const timestamp = savedNumber(value);
-        if (timestamp === null || timestamp === 0) return 'не указана';
+        if (timestamp === null || timestamp === 0) return 'Not specified';
         const date = new Date(timestamp);
-        return Number.isFinite(date.getTime()) ? date.toLocaleDateString('ru-RU') : 'некорректная дата';
+        return Number.isFinite(date.getTime()) ? date.toLocaleDateString('en-US') : 'Invalid date';
     }
 
     function income(record, now = Date.now()) {
@@ -64,7 +64,7 @@
         const snapshot = readRecords();
         const totals = document.getElementById('legacy-farms-summary');
         if (totals) {
-            if (snapshot.error || snapshot.missing || !snapshot.records.length) totals.textContent = 'Полный итог ферм пока недоступен: нужны сохранённые записи.';
+            if (snapshot.error || snapshot.missing || !snapshot.records.length) totals.textContent = 'The full farming total is unavailable until the saved records are available.';
             else {
                 let zrl = 0, sol = 0, yieldZrl = 0, unknown = 0;
                 snapshot.records.forEach(record => {
@@ -77,17 +77,17 @@
                         else yieldZrl += earned;
                     }
                 });
-                totals.textContent = `Все сохранённые вклады: ${zrl.toLocaleString('ru-RU')} ZRL и ${sol.toLocaleString('ru-RU', { maximumFractionDigits: 9 })} SOL. Осталось сверить доход (локальная оценка): ${yieldZrl.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL.${unknown ? ` Для ${unknown} записей расчёт пока невозможен — это не нулевой доход.` : ''} Это история и расчёт, а не дополнительный доступный баланс. Ранее полученные награды вычтены; для закрытых позиций доход ограничен датой закрытия.`;
+                totals.textContent = `All saved deposits: ${zrl.toLocaleString('en-US')} ZRL and ${sol.toLocaleString('en-US', { maximumFractionDigits: 9 })} SOL. Income still to reconcile (local estimate): ${yieldZrl.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL.${unknown ? ` Income cannot yet be calculated for ${unknown} record(s); this does not mean the income is zero.` : ''} This is historical information and an estimate, not additional spendable balance. Previously received rewards are excluded; income for closed positions is limited to the closing date.`;
             }
         }
         const pending = snapshot.records?.filter(record => !restoredIds.has(String(record?.id))).length || 0;
-        count.textContent = snapshot.error ? 'Ошибка чтения' : `${pending} · на проверке`;
+        count.textContent = snapshot.error ? 'Read error' : `${pending} · under review`;
         if (snapshot.error || snapshot.records.length === 0) {
             const message = document.createElement('p');
             message.style.cssText = 'font-size:12px;color:#b5bdad;line-height:1.5;margin:0;';
             message.textContent = snapshot.error || (snapshot.missing
-                ? 'На этом устройстве не найдена копия старых ферм. Это не подтверждает отсутствие вкладов на других устройствах.'
-                : 'В сохранённой копии на этом устройстве нет старых ферм. Это не итог проверки счёта.');
+                ? 'No legacy farm copy was found on this device. This does not prove that there are no deposits on other devices.'
+                : 'The saved copy on this device contains no legacy farms. This is not a final account review.');
             container.appendChild(message);
             return;
         }
@@ -97,37 +97,37 @@
             const title = document.createElement('strong');
             title.style.cssText = 'display:block;font-size:13px;color:#e5d29b;margin-bottom:5px;';
             const restored = restoredIds.has(String(record?.id));
-            title.textContent = `Старая ферма №${index + 1} · ${restored ? 'Закрыта при восстановлении' : 'Ожидает проверки'}`;
+            title.textContent = `Legacy Farm #${index + 1} · ${restored ? 'Closed during recovery' : 'Awaiting review'}`;
             card.appendChild(title);
             if (!record || typeof record !== 'object' || Array.isArray(record)) {
-                line(card, 'Запись', 'не удалось распознать; оригинал сохранён без изменений');
+                line(card, 'Record', 'Could not read; the original was preserved unchanged');
             } else {
                 const asset = typeof record.asset === 'string' ? record.asset.toLowerCase() : '';
                 const amount = savedNumber(record.amount);
                 const months = savedNumber(record.months);
-                line(card, 'Сохранённый вклад', amount !== null && ['sol', 'zrl'].includes(asset)
-                    ? `${amount.toLocaleString('ru-RU', { maximumFractionDigits: 9 })} ${asset.toUpperCase()}`
-                    : 'сумма или валюта требуют проверки');
-                line(card, 'План', months === 300 ? 'Super Yield (старый код плана 300)'
-                    : months !== null && months > 0 ? `${months} мес.` : 'не указан');
-                line(card, 'Начало', savedDate(record.startTime));
-                line(card, 'Окончание по записи', savedDate(record.endTime));
+                line(card, 'Saved deposit', amount !== null && ['sol', 'zrl'].includes(asset)
+                    ? `${amount.toLocaleString('en-US', { maximumFractionDigits: 9 })} ${asset.toUpperCase()}`
+                    : 'Amount or asset needs review');
+                line(card, 'Plan', months === 300 ? 'Super Yield (legacy plan code 300)'
+                    : months !== null && months > 0 ? `${months} months` : 'Not specified');
+                line(card, 'Start date', savedDate(record.startTime));
+                line(card, 'Recorded end date', savedDate(record.endTime));
                 const claimed = savedNumber(record.claimedReward);
                 if (claimed !== null) {
-                    line(card, 'Получено ранее по локальной записи', `${claimed.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL`);
+                    line(card, 'Previously received (local record)', `${claimed.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL`);
                 }
                 const earned = income(record);
                 line(card, settlements.get(String(record?.id))?.yieldReviewed
-                    ? 'Доход на дату закрытия · учтён в восстановлении'
-                    : 'Неполученный доход по сохранённой ставке', earned === null
-                    ? 'нужна исходная ставка и даты; доход не считается нулевым'
-                    : `${earned.toLocaleString('ru-RU', { maximumFractionDigits: 6 })} ZRL · локальная оценка`);
+                    ? 'Income through closing date · included in recovery'
+                    : 'Unclaimed income at saved rate', earned === null
+                    ? 'Original rate and dates are needed; income is not assumed to be zero'
+                    : `${earned.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL · local estimate`);
             }
-            line(card, 'Статус', restored
-                ? 'Вклад возвращён и доход проверен. Повторное начисление исключено.'
+            line(card, 'Status', restored
+                ? 'Deposit returned and income reviewed. Duplicate credit is prevented.'
                 : settlements.get(String(record?.id))?.principalReturned
-                    ? 'Вклад уже возвращён; неполученный доход ещё требует сверки.'
-                    : 'Возврат вклада и неполученный доход требуют проверки; история не удалена.');
+                    ? 'Deposit already returned; unclaimed income still needs review.'
+                    : 'Deposit return and unclaimed income need review. The history has not been deleted.');
             container.appendChild(card);
         });
     }

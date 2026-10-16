@@ -14,11 +14,11 @@
 </head>
 <body>
     <main>
-        <p id="fixture-note">Изолированная проверка. Только вымышленные счета. Privy и финансовая сеть не вызываются.</p>
+        <p id="fixture-note">Isolated test only. Uses fictional accounts. Privy and the financial network are not called.</p>
         <div id="fixture-controls">
-            <button id="fixture-reset">Сбросить тест</button>
-            <button id="fixture-cancel">Отменить следующую подпись</button>
-            <button id="fixture-mismatch">Другая сессия</button>
+            <button id="fixture-reset">Reset test</button>
+            <button id="fixture-cancel">Cancel next signature</button>
+            <button id="fixture-mismatch">Switch session</button>
         </div>
         <div id="preview"></div>
     </main>
@@ -75,12 +75,12 @@
             },
             async signMessage(input){
                 window.fixtureCalls.push({sign:new TextDecoder().decode(input.message)});
-                const accepted=!window.fixtureSignatureCancelled && window.confirm('Тестовая подпись. Подтвердить?');
+                const accepted=!window.fixtureSignatureCancelled && window.confirm('Test signature. Approve?');
                 window.fixtureSignatureCancelled=false;
-                if(!accepted) throw Error('Подпись отменена. Средства не отправлены.');
+                if(!accepted) throw Error('Signature cancelled. No funds were sent.');
                 return {signature:new Uint8Array(64).fill(8)};
             },
-            async exportWallet(){window.fixtureCalls.push({export:true});window.Telegram.WebApp.showAlert('Тест: окно резервной копии. Настоящих ключей нет.');},
+            async exportWallet(){window.fixtureCalls.push({export:true});window.Telegram.WebApp.showAlert('Test: wallet backup dialog. No real keys are present.');},
             async logout(){window.fixtureCalls.push({logout:true});},
         };
         if(!outside){window.embeddedWallet=bridge;bridge.update(sdk);}
