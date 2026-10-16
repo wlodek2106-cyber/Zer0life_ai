@@ -20,6 +20,7 @@ from wallet_recovery import recovery_state, register_recovery_routes
 from wallet_mobile import register_mobile_routes
 from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
 from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
+from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
 
 
 ZRL_DECIMALS = 6
@@ -743,7 +744,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         instructions = []
         if asset == "SOL":
             lamports = int(amount_units)
-            pool_balance = int(client.get_balance(treasury.pubkey()).value)
+            pool_balance = int(withdrawal_rpc("get_sol_balance", client.get_balance, treasury.pubkey()).value)
             if pool_balance < lamports + 5000:
                 raise RuntimeError("Treasury SOL balance is insufficient for this withdrawal and network fee")
             instructions.append(transfer(TransferParams(
@@ -760,15 +761,15 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             mint = Pubkey.from_string(mint_text)
             source = get_associated_token_address(treasury.pubkey(), mint)
             destination = get_associated_token_address(recipient, mint)
-            if int(client.get_token_account_balance(source).value.amount) < int(amount_units):
+            if int(withdrawal_rpc("get_zrl_balance", client.get_token_account_balance, source).value.amount) < int(amount_units):
                 raise RuntimeError("Treasury ZRL liquidity is insufficient")
             rent = 0
-            if client.get_account_info(destination).value is None:
-                rent = int(client.get_minimum_balance_for_rent_exemption(165).value)
+            if withdrawal_rpc("get_recipient_token_account", client.get_account_info, destination).value is None:
+                rent = int(withdrawal_rpc("get_token_account_rent", client.get_minimum_balance_for_rent_exemption, 165).value)
                 instructions.append(create_associated_token_account(
                     payer=treasury.pubkey(), owner=recipient, mint=mint
                 ))
-            if int(client.get_balance(treasury.pubkey()).value) < rent + 5000:
+            if int(withdrawal_rpc("get_fee_balance", client.get_balance, treasury.pubkey()).value) < rent + 5000:
                 raise RuntimeError("Treasury SOL balance is insufficient for token-account rent and fee")
             instructions.append(transfer_checked(TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
@@ -780,7 +781,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
             f"zerolife-withdraw:{nonce}".encode(), [],
         ))
-        blockhash = client.get_latest_blockhash().value.blockhash
+        blockhash = withdrawal_rpc("get_latest_blockhash", client.get_latest_blockhash).value.blockhash
         tx = Transaction.new_signed_with_payer(
             instructions=instructions,
             payer=treasury.pubkey(),
@@ -795,7 +796,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                                    WHERE nonce=? AND status='processing'""", (signature, nonce)).rowcount
             if changed != 1:
                 raise RuntimeError("Withdrawal reservation is no longer active")
-        submitted = str(client.send_raw_transaction(bytes(tx)).value)
+        submitted = str(withdrawal_rpc("broadcast_transaction", client.send_raw_transaction, bytes(tx)).value)
         if submitted != signature:
             raise RuntimeError("RPC returned an unexpected transaction signature")
         return signature
@@ -974,6 +975,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             try:
                 tx_signature = send_withdrawal(asset, linked, amount_units, nonce)
             except Exception as exc:
+                failure = describe_failure(exc, nonce)
+                app.logger.warning(
+                    "withdrawal transfer failed: code=%s stage=%s types=%s http_status=%s reference=%s",
+                    failure["code"], failure["stage"], failure["types"],
+                    failure["httpStatus"], failure["reference"],
+                )
                 with _connect(db_path) as db:
                     db.execute("BEGIN IMMEDIATE")
                     reserved = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
@@ -994,8 +1001,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                         (nonce,),
                     )
                     db.commit()
-                app.logger.warning("withdrawal transfer failed: %s", exc)
-                return _response_error("Transfer failed; the balance was restored", 503)
+                return jsonify(
+                    success=False,
+                    error=f'{failure["message"]} Сумма возвращена на игровой баланс. Код: {failure["code"]}. № {failure["reference"]}',
+                    errorCode=failure["code"], supportReference=failure["reference"],
+                    balanceRestored=True,
+                ), 503
             with _connect(db_path) as db:
                 db.execute(
                     "UPDATE wallet_withdrawals SET status = 'submitted', tx_signature = ? WHERE nonce = ?",

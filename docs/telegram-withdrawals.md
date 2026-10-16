@@ -44,3 +44,14 @@ because a recipient was used for a withdrawal.
   SOL fees/liquidity and the correct ZRL mint/token liquidity. Automated tests
   use synthetic keys, mocked delivery and a fake RPC; they do not prove real
   bot delivery or a successful mainnet payout.
+
+## Failed preparation diagnostics
+
+Before broadcast, a failed preparation refunds the reservation once and returns
+an allowlisted errorCode, supportReference and balanceRestored flag. The message
+does not expose exception text. Logs record the same reference, operation stage,
+exception class chain and HTTP status only: never an RPC URL, credentials,
+request bodies, OTPs or private keys. A blank Solana SDK exception is not proof
+of an empty treasury: inspect its cause class/status before changing settings.
+After a signature has been persisted, an uncertain broadcast still remains
+reserved for chain verification; this diagnostic change adds no retry or refund.
