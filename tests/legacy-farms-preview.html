@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Legacy farms — isolated rendering test</title>
+    <style>
+        body { margin:0;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif; }
+        main { max-width:430px;margin:18px auto;padding:18px;border-radius:24px;border:1px solid #3a482c;background:linear-gradient(135deg,#151c13,#0b100c); }
+        h1 { font-size:20px; } .note { font-size:12px;color:#b5bdad;line-height:1.5; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>FARM · Zer0Life Run</h1>
+        <p class="note">Изолированная проверка интерфейса на тестовых записях. Реальные счета и хранилище не используются.</p>
+        <div id="preview"></div>
+    </main>
+    <script>
+        const STORAGE_PREFIX = 'test_';
+        const records = [
+            { id:'sample-sol',asset:'sol',amount:0.007,months:12,startTime:1760000000000,endTime:1791104000000,claimedReward:15 },
+            { id:'sample-zrl',asset:'zrl',amount:2500,months:3,startTime:1760000000000,endTime:1767776000000,claimedReward:25 }
+        ];
+        Object.defineProperty(window,'localStorage',{value:{
+            getItem(key) {
+                if (key === 'test_legacy_pending_farms') return JSON.stringify(records);
+                if (key === 'test_legacy_pending_zrl') return '5000';
+                if (key === 'test_legacy_pending_sol') return '.015';
+                return null;
+            },
+            setItem() { throw new Error('Read-only preview'); }
+        }});
+        (async () => {
+            const html = await (await fetch('../dashboard.html')).text();
+            const doc = new DOMParser().parseFromString(html,'text/html');
+            for (const id of ['recovery-balances', 'legacy-farming-review']) {
+                document.getElementById('preview').appendChild(document.importNode(doc.getElementById(id),true));
+            }
+            const recovery = document.createElement('script');
+            recovery.src = '../legacy-recovery.js';
+            recovery.onload = () => {
+                window.legacyRecovery.setState({ availableZrl:25, legacyPendingZrl:5000, gameSolBalance:.005, legacyPendingSol:.015 });
+                const script = document.createElement('script');
+                script.src = '../legacy-farms.js';
+                document.body.appendChild(script);
+            };
+            document.body.appendChild(recovery);
+        })();
+    </script>
+</body>
+</html>
