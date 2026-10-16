@@ -13,10 +13,12 @@ for (const item of await readdir(repo, { withFileTypes: true })) {
     }
 }
 await cp(path.join(repo, 'assets'), path.join(site, 'assets'), { recursive: true });
-await cp(path.join(repo, 'generated-artifacts/wallet-sdk'), path.join(site, 'wallet-embedded'), { recursive: true });
 await writeFile(path.join(site, '.nojekyll'), '');
 const html = await readFile(path.join(site, 'dashboard.html'), 'utf8');
-if (!html.includes('./wallet-embedded/embedded-wallet.js?')) {
-    throw new Error('Dashboard is not wired to the built SDK.');
+if (html.includes('./wallet-embedded/embedded-wallet.js?')) {
+    await cp(path.join(repo, 'generated-artifacts/wallet-sdk'), path.join(site, 'wallet-embedded'), { recursive: true });
+}
+if (!html.includes('./wallet.js?')) {
+    throw new Error('Dashboard is not wired to the wallet controls.');
 }
 console.log('Static Pages site built; only public frontend assets included.');

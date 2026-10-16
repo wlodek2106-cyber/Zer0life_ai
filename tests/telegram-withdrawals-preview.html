@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zer0Life — isolated withdrawal UI verification</title>
+<style>body{margin:0;padding:15px;background:#080d08;color:#edf3e8;font-family:Arial,sans-serif}main{max-width:430px;margin:auto}#fixture-note{font-size:11px;color:#acb7a1}#fixture-calls{white-space:pre-wrap;font-size:10px}dialog{background:#172016;color:#e1f3ce;border:1px solid #84ad4e;border-radius:16px;padding:20px;width:calc(100% - 70px);max-width:350px}dialog input{width:100%;padding:10px;box-sizing:border-box}dialog button{padding:10px;margin-top:10px}</style>
+</head><body><main>
+<p id="fixture-note">ИЗОЛИРОВАННЫЙ ТЕСТ. Вымышленные балансы, код 123456. Реальные Telegram, кошельки и сеть не вызываются.</p>
+<div id="preview"></div><pre id="fixture-calls"></pre>
+</main><dialog id="fixture-prompt"><h3 id="fixture-title"></h3><p id="fixture-detail"></p><input id="fixture-value"><button id="fixture-accept">Продолжить</button><button id="fixture-decline">Отмена</button></dialog>
+<script type="module">
+const nativeFetch=window.fetch.bind(window);
+const html=await(await nativeFetch('../dashboard.html')).text();
+const doc=new DOMParser().parseFromString(html,'text/html');
+for(const style of doc.querySelectorAll('style'))document.head.appendChild(document.importNode(style,true));
+document.getElementById('preview').appendChild(document.importNode(doc.getElementById('wallet-modal-body'),true));
+window.fixtureCalls=[];window.fixtureAlerts=[];
+const state={success:true,telegramId:'200',withdrawalMode:'telegram_otp_v1',availableZrl:25,gameSolBalance:2,
+    dailyWithdrawalRemaining:10000,referralCode:'SYNTHETIC',farms:[],affiliateLevels:[],
+    pendingWithdrawals:[],pendingWithdrawalApprovals:[]};
+window.Telegram={WebApp:{initData:'synthetic-not-a-real-session',
+    showAlert(text){window.fixtureAlerts.push(text);document.getElementById('fixture-note').textContent=text},
+    showConfirm(text,done){done(window.confirm(text))}}};
+window.showCustomPrompt=(title,detail,placeholder,done)=>{
+    const dialog=document.getElementById('fixture-prompt'),input=document.getElementById('fixture-value');
+    document.getElementById('fixture-title').textContent=title;document.getElementById('fixture-detail').textContent=detail;
+    input.value='';input.placeholder=placeholder;dialog.showModal();input.focus();
+    const finish=value=>{dialog.close();done(value)};
+    document.getElementById('fixture-accept').onclick=()=>finish(input.value);
+    document.getElementById('fixture-decline').onclick=()=>finish(null);
+};
+window.fetch=async(url,settings)=>{
+    const target=new URL(url,location.href);
+    if(target.origin===location.origin)return nativeFetch(url,settings);
+    if(target.origin!=='https://zer0life-ai-iz5n.onrender.com')throw Error('External network blocked by fixture');
+    const route=target.pathname,body=JSON.parse(settings.body);window.fixtureCalls.push({route,body});
+    document.getElementById('fixture-calls').textContent=JSON.stringify(window.fixtureCalls,null,2);
+    let result={success:true},status=200;
+    if(route==='/wallet/state')result={...state};
+    else if(route==='/wallet/withdrawals/request'){
+        const item={nonce:'synthetic-'+window.fixtureCalls.length,address:body.address,asset:body.asset,amount:body.amount};
+        state.pendingWithdrawalApprovals=[item];sessionStorage.setItem('synthetic-pending',JSON.stringify(item));result={success:true,...item};
+    }else if(route==='/wallet/withdrawals/confirm'){
+        if(body.code!=='123456'){status=403;result={success:false,error:'Неверный код подтверждения.'}}
+        else{
+            const item=state.pendingWithdrawalApprovals[0];
+            if(item.asset==='SOL')state.gameSolBalance-=Number(item.amount);else state.availableZrl-=Number(item.amount);
+            state.pendingWithdrawalApprovals=[];sessionStorage.removeItem('synthetic-pending');
+            result={success:true,status:'submitted',txHash:'synthetic-not-a-real-tx'};
+        }
+    }else if(route==='/wallet/withdrawals/cancel'){state.pendingWithdrawalApprovals=[];sessionStorage.removeItem('synthetic-pending')}
+    else if(route==='/wallet/withdrawals/status')result={success:true,status:'confirmed'};
+    else if(route!=='/wallet/legacy')throw Error('Unexpected fixture route '+route);
+    return{ok:status===200,status,json:async()=>result};
+};
+const saved=sessionStorage.getItem('synthetic-pending');if(saved)state.pendingWithdrawalApprovals=[JSON.parse(saved)];
+document.getElementById('deposit-btn').hidden=true;document.getElementById('logout-btn').hidden=true;
+const script=document.createElement('script');script.src='../wallet.js';document.body.appendChild(script);
+script.onload=()=>{
+    document.getElementById('withdraw-zrl-btn').onclick=()=>window.secureWallet.withdraw('ZRL');
+    document.getElementById('withdraw-sol-btn').onclick=()=>window.secureWallet.withdraw('SOL');
+};
+</script></body></html>

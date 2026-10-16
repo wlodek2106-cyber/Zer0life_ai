@@ -19,6 +19,7 @@ from flask import Blueprint, jsonify, request
 from wallet_recovery import recovery_state, register_recovery_routes
 from wallet_mobile import register_mobile_routes
 from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
+from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
 
 
 ZRL_DECIMALS = 6
@@ -404,13 +405,17 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         db_path, _connect, _ensure_account, _rpc_client, _utc_now,
         SHARED_POOL_WALLET, app.logger,
     )
+    approvals = WithdrawalApprovals(
+        db_path, _connect, _create_wallet_challenge, _balance_units,
+        ZRL_SCALE, DAILY_WITHDRAW_CAP, SHARED_POOL_WALLET,
+    )
     bp = Blueprint("zerolife_wallet", __name__)
 
     @bp.after_request
     def wallet_release_header(response):
         # Public release marker, including on 401s, enables a deployment check
         # without obtaining a player's signed Telegram session or balance.
-        response.headers["X-Zer0Life-Wallet-Schema"] = "embedded-merchant-1"
+        response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-withdrawals-1"
         return response
 
     def authenticated_user(data):
@@ -502,12 +507,16 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                             else max(1, round((farm["end_time"] - farm["start_time"]) / (30 * 86400))),
                     })
                 address = account["address"]
-                chain = _onchain_balances(address) if address else {
+                # Personal-wallet cards were removed; do not stall game balances
+                # on an unrelated external RPC balance lookup.
+                chain = {
                     "solBalance": None, "zrlBalance": None, "zrlConfigured": bool(os.getenv("ZRL_MINT"))
                 }
                 return jsonify({
                     "success": True,
                     "telegramId": str(user["id"]),
+                    "withdrawalMode": "telegram_otp_v1",
+                    "pendingWithdrawalApprovals": approvals.pending(str(user["id"])),
                     "merchantPaymentsEnabled": True,
                     "merchantRecipient": MERCHANT_SOL_WALLET,
                     "pendingPurchases": merchant.pending(str(user["id"])),
@@ -751,15 +760,26 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             mint = Pubkey.from_string(mint_text)
             source = get_associated_token_address(treasury.pubkey(), mint)
             destination = get_associated_token_address(recipient, mint)
+            if int(client.get_token_account_balance(source).value.amount) < int(amount_units):
+                raise RuntimeError("Treasury ZRL liquidity is insufficient")
+            rent = 0
             if client.get_account_info(destination).value is None:
+                rent = int(client.get_minimum_balance_for_rent_exemption(165).value)
                 instructions.append(create_associated_token_account(
                     payer=treasury.pubkey(), owner=recipient, mint=mint
                 ))
+            if int(client.get_balance(treasury.pubkey()).value) < rent + 5000:
+                raise RuntimeError("Treasury SOL balance is insufficient for token-account rent and fee")
             instructions.append(transfer_checked(TransferCheckedParams(
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
                 source=source, mint=mint, dest=destination, owner=treasury.pubkey(),
                 amount=int(amount_units), decimals=ZRL_DECIMALS,
             )))
+        from solders.instruction import Instruction
+        instructions.append(Instruction(
+            Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+            f"zerolife-withdraw:{nonce}".encode(), [],
+        ))
         blockhash = client.get_latest_blockhash().value.blockhash
         tx = Transaction.new_signed_with_payer(
             instructions=instructions,
@@ -800,7 +820,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 )
                 response.raise_for_status()
                 chain = response.json().get("result", {}).get("value", [None])[0]
-                if chain and (chain.get("err") is not None or chain.get("confirmationStatus") in ("confirmed", "finalized")):
+                if chain and chain.get("confirmationStatus") == "finalized":
                     with _connect(db_path) as db:
                         db.execute("BEGIN IMMEDIATE")
                         current = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
@@ -821,8 +841,42 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         except Exception:
             return _response_error("Chain confirmation is unavailable; funds remain reserved to prevent a duplicate payment", 503)
 
+    @bp.post("/wallet/withdrawals/request")
+    def request_telegram_withdrawal():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            item = approvals.request(str(user["id"]), data)
+            return jsonify(success=True, **item)
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except ApprovalError as exc:
+            return _response_error(str(exc), exc.status)
+        except Exception:
+            # Never log request bodies, OTPs, bot API URLs or delivery responses.
+            return _response_error("Подтверждение вывода временно недоступно. Деньги не списаны.", 503)
+
+    @bp.post("/wallet/withdrawals/cancel")
+    def cancel_telegram_withdrawal():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            approvals.cancel(str(user["id"]), str(data.get("nonce", "")))
+            return jsonify(success=True)
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except ApprovalError as exc:
+            return _response_error(str(exc), exc.status)
+
     @bp.post("/wallet/withdraw")
     def wallet_withdraw():
+        return execute_withdrawal()
+
+    @bp.post("/wallet/withdrawals/confirm")
+    def confirm_telegram_withdrawal():
+        return execute_withdrawal(via_telegram=True)
+
+    def execute_withdrawal(via_telegram=False):
         nonce = ""
         try:
             data = _json_body()
@@ -856,13 +910,17 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     or challenge["purpose"] not in ("withdraw_zrl", "withdraw_sol")):
                     db.rollback()
                     return _response_error("Withdrawal confirmation expired; try again", 400)
-                linked = current_wallet(db, user["id"])
-                if not linked or linked != challenge["address"]:
-                    db.rollback()
-                    return _response_error("Withdrawal wallet is not linked to this Telegram account", 403)
-                if not _verify_phantom_signature(linked, challenge["message"], signature):
-                    db.rollback()
-                    return _response_error("Solana wallet signature could not be verified", 401)
+                if via_telegram:
+                    approvals.verify(db, str(user["id"]), nonce, data.get("code", ""))
+                    linked = challenge["address"]
+                else:
+                    linked = current_wallet(db, user["id"])
+                    if not linked or linked != challenge["address"]:
+                        db.rollback()
+                        return _response_error("Withdrawal wallet is not linked to this Telegram account", 403)
+                    if not _verify_phantom_signature(linked, challenge["message"], signature):
+                        db.rollback()
+                        return _response_error("Solana wallet signature could not be verified", 401)
 
                 asset = "SOL" if challenge["purpose"] == "withdraw_sol" else "ZRL"
                 amount_units = int(challenge["amount_units"] or 0)
@@ -948,6 +1006,8 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 "amount": amount_units / (1_000_000_000 if asset == "SOL" else ZRL_SCALE),
                 "txHash": tx_signature,
             })
+        except ApprovalError as exc:
+            return _response_error(str(exc), exc.status)
         except PermissionError as exc:
             return _response_error(str(exc), 401)
         except Exception:

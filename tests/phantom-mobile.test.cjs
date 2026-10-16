@@ -164,20 +164,27 @@ test('SOL and ZRL approvals retain the existing signed withdrawal route, with no
     }
 });
 
-test('dashboard replaces Phantom handoff with embedded wallet while retaining balances and withdrawals', () => {
+test('dashboard removes personal wallet UI while retaining game balances, referrals and withdrawals', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     for (const id of ['recovery-balances', 'recovery-admin-panel', 'recovery-admin-load', 'recovery-admin-apply']) {
         assert(!html.includes('id="' + id + '"'));
     }
-    for (const id of ['embedded-wallet-root', 'setup-embedded-wallet-btn', 'wallet-copy-address-btn',
-        'wallet-export-btn', 'wallet-withdrawal-status', 'pending-withdrawals', 'affiliate-levels',
+    for (const id of ['wallet-withdrawal-status', 'pending-withdrawals', 'affiliate-levels',
         'withdraw-sol-btn', 'withdraw-zrl-btn', 'deposit-btn']) {
         assert(html.includes('id="' + id + '"'), 'Missing retained wallet element: ' + id);
+    }
+    for (const id of ['embedded-wallet-root', 'setup-embedded-wallet-btn', 'wallet-copy-address-btn',
+        'wallet-export-btn', 'asset-phantom-sol', 'asset-phantom-zrl']) {
+        assert(!html.includes('id="' + id + '"'), 'Removed wallet UI returned: ' + id);
     }
     assert(!html.includes('id="connect-phantom-btn"'));
     assert(!html.includes('id="phantom-mobile-handoff"'));
     assert(!html.includes('src="./phantom-mobile.js?'));
-    assert(html.includes('wallet-embedded/embedded-wallet.js?v=embedded-wallet-merchant-1'));
+    assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
+    assert(!html.includes('content: "ASSET OVERVIEW"'));
+    assert(html.includes('wallet.js?v=telegram-withdrawals-1'));
+    assert(html.includes('if (!current.walletAddress)'));
+    assert(html.includes('Не переводите напрямую с биржи или другого адреса.'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));
