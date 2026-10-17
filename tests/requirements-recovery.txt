@@ -1,0 +1,6 @@
+# Only import-time dependencies of the offline recovery routes.
+# No bot SDK, Solana RPC client, mainnet credentials or browser installation.
+Flask==3.0.0
+requests>=2.31,<3
+base58==2.1.1
+PyNaCl>=1.5,<2
