@@ -10,6 +10,7 @@ from decimal import Decimal, ROUND_DOWN
 
 from flask import Blueprint, jsonify, request
 from legacy_farm_settlement import init_settlement, missing_principal_farms, quote_farms, record_settlement, saved_rate, validate_original_terms
+from recovery_release import compatible_client, release_metadata, UPDATE_MESSAGE
 
 
 def units(value, scale):
@@ -71,6 +72,21 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
         if admin and (not admin_id or str(user["id"]) != str(admin_id)):
             raise PermissionError("Only the configured Telegram administrator can approve recovery")
         return data, user
+
+    @bp.get("/release")
+    def public_release():
+        # No Telegram identity, database access, secrets or account information.
+        response = jsonify(success=True, **release_metadata())
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
+
+    def release_mismatch(data):
+        if not compatible_client(data):
+            response = jsonify(success=False, code="recovery_release_mismatch",
+                               error=UPDATE_MESSAGE, release=release_metadata())
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+            return response, 409
+        return None
 
     def summary(row):
         saved = json.loads(row["snapshot_json"])
@@ -183,7 +199,10 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
     @bp.post("/wallet/recovery/admin/list")
     def list_requests():
         try:
-            body_and_user(admin=True)
+            data, _ = body_and_user(admin=True)
+            mismatch = release_mismatch(data)
+            if mismatch is not None:
+                return mismatch
             with connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
                 # Accounts already saved on the server must not depend on every
@@ -232,7 +251,7 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                         row = db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?", (request_id,)).fetchone()
                     quoted.append(summary(row))
                 db.commit()
-            return jsonify(success=True, requests=quoted)
+            return jsonify(success=True, requests=quoted, release=release_metadata())
         except PermissionError as error:
             return jsonify(success=False, error=str(error)), 403
         except (ValueError, ArithmeticError) as error:
@@ -257,6 +276,9 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
     def apply():
         try:
             data, admin = body_and_user(admin=True)
+            mismatch = release_mismatch(data)
+            if mismatch is not None:
+                return mismatch
             selected = data.get("requests")
             if not isinstance(selected, list) or not 1 <= len(selected) <= 50:
                 raise ValueError("Select between 1 and 50 frozen recovery requests")

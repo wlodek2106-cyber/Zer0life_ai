@@ -2295,6 +2295,15 @@
                     <button class="wallet-action-btn" id="withdraw-sol-btn">📤 Withdraw SOL</button>
                 </div>
 
+                <section id="recovery-admin-panel" hidden data-recovery-release="recovery-gate-2026-10-17" style="margin:16px 0;padding:14px;border:1px solid rgba(168,240,122,.25);border-radius:16px;">
+                    <h3 style="font-size:14px;color:#d8ffc4;">Archive recovery · owner only</h3>
+                    <p style="font-size:11px;line-height:1.5;">Review frozen archives before returning funds to the main balances. Approval makes real project funds spendable and withdrawable.</p>
+                    <div id="recovery-release-status" role="status" style="font-size:10px;line-height:1.5;overflow-wrap:anywhere;">Checking website and server compatibility…</div>
+                    <button class="wallet-action-btn" id="recovery-admin-load" type="button" style="width:100%;margin:10px 0;">Check update and load archives</button>
+                    <div id="recovery-admin-list"></div>
+                    <button class="wallet-action-btn" id="recovery-admin-apply" type="button" disabled style="width:100%;margin:10px 0;">Restore archives to main balances</button>
+                    <div id="recovery-action-status" role="status" style="font-size:11px;line-height:1.5;">Owner approval stays disabled until the website and server are compatible.</div>
+                </section>
                 <button class="logout-btn" id="logout-btn">🚪 Logout / Switch Profile</button>
             </div>
         </div>
@@ -5102,7 +5111,7 @@
         if (username) setTimeout(syncStatsToServer, 1500);
     </script>
     <script src="./legacy-farms.js?v=english-ui-3"></script>
-    <script src="./recovery-actions.js?v=english-ui-3"></script>
-    <script src="./wallet.js?v=english-withdrawal-v3"></script>
+    <script src="./recovery-actions.js?v=recovery-gate-2026-10-17"></script>
+    <script src="./wallet.js?v=recovery-gate-2026-10-17"></script>
 </body>
 </html>

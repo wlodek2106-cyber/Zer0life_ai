@@ -166,7 +166,7 @@ test('SOL and ZRL approvals retain the existing signed withdrawal route, with no
 
 test('dashboard removes personal wallet UI while retaining game balances, referrals and withdrawals', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
-    for (const id of ['recovery-balances', 'recovery-admin-panel', 'recovery-admin-load', 'recovery-admin-apply']) {
+    for (const id of ['recovery-balances']) {
         assert(!html.includes('id="' + id + '"'));
     }
     for (const id of ['wallet-withdrawal-status', 'pending-withdrawals', 'affiliate-levels',
@@ -182,7 +182,7 @@ test('dashboard removes personal wallet UI while retaining game balances, referr
     assert(!html.includes('src="./phantom-mobile.js?'));
     assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
     assert(!html.includes('content: "ASSET OVERVIEW"'));
-    assert(html.includes('wallet.js?v=english-withdrawal-v3'));
+    assert(html.includes('wallet.js?v=recovery-gate-2026-10-17'));
     assert(html.includes('depositReference: activeDepositReference'));
     assert(html.includes('reference=${encodeURIComponent(reference)}'));
     assert(html.includes('Scan the QR to deposit, then paste the Tx after it is finalized.'));

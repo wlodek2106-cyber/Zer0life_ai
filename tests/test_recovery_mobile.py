@@ -22,6 +22,7 @@ from solders.keypair import Keypair
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import wallet_service as service
+from recovery_release import RELEASE_ID, RECOVERY_PROTOCOL
 
 
 TOKEN = "synthetic-test-token-not-valid-for-telegram"
@@ -63,7 +64,11 @@ class RecoveryTests(unittest.TestCase):
         ]
 
     def post(self, path, body=None, user="200", client=None):
-        return (client or self.client).post(path, json={"initData": signed_data(user), **(body or {})})
+        return (client or self.client).post(path, json={
+            "initData": signed_data(user),
+            "recoveryClient": {"releaseId": RELEASE_ID, "protocol": RECOVERY_PROTOCOL},
+            **(body or {}),
+        })
 
     def state(self, user="200"):
         response = self.post("/wallet/state", user=user)
@@ -86,6 +91,49 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-deposits-reference-1")
         self.assertNotIn("availableZrl", response.json)
+
+    def test_public_recovery_release_is_read_only_uncached_and_session_free(self):
+        with service._connect(self.path) as db:
+            before = "\n".join(db.iterdump())
+        with patch("wallet_recovery.release_metadata", wraps=__import__("recovery_release").release_metadata):
+            # A public release probe must not touch accounting or authenticate.
+            with patch("wallet_service._connect", side_effect=AssertionError("No database access")):
+                response = self.client.get("/release")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["releaseId"], RELEASE_ID)
+        self.assertEqual(response.json["recovery"]["protocol"], RECOVERY_PROTOCOL)
+        self.assertIn("release-gated-approval-v1", response.json["recovery"]["capabilities"])
+        self.assertEqual(set(response.json), {"success", "releaseId", "sourceCommit", "recovery"})
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(self.client.post("/release", json={}).status_code, 405)
+        with service._connect(self.path) as db:
+            self.assertEqual("\n".join(db.iterdump()), before)
+
+    def test_old_or_malformed_frontend_is_rejected_before_any_recovery_writes(self):
+        record = self.submit()
+        with service._connect(self.path) as db:
+            before = "\n".join(db.iterdump())
+        for proof in [None, {}, "old", {"releaseId": "old", "protocol": RECOVERY_PROTOCOL},
+                      {"releaseId": RELEASE_ID, "protocol": 0},
+                      {"releaseId": RELEASE_ID, "protocol": True}]:
+            for route in ["/wallet/recovery/admin/list", "/wallet/recovery/admin/apply"]:
+                body = {"initData": signed_data("100"),
+                        "requests": [{"requestId": record["requestId"], "digest": record["digest"]}]}
+                if proof is not None:
+                    body["recoveryClient"] = proof
+                response = self.client.post(route, json=body)
+                self.assertEqual(response.status_code, 409, response.json)
+                self.assertEqual(response.json["code"], "recovery_release_mismatch")
+                self.assertIn("update in progress", response.json["error"])
+        self.assertFalse(Path(self.folder.name, "recovery-backups").exists())
+        with service._connect(self.path) as db:
+            self.assertEqual("\n".join(db.iterdump()), before)
+
+    def test_release_proof_does_not_replace_owner_authentication(self):
+        self.assertEqual(self.post("/wallet/recovery/admin/apply", user="200").status_code, 403)
+        self.assertEqual(self.client.post("/wallet/recovery/admin/apply", json={
+            "recoveryClient": {"releaseId": RELEASE_ID, "protocol": RECOVERY_PROTOCOL}
+        }).status_code, 403)
 
     def test_embedded_wallet_link_requires_real_signature_and_cannot_be_stolen_or_rebound(self):
         key = Keypair()
