@@ -6,13 +6,15 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
 const statusHelper = html.match(/            const setDepositStatus = \(message\) => \{[\s\S]*?\n            \};/);
-const activeReferenceDeclaration = html.match(/            let activeDepositReference = '';/);
+const activeReferenceDeclaration = html.match(/            let activeDepositReference = '';\n            let activeDepositPayUri = '';/);
 const addressHandler = html.match(/            const addressButton = document\.getElementById\('generate-deposit-addr-btn'\);\n            addressButton\.onclick = async \(\) => \{[\s\S]*?\n            \};/);
+const copyHandler = html.match(/            const copyPayLinkButton = document\.getElementById\('copy-addr-btn'\);\n            copyPayLinkButton\.onclick = async \(\) => \{[\s\S]*?\n            \};/);
 const verifyHandler = html.match(/            document\.getElementById\('check-deposit-status-btn'\)\.onclick = async \(\) => \{[\s\S]*?\n            \};/);
 
 assert(statusHelper, 'Deposit status helper must exist');
 assert(activeReferenceDeclaration, 'Deposit reference state must exist');
 assert(addressHandler, 'Deposit address handler must exist');
+assert(copyHandler, 'Solana Pay link copy handler must exist');
 assert(verifyHandler, 'Deposit Tx verification handler must exist');
 
 function createHarness(responses = []) {
@@ -20,13 +22,11 @@ function createHarness(responses = []) {
     const nodes = new Map([
         ['deposit-status-msg', { textContent: '', hidden: true }],
         ['deposit-details-box', { style: { display: 'none' } }],
-        ['generate-deposit-addr-btn', { disabled: false, textContent: 'Get Deposit Address & Reference 🚀' }],
+        ['generate-deposit-addr-btn', { disabled: false, textContent: 'Show Deposit Address 🚀' }],
         ['deposit-full-addr', { innerText: '' }],
-        ['deposit-reference-code', { textContent: '' }],
         ['deposit-qr-img', { src: '', removeAttribute(name) { if (name === 'src') this.src = ''; } }],
         ['check-deposit-status-btn', { disabled: false }],
         ['copy-addr-btn', { disabled: false }],
-        ['copy-deposit-reference-btn', { disabled: false }],
         ['tx-signature-input', { disabled: false }],
     ]);
     const context = {
@@ -35,6 +35,7 @@ function createHarness(responses = []) {
             Telegram: { WebApp: { initData: 'synthetic-telegram-init-data' } },
             secureWallet: { async refresh() {} },
         },
+        navigator: { clipboard: { async writeText(value) { context.copiedText = value; } } },
         SHARED_POOL_WALLET: 'synthetic-pool-address',
         fetch: async (...args) => {
             requests.push(args);
@@ -55,7 +56,7 @@ function createHarness(responses = []) {
         encodeURIComponent,
     };
     vm.runInNewContext(
-        `${statusHelper[0]}\n${activeReferenceDeclaration[0]}\n${addressHandler[0]}\n${verifyHandler[0]}`,
+        `${statusHelper[0]}\n${activeReferenceDeclaration[0]}\n${addressHandler[0]}\n${copyHandler[0]}\n${verifyHandler[0]}\nglobalThis.readPayUri = () => activeDepositPayUri;`,
         context,
     );
     return {
@@ -63,6 +64,7 @@ function createHarness(responses = []) {
         requests,
         context,
         click: () => nodes.get('generate-deposit-addr-btn').onclick(),
+        copyPayLink: () => nodes.get('copy-addr-btn').onclick(),
         verify: () => nodes.get('check-deposit-status-btn').onclick(),
     };
 }
@@ -73,10 +75,12 @@ test('deposit status is visible outside the hidden deposit details area', () => 
     assert(statusStart >= 0 && statusStart < detailsStart);
     assert.match(html, /id="deposit-status-msg" role="status" aria-live="polite" hidden/);
     assert.doesNotMatch(html, /deposit-source-warning|verified sender address is required|Transfers cannot be credited/i);
-    assert.match(html, /Use the Solana Pay QR with your unique reference/);
+    assert.match(html, /Scan the QR to deposit/);
+    assert.doesNotMatch(html, /Unique deposit reference \(required\)|copy-deposit-reference-btn|Copy Deposit Reference/);
+    assert.match(html, /Copy Solana Pay Link/);
 });
 
-test('deposit details are requested from the authenticated server and show the unique Solana Pay reference', async () => {
+test('deposit details show the QR and address without displaying the unique reference', async () => {
     const harness = createHarness([{
         ok: true,
         async json() {
@@ -96,15 +100,16 @@ test('deposit details are requested from the authenticated server and show the u
     assert.equal(harness.nodes.get('deposit-status-msg').hidden, true);
     assert.equal(harness.nodes.get('deposit-details-box').style.display, 'block');
     assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
-    assert.equal(harness.nodes.get('deposit-reference-code').textContent, 'synthetic-deposit-reference');
     const qrData = new URL(harness.nodes.get('deposit-qr-img').src).searchParams.get('data');
     assert.match(qrData, /^solana:synthetic-pool-address\?/);
     assert.match(qrData, /reference=synthetic-deposit-reference/);
+    assert.equal(harness.context.readPayUri(), qrData);
     assert.equal(harness.nodes.get('check-deposit-status-btn').disabled, false);
     assert.equal(harness.nodes.get('copy-addr-btn').disabled, false);
-    assert.equal(harness.nodes.get('copy-deposit-reference-btn').disabled, false);
     assert.equal(harness.nodes.get('tx-signature-input').disabled, false);
     assert.equal(harness.nodes.get('generate-deposit-addr-btn').disabled, false);
+    await harness.copyPayLink();
+    assert.equal(harness.context.copiedText, qrData);
 });
 
 test('reference preparation failures remain visible and do not enable transfer verification', async () => {
@@ -123,7 +128,6 @@ test('reference preparation failures remain visible and do not enable transfer v
     assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
     assert.equal(harness.nodes.get('check-deposit-status-btn').disabled, true);
     assert.equal(harness.nodes.get('copy-addr-btn').disabled, true);
-    assert.equal(harness.nodes.get('copy-deposit-reference-btn').disabled, true);
     assert.equal(harness.nodes.get('tx-signature-input').disabled, true);
 });
 
