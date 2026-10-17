@@ -4583,25 +4583,41 @@
             addressButton.onclick = async () => {
                 triggerHaptic('success');
                 playSound('click');
-                document.getElementById('deposit-details-box').style.display = 'none';
+                const detailsBox = document.getElementById('deposit-details-box');
+                const sourceWarning = document.getElementById('deposit-source-warning');
+                const verifyButton = document.getElementById('check-deposit-status-btn');
+                const copyButton = document.getElementById('copy-addr-btn');
+                const signatureInput = document.getElementById('tx-signature-input');
+                document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
+                document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
+                detailsBox.style.display = 'block';
+                sourceWarning.textContent = 'Checking the sender wallet linked to this account…';
                 addressButton.disabled = true;
                 addressButton.textContent = 'Checking wallet…';
                 setDepositStatus('Checking the verified sender address…');
+                verifyButton.disabled = true;
+                copyButton.disabled = true;
+                signatureInput.disabled = true;
                 try {
                     if (!window.secureWallet?.refresh) {
                         throw new Error('Wallet service is not ready. Reopen the app and try again. No funds were moved.');
                     }
                     const current = await window.secureWallet.refresh();
-                    if (!current?.walletAddress) {
-                        throw new Error('A verified Solana sender address is required before depositing. No funds were moved.');
+                    if (current?.walletAddress) {
+                        sourceWarning.textContent =
+                            `This deposit is accepted only from the verified address: ${current.walletAddress}. Do not send directly from an exchange or another address.`;
+                        verifyButton.disabled = false;
+                        copyButton.disabled = false;
+                        signatureInput.disabled = false;
+                        setDepositStatus('');
+                    } else {
+                        sourceWarning.textContent =
+                            'The pool address is shown, but this account has no verified sender address. Transfers cannot be credited. Do not send SOL.';
+                        setDepositStatus('A verified sender address is required for credit. No funds were moved.');
                     }
-                    document.getElementById('deposit-source-warning').textContent =
-                        `This deposit is accepted only from the verified address: ${current.walletAddress}. Do not send directly from an exchange or another address.`;
-                    document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
-                    document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
-                    document.getElementById('deposit-details-box').style.display = 'block';
-                    setDepositStatus('');
                 } catch (error) {
+                    sourceWarning.textContent =
+                        'The pool address is shown for reference, but the sender wallet could not be verified. Do not send SOL until verification succeeds.';
                     setDepositStatus(error.message || 'Could not verify the sender address. No funds were moved.');
                 } finally {
                     addressButton.disabled = false;

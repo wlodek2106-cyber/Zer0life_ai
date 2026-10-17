@@ -19,6 +19,9 @@ function createHarness(refresh, includeWallet = true) {
         ['deposit-source-warning', { textContent: '' }],
         ['deposit-full-addr', { innerText: '' }],
         ['deposit-qr-img', { src: '' }],
+        ['check-deposit-status-btn', { disabled: false }],
+        ['copy-addr-btn', { disabled: false }],
+        ['tx-signature-input', { disabled: false }],
     ]);
     const context = {
         document: { getElementById: id => nodes.get(id) || null },
@@ -39,16 +42,20 @@ test('deposit status is visible outside the hidden deposit details area', () => 
     assert.match(html, /id="deposit-status-msg" role="status" aria-live="polite" hidden/);
 });
 
-test('a missing verified sender address shows an error and never reveals a deposit destination', async () => {
+test('a missing verified sender address still shows the pool address but blocks uncreditable transfers', async () => {
     const harness = createHarness(async () => ({ walletAddress: '' }));
     await harness.click();
 
     const status = harness.nodes.get('deposit-status-msg');
     assert.equal(status.hidden, false);
-    assert.match(status.textContent, /verified Solana sender address is required/i);
+    assert.match(status.textContent, /verified sender address is required/i);
     assert.match(status.textContent, /No funds were moved/i);
-    assert.equal(harness.nodes.get('deposit-details-box').style.display, 'none');
-    assert.equal(harness.nodes.get('deposit-full-addr').innerText, '');
+    assert.equal(harness.nodes.get('deposit-details-box').style.display, 'block');
+    assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
+    assert.match(harness.nodes.get('deposit-source-warning').textContent, /Transfers cannot be credited/);
+    assert.equal(harness.nodes.get('check-deposit-status-btn').disabled, true);
+    assert.equal(harness.nodes.get('copy-addr-btn').disabled, true);
+    assert.equal(harness.nodes.get('tx-signature-input').disabled, true);
     assert.equal(harness.nodes.get('generate-deposit-addr-btn').disabled, false);
 });
 
@@ -59,7 +66,10 @@ test('wallet refresh failures are shown, then the deposit button becomes usable 
     assert.equal(harness.nodes.get('deposit-status-msg').hidden, false);
     assert.match(harness.nodes.get('deposit-status-msg').textContent, /Wallet API unavailable/);
     assert.equal(harness.nodes.get('generate-deposit-addr-btn').disabled, false);
-    assert.equal(harness.nodes.get('deposit-details-box').style.display, 'none');
+    assert.equal(harness.nodes.get('deposit-details-box').style.display, 'block');
+    assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
+    assert.match(harness.nodes.get('deposit-source-warning').textContent, /Do not send SOL/);
+    assert.equal(harness.nodes.get('check-deposit-status-btn').disabled, true);
 });
 
 test('a verified sender address reveals the shared pool address and QR code', async () => {
@@ -71,6 +81,9 @@ test('a verified sender address reveals the shared pool address and QR code', as
     assert.match(harness.nodes.get('deposit-source-warning').textContent, /synthetic-verified-sender/);
     assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
     assert.match(harness.nodes.get('deposit-qr-img').src, /synthetic-pool-address/);
+    assert.equal(harness.nodes.get('check-deposit-status-btn').disabled, false);
+    assert.equal(harness.nodes.get('copy-addr-btn').disabled, false);
+    assert.equal(harness.nodes.get('tx-signature-input').disabled, false);
     assert.equal(harness.nodes.get('generate-deposit-addr-btn').disabled, false);
 });
 
@@ -81,4 +94,7 @@ test('missing wallet service shows a message instead of silently failing', async
     assert.equal(harness.nodes.get('deposit-status-msg').hidden, false);
     assert.match(harness.nodes.get('deposit-status-msg').textContent, /Wallet service is not ready/);
     assert.equal(harness.nodes.get('generate-deposit-addr-btn').disabled, false);
+    assert.equal(harness.nodes.get('deposit-details-box').style.display, 'block');
+    assert.equal(harness.nodes.get('deposit-full-addr').innerText, 'synthetic-pool-address');
+    assert.equal(harness.nodes.get('copy-addr-btn').disabled, true);
 });
