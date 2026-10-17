@@ -1,6 +1,10 @@
 (() => {
     'use strict';
-    let snapshots = [], submitting = false;
+    const RELEASE_ID = 'recovery-gate-2026-10-17';
+    const PROTOCOL = 1;
+    const CAPABILITIES = ['owner-approved-principal-yield-v2', 'release-gated-approval-v1'];
+    const UPDATE_MESSAGE = 'Recovery update in progress. The website and server must finish updating before owner approval is available. Reload the app and try again. Archives and balances are unchanged.';
+    let snapshots = [], submitting = false, ready = false, ownerId = null;
     const node = id => document.getElementById(id);
     const api = (path, body) => window.secureWallet.request(path, body);
     const confirm = message => new Promise(resolve => {
@@ -8,6 +12,39 @@
         else resolve(window.confirm(message));
     });
     const setStatus = text => { if (node('recovery-action-status')) node('recovery-action-status').textContent = text; };
+    const client = () => ({ releaseId: RELEASE_ID, protocol: PROTOCOL });
+    const compatible = release => release?.releaseId === RELEASE_ID
+        && release.recovery?.protocol === PROTOCOL
+        && release.recovery?.ready === true
+        && Array.isArray(release.recovery?.capabilities)
+        && CAPABILITIES.every(capability => release.recovery.capabilities.includes(capability));
+
+    function invalidate() {
+        ready = false;
+        snapshots = [];
+        node('recovery-admin-list')?.replaceChildren();
+        if (node('recovery-admin-apply')) node('recovery-admin-apply').disabled = true;
+    }
+
+    async function checkRelease() {
+        ready = false;
+        if (node('recovery-admin-apply')) node('recovery-admin-apply').disabled = true;
+        let release;
+        try {
+            if (node('recovery-admin-panel')?.dataset?.recoveryRelease !== RELEASE_ID) throw new Error();
+            release = await window.secureWallet.getRelease();
+            if (!compatible(release)) throw new Error();
+            ready = true;
+            if (node('recovery-release-status')) node('recovery-release-status').textContent =
+                `Website: ${RELEASE_ID} · Server: ${release.releaseId} · Recovery protocol: ${PROTOCOL}${release.sourceCommit ? ` · Source: ${release.sourceCommit}` : ''}`;
+        } catch (_) {
+            invalidate();
+            if (node('recovery-release-status')) node('recovery-release-status').textContent =
+                `Website: ${RELEASE_ID} · Server: ${release?.releaseId || 'unavailable'} · Compatibility not confirmed.`;
+            setStatus(UPDATE_MESSAGE);
+            throw new Error(UPDATE_MESSAGE);
+        }
+    }
 
     async function submit() {
         if (typeof STORAGE_PREFIX === 'undefined') return;
@@ -27,8 +64,14 @@
         submitting = true;
         const button = node('recovery-admin-load');
         if (button) button.disabled = true;
+        invalidate();
         try {
-            const result = await api('/wallet/recovery/admin/list');
+            await checkRelease();
+            const result = await api('/wallet/recovery/admin/list', { recoveryClient: client() });
+            if (!compatible(result.release)) {
+                invalidate();
+                throw new Error(UPDATE_MESSAGE);
+            }
             snapshots = result.requests;
             const list = node('recovery-admin-list');
             list.replaceChildren();
@@ -48,6 +91,7 @@
             setStatus(snapshots.length ? `${snapshots.length} recovery request(s) are ready for review. Approval makes the listed amounts spendable and withdrawable.`
                 : 'No recovery requests are waiting. The player must open the updated app on the device with the legacy history.');
         } catch (error) {
+            invalidate();
             setStatus(error.message);
         } finally {
             submitting = false;
@@ -67,19 +111,23 @@
         if (loadButton) loadButton.disabled = true;
         let credited = false;
         try {
+            await checkRelease();
             // Telegram's real showConfirm/showPopup rejects messages >256 UTF-16 units.
             const approved = await confirm(`Restore ${zrl.toFixed(6)} ZRL and ${sol.toFixed(9)} SOL for ${frozen.length} players? Previously paid amounts are excluded. Approval makes real project funds spendable and withdrawable.`);
             if (!approved) {
                 setStatus('Approval cancelled. Balances were not changed.');
                 return;
             }
-            const result = await api('/wallet/recovery/admin/apply', { requests: frozen });
+            // A native confirmation may stay open while Render is rolling out.
+            await checkRelease();
+            const result = await api('/wallet/recovery/admin/apply', { requests: frozen, recoveryClient: client() });
             credited = true;
             snapshots = [];
             node('recovery-admin-list').replaceChildren();
             await window.secureWallet.refresh();
             setStatus(`Recovery completed for ${result.receipts.length} account(s). Repeating this action will not credit them again. Withdrawals are available from Wallet.`);
         } catch (error) {
+            if (error.status === 409 || error.message === UPDATE_MESSAGE) invalidate();
             setStatus(credited
                 ? 'Recovery completed, but the screen could not be refreshed. Reopen Wallet; do not submit recovery again.'
                 : error.message === 'WebAppPopupOpened'
@@ -87,7 +135,7 @@
                     : `Could not approve recovery: ${error.message}. Balances remain unchanged unless the server accepted the request. If the network timed out, refresh Wallet before retrying.`);
         } finally {
             submitting = false;
-            if (applyButton) applyButton.disabled = snapshots.length === 0;
+            if (applyButton) applyButton.disabled = !ready || snapshots.length === 0;
             if (loadButton) loadButton.disabled = false;
         }
     }
@@ -96,6 +144,12 @@
         submit,
         setState(state) {
             if (node('recovery-admin-panel')) node('recovery-admin-panel').hidden = !state.isRecoveryAdmin;
+            const nextOwner = state.isRecoveryAdmin ? state.telegramId : null;
+            if (nextOwner !== ownerId) {
+                ownerId = nextOwner;
+                invalidate();
+                if (nextOwner) return checkRelease().catch(() => {});
+            }
         },
     };
     node('recovery-admin-load')?.addEventListener('click', load);

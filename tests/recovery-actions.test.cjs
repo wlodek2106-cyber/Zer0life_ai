@@ -4,22 +4,29 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../recovery-actions.js'), 'utf8');
+const RELEASE_ID = 'recovery-gate-2026-10-17';
+const release = () => ({
+    releaseId: RELEASE_ID, sourceCommit: 'a'.repeat(40),
+    recovery: { protocol: 1, ready: true,
+        capabilities: ['owner-approved-principal-yield-v2', 'release-gated-approval-v1'] },
+});
 
 function fixture(options = {}) {
     const nodes = new Map();
     const element = () => ({
         disabled: false, textContent: '', style: {}, children: [], handlers: {},
+        dataset: { recoveryRelease: options.htmlRelease || RELEASE_ID },
         append(...children) { this.children.push(...children); },
         appendChild(child) { this.children.push(child); },
         replaceChildren(...children) { this.children = children; },
         addEventListener(name, handler) { this.handlers[name] = handler; },
     });
     for (const id of ['recovery-action-status', 'recovery-admin-load', 'recovery-admin-apply',
-        'recovery-admin-list', 'recovery-admin-panel']) {
+        'recovery-admin-list', 'recovery-admin-panel', 'recovery-release-status']) {
         if (!options.noPanel) nodes.set(id, element());
     }
     const calls = [], messages = [], confirmations = [];
-    let refreshCount = 0;
+    let refreshCount = 0, releaseCalls = 0;
     const records = [{ requestId: 'review-a', digest: 'frozen-a', username: 'Synthetic',
         telegramId: '200', totalZrl: 123456.789123, totalSol: 0,
         farmCount: 16, farmZrl: 120000, farmSol: 0, farmYieldZrl: 3456.789123,
@@ -36,19 +43,28 @@ function fixture(options = {}) {
             },
         }},
         secureWallet: {
+            async getRelease() {
+                releaseCalls++;
+                if (options.releaseError) throw Error(options.releaseError);
+                return options.getRelease ? options.getRelease(releaseCalls) : (options.release || release());
+            },
             async request(route, body) {
                 calls.push({ route, body });
-                if (route.endsWith('/list')) return { requests: records };
+                if (route.endsWith('/list')) {
+                    if (options.listError) throw Error(options.listError);
+                    return { requests: records, release: options.listRelease || release() };
+                }
                 if (options.apiError) throw Error(options.apiError);
                 return { receipts: [{ requestId: 'review-a' }] };
             },
             async refresh() { refreshCount++; if (options.refreshError) throw Error('Refresh failed'); },
         },
     };
+    if (options.oldWallet) delete window.secureWallet.getRelease;
     vm.runInNewContext(source, { window, document: {
         getElementById: id => nodes.get(id), createElement: element,
     }});
-    return { nodes, calls, messages, confirmations, window, records,
+    return { nodes, calls, messages, confirmations, window, records, options,
         click: id => nodes.get(id).handlers.click(), refreshCount: () => refreshCount };
 }
 
@@ -70,6 +86,7 @@ test('real Telegram popup constraint accepts exact amounts and consent before an
     assert.match(f.messages[0], /real project funds/);
     assert.equal(f.calls.filter(c => c.route.endsWith('/apply')).length, 1);
     assert.equal(f.calls.at(-1).body.requests[0].digest, 'frozen-a');
+    assert.equal(f.calls.at(-1).body.recoveryClient.releaseId, RELEASE_ID);
     assert.equal(f.refreshCount(), 1);
     assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
     assert.match(f.nodes.get('recovery-action-status').textContent, /Recovery completed/);
@@ -101,6 +118,8 @@ test('double tapping while native confirmation is open cannot queue another popu
     const f = fixture({ delay: true });
     await f.click('recovery-admin-load');
     const first = f.click('recovery-admin-apply');
+    // Let the fresh release probe settle before the native popup opens.
+    await new Promise(resolve => setImmediate(resolve));
     await f.click('recovery-admin-apply');
     await f.click('recovery-admin-load');
     assert.equal(f.messages.length, 1);
@@ -121,4 +140,66 @@ test('an API error is visible and a failed refresh never claims the credit did n
     await credited.click('recovery-admin-apply');
     assert.match(credited.nodes.get('recovery-action-status').textContent, /Recovery completed, but/);
     assert.equal(credited.nodes.get('recovery-admin-apply').disabled, true);
+});
+
+test('new UI fails closed against old, unavailable, partial and incompatible servers', async () => {
+    const cases = [
+        { releaseError: '404' }, { releaseError: 'timeout' },
+        { release: {} }, { release: { releaseId: 'old' } },
+        { release: { ...release(), releaseId: 'old' } },
+        { release: { ...release(), recovery: { ...release().recovery, protocol: 0 } } },
+        { release: { ...release(), recovery: { ...release().recovery, ready: false } } },
+        { release: { ...release(), recovery: { ...release().recovery, capabilities: [] } } },
+        { htmlRelease: 'cached-old-html' }, { oldWallet: true },
+        { listRelease: { releaseId: 'old-server-on-another-instance' } },
+    ];
+    for (const options of cases) {
+        const f = fixture(options);
+        await f.click('recovery-admin-load');
+        await f.click('recovery-admin-apply');
+        assert.equal(f.calls.filter(c => c.route.endsWith('/apply')).length, 0);
+        assert.equal(f.messages.length, 0);
+        assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
+        assert.match(f.nodes.get('recovery-action-status').textContent, /update in progress/);
+        assert.equal(f.nodes.get('recovery-admin-list').children.length, 0);
+    }
+});
+
+test('a rollback after list load or while confirmation is open invalidates frozen approvals', async () => {
+    for (const failOn of [2, 3]) {
+        const f = fixture({ getRelease: call => call >= failOn ? {} : release() });
+        await f.click('recovery-admin-load');
+        await f.click('recovery-admin-apply');
+        assert.equal(f.calls.filter(c => c.route.endsWith('/apply')).length, 0);
+        assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
+        assert.match(f.nodes.get('recovery-action-status').textContent, /update in progress/);
+        // Even another click cannot reuse the old frozen request list.
+        await f.click('recovery-admin-apply');
+        assert.equal(f.calls.filter(c => c.route.endsWith('/apply')).length, 0);
+    }
+});
+
+test('failed reload cannot leave an earlier list available for approval, and retry recovers', async () => {
+    const f = fixture();
+    await f.click('recovery-admin-load');
+    f.options.listError = 'Network unavailable';
+    await f.click('recovery-admin-load');
+    await f.click('recovery-admin-apply');
+    assert.equal(f.messages.length, 0);
+    assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
+    delete f.options.listError;
+    await f.click('recovery-admin-load');
+    assert.equal(f.nodes.get('recovery-admin-apply').disabled, false);
+    assert.match(f.nodes.get('recovery-release-status').textContent, /Source: a{40}/);
+});
+
+test('HTML, wallet transport and recovery code share the release and keep approval disabled by default', () => {
+    const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
+    const python = fs.readFileSync(path.join(__dirname, '../recovery_release.py'), 'utf8');
+    assert(html.includes(`data-recovery-release="${RELEASE_ID}"`));
+    assert(html.includes(`recovery-actions.js?v=${RELEASE_ID}`));
+    assert(html.includes(`wallet.js?v=${RELEASE_ID}`));
+    assert(python.includes(`RELEASE_ID = "${RELEASE_ID}"`));
+    assert.match(html, /id="recovery-admin-apply"[^>]*disabled/);
+    assert.match(html, /id="recovery-admin-panel" hidden/);
 });

@@ -16,6 +16,8 @@ const productionCopyFiles = [
     'bot.py',
     'payout_server.py',
     'wallet_service.py',
+    'wallet_recovery.py',
+    'recovery_release.py',
     'wallet_withdrawal_otp.py',
     'withdrawal_errors.py',
     'merchant_payments.py',

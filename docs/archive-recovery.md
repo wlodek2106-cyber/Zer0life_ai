@@ -8,18 +8,93 @@ accounts automatically and does not restore a Render disk snapshot.
 
 1. Open the updated Mini App from `@Zer0lifelabs_ai_bot` on the configured
    administrator's Telegram account.
-2. Open **Wallet → Восстановление · только владелец**.
-3. Select **Загрузить архив игроков**. Existing server-held pending balances
+2. Open **Wallet → Archive recovery · owner only**.
+3. Select **Check update and load archives**. Existing server-held pending balances
    appear even if those players have not reopened the app.
 4. Review each frozen request, currencies and totals. Device-only historical
    farms appear after the player opens the updated app on the original device.
-5. Select **Вернуть архив на основные балансы** and confirm the exact totals.
+5. Select **Restore archives to main balances** and confirm the exact totals.
    This authorizes spending and withdrawing these amounts from real project
    treasury funds. Requests are processed in batches of up to 50 players.
 6. Reload the list to process any remaining or newly submitted records.
 
 The administrator is the existing `ADMIN_TELEGRAM_ID` from the bot configuration,
 not a client-supplied nickname. Other players cannot list or approve recoveries.
+
+## Independent website and API rollouts
+
+Recovery contract release: `recovery-gate-2026-10-17`, protocol `1`.
+The website and API must advertise this exact recovery release plus
+`owner-approved-principal-yield-v2` and `release-gated-approval-v1`.
+This identifier describes the recovery contract, not every unrelated website
+change. When changing recovery semantics, update the Python contract, the
+JavaScript expectation, the dashboard data attribute and script cache keys
+together. The regression test checks these stay aligned.
+
+The owner panel starts with approval disabled, probes the public API on opening
+and before loading requests, and checks again both before and after the native
+confirmation. A missing endpoint, timeout, incompatible protocol, missing
+capability, or cached HTML/wallet script fails closed with “Recovery update in
+progress.” A failed reload also discards any previously reviewed list. Use
+**Check update and load archives** after the update finishes; requests must be
+reviewed again. No automatic approval or accounting migration occurs.
+
+New API code rejects owner list/apply requests without the matching
+`recoveryClient: {releaseId, protocol}` with HTTP 409 and
+`code: recovery_release_mismatch`, before request generation, backups or balance
+writes. This public client declaration is a compatibility check, not an
+authentication credential: valid signed Telegram data and owner authorization
+remain required. Staging player archives remains available independently.
+
+| Website | API | Result |
+| --- | --- | --- |
+| New | Old / missing `/release` | Update message; no approval request sent |
+| Old | New | Owner list/apply rejected before writes |
+| New | New, matching | Load, explicit review and confirmation are available |
+| New | New, mismatched release/capability | Update message; review discarded |
+| Old | Old | Neither side contains this guard; update API first |
+
+Cached old dashboard HTML may lack the panel entirely. If an old recovery script
+is still accessible, the new API guard still rejects its unversioned approvals.
+No new code can retroactively protect an entirely old website/API pair. Deploy
+the API first and avoid rolling back to an API predating this guard while
+approval is in use.
+
+### Confirm Render rollout without a Telegram session
+
+After the source change is merged and the normal deployment runs, make a plain
+GET request to the configured API's `/release` endpoint. It requires no
+`initData`, account identity, cookie or authorization header and performs no
+database access. The response is not cached:
+
+```json
+{
+  "success": true,
+  "releaseId": "recovery-gate-2026-10-17",
+  "sourceCommit": "<40-character Render source commit, or null outside Render>",
+  "recovery": {
+    "protocol": 1,
+    "capabilities": ["owner-approved-principal-yield-v2", "release-gated-approval-v1"],
+    "ready": true
+  }
+}
+```
+
+Compare `sourceCommit` with the source revision selected in Render and compare
+the recovery contract with the deployed Pages source. The commit is allowlisted
+to a hexadecimal SHA only; no other environment values, paths, wallet addresses,
+Telegram IDs or account data are returned. `X-Zer0Life-Release` on bot API
+responses is a secondary contract marker. An expected GitHub commit or a 401
+from `/wallet/state` alone is not proof this API release is running. If
+`sourceCommit` is null, the contract is visible but exact revision verification
+is unavailable; do not infer a deployed commit.
+
+Offline checks:
+
+```sh
+python -m unittest discover -s tests -p 'test_recovery_mobile.py'
+node --test tests/recovery-actions.test.cjs
+```
 
 ## What is credited
 

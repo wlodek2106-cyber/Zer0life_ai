@@ -26,6 +26,21 @@
         return result;
     }
 
+    async function getRelease() {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+            const response = await fetch(`${API_BASE}/release`, {
+                method: 'GET', cache: 'no-store', credentials: 'omit',
+                signal: controller.signal,
+            });
+            if (!response.ok) throw new Error('Release information unavailable');
+            return await response.json();
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
     function alertUser(message) {
         let text = String(message || 'Could not complete the action.');
         if (text.length > 256) {
@@ -563,6 +578,7 @@
     }
 
     window.secureWallet = {
+        getRelease,
         request: post,
         refresh,
         withdraw,

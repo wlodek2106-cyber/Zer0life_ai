@@ -18,6 +18,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from recovery_release import RELEASE_ID
 from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
@@ -45,6 +46,7 @@ def handle_preflight():
 
 @api_app.after_request
 def add_cors_headers(response):
+    response.headers['X-Zer0Life-Release'] = RELEASE_ID
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
