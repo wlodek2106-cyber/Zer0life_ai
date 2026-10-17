@@ -2310,28 +2310,23 @@
             <div style="text-align: center;">
                 <div style="background: rgba(20,241,149,0.08); border: 1px solid rgba(20,241,149,0.3); border-radius: 14px; padding: 14px; margin-bottom: 15px; text-align: center;">
                     <div style="font-size: 13px; color: #14f195; font-weight: 800;">Deposit up to 10 SOL per transaction</div>
-                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">Use the Solana Pay QR with your unique reference. Paste the Tx after it is finalized.</div>
+                    <div style="font-size: 11px; color: #8a8d98; margin-top: 4px;">Scan the QR to deposit, then paste the Tx after it is finalized.</div>
                 </div>
 
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
-                    Get Deposit Address & Reference 🚀
+                    Show Deposit Address 🚀
                 </button>
                 <div id="deposit-status-msg" role="status" aria-live="polite" hidden
                      style="font-size:12px;color:#f59e0b;margin:0 0 12px;font-weight:600;"></div>
 
                 <div id="deposit-details-box" style="display: none;">
-                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Scan this Solana Pay QR in a compatible wallet. It includes your unique reference:</p>
+                    <p style="font-size: 12px; color: #a8f07a; margin-bottom: 8px;">Scan this QR with a compatible Solana wallet:</p>
                     <div style="background: #ffffff; padding: 10px; display: inline-block; border-radius: 14px; margin-bottom: 10px;">
                         <img id="deposit-qr-img" src="" alt="Solana Pay deposit QR code" style="width: 140px; height: 140px; display: block;" />
                     </div>
                     <p style="font-size: 11px; color: #a8f07a; margin: 4px 0 8px;">Deposit address:</p>
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
-                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy Address</button>
-
-                    <p style="font-size: 11px; color: #a8f07a; margin: 4px 0 8px;">Unique deposit reference (required):</p>
-                    <div id="deposit-reference-code" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
-                    <button class="wallet-action-btn" id="copy-deposit-reference-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy Deposit Reference</button>
-                    <p style="font-size: 10px; color: #f0cb79; margin: 0 0 12px;">Transfers without this reference cannot be credited. Only finalized transactions to the pool are accepted.</p>
+                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy Solana Pay Link</button>
 
                     <div class="custom-input-group" style="margin-bottom: 12px; text-align: left;">
                         <label style="font-size: 11px; color: #14f195; font-weight: 700;">Solana Transaction Signature (Tx):</label>
@@ -4574,6 +4569,7 @@
             };
 
             let activeDepositReference = '';
+            let activeDepositPayUri = '';
 
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
@@ -4582,8 +4578,8 @@
                 depositModal.style.display = 'flex';
                 document.getElementById('deposit-details-box').style.display = 'none';
                 document.getElementById('tx-signature-input').value = '';
-                document.getElementById('deposit-reference-code').textContent = '';
                 activeDepositReference = '';
+                activeDepositPayUri = '';
                 setDepositStatus('');
             };
 
@@ -4594,20 +4590,18 @@
                 const detailsBox = document.getElementById('deposit-details-box');
                 const verifyButton = document.getElementById('check-deposit-status-btn');
                 const copyButton = document.getElementById('copy-addr-btn');
-                const copyReferenceButton = document.getElementById('copy-deposit-reference-btn');
                 const signatureInput = document.getElementById('tx-signature-input');
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
-                document.getElementById('deposit-reference-code').textContent = '';
                 document.getElementById('deposit-qr-img').removeAttribute('src');
                 detailsBox.style.display = 'block';
                 addressButton.disabled = true;
                 addressButton.textContent = 'Preparing deposit…';
-                setDepositStatus('Preparing your unique deposit reference…');
+                setDepositStatus('Preparing secure deposit details…');
                 verifyButton.disabled = true;
                 copyButton.disabled = true;
-                copyReferenceButton.disabled = true;
                 signatureInput.disabled = true;
                 activeDepositReference = '';
+                activeDepositPayUri = '';
                 try {
                     const response = await fetch('https://zer0life-ai-iz5n.onrender.com/wallet/deposit/reference', {
                         method: 'POST',
@@ -4627,23 +4621,33 @@
                     }
                     activeDepositReference = reference;
                     document.getElementById('deposit-full-addr').innerText = address;
-                    document.getElementById('deposit-reference-code').textContent = reference;
-                    const solanaPayUri =
+                    activeDepositPayUri =
                         `solana:${address}?reference=${encodeURIComponent(reference)}` +
                         `&label=${encodeURIComponent('Zer0Life Run')}` +
                         `&message=${encodeURIComponent(`SOL deposit ${reference.slice(0, 8)}`)}`;
                     document.getElementById('deposit-qr-img').src =
-                        `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(solanaPayUri)}`;
+                        `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(activeDepositPayUri)}`;
                     verifyButton.disabled = false;
                     copyButton.disabled = false;
-                    copyReferenceButton.disabled = false;
                     signatureInput.disabled = false;
                     setDepositStatus('');
                 } catch (error) {
                     setDepositStatus(error.message || 'Could not prepare the deposit reference. No funds were moved.');
                 } finally {
                     addressButton.disabled = false;
-                    addressButton.textContent = 'Get Deposit Address & Reference 🚀';
+                    addressButton.textContent = 'Show Deposit Address 🚀';
+                }
+            };
+
+            const copyPayLinkButton = document.getElementById('copy-addr-btn');
+            copyPayLinkButton.onclick = async () => {
+                triggerHaptic('success');
+                playSound('click');
+                try {
+                    await navigator.clipboard.writeText(activeDepositPayUri);
+                    tg.showAlert('✅ Solana Pay link copied. Use it in a compatible wallet.');
+                } catch {
+                    tg.showAlert('Could not copy the Solana Pay link. Please scan the QR code instead.');
                 }
             };
 
@@ -4723,24 +4727,6 @@
         document.getElementById('close-boosters').onclick = () => {
             triggerHaptic('light');
             boostersModal.style.display = 'none';
-        };
-
-        document.getElementById('copy-addr-btn').onclick = () => {
-            triggerHaptic('success');
-            playSound('click');
-            navigator.clipboard.writeText(document.getElementById('deposit-full-addr').innerText);
-            tg.showAlert('✅ Address copied to clipboard!');
-        };
-
-        document.getElementById('copy-deposit-reference-btn').onclick = async () => {
-            triggerHaptic('success');
-            playSound('click');
-            try {
-                await navigator.clipboard.writeText(document.getElementById('deposit-reference-code').textContent);
-                tg.showAlert('✅ Deposit reference copied to clipboard!');
-            } catch {
-                tg.showAlert('Could not copy the reference. Select and copy it manually.');
-            }
         };
 
         function handleStepMotion(event) {
