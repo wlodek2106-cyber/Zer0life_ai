@@ -359,6 +359,158 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.post("/wallet/recovery/submit", {"farms": self.farms}).status_code, 400)
         self.assertEqual(self.state()["availableZrl"], 25)
 
+    def test_invalid_dates_and_overflow_do_not_hide_or_credit_other_archives(self):
+        cases = [
+            ("missing-start", {"startTime": 0}, "dates"),
+            ("reversed-dates", {"startTime": 2, "endTime": 1}, "dates"),
+            ("overflow", {"amount": 1_000_000_000, "dailyRate": 1_000_000,
+                          "startTime": 1, "endTime": int(time.time() * 1000)}, "accounting range"),
+        ]
+        for label, changes, message in cases:
+            with self.subTest(label=label):
+                farm = {**self.farms[0], "id": label, **changes}
+                response = self.post("/wallet/recovery/submit", {"farms": [farm]})
+                self.assertEqual(response.status_code, 200, response.json)
+                invalid = response.json["recovery"]
+                with service._connect(self.path) as db:
+                    original = dict(db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?",
+                                               (invalid["requestId"],)).fetchone())
+                    service._ensure_account(db, "300")
+                    db.execute("UPDATE wallet_accounts SET legacy_pending_units=50000000 WHERE telegram_id='300'")
+                listed = self.post("/wallet/recovery/admin/list", user="100")
+                self.assertEqual(listed.status_code, 200, listed.json)
+                self.assertEqual([r["telegramId"] for r in listed.json["requests"]], ["300"])
+                error, = listed.json["quoteErrors"]
+                self.assertEqual(error["telegramId"], "200")
+                self.assertEqual(error["requestId"], invalid["requestId"])
+                self.assertEqual(error["stage"], "quote")
+                self.assertTrue(error["requiresReconciliation"])
+                self.assertIn(message, error["error"])
+                self.assertNotIn("farmYieldZrl", error)
+                self.assertNotIn("totalZrl", error)
+                valid, = listed.json["requests"]
+                with service._connect(self.path) as db:
+                    self.assertEqual(dict(db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?",
+                                                    (invalid["requestId"],)).fetchone()), original)
+                    before = "\n".join(db.iterdump())
+                # A caller cannot sneak the excluded archive into the approved
+                # batch; failure after the valid player rolls back everything.
+                failed = self.post("/wallet/recovery/admin/apply", {"requests": [
+                    {k: r[k] for k in ("requestId", "digest")} for r in (valid, invalid)
+                ]}, user="100")
+                self.assertEqual(failed.status_code, 409, failed.json)
+                with service._connect(self.path) as db:
+                    self.assertEqual("\n".join(db.iterdump()), before)
+                self.assertEqual(self.approve(invalid).status_code, 409)
+                self.assertEqual(self.approve(valid).status_code, 200)
+                self.assertEqual(self.approve(valid).status_code, 200)
+                self.assertEqual(self.state("300")["availableZrl"], 50)
+                self.assertEqual(self.state()["availableZrl"], 25)
+                self.assertEqual(self.state()["legacyPendingZrl"], 100)
+                self.assertEqual(self.state()["legacyPendingSol"], .01)
+                # Keep each subcase independent without changing the archive
+                # as part of the recovery operation under test.
+                with service._connect(self.path) as db:
+                    db.execute("DELETE FROM wallet_recovery_requests")
+                    db.execute("DELETE FROM wallet_ledger WHERE telegram_id='300'")
+
+    def test_bad_cached_quote_is_rejected_and_still_rolls_back_a_valid_batch(self):
+        valid = self.submit()
+        bad_farms = [{**f, "startTime": 0} for f in valid["farms"]]
+        with service._connect(self.path) as db:
+            service._ensure_account(db, "300")
+            db.execute("UPDATE wallet_accounts SET legacy_pending_units=100000000,legacy_pending_sol_lamports=10000000 WHERE telegram_id='300'")
+            snapshot = json.loads(db.execute("SELECT snapshot_json FROM wallet_recovery_requests WHERE request_id=?",
+                                             (valid["requestId"],)).fetchone()[0])
+            snapshot["farms"] = bad_farms
+            encoded = json.dumps(snapshot)
+            digest = hashlib.sha256(encoded.encode()).hexdigest()
+            db.execute("""INSERT INTO wallet_recovery_requests
+                (request_id,telegram_id,username,digest,snapshot_json,created_at)
+                VALUES('invalid-cached','300','BadCached',?,?,?)""", (digest, encoded, int(time.time())))
+        invalid = {"requestId": "invalid-cached", "digest": digest}
+        listed = self.post("/wallet/recovery/admin/list", user="100")
+        self.assertEqual(listed.status_code, 200, listed.json)
+        self.assertEqual([r["telegramId"] for r in listed.json["requests"]], ["200"])
+        self.assertEqual(listed.json["quoteErrors"][0]["requestId"], "invalid-cached")
+        with service._connect(self.path) as db:
+            before = "\n".join(db.iterdump())
+        response = self.post("/wallet/recovery/admin/apply", {"requests": [
+            {k: valid[k] for k in ("requestId", "digest")}, invalid,
+        ]}, user="100")
+        self.assertEqual(response.status_code, 409, response.json)
+        self.assertIn("dates", response.json["error"])
+        with service._connect(self.path) as db:
+            self.assertEqual("\n".join(db.iterdump()), before)
+        self.assertEqual(self.approve(valid).status_code, 200)
+
+    def test_staging_preserves_unreadable_or_missing_original_archives(self):
+        self.seed_incomplete_old_settlement(int(time.time() * 1000))
+        with service._connect(self.path) as db:
+            original = db.execute("SELECT snapshot_json FROM wallet_recovery_requests WHERE request_id='old-approved'").fetchone()[0]
+            service._ensure_account(db, "300")
+            db.execute("UPDATE wallet_accounts SET legacy_pending_units=50000000 WHERE telegram_id='300'")
+        for saved in ("not json", '{"farms":[]}', None):
+            with self.subTest(saved=saved):
+                with service._connect(self.path) as db:
+                    if saved is None:
+                        db.execute("UPDATE wallet_legacy_farm_returns SET request_id='missing-original' WHERE telegram_id='200'")
+                    else:
+                        db.execute("UPDATE wallet_recovery_requests SET snapshot_json=? WHERE request_id='old-approved'", (saved,))
+                    before = [dict(r) for r in db.execute("SELECT * FROM wallet_legacy_farm_returns WHERE telegram_id='200'")]
+                listed = self.post("/wallet/recovery/admin/list", user="100")
+                self.assertEqual(listed.status_code, 200, listed.json)
+                valid, = listed.json["requests"]
+                self.assertEqual(valid["telegramId"], "300")
+                error, = listed.json["quoteErrors"]
+                self.assertEqual(error["telegramId"], "200")
+                self.assertEqual(error["stage"], "staging")
+                with service._connect(self.path) as db:
+                    self.assertEqual([dict(r) for r in db.execute("SELECT * FROM wallet_legacy_farm_returns WHERE telegram_id='200'")], before)
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM wallet_recovery_requests WHERE telegram_id='200' AND status='pending'").fetchone()[0], 0)
+                    db.execute("UPDATE wallet_recovery_requests SET snapshot_json=? WHERE request_id='old-approved'", (original,))
+                    db.execute("UPDATE wallet_legacy_farm_returns SET request_id='old-approved' WHERE telegram_id='200'")
+        self.assertEqual(self.approve(valid).status_code, 200)
+        # Once the original is reconciled the account can be quoted again.
+        listed = self.post("/wallet/recovery/admin/list", user="100")
+        self.assertEqual(listed.status_code, 200, listed.json)
+        self.assertEqual(listed.json["quoteErrors"], [])
+        self.assertEqual([r["telegramId"] for r in listed.json["requests"]], ["200"])
+
+    def test_summary_error_rolls_back_only_that_archives_quote_writes(self):
+        raw = self.post("/wallet/recovery/submit", {"farms": self.farms}).json["recovery"]
+        with service._connect(self.path) as db:
+            snapshot = json.loads(db.execute("SELECT snapshot_json FROM wallet_recovery_requests WHERE request_id=?",
+                                             (raw["requestId"],)).fetchone()[0])
+            snapshot["zrl"] = None  # Quote succeeds, but its summary cannot be calculated.
+            db.execute("UPDATE wallet_recovery_requests SET snapshot_json=? WHERE request_id=?",
+                       (json.dumps(snapshot), raw["requestId"]))
+            service._ensure_account(db, "300")
+            db.execute("UPDATE wallet_accounts SET legacy_pending_units=50000000 WHERE telegram_id='300'")
+            before = dict(db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?", (raw["requestId"],)).fetchone())
+        listed = self.post("/wallet/recovery/admin/list", user="100")
+        self.assertEqual(listed.status_code, 200, listed.json)
+        self.assertEqual([r["telegramId"] for r in listed.json["requests"]], ["300"])
+        self.assertEqual(listed.json["quoteErrors"][0]["requestId"], raw["requestId"])
+        with service._connect(self.path) as db:
+            after = [dict(r) for r in db.execute("SELECT * FROM wallet_recovery_requests WHERE telegram_id='200'")]
+        self.assertEqual(after, [before])
+
+    def test_unreadable_snapshot_shapes_are_reported_without_a_list_failure(self):
+        raw = self.post("/wallet/recovery/submit", {"farms": self.farms}).json["recovery"]
+        for snapshot in ("not json", "null", "[]", '{"farms":{}}', '{"farms":[null]}'):
+            with self.subTest(snapshot=snapshot):
+                with service._connect(self.path) as db:
+                    db.execute("UPDATE wallet_recovery_requests SET snapshot_json=? WHERE request_id=?",
+                               (snapshot, raw["requestId"]))
+                listed = self.post("/wallet/recovery/admin/list", user="100")
+                self.assertEqual(listed.status_code, 200, listed.json)
+                self.assertEqual(listed.json["requests"], [])
+                error, = listed.json["quoteErrors"]
+                self.assertEqual(error["requestId"], raw["requestId"])
+                self.assertEqual(self.approve(raw).status_code, 409)
+                self.assertEqual(self.state()["availableZrl"], 25)
+
     def mobile_roundtrip(self, purpose="link", nonce=None, signing_wallet=None, complete=True):
         wallet = signing_wallet or Keypair()
         response = self.post("/wallet/mobile/start", {"purpose": purpose, "nonce": nonce})

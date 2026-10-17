@@ -18,14 +18,39 @@ accounts automatically and does not restore a Render disk snapshot.
    treasury funds. Requests are processed in batches of up to 50 players.
 6. Reload the list to process any remaining or newly submitted records.
 
+### Archives requiring reconciliation
+
+The owner list returns independently prepared accounts in `requests` and
+account-specific failures in `quoteErrors`. Each error identifies `telegramId`,
+`username`, `requestId` (when a pending request exists), `stage` (`staging` or
+`quote`), the error text and `requiresReconciliation: true`.
+
+Invalid dates, yield overflow, unreadable saved data or missing original farm
+terms do not hide the other accounts. The panel marks these archives
+**Reconciliation required**, displays the cause and excludes them from approval
+and confirmation totals. Error-only lists keep approval disabled; successful
+approval of valid accounts leaves the unresolved errors visible.
+
+Failed preparation rolls back that account's list-preparation writes, preserving
+the original request, digest and records. It does not replace unknown yield with
+zero, discard missing farm terms, approve principal from an invalid archive, or
+alter balances. Reconcile against the original archive through a separately
+reviewed process, then reload; this interface does not edit damaged records.
+
+Approval revalidates the frozen farm calculation before settlement. The entire
+selected batch still uses one transaction: if any selected request is invalid,
+no account in that batch receives a credit. Per-account savepoints are used only
+for preparing the list, never for partial approval.
+
 The administrator is the existing `ADMIN_TELEGRAM_ID` from the bot configuration,
 not a client-supplied nickname. Other players cannot list or approve recoveries.
 
 ## Independent website and API rollouts
 
-Recovery contract release: `recovery-gate-2026-10-17`, protocol `1`.
+Recovery contract release: `recovery-isolation-2026-10-17`, protocol `1`.
 The website and API must advertise this exact recovery release plus
-`owner-approved-principal-yield-v2` and `release-gated-approval-v1`.
+`owner-approved-principal-yield-v2`, `release-gated-approval-v1` and
+`per-account-quote-errors-v1`.
 This identifier describes the recovery contract, not every unrelated website
 change. When changing recovery semantics, update the Python contract, the
 JavaScript expectation, the dashboard data attribute and script cache keys
@@ -70,11 +95,11 @@ database access. The response is not cached:
 ```json
 {
   "success": true,
-  "releaseId": "recovery-gate-2026-10-17",
+  "releaseId": "recovery-isolation-2026-10-17",
   "sourceCommit": "<40-character Render source commit, or null outside Render>",
   "recovery": {
     "protocol": 1,
-    "capabilities": ["owner-approved-principal-yield-v2", "release-gated-approval-v1"],
+    "capabilities": ["owner-approved-principal-yield-v2", "release-gated-approval-v1", "per-account-quote-errors-v1"],
     "ready": true
   }
 }

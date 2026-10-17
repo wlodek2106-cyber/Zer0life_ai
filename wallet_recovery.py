@@ -6,11 +6,36 @@ import secrets
 import sqlite3
 import tempfile
 import time
+from contextlib import contextmanager
 from decimal import Decimal, ROUND_DOWN
 
 from flask import Blueprint, jsonify, request
 from legacy_farm_settlement import init_settlement, missing_principal_farms, quote_farms, record_settlement, saved_rate, validate_original_terms
 from recovery_release import compatible_client, release_metadata, UPDATE_MESSAGE
+
+
+ARCHIVE_ERRORS = (ValueError, TypeError, KeyError, ArithmeticError)
+
+
+@contextmanager
+def archive_savepoint(db):
+    """Only list preparation is isolated; approval remains one transaction."""
+    db.execute("SAVEPOINT recovery_archive")
+    try:
+        yield
+    except Exception:
+        db.execute("ROLLBACK TO recovery_archive")
+        raise
+    finally:
+        db.execute("RELEASE recovery_archive")
+
+
+def archived_snapshot(encoded):
+    saved = json.loads(encoded)
+    if (not isinstance(saved, dict) or not isinstance(saved.get("farms"), list)
+            or any(not isinstance(farm, dict) for farm in saved["farms"])):
+        raise ValueError("Archived recovery snapshot is unreadable; reconciliation is required")
+    return saved
 
 
 def units(value, scale):
@@ -89,7 +114,7 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
         return None
 
     def summary(row):
-        saved = json.loads(row["snapshot_json"])
+        saved = archived_snapshot(row["snapshot_json"])
         farm_zrl = sum(f.get("principalOwed", f["units"]) for f in saved["farms"] if f["asset"] == "zrl")
         farm_sol = sum(f.get("principalOwed", f["units"]) for f in saved["farms"] if f["asset"] == "sol")
         farm_yield = sum(f.get("yieldOwed", 0) for f in saved["farms"])
@@ -203,6 +228,17 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
             mismatch = release_mismatch(data)
             if mismatch is not None:
                 return mismatch
+            quote_errors = []
+
+            def reconciliation(row, stage, error):
+                quote_errors.append({
+                    "telegramId": row["telegram_id"],
+                    "username": row["username"] if "username" in row.keys() else "",
+                    "requestId": row["request_id"] if "request_id" in row.keys() else None,
+                    "stage": stage, "error": str(error),
+                    "requiresReconciliation": True,
+                })
+
             with connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
                 # Accounts already saved on the server must not depend on every
@@ -215,15 +251,19 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                     AND NOT EXISTS(SELECT 1 FROM wallet_recovery_requests r
                                    WHERE r.telegram_id=a.telegram_id AND r.status='pending')
                     LIMIT 50""").fetchall():
-                    snapshot = {"zrl": account["legacy_pending_units"],
-                                "sol": account["legacy_pending_sol_lamports"],
-                                "farms": missing_principal_farms(db, account["telegram_id"])}
-                    encoded = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
-                    digest = hashlib.sha256(encoded.encode()).hexdigest()
-                    db.execute("""INSERT OR IGNORE INTO wallet_recovery_requests
-                        (request_id,telegram_id,username,digest,snapshot_json,created_at)
-                        VALUES(?,?,?,?,?,?)""",
-                        (secrets.token_urlsafe(24), account["telegram_id"], "", digest, encoded, int(time.time())))
+                    try:
+                        with archive_savepoint(db):
+                            snapshot = {"zrl": account["legacy_pending_units"],
+                                        "sol": account["legacy_pending_sol_lamports"],
+                                        "farms": missing_principal_farms(db, account["telegram_id"])}
+                            encoded = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
+                            digest = hashlib.sha256(encoded.encode()).hexdigest()
+                            db.execute("""INSERT OR IGNORE INTO wallet_recovery_requests
+                                (request_id,telegram_id,username,digest,snapshot_json,created_at)
+                                VALUES(?,?,?,?,?,?)""",
+                                (secrets.token_urlsafe(24), account["telegram_id"], "", digest, encoded, int(time.time())))
+                    except ARCHIVE_ERRORS as error:
+                        reconciliation(account, "staging", error)
                 db.commit()
                 db.execute("BEGIN IMMEDIATE")
                 rows = db.execute("""
@@ -235,23 +275,33 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                 """).fetchall()
                 quoted = []
                 for row in rows:
-                    saved = json.loads(row["snapshot_json"])
-                    now_ms = int(time.time() * 1000)
-                    if saved.get("quoteVersion") != 2 or now_ms - saved.get("quotedAtMs", 0) > 300_000:
-                        saved = {**saved, "quoteVersion": 2, "quotedAtMs": now_ms,
-                                 "farms": quote_farms(db, row["telegram_id"], saved["farms"], now_ms, zrl_scale)}
-                        encoded = json.dumps(saved, sort_keys=True, separators=(",", ":"))
-                        digest = hashlib.sha256(encoded.encode()).hexdigest()
-                        request_id = secrets.token_hex(16)
-                        db.execute("""INSERT INTO wallet_recovery_requests
-                            (request_id,telegram_id,username,digest,snapshot_json,created_at) VALUES(?,?,?,?,?,?)""",
-                            (request_id, row["telegram_id"], row["username"], digest, encoded, int(time.time())))
-                        db.execute("UPDATE wallet_recovery_requests SET status='superseded' WHERE request_id=?",
-                                   (row["request_id"],))
-                        row = db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?", (request_id,)).fetchone()
-                    quoted.append(summary(row))
+                    original = row
+                    try:
+                        with archive_savepoint(db):
+                            saved = archived_snapshot(row["snapshot_json"])
+                            now_ms = int(time.time() * 1000)
+                            refresh = saved.get("quoteVersion") != 2 or now_ms - saved.get("quotedAtMs", 0) > 300_000
+                            # Validate even cached quotes; never expose a broken archive
+                            # as a zero-yield or partially recoverable request.
+                            farms = quote_farms(db, row["telegram_id"], saved["farms"],
+                                                now_ms if refresh else saved["quotedAtMs"], zrl_scale)
+                            if refresh:
+                                saved = {**saved, "quoteVersion": 2, "quotedAtMs": now_ms, "farms": farms}
+                                encoded = json.dumps(saved, sort_keys=True, separators=(",", ":"))
+                                digest = hashlib.sha256(encoded.encode()).hexdigest()
+                                request_id = secrets.token_hex(16)
+                                db.execute("""INSERT INTO wallet_recovery_requests
+                                    (request_id,telegram_id,username,digest,snapshot_json,created_at) VALUES(?,?,?,?,?,?)""",
+                                    (request_id, row["telegram_id"], row["username"], digest, encoded, int(time.time())))
+                                db.execute("UPDATE wallet_recovery_requests SET status='superseded' WHERE request_id=?",
+                                           (row["request_id"],))
+                                row = db.execute("SELECT * FROM wallet_recovery_requests WHERE request_id=?", (request_id,)).fetchone()
+                            record = summary(row)
+                        quoted.append(record)
+                    except ARCHIVE_ERRORS as error:
+                        reconciliation(original, "quote", error)
                 db.commit()
-            return jsonify(success=True, requests=quoted, release=release_metadata())
+            return jsonify(success=True, requests=quoted, quoteErrors=quote_errors, release=release_metadata())
         except PermissionError as error:
             return jsonify(success=False, error=str(error)), 403
         except (ValueError, ArithmeticError) as error:
@@ -301,9 +351,13 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
                         continue
                     if row["status"] != "pending":
                         raise ValueError("Recovery request is no longer pending")
-                    saved = json.loads(row["snapshot_json"])
+                    saved = archived_snapshot(row["snapshot_json"])
                     if saved.get("quoteVersion") != 2 or int(time.time() * 1000) - saved.get("quotedAtMs", 0) > 900_000:
                         raise ValueError("Recovery calculation is outdated; reload the list before approval")
+                    # A previously reviewed quote is not permission to credit an
+                    # archive whose original terms can no longer be reconciled.
+                    if quote_farms(db, row["telegram_id"], saved["farms"], saved["quotedAtMs"], zrl_scale) != saved["farms"]:
+                        raise ValueError("Recovery calculation changed; reload the list before approval")
                     account = db.execute("SELECT * FROM wallet_accounts WHERE telegram_id=?",
                                          (row["telegram_id"],)).fetchone()
                     if (account["legacy_pending_units"] != saved["zrl"]
@@ -341,7 +395,7 @@ def register_recovery_routes(app, db_path, connect, authenticate, ensure_account
             return jsonify(success=True, receipts=receipts)
         except PermissionError as error:
             return jsonify(success=False, error=str(error)), 403
-        except (ValueError, TypeError, ArithmeticError, sqlite3.IntegrityError) as error:
+        except (*ARCHIVE_ERRORS, sqlite3.IntegrityError) as error:
             return jsonify(success=False, error=str(error)), 409
         except Exception:
             app.logger.exception("approved historical recovery failed")

@@ -2,9 +2,9 @@
 import os
 import re
 
-RELEASE_ID = "recovery-gate-2026-10-17"
+RELEASE_ID = "recovery-isolation-2026-10-17"
 RECOVERY_PROTOCOL = 1
-RECOVERY_CAPABILITIES = ("owner-approved-principal-yield-v2", "release-gated-approval-v1")
+RECOVERY_CAPABILITIES = ("owner-approved-principal-yield-v2", "release-gated-approval-v1", "per-account-quote-errors-v1")
 UPDATE_MESSAGE = (
     "Recovery update in progress. The website and server must finish updating before "
     "owner approval is available. Reload the app and try again. Archives and balances are unchanged."

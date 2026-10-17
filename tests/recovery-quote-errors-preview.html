@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recovery errors · synthetic preview</title>
+    <style>
+        body { margin:0;background:#10150f;color:#dfecd7;font:14px system-ui,sans-serif; }
+        main { max-width:460px;margin:28px auto;padding:16px; }
+        h1 { font-size:21px; }
+        button { padding:10px;border:1px solid #536a42;border-radius:8px;background:#22351a;color:#dfecd7;margin:6px 0; }
+        button:disabled { opacity:.45; }
+        p { line-height:1.6; }
+        #recovery-release-status { color:#a6b59b;font-size:10px;overflow-wrap:anywhere; }
+        #recovery-action-status { font-size:12px;line-height:1.6; }
+    </style>
+</head>
+<body>
+    <main>
+        <p>Synthetic, read-only preview. No Telegram account, network payment or real archive is used.</p>
+        <section id="recovery-admin-panel" data-recovery-release="recovery-isolation-2026-10-17">
+            <h1>Archive recovery · owner only</h1>
+            <div id="recovery-release-status"></div>
+            <button id="recovery-admin-load">Check update and load archives</button>
+            <div id="recovery-admin-list"></div>
+            <button id="recovery-admin-apply" disabled>Restore archives to main balances</button>
+            <p id="recovery-action-status"></p>
+        </section>
+    </main>
+    <script>
+        const release = {
+            releaseId:'recovery-isolation-2026-10-17',
+            recovery:{ protocol:1,ready:true,capabilities:[
+                'owner-approved-principal-yield-v2','release-gated-approval-v1','per-account-quote-errors-v1'
+            ] }
+        };
+        window.secureWallet = {
+            async getRelease() { return release; },
+            async request(route) {
+                if (!route.endsWith('/list')) throw new Error('Read-only synthetic preview: approval is not available');
+                return {
+                    release,
+                    requests:new URLSearchParams(location.search).has('errorsOnly') ? [] : [{
+                        requestId:'synthetic-valid',digest:'synthetic-digest',telegramId:'300',username:'Valid archive',
+                        totalZrl:1125,totalSol:.011,farmCount:2,farmZrl:1000,farmSol:.001,
+                        farmYieldZrl:25,yieldPendingCount:0
+                    }],
+                    quoteErrors:[
+                        {telegramId:'200',username:'Invalid dates',requestId:'synthetic-dates',
+                            stage:'quote',error:'Archived farm dates are insufficient for a yield calculation'},
+                        {telegramId:'201',username:'Overflow',requestId:'synthetic-overflow',
+                            stage:'quote',error:'Historical yield exceeds the accounting range'},
+                        {telegramId:'202',username:'Missing original',stage:'staging',
+                            error:'Original archive is missing; reconciliation is required'}
+                    ]
+                };
+            },
+            async refresh() {}
+        };
+    </script>
+    <script src="../recovery-actions.js" onload="document.getElementById('recovery-admin-load').click()"></script>
+</body>
+</html>
