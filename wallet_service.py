@@ -26,6 +26,7 @@ from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
 ZRL_DECIMALS = 6
 ZRL_SCALE = 10 ** ZRL_DECIMALS
 DAILY_WITHDRAW_CAP = int(os.getenv("MAX_DAILY_ZRL_WITHDRAWAL", "10000")) * ZRL_SCALE
+MAX_DEPOSIT_LAMPORTS = 10 * 1_000_000_000
 MAX_INIT_DATA_AGE_SECONDS = 3600
 MAX_RUN_SPEED_KMH = 14.0
 MAX_RUN_SEGMENT_KM = 0.5
@@ -159,8 +160,17 @@ def _init_db(db_path):
                 signature TEXT PRIMARY KEY,
                 telegram_id TEXT NOT NULL,
                 lamports INTEGER NOT NULL,
+                deposit_reference TEXT,
                 created_at INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS wallet_deposit_references (
+                reference TEXT PRIMARY KEY,
+                telegram_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                credited_signature TEXT UNIQUE
+            );
+            CREATE INDEX IF NOT EXISTS wallet_deposit_references_user_idx
+                ON wallet_deposit_references(telegram_id, created_at);
             CREATE TABLE IF NOT EXISTS wallet_game_cooldowns (
                 telegram_id TEXT NOT NULL,
                 game TEXT NOT NULL,
@@ -213,6 +223,11 @@ def _init_db(db_path):
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN referral_code TEXT")
         if "referred_by" not in account_columns:
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN referred_by TEXT")
+        deposit_columns = {
+            row["name"] for row in db.execute("PRAGMA table_info(wallet_deposits)").fetchall()
+        }
+        if "deposit_reference" not in deposit_columns:
+            db.execute("ALTER TABLE wallet_deposits ADD COLUMN deposit_reference TEXT")
         if "trusted_withdrawal_address" not in account_columns:
             db.execute("ALTER TABLE wallet_accounts ADD COLUMN trusted_withdrawal_address TEXT")
         db.execute(
@@ -357,6 +372,65 @@ def _response_error(message, status):
     return jsonify({"success": False, "error": message}), status
 
 
+def _new_deposit_reference():
+    from base58 import b58encode
+
+    return b58encode(secrets.token_bytes(32)).decode("ascii")
+
+
+def _verified_deposit_lamports(result, signature, reference):
+    if not isinstance(result, dict):
+        raise ValueError("Transaction is missing or not finalized on Solana")
+
+    meta = result.get("meta")
+    if not isinstance(meta, dict) or "err" not in meta:
+        raise ValueError("Solana did not return a finalized transaction status")
+    if meta.get("err") is not None:
+        raise ValueError("Transaction failed on Solana")
+
+    transaction = result.get("transaction") or {}
+    signatures = transaction.get("signatures") or []
+    if signature not in signatures:
+        raise ValueError("Solana RPC returned a different transaction signature")
+
+    message = transaction.get("message") or {}
+    account_keys = set()
+    key_groups = [message.get("accountKeys") or []]
+    loaded_addresses = meta.get("loadedAddresses") or {}
+    key_groups.extend([
+        loaded_addresses.get("writable") or [],
+        loaded_addresses.get("readonly") or [],
+    ])
+    for group in key_groups:
+        for key in group:
+            public_key = key.get("pubkey") if isinstance(key, dict) else key
+            if isinstance(public_key, str):
+                account_keys.add(public_key)
+    if reference not in account_keys:
+        raise ValueError("Transaction does not include this account's unique deposit reference")
+
+    lamports = 0
+    for instruction in message.get("instructions") or []:
+        parsed = instruction.get("parsed") or {}
+        info = parsed.get("info") or {}
+        if instruction.get("program") != "system" or parsed.get("type") != "transfer":
+            continue
+        if info.get("destination") != SHARED_POOL_WALLET:
+            continue
+        try:
+            transfer_lamports = int(info.get("lamports", 0))
+        except (TypeError, ValueError):
+            continue
+        if transfer_lamports > 0:
+            lamports += transfer_lamports
+
+    if lamports <= 0:
+        raise ValueError("Transaction has no SOL transfer to the Zer0Life deposit pool")
+    if lamports > MAX_DEPOSIT_LAMPORTS:
+        raise ValueError("Deposit exceeds the 10 SOL per-transaction limit")
+    return lamports
+
+
 def _rpc_client():
     from solana.rpc.api import Client
     return Client(os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"))
@@ -419,7 +493,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     def wallet_release_header(response):
         # Public release marker, including on 401s, enables a deployment check
         # without obtaining a player's signed Telegram session or balance.
-        response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-withdrawals-2"
+        response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-deposits-reference-1"
         return response
 
     def authenticated_user(data):
@@ -655,6 +729,54 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             app.logger.exception("wallet link failed")
             return _response_error("Wallet could not be linked", 400)
 
+    @bp.post("/wallet/deposit/reference")
+    def wallet_deposit_reference():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            with _connect(db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                _ensure_account(db, user["id"])
+                row = db.execute(
+                    "SELECT reference FROM wallet_deposit_references "
+                    "WHERE telegram_id = ? AND credited_signature IS NULL "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    (user["id"],),
+                ).fetchone()
+                if row is None:
+                    for _ in range(5):
+                        reference = _new_deposit_reference()
+                        try:
+                            db.execute(
+                                "INSERT INTO wallet_deposit_references "
+                                "(reference, telegram_id, created_at) VALUES (?, ?, ?)",
+                                (reference, user["id"], _utc_now()),
+                            )
+                            row = {"reference": reference}
+                            break
+                        except sqlite3.IntegrityError:
+                            row = db.execute(
+                                "SELECT reference FROM wallet_deposit_references "
+                                "WHERE telegram_id = ? AND credited_signature IS NULL "
+                                "ORDER BY created_at DESC LIMIT 1",
+                                (user["id"],),
+                            ).fetchone()
+                            if row is not None:
+                                break
+                    if row is None:
+                        raise RuntimeError("Could not allocate a unique deposit reference")
+                db.commit()
+            return jsonify({
+                "success": True,
+                "address": SHARED_POOL_WALLET,
+                "reference": row["reference"],
+            })
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except Exception:
+            app.logger.exception("deposit reference preparation failed")
+            return _response_error("Could not prepare a deposit reference", 503)
+
     @bp.post("/wallet/deposit/verify")
     def wallet_deposit_verify():
         try:
@@ -663,14 +785,20 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             signature = str(data.get("txSignature", "")).strip()
             if not signature or len(signature) > 100:
                 return _response_error("Transaction signature is required", 400)
+            deposit_reference = str(data.get("depositReference", "")).strip()
+            if not deposit_reference or len(deposit_reference) > 60:
+                return _response_error("Unique deposit reference is required", 400)
             with _connect(db_path) as db:
-                account = db.execute(
-                    "SELECT address FROM wallet_accounts WHERE telegram_id = ?",
-                    (user["id"],),
+                reference_row = db.execute(
+                    "SELECT reference, credited_signature FROM wallet_deposit_references "
+                    "WHERE reference = ? AND telegram_id = ?",
+                    (deposit_reference, user["id"]),
                 ).fetchone()
-                address = account["address"] if account else None
-                if not address:
-                    return _response_error("Activate and verify your Solana wallet before depositing", 409)
+                if reference_row is None:
+                    return _response_error("This deposit reference does not belong to your Telegram account", 409)
+                if reference_row["credited_signature"]:
+                    return _response_error("This deposit reference was already credited; request a new one", 409)
+                reference = reference_row["reference"]
                 if db.execute("SELECT 1 FROM wallet_deposits WHERE signature = ?", (signature,)).fetchone():
                     return _response_error("This deposit transaction was already credited", 409)
 
@@ -685,31 +813,40 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             )
             rpc.raise_for_status()
             result = rpc.json().get("result")
-            if not result or result.get("meta", {}).get("err") is not None:
-                return _response_error("Transaction is missing, unconfirmed, or failed", 400)
-            instructions = result.get("transaction", {}).get("message", {}).get("instructions", [])
-            transfers = []
-            for instruction in instructions:
-                parsed = instruction.get("parsed", {})
-                info = parsed.get("info", {})
-                if instruction.get("program") == "system" and parsed.get("type") == "transfer":
-                    if info.get("source") == address and info.get("destination") == SHARED_POOL_WALLET:
-                        transfers.append(int(info.get("lamports", 0)))
-            lamports = sum(transfers)
-            if lamports <= 0:
-                return _response_error("Transaction does not contain a SOL transfer from the linked Solana wallet to the Zer0Life pool", 400)
+            try:
+                lamports = _verified_deposit_lamports(result, signature, reference)
+            except ValueError as exc:
+                return _response_error(str(exc), 400)
 
             with _connect(db_path) as db:
                 db.execute("BEGIN IMMEDIATE")
                 _ensure_account(db, user["id"])
+                reference_row = db.execute(
+                    "SELECT credited_signature FROM wallet_deposit_references "
+                    "WHERE reference = ? AND telegram_id = ?",
+                    (reference, user["id"]),
+                ).fetchone()
+                if reference_row is None or reference_row["credited_signature"]:
+                    db.rollback()
+                    return _response_error("This deposit reference was already used or is invalid", 409)
                 try:
                     db.execute(
-                        "INSERT INTO wallet_deposits (signature, telegram_id, lamports, created_at) VALUES (?, ?, ?, ?)",
-                        (signature, user["id"], lamports, _utc_now()),
+                        "INSERT INTO wallet_deposits "
+                        "(signature, telegram_id, lamports, deposit_reference, created_at) "
+                        "VALUES (?, ?, ?, ?, ?)",
+                        (signature, user["id"], lamports, reference, _utc_now()),
                     )
                 except sqlite3.IntegrityError:
                     db.rollback()
                     return _response_error("This deposit transaction was already credited", 409)
+                updated_reference = db.execute(
+                    "UPDATE wallet_deposit_references SET credited_signature = ? "
+                    "WHERE reference = ? AND telegram_id = ? AND credited_signature IS NULL",
+                    (signature, reference, user["id"]),
+                )
+                if updated_reference.rowcount != 1:
+                    db.rollback()
+                    return _response_error("This deposit reference was already used or is invalid", 409)
                 db.execute(
                     "UPDATE wallet_accounts SET sol_lamports = sol_lamports + ? WHERE telegram_id = ?",
                     (lamports, user["id"]),
@@ -723,6 +860,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 "success": True,
                 "depositedSOL": lamports / 1_000_000_000,
                 "gameSolBalance": balance / 1_000_000_000,
+                "depositReference": reference,
             })
         except PermissionError as exc:
             return _response_error(str(exc), 401)

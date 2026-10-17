@@ -183,9 +183,11 @@ test('dashboard removes personal wallet UI while retaining game balances, referr
     assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
     assert(!html.includes('content: "ASSET OVERVIEW"'));
     assert(html.includes('wallet.js?v=english-withdrawal-v3'));
-    assert(html.includes('if (current?.walletAddress)'));
-    assert(html.includes('Transfers cannot be credited. Do not send SOL.'));
-    assert(html.includes('Do not send directly from an exchange or another address.'));
+    assert(html.includes('depositReference: activeDepositReference'));
+    assert(html.includes('reference=${encodeURIComponent(reference)}'));
+    assert(html.includes('Use the Solana Pay QR with your unique reference.'));
+    assert(!html.includes('A verified sender address is required'));
+    assert(!html.includes('Transfers cannot be credited'));
     assert(html.includes('window.legacyRecovery.preserve(STORAGE_PREFIX)'));
     assert(!source.includes('WebApp.openLink('));
     assert(!source.includes('window.open('));
