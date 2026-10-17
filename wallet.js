@@ -132,19 +132,80 @@
                 ? `https://t.me/Zer0lifelabs_ai_bot?start=ref_${encodeURIComponent(referralCode)}`
                 : '';
         }
+        const affiliateLevels = Array.isArray(nextState.affiliateLevels) ? nextState.affiliateLevels : [];
+        const affiliateActiveCount = affiliateLevels.reduce(
+            (total, level) => total + Math.max(0, Number(level.users) || 0),
+            0,
+        );
+        const affiliateEarnedTotal = affiliateLevels.reduce(
+            (total, level) => total + Math.max(0, Number(level.earnedZrl) || 0),
+            0,
+        );
+        if (byId('affiliate-active-total')) {
+            byId('affiliate-active-total').textContent = affiliateActiveCount.toLocaleString();
+        }
+        if (byId('affiliate-active-unit')) {
+            byId('affiliate-active-unit').textContent = affiliateActiveCount === 1 ? 'player' : 'players';
+        }
+        if (byId('affiliate-earned-total')) {
+            byId('affiliate-earned-total').textContent = affiliateEarnedTotal.toLocaleString();
+        }
         if (byId('affiliate-levels')) {
-            const levels = Array.isArray(nextState.affiliateLevels) ? nextState.affiliateLevels : [];
             byId('affiliate-levels').replaceChildren();
-            levels.forEach((level) => {
+            const circleNames = [
+                'Direct',
+                'Second level',
+                'Third level',
+                'Fourth level',
+                'Fifth level',
+            ];
+            const circleDescriptions = [
+                'First circle',
+                'Second circle',
+                'Third circle',
+                'Fourth circle',
+                'Fifth circle',
+            ];
+            affiliateLevels.forEach((level) => {
                 const row = document.createElement('div');
-                row.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:10px;background:rgba(255,255,255,.035);font-size:10px;';
-                const label = document.createElement('span');
-                label.style.color = '#9ca39a';
-                label.textContent = `Level ${Number(level.level)} · ${Number(level.ratePercent)}% · ${Number(level.users)} runners`;
-                const total = document.createElement('strong');
-                total.style.color = '#d8ff62';
-                total.textContent = `${Number(level.earnedZrl || 0).toLocaleString()} ZRL`;
-                row.append(label, total);
+                row.className = 'affiliate-level-row';
+
+                const index = document.createElement('span');
+                index.className = 'affiliate-level-index';
+                index.textContent = String(Number(level.level) || 0).padStart(2, '0');
+
+                const label = document.createElement('div');
+                label.className = 'affiliate-level-label';
+                const name = document.createElement('div');
+                name.className = 'affiliate-level-name';
+                name.textContent = circleNames[Number(level.level) - 1] || `Level ${Number(level.level)}`;
+                const circle = document.createElement('div');
+                circle.className = 'affiliate-level-circle';
+                circle.textContent = circleDescriptions[Number(level.level) - 1] || 'Referral circle';
+                label.append(name, circle);
+
+                const share = document.createElement('strong');
+                share.className = 'affiliate-level-share';
+                share.textContent = `${Number(level.ratePercent) || 0}%`;
+
+                const players = document.createElement('div');
+                players.className = 'affiliate-level-players';
+                const playerCount = document.createElement('strong');
+                const levelPlayerCount = Math.max(0, Number(level.users) || 0);
+                playerCount.textContent = levelPlayerCount.toLocaleString();
+                const playerLabel = document.createElement('span');
+                playerLabel.textContent = levelPlayerCount === 1 ? 'player' : 'players';
+                players.append(playerCount, playerLabel);
+
+                const earned = document.createElement('div');
+                earned.className = 'affiliate-level-earned';
+                const earnedAmount = document.createElement('strong');
+                earnedAmount.textContent = `${Math.max(0, Number(level.earnedZrl) || 0).toLocaleString()} ZRL`;
+                const earnedLabel = document.createElement('span');
+                earnedLabel.textContent = 'earned';
+                earned.append(earnedAmount, earnedLabel);
+
+                row.append(index, label, share, players, earned);
                 byId('affiliate-levels').appendChild(row);
             });
         }
