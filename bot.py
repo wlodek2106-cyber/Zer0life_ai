@@ -155,6 +155,23 @@ def start_background_loop(loop):
 
 threading.Thread(target=start_background_loop, args=(bot_loop,), daemon=True).start()
 
+from wallet_backup import start_backups, health as backup_health
+
+def notify_backup_failure(message):
+    future = asyncio.run_coroutine_threadsafe(
+        bot.send_message(chat_id=int(ADMIN_TELEGRAM_ID), text=message), bot_loop
+    )
+    future.result(timeout=20)
+
+start_backups(DATA_DIR, notify_backup_failure if bot else None)
+
+@api_app.get("/health/backups")
+def api_backup_health():
+    payload, status = backup_health()
+    response = jsonify(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response, status
+
 # ==================== BULK MESSAGING AND PHANTOM / JUPITER RATES ====================
 async def send_broadcast_to_all(text: str):
     users = load_users()

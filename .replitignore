@@ -4,3 +4,11 @@ wallet-embedded/dist/
 __pycache__/
 *.sqlite3
 *.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.enc
+users.json
+leaderboard_stats.json
+backups/
