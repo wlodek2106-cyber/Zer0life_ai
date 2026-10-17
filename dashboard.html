@@ -2316,6 +2316,8 @@
                 <button class="claim-btn" id="generate-deposit-addr-btn" style="width: 100%; background: #14f195; color: #000; font-weight: 800; margin-bottom: 15px;">
                     Show Deposit Address 🚀
                 </button>
+                <div id="deposit-status-msg" role="status" aria-live="polite" hidden
+                     style="font-size:12px;color:#f59e0b;margin:0 0 12px;font-weight:600;"></div>
 
                 <div id="deposit-details-box" style="display: none;">
                     <p id="deposit-source-warning" style="font-size:11px;color:#d8ffc4;overflow-wrap:anywhere;"></p>
@@ -2333,7 +2335,6 @@
                     </div>
 
                     <button class="claim-btn" id="check-deposit-status-btn" style="width: 100%; background: #a8f07a; color: #000; font-weight: 800;">Verify & Credit SOL 🔄</button>
-                    <div id="deposit-status-msg" style="font-size: 12px; color: #f59e0b; margin-top: 10px; font-weight: 600;"></div>
                 </div>
             </div>
         </div>
@@ -4561,6 +4562,13 @@
             document.getElementById('asset-sol-bal').innerText = effectiveSolBalance.toFixed(4);
             document.getElementById('asset-sol-usd').innerText = '$' + (effectiveSolBalance * 140).toFixed(2);
 
+            const setDepositStatus = (message) => {
+                const status = document.getElementById('deposit-status-msg');
+                if (!status) return;
+                status.textContent = String(message || '');
+                status.hidden = !status.textContent;
+            };
+
             document.getElementById('deposit-btn').onclick = () => {
                 triggerHaptic('light');
                 playSound('click');
@@ -4568,31 +4576,41 @@
                 depositModal.style.display = 'flex';
                 document.getElementById('deposit-details-box').style.display = 'none';
                 document.getElementById('tx-signature-input').value = '';
-                document.getElementById('deposit-status-msg').innerText = '';
+                setDepositStatus('');
             };
 
-            document.getElementById('generate-deposit-addr-btn').onclick = async () => {
+            const addressButton = document.getElementById('generate-deposit-addr-btn');
+            addressButton.onclick = async () => {
                 triggerHaptic('success');
                 playSound('click');
                 document.getElementById('deposit-details-box').style.display = 'none';
+                addressButton.disabled = true;
+                addressButton.textContent = 'Checking wallet…';
+                setDepositStatus('Checking the verified sender address…');
                 try {
+                    if (!window.secureWallet?.refresh) {
+                        throw new Error('Wallet service is not ready. Reopen the app and try again. No funds were moved.');
+                    }
                     const current = await window.secureWallet.refresh();
-                    if (!current.walletAddress) {
-                        throw new Error('This deposit method requires a previously verified sender address. Until one is verified, do not send SOL to the shared pool. Game-balance withdrawals are separate.');
+                    if (!current?.walletAddress) {
+                        throw new Error('A verified Solana sender address is required before depositing. No funds were moved.');
                     }
                     document.getElementById('deposit-source-warning').textContent =
                         `This deposit is accepted only from the verified address: ${current.walletAddress}. Do not send directly from an exchange or another address.`;
                     document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                     document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(SHARED_POOL_WALLET)}`;
                     document.getElementById('deposit-details-box').style.display = 'block';
+                    setDepositStatus('');
                 } catch (error) {
-                    document.getElementById('deposit-status-msg').textContent = error.message || 'Could not verify the sender address. Do not send the transfer.';
+                    setDepositStatus(error.message || 'Could not verify the sender address. No funds were moved.');
+                } finally {
+                    addressButton.disabled = false;
+                    addressButton.textContent = 'Show Deposit Address 🚀';
                 }
             };
 
             document.getElementById('check-deposit-status-btn').onclick = async () => {
                 const txSig = document.getElementById('tx-signature-input').value.trim();
-                const statusMsg = document.getElementById('deposit-status-msg');
 
                 if (!txSig) {
                     triggerHaptic('error');
@@ -4602,7 +4620,7 @@
 
                 triggerHaptic('medium');
                 playSound('click');
-                statusMsg.innerText = "🔄 Verifying transaction on Solana blockchain...";
+                setDepositStatus("🔄 Verifying transaction on Solana blockchain...");
 
                 try {
                     const response = await fetch('https://zer0life-ai-iz5n.onrender.com/wallet/deposit/verify', {
@@ -4628,11 +4646,11 @@
                         tg.showAlert(`🎉 Deposit successfully verified!\n\nCredited: +${data.depositedSOL} SOL`);
                     } else {
                         triggerHaptic('error');
-                        statusMsg.innerText = "❌ " + (data.error || "Verification failed");
+                        setDepositStatus("❌ " + (data.error || "Verification failed"));
                         tg.showAlert(`❌ Could not verify transfer:\n${data.error || 'Check signature'}`);
                     }
                 } catch (e) {
-                    statusMsg.innerText = "❌ Network connection error";
+                    setDepositStatus("❌ Network connection error");
                     triggerHaptic('error');
                 }
             };
