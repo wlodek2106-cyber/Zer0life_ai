@@ -182,7 +182,7 @@ test('dashboard removes personal wallet UI while retaining game balances, referr
     assert(!html.includes('src="./phantom-mobile.js?'));
     assert(!html.includes('src="./wallet-embedded/embedded-wallet.js'));
     assert(!html.includes('content: "ASSET OVERVIEW"'));
-    assert(html.includes('wallet.js?v=recovery-gate-2026-10-17'));
+    assert(html.includes('wallet.js?v=recovery-isolation-2026-10-17'));
     assert(html.includes('depositReference: activeDepositReference'));
     assert(html.includes('reference=${encodeURIComponent(reference)}'));
     assert(html.includes('Scan the QR to deposit, then paste the Tx after it is finalized.'));

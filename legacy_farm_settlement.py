@@ -35,12 +35,15 @@ def missing_principal_farms(db, user_id):
     """Recover original approved terms even before the old device comes online."""
     farms = []
     for row in db.execute("""SELECT r.*,q.snapshot_json FROM wallet_legacy_farm_returns r
-        JOIN wallet_recovery_requests q ON q.request_id=r.request_id
+        LEFT JOIN wallet_recovery_requests q ON q.request_id=r.request_id
         WHERE r.telegram_id=? AND r.principal_credited_units<r.principal_units""", (user_id,)):
+        if not row["snapshot_json"]:
+            raise ValueError(f"Original archive for farm {row['farm_id']} is missing; reconciliation is required")
         original = next((f for f in json.loads(row["snapshot_json"])["farms"]
                          if f["id"] == row["farm_id"]), None)
-        if original:
-            farms.append(original)
+        if original is None:
+            raise ValueError(f"Original terms for farm {row['farm_id']} are missing; reconciliation is required")
+        farms.append(original)
     return farms
 
 

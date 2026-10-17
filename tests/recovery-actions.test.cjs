@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../recovery-actions.js'), 'utf8');
-const RELEASE_ID = 'recovery-gate-2026-10-17';
+const RELEASE_ID = 'recovery-isolation-2026-10-17';
 const release = () => ({
     releaseId: RELEASE_ID, sourceCommit: 'a'.repeat(40),
     recovery: { protocol: 1, ready: true,
-        capabilities: ['owner-approved-principal-yield-v2', 'release-gated-approval-v1'] },
+        capabilities: ['owner-approved-principal-yield-v2', 'release-gated-approval-v1', 'per-account-quote-errors-v1'] },
 });
 
 function fixture(options = {}) {
@@ -52,7 +52,8 @@ function fixture(options = {}) {
                 calls.push({ route, body });
                 if (route.endsWith('/list')) {
                     if (options.listError) throw Error(options.listError);
-                    return { requests: records, release: options.listRelease || release() };
+                    return { requests: options.records || records, quoteErrors: options.quoteErrors,
+                        release: options.listRelease || release() };
                 }
                 if (options.apiError) throw Error(options.apiError);
                 return { receipts: [{ requestId: 'review-a' }] };
@@ -191,6 +192,57 @@ test('failed reload cannot leave an earlier list available for approval, and ret
     await f.click('recovery-admin-load');
     assert.equal(f.nodes.get('recovery-admin-apply').disabled, false);
     assert.match(f.nodes.get('recovery-release-status').textContent, /Source: a{40}/);
+});
+
+test('quote and staging errors stay visible but only valid records enter totals and approval', async () => {
+    const quoteErrors = [
+        { telegramId: '201', username: '<script>not markup</script>', requestId: 'broken-dates',
+            stage: 'quote', error: 'Archived farm dates are insufficient for a yield calculation' },
+        { telegramId: '202', stage: 'staging', error: 'Original archive is unreadable' },
+        { telegramId: '203', requestId: 'overflow', stage: 'quote',
+            error: 'Historical yield exceeds the accounting range' },
+    ];
+    const f = fixture({ quoteErrors });
+    await f.click('recovery-admin-load');
+    const rows = f.nodes.get('recovery-admin-list').children;
+    assert.equal(rows.length, 4);
+    assert.match(rows[1].children[0].textContent, /<script>not markup<\/script> · 201 · Reconciliation required/);
+    assert.match(rows[1].children[1].textContent, /Archive broken-dates: Archived farm dates/);
+    assert.match(rows[2].children[1].textContent, /Archive preparation failed/);
+    assert.match(rows[3].children[1].textContent, /accounting range/);
+    for (const row of rows.slice(1)) {
+        assert.match(row.children[2].textContent, /excluded from approval/);
+        assert.match(row.children[2].textContent, /not treated as zero/);
+        assert(!row.children.some(child => /To return:|NaN|0\.000000 ZRL/.test(child.textContent)));
+    }
+    assert.match(f.nodes.get('recovery-action-status').textContent, /3 archive\(s\) require reconciliation/);
+    await f.click('recovery-admin-apply');
+    const applied = f.calls.find(c => c.route.endsWith('/apply'));
+    assert.equal(applied.body.requests.length, 1);
+    assert.equal(applied.body.requests[0].requestId, 'review-a');
+    assert.match(f.messages[0], /for 1 players/);
+    assert.match(f.messages[0], /123456\.789123 ZRL/);
+    assert.equal(f.nodes.get('recovery-admin-list').children.length, 3);
+    assert.match(f.nodes.get('recovery-action-status').textContent, /3 archive\(s\) still require reconciliation/);
+});
+
+test('error-only lists disable approval and reload can recover after reconciliation', async () => {
+    const f = fixture({ records: [], quoteErrors: [
+        { telegramId: '201', requestId: 'invalid', stage: 'quote', error: 'Invalid dates' },
+    ] });
+    await f.click('recovery-admin-load');
+    assert.equal(f.nodes.get('recovery-admin-apply').disabled, true);
+    assert.match(f.nodes.get('recovery-action-status').textContent, /No archives are ready/);
+    assert.match(f.nodes.get('recovery-action-status').textContent, /1 archive\(s\) require reconciliation/);
+    await f.click('recovery-admin-apply');
+    assert.equal(f.messages.length, 0);
+    assert.equal(f.calls.length, 1);
+    f.options.records = f.records;
+    f.options.quoteErrors = [];
+    await f.click('recovery-admin-load');
+    assert.equal(f.nodes.get('recovery-admin-list').children.length, 1);
+    assert.equal(f.nodes.get('recovery-admin-apply').disabled, false);
+    assert.doesNotMatch(f.nodes.get('recovery-action-status').textContent, /require reconciliation/);
 });
 
 test('HTML, wallet transport and recovery code share the release and keep approval disabled by default', () => {

@@ -1,10 +1,10 @@
 (() => {
     'use strict';
-    const RELEASE_ID = 'recovery-gate-2026-10-17';
+    const RELEASE_ID = 'recovery-isolation-2026-10-17';
     const PROTOCOL = 1;
-    const CAPABILITIES = ['owner-approved-principal-yield-v2', 'release-gated-approval-v1'];
+    const CAPABILITIES = ['owner-approved-principal-yield-v2', 'release-gated-approval-v1', 'per-account-quote-errors-v1'];
     const UPDATE_MESSAGE = 'Recovery update in progress. The website and server must finish updating before owner approval is available. Reload the app and try again. Archives and balances are unchanged.';
-    let snapshots = [], submitting = false, ready = false, ownerId = null;
+    let snapshots = [], quoteErrors = [], submitting = false, ready = false, ownerId = null;
     const node = id => document.getElementById(id);
     const api = (path, body) => window.secureWallet.request(path, body);
     const confirm = message => new Promise(resolve => {
@@ -22,6 +22,7 @@
     function invalidate() {
         ready = false;
         snapshots = [];
+        quoteErrors = [];
         node('recovery-admin-list')?.replaceChildren();
         if (node('recovery-admin-apply')) node('recovery-admin-apply').disabled = true;
     }
@@ -59,6 +60,21 @@
         return result;
     }
 
+    function renderQuoteErrors(list) {
+        quoteErrors.forEach(record => {
+            const row = document.createElement('div');
+            row.style.cssText = 'padding:10px;border:1px solid #b88642;border-radius:12px;margin:8px 0;font-size:11px;line-height:1.5;';
+            const title = document.createElement('strong');
+            title.textContent = `${record.username || 'Player'} · ${record.telegramId} · Reconciliation required`;
+            const error = document.createElement('div');
+            error.textContent = `${record.stage === 'staging' ? 'Archive preparation' : 'Yield calculation'} failed${record.requestId ? ` · Archive ${record.requestId}` : ''}: ${record.error}`;
+            const note = document.createElement('div');
+            note.textContent = 'This archive is excluded from approval. Its records and balances are unchanged; unresolved income is not treated as zero. Reconcile the original archive and reload.';
+            row.append(title, error, note);
+            list.appendChild(row);
+        });
+    }
+
     async function load() {
         if (submitting) return;
         submitting = true;
@@ -73,6 +89,7 @@
                 throw new Error(UPDATE_MESSAGE);
             }
             snapshots = result.requests;
+            quoteErrors = result.quoteErrors || [];
             const list = node('recovery-admin-list');
             list.replaceChildren();
             snapshots.forEach(record => {
@@ -87,9 +104,12 @@
                 row.append(title, values, note);
                 list.appendChild(row);
             });
+            renderQuoteErrors(list);
             node('recovery-admin-apply').disabled = snapshots.length === 0;
-            setStatus(snapshots.length ? `${snapshots.length} recovery request(s) are ready for review. Approval makes the listed amounts spendable and withdrawable.`
-                : 'No recovery requests are waiting. The player must open the updated app on the device with the legacy history.');
+            setStatus((snapshots.length ? `${snapshots.length} recovery request(s) are ready for review. Approval makes only the listed valid amounts spendable and withdrawable.`
+                : quoteErrors.length ? 'No archives are ready for approval.'
+                    : 'No recovery requests are waiting. The player must open the updated app on the device with the legacy history.')
+                + (quoteErrors.length ? ` ${quoteErrors.length} archive(s) require reconciliation and will not be credited.` : ''));
         } catch (error) {
             invalidate();
             setStatus(error.message);
@@ -124,8 +144,10 @@
             credited = true;
             snapshots = [];
             node('recovery-admin-list').replaceChildren();
+            renderQuoteErrors(node('recovery-admin-list'));
             await window.secureWallet.refresh();
-            setStatus(`Recovery completed for ${result.receipts.length} account(s). Repeating this action will not credit them again. Withdrawals are available from Wallet.`);
+            setStatus(`Recovery completed for ${result.receipts.length} account(s). Repeating this action will not credit them again. Withdrawals are available from Wallet.`
+                + (quoteErrors.length ? ` ${quoteErrors.length} archive(s) still require reconciliation and were not credited.` : ''));
         } catch (error) {
             if (error.status === 409 || error.message === UPDATE_MESSAGE) invalidate();
             setStatus(credited
