@@ -202,7 +202,7 @@
                 const earnedAmount = document.createElement('strong');
                 earnedAmount.textContent = `${Math.max(0, Number(level.earnedZrl) || 0).toLocaleString()} ZRL`;
                 const earnedLabel = document.createElement('span');
-                earnedLabel.textContent = 'earned';
+                earnedLabel.textContent = 'lifetime';
                 earned.append(earnedAmount, earnedLabel);
 
                 row.append(index, label, share, players, earned);

@@ -115,6 +115,9 @@ test('Wallet places withdrawable balances before the partner program', () => {
     assert.notEqual(balances, -1);
     assert.notEqual(partners, -1);
     assert.notEqual(actions, -1);
+    assert.match(body, /includes partner commissions/);
+    assert.match(body, /credited automatically to your main ZRL balance/i);
+    assert.match(body, /Lifetime partner commissions/);
     assert(balances < actions, 'balances must be visible before the wallet actions');
     assert(actions < partners, 'wallet actions should stay beside the balances, before partner details');
     for (const id of ['asset-zrl-bal', 'asset-sol-bal', 'affiliate-link', 'affiliate-copy-btn']) {
@@ -144,6 +147,7 @@ test('Wallet renders all five live partner levels and accurate aggregate totals'
     nodes.get('affiliate-levels').children.forEach((row, index) => {
         const text = flattenedText(row);
         for (const value of expected[index]) assert(text.includes(value), `level ${index + 1} should show ${value}`);
+        assert(text.includes('lifetime'));
         assert(text.includes(expected[index][3] === '1' ? 'player' : 'players'));
     });
 
