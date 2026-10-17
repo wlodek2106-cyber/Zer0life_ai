@@ -69,7 +69,7 @@ class TelegramWithdrawals(unittest.TestCase):
         for route in ["request", "confirm", "cancel"]:
             response = self.client.post("/wallet/withdrawals/" + route, json={})
             self.assertEqual(response.status_code, 401)
-            self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-withdrawals-2")
+            self.assertEqual(response.headers["X-Zer0Life-Wallet-Schema"], "telegram-deposits-reference-1")
         self.assertEqual(self.messages, [])
 
     def test_both_assets_are_signed_by_treasury_not_by_a_player_wallet(self):
