@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const API_BASE = 'https://zerolife-ai-iz5n.onrender.com';
+    const API_BASE = 'https://zer0life-ai-iz5n.onrender.com';
     const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
     const MAX_POST_CHARS = 1000;
     const MAX_COMMENT_CHARS = 500;
