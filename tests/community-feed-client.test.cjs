@@ -7,11 +7,16 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'community-feed.js'), 'utf8');
+const walletSource = fs.readFileSync(path.join(__dirname, '..', 'wallet.js'), 'utf8');
 const apiStart = source.indexOf('    async function api(');
 const apiEnd = source.indexOf('\n\n    function make(', apiStart);
 assert.notEqual(apiStart, -1, 'community api function exists');
 assert.notEqual(apiEnd, -1, 'community api function has a following boundary');
 const apiDefinition = source.slice(apiStart, apiEnd).trim();
+
+function apiBaseFrom(text) {
+    return text.match(/const API_BASE\s*=\s*['"]([^'"]+)['"]/)?.[1];
+}
 
 function createApi(fetchImpl) {
     const sandbox = {
@@ -25,6 +30,13 @@ function createApi(fetchImpl) {
     vm.runInContext(`${apiDefinition}\nglobalThis.communityApi = api;`, sandbox);
     return sandbox.communityApi;
 }
+
+test('community feed uses the same API host as Wallet', () => {
+    const communityBase = apiBaseFrom(source);
+    const walletBase = apiBaseFrom(walletSource);
+    assert.ok(communityBase, 'community API host is defined');
+    assert.equal(communityBase, walletBase);
+});
 
 test('community feed reads retry transient failures without browser credentials', async () => {
     let requests = 0;
