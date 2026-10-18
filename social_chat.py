@@ -40,6 +40,8 @@ def _profile_payload(row):
         "publicId": public_id,
         "displayName": row["display_name"],
         "tag": "#" + public_id[:5].upper(),
+        "avatarUrl": f"/wallet/community/media/{row['avatar_key']}" if row["avatar_key"] else None,
+        "bannerUrl": f"/wallet/community/media/{row['banner_key']}" if row["banner_key"] else None,
         "joinedAt": int(row["created_at"] or row["updated_at"]) * 1000,
     }
 
@@ -76,7 +78,7 @@ def _ensure_profile(db, user, display_name):
         )
         return db.execute(
             """SELECT telegram_id, public_id, display_name, display_name_key,
-                      created_at, updated_at
+                      created_at, updated_at, avatar_key, banner_key
                FROM social_profiles WHERE telegram_id=?""",
             (telegram_id,),
         ).fetchone()
@@ -93,7 +95,7 @@ def _ensure_profile(db, user, display_name):
             )
             return db.execute(
                     """SELECT telegram_id, public_id, display_name, display_name_key,
-                              created_at, updated_at
+                              created_at, updated_at, avatar_key, banner_key
                        FROM social_profiles WHERE telegram_id=?""",
                 (telegram_id,),
             ).fetchone()
@@ -107,7 +109,7 @@ def _profile_by_public_id(db, public_id):
         return None
     return db.execute(
         """SELECT telegram_id, public_id, display_name, display_name_key,
-                  created_at, updated_at
+                  created_at, updated_at, avatar_key, banner_key
            FROM social_profiles WHERE public_id=?""",
         (public_id,),
     ).fetchone()
@@ -119,6 +121,8 @@ def _request_payload(row):
         "publicId": row["public_id"],
         "displayName": row["display_name"],
         "message": row["initial_message"],
+        "avatarUrl": f"/wallet/community/media/{row['avatar_key']}" if row["avatar_key"] else None,
+        "bannerUrl": f"/wallet/community/media/{row['banner_key']}" if row["banner_key"] else None,
         "createdAt": int(row["created_at"]) * 1000,
     }
 
@@ -132,7 +136,7 @@ def _requests_for(db, telegram_id, direction):
         owner_column = "sender_id"
     rows = db.execute(
         f"""SELECT r.request_id, r.initial_message, r.created_at,
-                   p.public_id, p.display_name
+                   p.public_id, p.display_name, p.avatar_key, p.banner_key
             FROM social_requests r
             JOIN social_profiles p ON p.telegram_id=r.{other_column}
             WHERE r.{owner_column}=? AND r.status='pending'
@@ -154,7 +158,8 @@ def _friends_for(db, telegram_id):
     for row in rows:
         friend_id = row["friend_id"]
         profile = db.execute(
-            "SELECT public_id, display_name FROM social_profiles WHERE telegram_id=?",
+            """SELECT public_id, display_name, avatar_key, banner_key
+               FROM social_profiles WHERE telegram_id=?""",
             (friend_id,),
         ).fetchone()
         if not profile:
@@ -173,6 +178,8 @@ def _friends_for(db, telegram_id):
         friends.append({
             "publicId": profile["public_id"],
             "displayName": profile["display_name"],
+            "avatarUrl": f"/wallet/community/media/{profile['avatar_key']}" if profile["avatar_key"] else None,
+            "bannerUrl": f"/wallet/community/media/{profile['banner_key']}" if profile["banner_key"] else None,
             "lastMessage": latest["content"] if latest else "",
             "lastMessageAt": int(latest["created_at"]) * 1000 if latest else 0,
             "unreadCount": int(unread),
@@ -202,7 +209,11 @@ def register_social_routes(app, db_path, connect, authenticate):
                 display_name TEXT NOT NULL,
                 display_name_key TEXT NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT 0,
-                updated_at INTEGER NOT NULL
+                updated_at INTEGER NOT NULL,
+                avatar_key TEXT,
+                avatar_mime TEXT,
+                banner_key TEXT,
+                banner_mime TEXT
             );
             CREATE INDEX IF NOT EXISTS social_profiles_search_idx
                 ON social_profiles(display_name_key);
@@ -255,6 +266,9 @@ def register_social_routes(app, db_path, connect, authenticate):
             db.execute(
                 "ALTER TABLE social_profiles ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0"
             )
+        for column in ("avatar_key", "avatar_mime", "banner_key", "banner_mime"):
+            if column not in profile_columns:
+                db.execute(f"ALTER TABLE social_profiles ADD COLUMN {column} TEXT")
         db.execute(
             "UPDATE social_profiles SET created_at=updated_at WHERE created_at=0"
         )
@@ -296,6 +310,7 @@ def register_social_routes(app, db_path, connect, authenticate):
             with connect(db_path) as db:
                 rows = db.execute(
                     """SELECT p.public_id, p.display_name, p.created_at, p.updated_at,
+                              p.avatar_key, p.banner_key,
                               EXISTS(
                                   SELECT 1 FROM community_follows f
                                   WHERE f.follower_id=? AND f.followee_id=p.telegram_id

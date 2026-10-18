@@ -14,11 +14,30 @@ const navEnd = dashboard.indexOf('<script src="./legacy-recovery.js"', navStart)
 const nav = dashboard.slice(navStart, navEnd);
 
 test('Chat replaces DAO and opens the existing community screen', () => {
-    assert.match(nav, /id="nav-chat"[^>]*aria-label="Open community feed, friends and private chats"/);
+    assert.match(nav, /id="nav-chat"[^>]*aria-label="Open Zer0Net, friends and private chats"/);
     assert.match(nav, />\s*Chat\s*<\/button>/);
     assert.doesNotMatch(nav, /id="nav-dao"|>\s*DAO\s*</);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
-    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-social-v2"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-social-v2"><\/script>/);
+    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-zeronet-v3"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-zeronet-v3"><\/script>/);
+});
+
+test('Zer0Net rewards each new post and lets the runner claim into the game wallet', () => {
+    assert.match(dashboard, /id="zeronet-pending-balance"/);
+    assert.match(dashboard, /id="zeronet-claim"/);
+    assert.match(dashboard, /Earn 10 ZRL for every new post/);
+    assert.match(communityController, /rewardZrl\) \|\| 10/);
+    assert.match(communityController, /\/wallet\/community\/rewards\/claim/);
+    assert.match(communityController, /availableZrl: Number\(result\.gameBalanceZrl\)/);
+});
+
+test('Zer0Net runner profiles support editable avatars and banners', () => {
+    assert.match(dashboard, /id="social-profile-avatar-input"/);
+    assert.match(dashboard, /id="social-profile-banner-input"/);
+    assert.match(controller, /\/wallet\/community\/profile\/image/);
+    assert.match(controller, /dataset\.profileAction = 'change-avatar'/);
+    assert.match(controller, /dataset\.profileAction = 'change-banner'/);
+    assert.match(controller, /profile\.avatarUrl/);
+    assert.match(controller, /profile\.bannerUrl/);
 });
 
 test('one screen exposes feed, friends, requests, and private chats', () => {
@@ -127,7 +146,7 @@ test('uncertain private-message writes are never retried automatically', async (
             content: 'Hello',
             clientMessageId: 'message-once'
         }),
-        /Could not reach the community server/
+        /Could not reach Zer0Net/
     );
     assert.equal(calls, 1);
 });

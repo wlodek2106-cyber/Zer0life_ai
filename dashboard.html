@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./community-feed.css?v=zerolife-social-v2">
+    <link rel="stylesheet" href="./community-feed.css?v=zerolife-zeronet-v3">
     <style>
         body, html {
             margin: 0;
@@ -2169,8 +2169,8 @@
                 <svg viewBox="0 0 24 24"><path d="M4 5.5h16v11H9l-5 3v-14Z"/><path d="M8 10h8M8 13.5h5"/></svg>
             </span>
             <span class="zr-community-entry-copy">
-                <strong>Runner community</strong>
-                <small>Routes, race days, and the miles between</small>
+                <strong>Zer0Net</strong>
+                <small>Web3 social network for Zer0Life runners</small>
             </span>
             <span class="zr-community-entry-arrow" aria-hidden="true">OPEN <b>↗</b></span>
         </button>
@@ -2916,14 +2916,14 @@
         </div>
     </div>
 
-    <section class="community-screen" id="community-screen" aria-label="Runner community" aria-hidden="true">
+    <section class="community-screen" id="community-screen" aria-label="Zer0Net social network" aria-hidden="true">
         <header class="community-topbar">
             <button class="community-back" type="button" data-community-action="close" aria-label="Back to run dashboard">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
             </button>
             <div class="community-brand">
-                <span class="community-eyebrow">ZER0LIFE RUN / FIELD NOTES</span>
-                <h1>Community<span>.</span></h1>
+                <span class="community-eyebrow">ZER0LIFE RUN / WEB3 SOCIAL</span>
+                <h1>Zer0Net<span>.</span></h1>
             </div>
             <button class="community-refresh" type="button" data-community-action="refresh" data-social-action="refresh" aria-label="Refresh feed and social connections">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2"/></svg>
@@ -2931,7 +2931,7 @@
         </header>
 
         <main class="community-scroll">
-            <nav class="social-tabs" aria-label="Community sections" role="tablist">
+            <nav class="social-tabs" aria-label="Zer0Net sections" role="tablist">
                 <button class="social-tab is-active" id="social-tab-feed" type="button" role="tab" aria-selected="true" aria-controls="social-panel-feed" data-social-tab="feed">Feed</button>
                 <button class="social-tab" id="social-tab-friends" type="button" role="tab" aria-selected="false" aria-controls="social-panel-friends" data-social-tab="friends">Friends <span class="social-tab-count" data-social-count="friends" aria-label="Friends count"></span></button>
                 <button class="social-tab" id="social-tab-chats" type="button" role="tab" aria-selected="false" aria-controls="social-panel-chats" data-social-tab="chats">Chats <span class="social-tab-count" data-social-count="unread" aria-label="Unread messages"></span></button>
@@ -2939,10 +2939,12 @@
 
             <section class="social-profile-view" id="social-profile-view" aria-label="Runner profile" hidden>
                 <div class="social-profile-toolbar">
-                    <button type="button" class="community-back" data-profile-action="back" aria-label="Back to community"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <button type="button" class="community-back" data-profile-action="back" aria-label="Back to Zer0Net"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
                     <span class="community-kicker">RUNNER PROFILE</span>
                 </div>
                 <div id="social-profile-content" aria-live="polite"></div>
+                <input id="social-profile-avatar-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                <input id="social-profile-banner-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
                 <div id="social-profile-status" role="status" aria-live="polite"></div>
                 <div class="community-feed-list" id="social-profile-posts"></div>
                 <button class="community-load-more" id="social-profile-more" type="button" data-profile-action="more" hidden>Load more activity</button>
@@ -2955,18 +2957,28 @@
             <section class="social-panel is-active" id="social-panel-feed" role="tabpanel" aria-labelledby="social-tab-feed" data-social-panel="feed">
             <section class="community-intro">
                 <div>
-                    <p class="community-kicker"><span class="community-live-dot"></span> THE RUN NEVER HAPPENS ALONE</p>
-                    <h2>What’s moving<br><em>you today?</em></h2>
-                    <p class="community-intro-note">A good run is better shared. Drop a thought, a route, or a finish-line photo.</p>
+                    <p class="community-kicker"><span class="community-live-dot"></span> THE NETWORK MOVES TOGETHER</p>
+                    <h2>Your run.<br><em>Your network.</em></h2>
+                    <p class="community-intro-note">Share a thought, a route, or a finish-line photo with Zer0Life runners.</p>
                 </div>
                 <div class="community-orbit" aria-hidden="true"><span></span><i></i><b></b></div>
+            </section>
+
+            <section class="zeronet-rewards" aria-label="Zer0Net post rewards">
+                <div class="zeronet-rewards-copy">
+                    <span class="community-kicker">ZER0NET REWARDS</span>
+                    <strong><span id="zeronet-pending-balance">0</span> ZRL <small>READY TO CLAIM</small></strong>
+                    <p>Earn 10 ZRL for every new post. Claim to move it to your game balance.</p>
+                </div>
+                <button id="zeronet-claim" type="button" disabled>Claim</button>
+                <p id="zeronet-rewards-status" role="status" aria-live="polite"></p>
             </section>
 
             <div class="community-feed-switch" role="group" aria-label="Choose feed">
                 <button type="button" data-feed-scope="latest" class="is-active" aria-pressed="true">Latest</button>
                 <button type="button" data-feed-scope="following" aria-pressed="false">Following</button>
             </div>
-            <section class="community-composer" aria-label="Write a community post">
+            <section class="community-composer" aria-label="Write a Zer0Net post">
                 <div class="community-composer-head">
                     <span class="community-avatar community-avatar-self" id="community-self-avatar">R</span>
                     <div><strong id="community-display-name">Runner</strong><small>Share with the pack</small></div>
@@ -3221,7 +3233,7 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosts
         </div>
-        <button class="nav-item nav-item-button" id="nav-chat" type="button" aria-label="Open community feed, friends and private chats" title="Chat">
+        <button class="nav-item nav-item-button" id="nav-chat" type="button" aria-label="Open Zer0Net, friends and private chats" title="Zer0Net">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-9.5A7.5 7.5 0 0 1 10.5 4h2A7.5 7.5 0 0 1 20 11.5Z"></path>
                 <path d="M8 11h8M8 14h5"></path>
@@ -5873,7 +5885,7 @@
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
     <script src="./wallet.js?v=english-withdrawal-v3"></script>
-    <script src="./community-feed.js?v=zerolife-social-v2"></script>
-    <script src="./social-chat.js?v=zerolife-social-v2"></script>
+    <script src="./community-feed.js?v=zerolife-zeronet-v3"></script>
+    <script src="./social-chat.js?v=zerolife-zeronet-v3"></script>
 </body>
 </html>

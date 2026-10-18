@@ -3,6 +3,8 @@
 
     const API_BASE = 'https://zer0life-ai-iz5n.onrender.com';
     const MESSAGE_LIMIT = 1000;
+    const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+    const PROFILE_IMAGE_SOURCE_LIMIT = 20 * 1024 * 1024;
     const screen = document.getElementById('community-screen');
     if (!screen) return;
 
@@ -24,6 +26,7 @@
         profileCursor: null,
         profileView: 'posts',
         profileBusy: false,
+        profileImageBusy: false,
         followersDirection: 'followers',
         followersCursor: null,
         followers: []
@@ -44,12 +47,24 @@
     const profilePostsNode = $('#social-profile-posts');
     const profileStatus = $('#social-profile-status');
     const followersSheet = $('#social-followers-sheet');
+    const profileAvatarInput = $('#social-profile-avatar-input');
+    const profileBannerInput = $('#social-profile-banner-input');
 
     function node(tag, className, text) {
         const el = document.createElement(tag);
         if (className) el.className = className;
         if (text !== undefined) el.textContent = text;
         return el;
+    }
+
+    function safeMediaUrl(value) {
+        if (typeof value !== 'string' || !value.trim()) return '';
+        try {
+            const url = new URL(value, API_BASE);
+            return ['https:', 'http:'].includes(url.protocol) ? url.href : '';
+        } catch {
+            return '';
+        }
     }
 
     function initData() {
@@ -67,7 +82,7 @@
 
     async function api(path, payload = {}) {
         const signedData = initData();
-        if (!signedData) throw new Error('Open Zer0Life Run from Telegram to use friends and private chats.');
+        if (!signedData) throw new Error('Open Zer0Life Run from Telegram to use Zer0Net.');
 
         let response;
         try {
@@ -80,14 +95,14 @@
                 body: JSON.stringify({ initData: signedData, ...payload })
             });
         } catch {
-            throw new Error('Could not reach the community server. Check your connection and try again.');
+            throw new Error('Could not reach Zer0Net. Check your connection and try again.');
         }
 
         let result;
         try {
             result = await response.json();
         } catch {
-            throw new Error('The community service returned an unreadable response.');
+            throw new Error('Zer0Net returned an unreadable response.');
         }
         if (!response.ok || result?.success === false) {
             throw new Error(result?.error || result?.message || 'Could not complete that request. Try again.');
@@ -114,8 +129,26 @@
         return Array.from(String(name || 'Runner').trim())[0]?.toUpperCase() || 'R';
     }
 
-    function setAvatar(node, name) {
-        if (node) node.textContent = avatarInitial(name);
+    function setAvatar(avatarNode, name, imageUrl) {
+        if (!avatarNode) return;
+        const initial = avatarInitial(name);
+        const url = safeMediaUrl(imageUrl);
+        avatarNode.classList.remove('has-image');
+        if (!url) {
+            avatarNode.textContent = initial;
+            return;
+        }
+        const image = node('img', '', '');
+        image.src = url;
+        image.alt = '';
+        image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => {
+            avatarNode.classList.remove('has-image');
+            avatarNode.textContent = initial;
+        }, { once: true });
+        avatarNode.replaceChildren(image);
+        avatarNode.classList.add('has-image');
     }
 
     function timeLabel(timestamp) {
@@ -190,7 +223,7 @@
             if (!row) return;
             row.dataset.socialRendered = 'true';
             row.dataset.publicId = player.publicId;
-            setAvatar(row.querySelector('[data-social-avatar]'), player.displayName);
+            setAvatar(row.querySelector('[data-social-avatar]'), player.displayName, player.avatarUrl);
             row.querySelector('[data-social-display-name]').textContent = player.displayName;
             row.querySelector('[data-social-player-tag]').textContent = player.tag || '';
             const copy = row.querySelector('.social-person-copy');
@@ -221,9 +254,42 @@
         const profile = state.profile;
         if (!profile) return;
         profileContent.replaceChildren();
-        profileContent.appendChild(node('div', 'social-profile-cover'));
+        const cover = node('div', `social-profile-cover${profile.bannerUrl ? ' has-banner' : ''}`);
+        const bannerUrl = safeMediaUrl(profile.bannerUrl);
+        if (bannerUrl) {
+            const banner = node('img', '');
+            banner.src = bannerUrl;
+            banner.alt = '';
+            banner.loading = 'lazy';
+            banner.referrerPolicy = 'no-referrer';
+            banner.addEventListener('error', () => {
+                banner.remove();
+                cover.classList.remove('has-banner');
+            }, { once: true });
+            cover.appendChild(banner);
+        }
+        if (profile.isMe) {
+            const changeBanner = node('button', 'social-profile-edit-banner', 'Change banner');
+            changeBanner.type = 'button';
+            changeBanner.dataset.profileAction = 'change-banner';
+            changeBanner.disabled = state.profileImageBusy;
+            cover.appendChild(changeBanner);
+        }
+        profileContent.appendChild(cover);
         const identity = node('div', 'social-profile-identity');
-        identity.appendChild(node('span', 'social-profile-avatar', avatarInitial(profile.displayName)));
+        const avatarWrap = node('div', 'social-profile-avatar-wrap');
+        const avatar = node('span', 'social-profile-avatar', avatarInitial(profile.displayName));
+        setAvatar(avatar, profile.displayName, profile.avatarUrl);
+        avatarWrap.appendChild(avatar);
+        if (profile.isMe) {
+            const changeAvatar = node('button', 'social-profile-edit-avatar', '✎');
+            changeAvatar.type = 'button';
+            changeAvatar.dataset.profileAction = 'change-avatar';
+            changeAvatar.setAttribute('aria-label', 'Change profile avatar');
+            changeAvatar.disabled = state.profileImageBusy;
+            avatarWrap.appendChild(changeAvatar);
+        }
+        identity.appendChild(avatarWrap);
         const copy = node('div', 'social-profile-identity-copy');
         copy.append(node('h2', '', profile.displayName || 'Runner'), node('p', '', profile.tag || `#${String(profile.publicId).slice(0, 5).toUpperCase()}`));
         identity.appendChild(copy);
@@ -270,7 +336,9 @@
             const card = node('article', 'community-post');
             card.dataset.profilePostId = String(post.id);
             const head = node('div', 'community-post-head');
-            head.append(node('span', 'community-avatar', avatarInitial(post.author)), node('div', 'community-post-author', ''));
+            const postAvatar = node('span', 'community-avatar', avatarInitial(post.author));
+            setAvatar(postAvatar, post.author, post.authorAvatarUrl);
+            head.append(postAvatar, node('div', 'community-post-author', ''));
             const authorCopy = head.lastChild;
             authorCopy.append(node('strong', '', post.author || 'Runner'), node('time', '', timeLabel(post.createdAt)));
             card.appendChild(head);
@@ -355,6 +423,92 @@
         }
     }
 
+    async function profileImageData(file) {
+        if (!file || !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+            throw new Error('Choose a JPEG, PNG, WebP, or GIF image.');
+        }
+        if (file.size > PROFILE_IMAGE_SOURCE_LIMIT) {
+            throw new Error('Choose an image smaller than 20 MiB.');
+        }
+        let image;
+        let objectUrl = '';
+        if (window.createImageBitmap) {
+            try {
+                image = await window.createImageBitmap(file);
+            } catch {
+                image = null;
+            }
+        }
+        if (!image) {
+            objectUrl = URL.createObjectURL(file);
+            image = await new Promise((resolve, reject) => {
+                const element = new Image();
+                element.onload = () => resolve(element);
+                element.onerror = () => reject(new Error('Could not open that image.'));
+                element.src = objectUrl;
+            });
+        }
+        try {
+            const maxEdge = 2200;
+            const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Could not process that image on this device.');
+            context.fillStyle = '#101710';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            let blob = null;
+            for (const quality of [0.9, 0.82, 0.74, 0.66, 0.58]) {
+                blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+                if (blob && blob.size <= PROFILE_IMAGE_MAX_BYTES) break;
+            }
+            if (!blob || blob.size > PROFILE_IMAGE_MAX_BYTES) {
+                throw new Error('The optimized image is still over 2 MiB. Choose a smaller image.');
+            }
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('Could not read that image.'));
+                reader.readAsDataURL(blob);
+            });
+        } finally {
+            if (typeof image.close === 'function') image.close();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        }
+    }
+
+    async function saveProfileImage(field, file) {
+        if (!file || state.profileImageBusy || !state.profile?.isMe) return;
+        const publicId = state.profile.publicId;
+        state.profileImageBusy = true;
+        profileStatus.textContent = 'Preparing your image…';
+        profileStatus.className = 'social-profile-state';
+        renderProfileHeader();
+        try {
+            const image = await profileImageData(file);
+            profileStatus.textContent = 'Uploading your image…';
+            const result = await api('/wallet/community/profile/image', { field, image });
+            state.myProfile = { ...(state.myProfile || {}), ...result.profile };
+            if (state.profile?.publicId === publicId) {
+                state.profile = result.profile;
+                renderProfileHeader();
+                profileStatus.textContent = field === 'avatar' ? 'Profile avatar updated.' : 'Profile banner updated.';
+            }
+        } catch (error) {
+            if (state.profile?.publicId === publicId) {
+                profileStatus.className = 'social-profile-state social-error-card';
+                profileStatus.textContent = error.message || 'The profile image could not be updated.';
+            }
+        } finally {
+            state.profileImageBusy = false;
+            if (state.profile?.publicId === publicId) renderProfileHeader();
+            if (field === 'avatar' && profileAvatarInput) profileAvatarInput.value = '';
+            if (field === 'banner' && profileBannerInput) profileBannerInput.value = '';
+        }
+    }
+
     async function toggleFollow(publicId, follow, button) {
         if (!publicId || button?.disabled) return;
         if (button) button.disabled = true;
@@ -406,7 +560,9 @@
         if (!state.followers.length) list.appendChild(node('div', 'social-profile-state', 'No runners to show yet.'));
         state.followers.forEach(player => {
             const row = node('div', 'social-followers-person');
-            row.appendChild(node('span', 'social-avatar', avatarInitial(player.displayName)));
+            const avatar = node('span', 'social-avatar', avatarInitial(player.displayName));
+            setAvatar(avatar, player.displayName, player.avatarUrl);
+            row.appendChild(avatar);
             const open = node('button', '', '');
             open.type = 'button'; open.dataset.profilePublicId = player.publicId;
             open.append(node('strong', '', player.displayName || 'Runner'), node('small', '', player.tag || 'Zer0Life runner'));
@@ -475,7 +631,7 @@
             row.dataset.socialRendered = 'true';
             row.dataset.requestId = item.requestId;
             row.dataset.publicId = item.publicId;
-            setAvatar(row.querySelector('[data-social-avatar]'), item.displayName);
+            setAvatar(row.querySelector('[data-social-avatar]'), item.displayName, item.avatarUrl);
             row.querySelector('[data-social-display-name]').textContent = item.displayName;
             const message = row.querySelector('[data-social-request-message]');
             if (message) message.textContent = item.message || (incoming ? 'Wants to connect with you.' : 'Waiting for a response.');
@@ -506,7 +662,7 @@
             if (friendRow && friendsList) {
                 friendRow.dataset.socialRendered = 'true';
                 friendRow.dataset.publicId = friend.publicId;
-                setAvatar(friendRow.querySelector('[data-social-avatar]'), friend.displayName);
+                setAvatar(friendRow.querySelector('[data-social-avatar]'), friend.displayName, friend.avatarUrl);
                 friendRow.querySelector('[data-social-display-name]').textContent = friend.displayName;
                 friendRow.querySelector('[data-social-last-message]').textContent = friend.lastMessage || 'Connected — start a conversation';
                 const badge = friendRow.querySelector('[data-social-unread]');
@@ -523,7 +679,7 @@
                 chatRow.dataset.socialRendered = 'true';
                 chatRow.dataset.publicId = friend.publicId;
                 chatRow.classList.toggle('is-selected', state.selectedPeer?.publicId === friend.publicId);
-                setAvatar(chatRow.querySelector('[data-social-avatar]'), friend.displayName);
+                setAvatar(chatRow.querySelector('[data-social-avatar]'), friend.displayName, friend.avatarUrl);
                 chatRow.querySelector('[data-social-display-name]').textContent = friend.displayName;
                 chatRow.querySelector('[data-social-last-message]').textContent = friend.lastMessage || 'Start a conversation';
                 const time = chatRow.querySelector('[data-social-last-message-at]');
@@ -648,6 +804,7 @@
         state.selectedPeer = {
             publicId: peer.publicId,
             displayName: peer.displayName || 'Runner',
+            avatarUrl: peer.avatarUrl || '',
             unreadCount: 0
         };
         setTab('chats');
@@ -663,7 +820,7 @@
         const title = $('[data-social-peer-name]');
         const avatar = $('[data-social-peer-avatar]');
         if (title) title.textContent = state.selectedPeer.displayName;
-        setAvatar(avatar, state.selectedPeer.displayName);
+        setAvatar(avatar, state.selectedPeer.displayName, state.selectedPeer.avatarUrl);
         if (chatInput) chatInput.disabled = true;
         const sendButton = chatForm?.querySelector('button[type="submit"]');
         if (sendButton) sendButton.disabled = true;
@@ -725,7 +882,7 @@
             if (sendButton) sendButton.disabled = false;
             const title = $('[data-social-peer-name]');
             if (title) title.textContent = state.selectedPeer.displayName;
-            setAvatar($('[data-social-peer-avatar]'), state.selectedPeer.displayName);
+            setAvatar($('[data-social-peer-avatar]'), state.selectedPeer.displayName, state.selectedPeer.avatarUrl);
             const friend = state.friends.find(item => item.publicId === state.selectedPeer.publicId);
             if (friend) friend.unreadCount = 0;
             renderPeople();
@@ -874,7 +1031,11 @@
         const profileControl = event.target.closest('[data-profile-action]');
         if (profileControl) {
             const action = profileControl.dataset.profileAction;
-            if (action === 'back') {
+            if (action === 'change-avatar' && state.profile?.isMe) {
+                profileAvatarInput?.click();
+            } else if (action === 'change-banner' && state.profile?.isMe) {
+                profileBannerInput?.click();
+            } else if (action === 'back') {
                 followersSheet.hidden = true;
                 setProfileMode(false);
                 profilePostsNode.replaceChildren();
@@ -933,6 +1094,13 @@
     searchForm?.addEventListener('submit', event => {
         event.preventDefault();
         searchPlayers();
+    });
+
+    profileAvatarInput?.addEventListener('change', () => {
+        if (profileAvatarInput.files?.[0]) saveProfileImage('avatar', profileAvatarInput.files[0]);
+    });
+    profileBannerInput?.addEventListener('change', () => {
+        if (profileBannerInput.files?.[0]) saveProfileImage('banner', profileBannerInput.files[0]);
     });
 
     profilePostsNode?.addEventListener('submit', async event => {
