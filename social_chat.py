@@ -40,6 +40,7 @@ def _profile_payload(row):
         "publicId": public_id,
         "displayName": row["display_name"],
         "tag": "#" + public_id[:5].upper(),
+        "joinedAt": int(row["created_at"] or row["updated_at"]) * 1000,
     }
 
 
@@ -74,7 +75,9 @@ def _ensure_profile(db, user, display_name):
             (name, key, now, telegram_id),
         )
         return db.execute(
-            "SELECT telegram_id, public_id, display_name, display_name_key FROM social_profiles WHERE telegram_id=?",
+            """SELECT telegram_id, public_id, display_name, display_name_key,
+                      created_at, updated_at
+               FROM social_profiles WHERE telegram_id=?""",
             (telegram_id,),
         ).fetchone()
 
@@ -83,12 +86,15 @@ def _ensure_profile(db, user, display_name):
         try:
             db.execute(
                 """INSERT INTO social_profiles
-                   (telegram_id, public_id, display_name, display_name_key, updated_at)
-                   VALUES(?,?,?,?,?)""",
-                (telegram_id, public_id, name, key, now),
+                       (telegram_id, public_id, display_name, display_name_key,
+                        created_at, updated_at)
+                       VALUES(?,?,?,?,?,?)""",
+                    (telegram_id, public_id, name, key, now, now),
             )
             return db.execute(
-                "SELECT telegram_id, public_id, display_name, display_name_key FROM social_profiles WHERE telegram_id=?",
+                    """SELECT telegram_id, public_id, display_name, display_name_key,
+                              created_at, updated_at
+                       FROM social_profiles WHERE telegram_id=?""",
                 (telegram_id,),
             ).fetchone()
         except sqlite3.IntegrityError:
@@ -100,7 +106,8 @@ def _profile_by_public_id(db, public_id):
     if not isinstance(public_id, str) or not public_id or len(public_id) > 64:
         return None
     return db.execute(
-        """SELECT telegram_id, public_id, display_name, display_name_key
+        """SELECT telegram_id, public_id, display_name, display_name_key,
+                  created_at, updated_at
            FROM social_profiles WHERE public_id=?""",
         (public_id,),
     ).fetchone()
@@ -194,6 +201,7 @@ def register_social_routes(app, db_path, connect, authenticate):
                 public_id TEXT NOT NULL UNIQUE,
                 display_name TEXT NOT NULL,
                 display_name_key TEXT NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS social_profiles_search_idx
@@ -240,6 +248,16 @@ def register_social_routes(app, db_path, connect, authenticate):
                 ON social_messages(recipient_id, sender_id, read_at);
             """
         )
+        profile_columns = {
+            row["name"] for row in db.execute("PRAGMA table_info(social_profiles)")
+        }
+        if "created_at" not in profile_columns:
+            db.execute(
+                "ALTER TABLE social_profiles ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0"
+            )
+        db.execute(
+            "UPDATE social_profiles SET created_at=updated_at WHERE created_at=0"
+        )
 
     bp = Blueprint("zerolife_social", __name__)
 
@@ -277,15 +295,36 @@ def register_social_routes(app, db_path, connect, authenticate):
             query_key = query.casefold().lstrip("#")
             with connect(db_path) as db:
                 rows = db.execute(
-                    """SELECT public_id, display_name FROM social_profiles
-                       WHERE telegram_id<>?
-                         AND (instr(display_name_key, ?) > 0 OR instr(lower(public_id), ?) > 0)
-                       ORDER BY display_name_key ASC, updated_at DESC LIMIT ?""",
-                    (str(user["id"]), query.casefold(), query_key, PLAYER_SEARCH_LIMIT),
+                    """SELECT p.public_id, p.display_name, p.created_at, p.updated_at,
+                              EXISTS(
+                                  SELECT 1 FROM community_follows f
+                                  WHERE f.follower_id=? AND f.followee_id=p.telegram_id
+                              ) AS is_following,
+                              (SELECT COUNT(*) FROM community_follows f
+                               WHERE f.followee_id=p.telegram_id) AS follower_count
+                       FROM social_profiles p
+                       WHERE p.telegram_id<>?
+                         AND (instr(p.display_name_key, ?) > 0
+                              OR instr(lower(p.public_id), ?) > 0)
+                       ORDER BY p.display_name_key ASC, p.updated_at DESC LIMIT ?""",
+                    (
+                        str(user["id"]),
+                        str(user["id"]),
+                        query.casefold(),
+                        query_key,
+                        PLAYER_SEARCH_LIMIT,
+                    ),
                 ).fetchall()
             return jsonify({
                 "success": True,
-                "players": [_profile_payload(row) for row in rows],
+                "players": [
+                    {
+                        **_profile_payload(row),
+                        "isFollowing": bool(row["is_following"]),
+                        "followerCount": int(row["follower_count"]),
+                    }
+                    for row in rows
+                ],
             })
         except PermissionError as error:
             return jsonify({"success": False, "error": str(error)}), 401

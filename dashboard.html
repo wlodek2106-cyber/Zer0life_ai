@@ -2937,6 +2937,21 @@
                 <button class="social-tab" id="social-tab-chats" type="button" role="tab" aria-selected="false" aria-controls="social-panel-chats" data-social-tab="chats">Chats <span class="social-tab-count" data-social-count="unread" aria-label="Unread messages"></span></button>
             </nav>
 
+            <section class="social-profile-view" id="social-profile-view" aria-label="Runner profile" hidden>
+                <div class="social-profile-toolbar">
+                    <button type="button" class="community-back" data-profile-action="back" aria-label="Back to community"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <span class="community-kicker">RUNNER PROFILE</span>
+                </div>
+                <div id="social-profile-content" aria-live="polite"></div>
+                <div id="social-profile-status" role="status" aria-live="polite"></div>
+                <div class="community-feed-list" id="social-profile-posts"></div>
+                <button class="community-load-more" id="social-profile-more" type="button" data-profile-action="more" hidden>Load more activity</button>
+            </section>
+            <section class="social-followers-sheet" id="social-followers-sheet" aria-label="Runner connections" hidden>
+                <div class="social-followers-head"><h2 id="social-followers-title">Connections</h2><button type="button" data-profile-action="close-followers" aria-label="Close connections">Close</button></div>
+                <div id="social-followers-list" aria-live="polite"></div>
+            </section>
+
             <section class="social-panel is-active" id="social-panel-feed" role="tabpanel" aria-labelledby="social-tab-feed" data-social-panel="feed">
             <section class="community-intro">
                 <div>
@@ -2947,6 +2962,10 @@
                 <div class="community-orbit" aria-hidden="true"><span></span><i></i><b></b></div>
             </section>
 
+            <div class="community-feed-switch" role="group" aria-label="Choose feed">
+                <button type="button" data-feed-scope="latest" class="is-active" aria-pressed="true">Latest</button>
+                <button type="button" data-feed-scope="following" aria-pressed="false">Following</button>
+            </div>
             <section class="community-composer" aria-label="Write a community post">
                 <div class="community-composer-head">
                     <span class="community-avatar community-avatar-self" id="community-self-avatar">R</span>
@@ -2992,7 +3011,7 @@
                         <h2>Friends<span>.</span></h2>
                         <p>Find your people, then keep each other moving.</p>
                     </div>
-                    <span class="social-view-mark" aria-hidden="true">01 / 03</span>
+                    <button type="button" class="social-profile-link" data-profile-action="my-profile">My profile</button>
                 </header>
 
                 <form class="social-search" id="social-player-search" role="search">

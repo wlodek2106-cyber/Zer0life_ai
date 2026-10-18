@@ -7,7 +7,7 @@
     if (!screen) return;
 
     const state = {
-        profile: null,
+        myProfile: null,
         friends: [],
         incoming: [],
         outgoing: [],
@@ -17,7 +17,16 @@
         loaded: false,
         stateLoading: false,
         threadLoading: false,
-        pendingSend: null
+        pendingSend: null,
+        profileId: '',
+        profile: null,
+        profilePosts: [],
+        profileCursor: null,
+        profileView: 'posts',
+        profileBusy: false,
+        followersDirection: 'followers',
+        followersCursor: null,
+        followers: []
     };
 
     const $ = (selector, root = screen) => root.querySelector(selector);
@@ -30,6 +39,18 @@
     const chatForm = $('#social-chat-composer');
     const chatInput = $('#social-chat-input');
     const chatStatus = $('#social-chat-status');
+    const profileView = $('#social-profile-view');
+    const profileContent = $('#social-profile-content');
+    const profilePostsNode = $('#social-profile-posts');
+    const profileStatus = $('#social-profile-status');
+    const followersSheet = $('#social-followers-sheet');
+
+    function node(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
 
     function initData() {
         return String(window.Telegram?.WebApp?.initData || '');
@@ -128,6 +149,7 @@
     }
 
     function setTab(name) {
+        state.activeTab = name;
         tabButtons.forEach(button => {
             const active = button.dataset.socialTab === name;
             button.classList.toggle('is-active', active);
@@ -171,9 +193,273 @@
             setAvatar(row.querySelector('[data-social-avatar]'), player.displayName);
             row.querySelector('[data-social-display-name]').textContent = player.displayName;
             row.querySelector('[data-social-player-tag]').textContent = player.tag || '';
+            const copy = row.querySelector('.social-person-copy');
+            const followerCount = Number(player.followerCount) || 0;
+            const stats = node('small', 'social-result-followers', `${followerCount.toLocaleString()} followers`);
+            copy.appendChild(stats);
+            const profileButton = node('button', 'social-profile-link', 'Profile');
+            profileButton.type = 'button';
+            profileButton.dataset.profilePublicId = player.publicId;
+            row.appendChild(profileButton);
+            const followButton = node('button', 'social-action-button social-result-follow', player.isFollowing ? 'Following' : 'Follow');
+            followButton.type = 'button';
+            followButton.dataset.profileFollow = player.publicId;
+            followButton.dataset.following = String(Boolean(player.isFollowing));
+            row.appendChild(followButton);
             row.querySelector('[data-social-action="send-request"]').dataset.publicId = player.publicId;
             container.appendChild(row);
         });
+    }
+
+    function setProfileMode(open) {
+        profileView.hidden = !open;
+        $('.social-tabs').hidden = open;
+        tabPanels.forEach(panel => { panel.hidden = open || panel.dataset.socialPanel !== (state.activeTab || 'feed'); });
+    }
+
+    function renderProfileHeader() {
+        const profile = state.profile;
+        if (!profile) return;
+        profileContent.replaceChildren();
+        profileContent.appendChild(node('div', 'social-profile-cover'));
+        const identity = node('div', 'social-profile-identity');
+        identity.appendChild(node('span', 'social-profile-avatar', avatarInitial(profile.displayName)));
+        const copy = node('div', 'social-profile-identity-copy');
+        copy.append(node('h2', '', profile.displayName || 'Runner'), node('p', '', profile.tag || `#${String(profile.publicId).slice(0, 5).toUpperCase()}`));
+        identity.appendChild(copy);
+        if (!profile.isMe) {
+            const follow = node('button', `social-profile-follow${profile.isFollowing ? ' is-following' : ''}`, profile.isFollowing ? 'Following' : 'Follow');
+            follow.type = 'button';
+            follow.dataset.profileAction = 'follow';
+            follow.disabled = state.profileBusy;
+            follow.setAttribute('aria-pressed', String(Boolean(profile.isFollowing)));
+            identity.appendChild(follow);
+        }
+        profileContent.appendChild(identity);
+        const stats = node('div', 'social-profile-stats');
+        [['followers', profile.followerCount], ['following', profile.followingCount], ['posts', profile.postCount]].forEach(([kind, amount]) => {
+            const button = node('button', 'social-profile-stat');
+            button.type = 'button';
+            button.dataset.profileAction = kind === 'followers' ? 'followers' : kind === 'following' ? 'following' : 'view-posts';
+            const strong = node('strong', '', (Number(amount) || 0).toLocaleString());
+            button.append(strong, document.createTextNode(` ${kind}`));
+            stats.appendChild(button);
+        });
+        profileContent.appendChild(stats);
+        const date = profile.joinedAt ? new Date(profile.joinedAt) : null;
+        const joined = date && !Number.isNaN(date.getTime()) ? `RUNNER SINCE ${date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }).toUpperCase()}` : 'ZER0LIFE RUNNER';
+        profileContent.appendChild(node('p', 'social-profile-meta', joined));
+        const views = node('div', 'social-profile-views');
+        [['posts', 'Posts'], ['replies', 'Replies'], ['reposts', 'Reposts'], ['media', 'Media']].forEach(([value, label]) => {
+            const button = node('button', state.profileView === value ? 'is-active' : '', label);
+            button.type = 'button';
+            button.dataset.profileView = value;
+            button.setAttribute('aria-pressed', String(state.profileView === value));
+            views.appendChild(button);
+        });
+        profileContent.appendChild(views);
+    }
+
+    function renderProfilePosts() {
+        profilePostsNode.replaceChildren();
+        if (!state.profilePosts.length) {
+            profilePostsNode.appendChild(node('div', 'social-profile-state', 'No activity here yet. When this runner shares a moment, it will show up here.'));
+            return;
+        }
+        state.profilePosts.forEach(post => {
+            const card = node('article', 'community-post');
+            card.dataset.profilePostId = String(post.id);
+            const head = node('div', 'community-post-head');
+            head.append(node('span', 'community-avatar', avatarInitial(post.author)), node('div', 'community-post-author', ''));
+            const authorCopy = head.lastChild;
+            authorCopy.append(node('strong', '', post.author || 'Runner'), node('time', '', timeLabel(post.createdAt)));
+            card.appendChild(head);
+            if (post.timelineType && post.timelineType !== 'post') {
+                card.appendChild(node('p', 'community-post-context', `${post.timelineType === 'repost' ? 'Reposted' : post.timelineType === 'reply' ? 'Reply' : 'Shared media'} · ${timeLabel(post.repostedAt || post.createdAt)}`));
+            }
+            if (post.content) card.appendChild(node('p', 'community-post-content', post.content));
+            if (post.reply?.content) card.appendChild(node('p', 'community-post-content social-profile-reply', post.reply.content));
+            if (post.mediaUrl) {
+                try {
+                    const media = new URL(post.mediaUrl, API_BASE);
+                    if (['https:', 'http:'].includes(media.protocol)) {
+                        const image = node('img', 'community-post-media');
+                        image.src = media.href;
+                        image.alt = `Image shared by ${post.author || 'a runner'}`;
+                        image.loading = 'lazy';
+                        image.addEventListener('error', () => image.remove(), { once: true });
+                        card.appendChild(image);
+                    }
+                } catch {}
+            }
+            const actions = node('div', 'community-post-actions');
+            const like = node('button', `community-post-action${post.likedByMe ? ' is-liked' : ''}`, `♥ ${Number(post.likeCount) || 0}`);
+            like.type = 'button'; like.dataset.profileAction = 'like'; like.setAttribute('aria-pressed', String(Boolean(post.likedByMe)));
+            const reply = node('button', 'community-post-action', `Reply ${Number(post.commentCount) || 0}`);
+            reply.type = 'button'; reply.dataset.profileAction = 'reply';
+            const repost = node('button', `community-post-action${post.repostedByMe ? ' is-reposted' : ''}`, `↻ ${Number(post.repostCount) || 0}`);
+            repost.type = 'button'; repost.dataset.profileAction = 'repost'; repost.setAttribute('aria-pressed', String(Boolean(post.repostedByMe)));
+            repost.disabled = Boolean(post.isMine);
+            actions.append(like, reply, repost);
+            card.appendChild(actions);
+            const comments = node('div', 'community-comment-list');
+            (Array.isArray(post.comments) ? post.comments : []).forEach(comment => {
+                const line = node('div', 'community-comment');
+                line.append(node('strong', '', comment.author || 'Runner'), document.createTextNode(` ${comment.content || ''}`));
+                comments.appendChild(line);
+            });
+            if (comments.childNodes.length) card.appendChild(comments);
+            const form = node('form', 'community-comment-form');
+            form.dataset.profileReplyId = String(post.id);
+            const input = node('textarea', 'community-comment-input');
+            input.name = 'content'; input.rows = 1; input.maxLength = 500; input.placeholder = 'Write a reply'; input.setAttribute('aria-label', 'Write a reply');
+            const send = node('button', 'community-comment-submit', 'Send'); send.type = 'submit';
+            form.append(input, send);
+            card.appendChild(form);
+            profilePostsNode.appendChild(card);
+        });
+    }
+
+    async function loadProfile(publicId, { append = false } = {}) {
+        if (!publicId || state.profileBusy) return;
+        state.profileBusy = true;
+        profileStatus.textContent = append ? 'Loading more activity…' : 'Loading runner profile…';
+        profileStatus.className = 'social-profile-state';
+        if (!append) {
+            state.profileId = publicId;
+            state.profilePosts = [];
+            state.profileCursor = null;
+            profilePostsNode.replaceChildren(node('div', 'community-skeleton-card'));
+            setProfileMode(true);
+        }
+        try {
+            const result = await api('/wallet/community/profile', {
+                publicId,
+                view: state.profileView,
+                ...(append && state.profileCursor ? { cursor: state.profileCursor } : {})
+            });
+            state.profile = result.profile;
+            const received = Array.isArray(result.posts) ? result.posts : [];
+            state.profilePosts = append ? [...state.profilePosts, ...received] : received;
+            state.profileCursor = result.nextCursor ?? null;
+            renderProfileHeader();
+            renderProfilePosts();
+            $('#social-profile-more').hidden = state.profileCursor === null || state.profileCursor === undefined;
+            profileStatus.textContent = '';
+        } catch (error) {
+            profileStatus.className = 'social-profile-state social-error-card';
+            profileStatus.textContent = error.message || 'Could not load this runner profile.';
+            if (!append) profilePostsNode.replaceChildren();
+        } finally {
+            state.profileBusy = false;
+        }
+    }
+
+    async function toggleFollow(publicId, follow, button) {
+        if (!publicId || button?.disabled) return;
+        if (button) button.disabled = true;
+        try {
+            const result = await api('/wallet/community/follow', { targetPublicId: publicId, follow });
+            const isFollowing = Boolean(result.isFollowing);
+            if (state.profile?.publicId === publicId) {
+                state.profile.isFollowing = isFollowing;
+                state.profile.followerCount = Number(result.followerCount) || 0;
+                renderProfileHeader();
+            }
+            state.searchResults = state.searchResults.map(player => player.publicId === publicId
+                ? { ...player, isFollowing, followerCount: Number(result.followerCount) || player.followerCount } : player);
+            renderSearchResults(state.searchResults);
+            document.querySelectorAll(`[data-profile-follow="${CSS.escape(publicId)}"]`).forEach(item => {
+                item.dataset.following = String(isFollowing);
+                item.textContent = isFollowing ? 'Following' : 'Follow';
+            });
+        } catch (error) {
+            if (state.profile?.publicId === publicId) profileStatus.textContent = error.message;
+            else setSearchHint(error.message, true);
+        } finally {
+            if (button?.isConnected) button.disabled = false;
+        }
+    }
+
+    async function showFollowers(direction) {
+        if (!state.profile?.publicId) return;
+        state.followersDirection = direction;
+        state.followersCursor = null;
+        state.followers = [];
+        $('#social-followers-title').textContent = direction === 'followers' ? 'Followers' : 'Following';
+        const list = $('#social-followers-list');
+        list.replaceChildren(node('div', 'social-profile-state', 'Loading runners…'));
+        followersSheet.hidden = false;
+        try {
+            const result = await api('/wallet/community/follows/list', { publicId: state.profile.publicId, direction });
+            state.followers = Array.isArray(result.players) ? result.players : [];
+            state.followersCursor = result.nextCursor ?? null;
+            renderFollowers();
+        } catch (error) {
+            list.replaceChildren(node('div', 'social-profile-state social-error-card', error.message || 'Could not load this list.'));
+        }
+    }
+
+    function renderFollowers() {
+        const list = $('#social-followers-list');
+        list.replaceChildren();
+        if (!state.followers.length) list.appendChild(node('div', 'social-profile-state', 'No runners to show yet.'));
+        state.followers.forEach(player => {
+            const row = node('div', 'social-followers-person');
+            row.appendChild(node('span', 'social-avatar', avatarInitial(player.displayName)));
+            const open = node('button', '', '');
+            open.type = 'button'; open.dataset.profilePublicId = player.publicId;
+            open.append(node('strong', '', player.displayName || 'Runner'), node('small', '', player.tag || 'Zer0Life runner'));
+            row.appendChild(open);
+            const follow = node('button', 'social-action-button', player.isFollowing ? 'Following' : 'Follow');
+            follow.type = 'button'; follow.dataset.profileFollow = player.publicId; follow.dataset.following = String(Boolean(player.isFollowing));
+            row.appendChild(follow);
+            list.appendChild(row);
+        });
+        if (state.followersCursor) {
+            const more = node('button', 'community-load-more', 'Load more runners');
+            more.type = 'button'; more.dataset.profileAction = 'more-followers';
+            list.appendChild(more);
+        }
+    }
+
+    async function loadMoreFollowers() {
+        if (!state.followersCursor) return;
+        try {
+            const result = await api('/wallet/community/follows/list', {
+                publicId: state.profile.publicId,
+                direction: state.followersDirection,
+                cursor: state.followersCursor
+            });
+            state.followers = [...state.followers, ...(Array.isArray(result.players) ? result.players : [])];
+            state.followersCursor = result.nextCursor ?? null;
+            renderFollowers();
+        } catch (error) {
+            $('#social-followers-list').appendChild(node('div', 'social-profile-state social-error-card', error.message || 'Could not load more runners.'));
+        }
+    }
+
+    async function profilePostAction(button) {
+        const card = button.closest('[data-profile-post-id]');
+        const post = state.profilePosts.find(item => String(item.id) === card?.dataset.profilePostId);
+        if (!post) return;
+        button.disabled = true;
+        try {
+            if (button.dataset.profileAction === 'like') {
+                const result = await api('/wallet/community/posts/like', { postId: post.id });
+                post.likedByMe = Boolean(result.likedByMe); post.likeCount = Number(result.likeCount) || 0;
+            } else if (button.dataset.profileAction === 'repost') {
+                const result = await api('/wallet/community/posts/repost', { postId: post.id });
+                post.repostedByMe = Boolean(result.repostedByMe); post.repostCount = Number(result.repostCount) || 0;
+            } else if (button.dataset.profileAction === 'reply') {
+                card.querySelector('.community-comment-input')?.focus();
+            }
+        } catch (error) {
+            profileStatus.textContent = error.message || 'Could not update this post.';
+        } finally {
+            button.disabled = false;
+            if (button.dataset.profileAction !== 'reply') renderProfilePosts();
+        }
     }
 
     function renderRequests(containerId, templateId, requests, emptyState, loadingState, errorState, incoming) {
@@ -309,7 +595,7 @@
         if (!state.loaded && !quiet) showStateLoading();
         try {
             const result = await api('/wallet/social/state', { displayName: displayName() });
-            state.profile = result.profile;
+            state.myProfile = result.profile;
             state.friends = Array.isArray(result.friends) ? result.friends : [];
             state.incoming = Array.isArray(result.incomingRequests) ? result.incomingRequests : [];
             state.outgoing = Array.isArray(result.outgoingRequests) ? result.outgoingRequests : [];
@@ -574,6 +860,51 @@
     }
 
     screen.addEventListener('click', event => {
+        const profileLink = event.target.closest('[data-profile-public-id]');
+        if (profileLink) {
+            followersSheet.hidden = true;
+            loadProfile(profileLink.dataset.profilePublicId);
+            return;
+        }
+        const followControl = event.target.closest('[data-profile-follow]');
+        if (followControl) {
+            toggleFollow(followControl.dataset.profileFollow, followControl.dataset.following !== 'true', followControl);
+            return;
+        }
+        const profileControl = event.target.closest('[data-profile-action]');
+        if (profileControl) {
+            const action = profileControl.dataset.profileAction;
+            if (action === 'back') {
+                followersSheet.hidden = true;
+                setProfileMode(false);
+                profilePostsNode.replaceChildren();
+            } else if (action === 'follow') {
+                toggleFollow(state.profile?.publicId, !state.profile?.isFollowing, profileControl);
+            } else if (action === 'my-profile') {
+                if (state.myProfile?.publicId) loadProfile(state.myProfile.publicId);
+                else refreshState().then(() => state.myProfile?.publicId && loadProfile(state.myProfile.publicId));
+            } else if (action === 'followers' || action === 'following') {
+                showFollowers(action);
+            } else if (action === 'more') {
+                loadProfile(state.profileId, { append: true });
+            } else if (action === 'close-followers') {
+                followersSheet.hidden = true;
+            } else if (action === 'more-followers') {
+                loadMoreFollowers();
+            } else if (action === 'view-posts') {
+                state.profileView = 'posts';
+                loadProfile(state.profileId);
+            } else if (action === 'like' || action === 'repost' || action === 'reply') {
+                profilePostAction(profileControl);
+            }
+            return;
+        }
+        const viewButton = event.target.closest('[data-profile-view]');
+        if (viewButton) {
+            state.profileView = viewButton.dataset.profileView;
+            loadProfile(state.profileId);
+            return;
+        }
         const tab = event.target.closest('[data-social-tab]');
         if (tab) {
             setTab(tab.dataset.socialTab);
@@ -604,6 +935,30 @@
         searchPlayers();
     });
 
+    profilePostsNode?.addEventListener('submit', async event => {
+        const form = event.target.closest('[data-profile-reply-id]');
+        if (!form) return;
+        event.preventDefault();
+        const input = form.elements.content;
+        const content = String(input.value || '').trim();
+        if (!content) return;
+        const post = state.profilePosts.find(item => String(item.id) === form.dataset.profileReplyId);
+        if (!post) return;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const result = await api('/wallet/community/comments', { postId: post.id, displayName: displayName(), content });
+            post.comments = [...(Array.isArray(post.comments) ? post.comments : []), result.comment];
+            post.commentCount = Number(result.commentCount) || (Number(post.commentCount) || 0) + 1;
+            input.value = '';
+            renderProfilePosts();
+        } catch (error) {
+            profileStatus.textContent = error.message || 'Reply could not be sent.';
+        } finally {
+            if (button.isConnected) button.disabled = false;
+        }
+    });
+
     chatForm?.addEventListener('submit', sendMessage);
 
     const openSocial = () => window.setTimeout(() => refreshState(), 0);
@@ -616,4 +971,5 @@
     }, 15000);
 
     screen.addEventListener('social:refresh', () => refreshState());
+    screen.addEventListener('social:open-profile', event => loadProfile(event.detail?.publicId));
 })();

@@ -232,6 +232,181 @@ class CommunityFeedTests(unittest.TestCase):
         self.assertEqual(second_page.json["posts"][0]["content"], "Post 0")
         self.assertIsNone(second_page.json["nextCursor"])
 
+    def test_profiles_follow_counts_and_following_feed(self):
+        post = self.create_post(user="100", content="First lap complete.")
+        target_public_id = post["authorPublicId"]
+        followed = self.post(
+            "/wallet/community/follow",
+            {"targetPublicId": target_public_id, "follow": True},
+            user="200",
+        )
+        self.assertEqual(followed.status_code, 200, followed.json)
+        self.assertEqual(followed.json["followerCount"], 1)
+        self.assertTrue(followed.json["isFollowing"])
+
+        profile = self.post(
+            "/wallet/community/profile",
+            {"publicId": target_public_id},
+            user="200",
+        )
+        self.assertEqual(profile.status_code, 200, profile.json)
+        self.assertEqual(profile.json["profile"]["followerCount"], 1)
+        self.assertTrue(profile.json["profile"]["isFollowing"])
+        self.assertEqual(profile.json["profile"]["postCount"], 1)
+        self.assertEqual(profile.json["posts"][0]["id"], post["id"])
+        self.assertEqual(profile.json["posts"][0]["timelineType"], "post")
+        self.assertNotIn("telegram_id", profile.json["profile"])
+
+        viewer = self.post(
+            "/wallet/social/state",
+            {"displayName": "Runner Two"},
+            user="200",
+        ).json["profile"]
+        followers = self.post(
+            "/wallet/community/follows/list",
+            {"publicId": target_public_id, "direction": "followers"},
+            user="200",
+        )
+        self.assertEqual(followers.status_code, 200, followers.json)
+        self.assertEqual(followers.json["players"][0]["publicId"], viewer["publicId"])
+
+        following_feed = self.post(
+            "/wallet/community/feed",
+            {"scope": "following"},
+            user="200",
+        )
+        self.assertEqual(
+            [item["id"] for item in following_feed.json["posts"]],
+            [post["id"]],
+        )
+        self.assertEqual(following_feed.json["posts"][0]["authorPublicId"], target_public_id)
+
+        repeated_follow = self.post(
+            "/wallet/community/follow",
+            {"targetPublicId": target_public_id, "follow": True},
+            user="200",
+        )
+        self.assertEqual(repeated_follow.json["followerCount"], 1)
+        unfollowed = self.post(
+            "/wallet/community/follow",
+            {"targetPublicId": target_public_id, "follow": False},
+            user="200",
+        )
+        self.assertEqual(unfollowed.json["followerCount"], 0)
+        self.assertFalse(unfollowed.json["isFollowing"])
+        self.assertEqual(
+            self.post("/wallet/community/feed", {"scope": "following"}, user="200").json["posts"],
+            [],
+        )
+
+        self_follow = self.post(
+            "/wallet/community/follow",
+            {"targetPublicId": viewer["publicId"], "follow": True},
+            user="200",
+        )
+        self.assertEqual(self_follow.status_code, 400)
+
+    def test_reposts_toggle_and_appear_in_the_reposter_profile(self):
+        original = self.create_post(user="100", content="Strong finish today.")
+        repeated = self.post(
+            "/wallet/community/posts/repost",
+            {"postId": original["id"]},
+            user="200",
+        )
+        self.assertEqual(repeated.status_code, 200, repeated.json)
+        self.assertTrue(repeated.json["repostedByMe"])
+        self.assertEqual(repeated.json["repostCount"], 1)
+
+        repost_feed = self.post("/wallet/community/feed", user="200")
+        self.assertEqual(repost_feed.json["posts"][0]["repostCount"], 1)
+        self.assertTrue(repost_feed.json["posts"][0]["repostedByMe"])
+
+        reposter = self.post(
+            "/wallet/social/state",
+            {"displayName": "Runner Two"},
+            user="200",
+        ).json["profile"]
+        timeline = self.post(
+            "/wallet/community/profile",
+            {"publicId": reposter["publicId"], "view": "reposts"},
+            user="200",
+        )
+        self.assertEqual(timeline.status_code, 200, timeline.json)
+        self.assertEqual(timeline.json["profile"]["repostCount"], 1)
+        self.assertEqual(timeline.json["posts"][0]["id"], original["id"])
+        self.assertEqual(timeline.json["posts"][0]["timelineType"], "repost")
+        self.assertEqual(timeline.json["posts"][0]["reposter"]["publicId"], reposter["publicId"])
+
+        own_repost = self.post(
+            "/wallet/community/posts/repost",
+            {"postId": original["id"]},
+            user="100",
+        )
+        self.assertEqual(own_repost.status_code, 400)
+        removed = self.post(
+            "/wallet/community/posts/repost",
+            {"postId": original["id"]},
+            user="200",
+        )
+        self.assertFalse(removed.json["repostedByMe"])
+        self.assertEqual(removed.json["repostCount"], 0)
+        self.assertEqual(
+            self.post(
+                "/wallet/community/profile",
+                {"publicId": reposter["publicId"], "view": "reposts"},
+                user="200",
+            ).json["posts"],
+            [],
+        )
+
+    def test_profile_replies_and_media_timeline_use_opaque_author_ids(self):
+        original = self.create_post(
+            user="100",
+            content="A photo from the finish line.",
+            image="data:image/png;base64," + base64.b64encode(PNG_BYTES).decode(),
+        )
+        reply = self.post(
+            "/wallet/community/comments",
+            {
+                "postId": original["id"],
+                "displayName": "Reply Runner",
+                "content": "Well done!",
+            },
+            user="200",
+        )
+        self.assertEqual(reply.status_code, 200, reply.json)
+        reply_profile = self.post(
+            "/wallet/social/state",
+            {"displayName": "Reply Runner"},
+            user="200",
+        ).json["profile"]
+
+        replies = self.post(
+            "/wallet/community/profile",
+            {"publicId": reply_profile["publicId"], "view": "replies"},
+            user="200",
+        )
+        self.assertEqual(replies.status_code, 200, replies.json)
+        self.assertEqual(replies.json["posts"][0]["timelineType"], "reply")
+        self.assertEqual(replies.json["posts"][0]["reply"]["content"], "Well done!")
+        self.assertEqual(replies.json["posts"][0]["reply"]["authorPublicId"], reply_profile["publicId"])
+
+        media = self.post(
+            "/wallet/community/profile",
+            {"publicId": original["authorPublicId"], "view": "media"},
+            user="200",
+        )
+        self.assertEqual(media.status_code, 200, media.json)
+        self.assertEqual(media.json["posts"][0]["timelineType"], "media")
+        self.assertTrue(media.json["posts"][0]["mediaUrl"].endswith(".png"))
+
+        invalid = self.post(
+            "/wallet/community/profile",
+            {"publicId": original["authorPublicId"], "view": "unknown"},
+            user="200",
+        )
+        self.assertEqual(invalid.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

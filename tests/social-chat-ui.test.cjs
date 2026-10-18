@@ -46,6 +46,35 @@ test('one screen exposes feed, friends, requests, and private chats', () => {
     assert.match(dashboard, /maxlength="1000" placeholder="Send a quick check-in/);
 });
 
+test('community exposes profile, follows, and both public feed scopes', () => {
+    for (const hook of ['social-profile-view', 'social-profile-content', 'social-profile-posts', 'social-followers-sheet', 'social-profile-more']) {
+        assert.match(dashboard, new RegExp(`id="${hook}"`), `missing profile hook ${hook}`);
+    }
+    assert.match(dashboard, /data-feed-scope="latest"/);
+    assert.match(dashboard, /data-feed-scope="following"/);
+    assert.match(controller, /\/wallet\/community\/profile/);
+    assert.match(controller, /\/wallet\/community\/follow/);
+    assert.match(controller, /\/wallet\/community\/follows\/list/);
+    assert.match(controller, /\/wallet\/community\/posts\/repost/);
+    assert.match(communityController, /\/wallet\/community\/posts\/repost/);
+    assert.match(communityController, /scope: state\.scope/);
+});
+
+test('signed-in identity and selected runner profile remain separate', () => {
+    assert.match(controller, /myProfile:\s*null/);
+    assert.match(controller, /state\.myProfile = result\.profile/);
+    assert.match(controller, /state\.profile = result\.profile/);
+    assert.match(controller, /state\.myProfile\?\.publicId/);
+    assert.match(controller, /post\.reply\?\.content/);
+});
+
+test('profile and social content use safe text nodes for runner-provided copy', () => {
+    assert.match(controller, /function node\(tag, className, text\)/);
+    assert.match(controller, /el\.textContent = text/);
+    assert.doesNotMatch(controller, /innerHTML\s*=/);
+    assert.match(communityController, /authorButton\.dataset\.openProfile/);
+});
+
 function createSocialApi(fetchImpl, initData = 'synthetic-telegram-session') {
     const start = controller.indexOf('    async function api(');
     const end = controller.indexOf('\n\n    function setCard(', start);

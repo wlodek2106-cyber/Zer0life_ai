@@ -260,6 +260,53 @@ body.is-community-open .bottom-nav { visibility: hidden; pointer-events: none; }
     .community-screen *, .community-screen *::before, .community-screen *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
 
+/* Runner profiles and follow graph */
+.community-feed-switch { display:flex; gap:5px; margin:14px 0 12px; padding:4px; background:#101710; border:1px solid var(--cf-line); border-radius:12px; }
+.community-feed-switch button { flex:1; min-height:36px; color:#8f9c87; background:transparent; border:1px solid transparent; border-radius:8px; font:700 10px Manrope,sans-serif; cursor:pointer; }
+.community-feed-switch button.is-active { color:#d8f6a8; background:rgba(197,255,86,.08); border-color:rgba(197,255,86,.2); }
+.community-post-author button, .community-comment button { width:fit-content; max-width:100%; padding:0; overflow:hidden; color:inherit; text-align:left; text-overflow:ellipsis; white-space:nowrap; background:none; border:0; font:inherit; cursor:pointer; }
+.community-post-author button:hover, .community-comment button:hover { color:var(--cf-lime); text-decoration:underline; }
+.community-post-context { margin:-2px 0 9px 44px; color:#9cac8f; font-size:9px; }
+.community-post-context strong { color:#c5df9f; }
+.community-post-action.is-reposted { color:var(--cf-lime); }
+.social-profile-view { padding-bottom:24px; animation:cf-enter .24s both; }
+.social-profile-view[hidden], .social-followers-sheet[hidden] { display:none; }
+.social-profile-toolbar { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:12px; padding:8px 0 12px; background:rgba(9,13,9,.92); backdrop-filter:blur(12px); }
+.social-profile-toolbar .community-back { flex-basis:36px; width:36px; height:36px; }
+.social-profile-cover { position:relative; min-height:108px; overflow:hidden; border:1px solid rgba(197,255,86,.2); border-radius:18px; background:radial-gradient(ellipse at 75% 35%,rgba(170,221,74,.3),transparent 35%),linear-gradient(125deg,#26351e,#111811 60%,#1b2817); }
+.social-profile-cover::after { position:absolute; content:""; inset:22px 15% -45px 47%; border:1px solid rgba(197,255,86,.18); border-radius:50%; transform:scaleY(.55) rotate(-22deg); box-shadow:0 0 45px rgba(197,255,86,.12); }
+.social-profile-identity { display:flex; align-items:flex-end; gap:12px; margin:-25px 13px 13px; position:relative; z-index:1; }
+.social-profile-avatar { display:grid; place-items:center; flex:0 0 62px; width:62px; height:62px; color:#d7f5a1; background:linear-gradient(145deg,#334629,#18231a); border:3px solid #0b100b; border-radius:50%; font:800 22px "Barlow Condensed",sans-serif; }
+.social-profile-identity-copy { min-width:0; padding-bottom:5px; }
+.social-profile-identity-copy h2 { overflow:hidden; margin:0 0 3px; color:#f0f3e9; font:800 21px/1.05 "Barlow Condensed",sans-serif; text-overflow:ellipsis; white-space:nowrap; }
+.social-profile-identity-copy p { margin:0; color:#91a087; font:400 9px "DM Mono",monospace; }
+.social-profile-follow { margin-left:auto; min-height:34px; padding:0 13px; color:#161b10; background:var(--cf-lime); border:0; border-radius:10px; font:800 9px Manrope,sans-serif; cursor:pointer; }
+.social-profile-follow.is-following { color:#dce7d2; background:#202b1d; border:1px solid rgba(197,255,86,.3); }
+.social-profile-follow:disabled { opacity:.55; }
+.social-profile-bio { margin:0 13px 13px; color:#cbd5c2; font-size:10px; line-height:1.55; }
+.social-profile-stats { display:flex; gap:18px; margin:0 13px 14px; }
+.social-profile-stat { padding:0; color:#8d9a85; background:none; border:0; font:500 9px Manrope,sans-serif; cursor:pointer; }
+.social-profile-stat strong { color:#edf1e7; font-size:12px; }
+.social-profile-meta { margin:0 13px 14px; color:#788772; font:400 8px "DM Mono",monospace; }
+.social-profile-views { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin:0 0 11px; padding:4px; background:#101710; border:1px solid var(--cf-line); border-radius:12px; }
+.social-profile-views button { min-height:34px; padding:0 3px; color:#82907b; background:transparent; border:0; border-radius:8px; font:700 8px Manrope,sans-serif; cursor:pointer; }
+.social-profile-views button.is-active { color:#d8f6a8; background:rgba(197,255,86,.08); }
+.social-profile-state { margin:0 0 10px; padding:12px; color:#8f9d87; background:rgba(20,29,19,.6); border:1px dashed rgba(197,255,86,.17); border-radius:12px; font-size:10px; }
+.social-followers-sheet { position:fixed; inset:auto 0 0; z-index:5; max-height:72dvh; overflow:auto; padding:18px max(18px,calc((100vw - 640px)/2)) calc(20px + env(safe-area-inset-bottom)); color:var(--cf-text); background:#111811; border:1px solid rgba(197,255,86,.2); border-radius:20px 20px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.52); }
+.social-followers-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.social-followers-head h2 { margin:0; font:700 20px "Barlow Condensed",sans-serif; }
+.social-followers-head button { padding:8px 11px; color:#d7f3a6; background:#202b1d; border:1px solid var(--cf-line); border-radius:9px; font:700 9px Manrope,sans-serif; }
+.social-followers-list { display:flex; flex-direction:column; gap:7px; }
+.social-followers-person { display:flex; align-items:center; gap:10px; padding:9px; background:#172017; border:1px solid rgba(211,239,190,.09); border-radius:12px; }
+.social-followers-person > button:first-of-type { flex:1; color:#e4ebdd; text-align:left; background:none; border:0; font:700 10px Manrope,sans-serif; cursor:pointer; }
+.social-followers-person small { display:block; margin-top:3px; color:#879486; font:400 8px "DM Mono",monospace; }
+.social-followers-person .social-action-button { min-height:29px; }
+.social-profile-link { min-height:31px; padding:0 10px; color:#d5e8bc; background:#1a2518; border:1px solid rgba(197,255,86,.2); border-radius:8px; font:700 8px Manrope,sans-serif; cursor:pointer; white-space:nowrap; }
+.social-result-followers { color:#82917a !important; }
+.social-person-row .social-result-follow { min-height:31px; padding:0 9px; }
+.community-screen :focus-visible { outline:2px solid #c5ff56; outline-offset:3px; }
+@media(min-width:700px) { .social-followers-sheet { left:50%; right:auto; width:min(640px,100%); transform:translateX(-50%); border-radius:20px 20px 0 0; } }
+
 /* Unified social space */
 .social-tabs {
     position: sticky;
