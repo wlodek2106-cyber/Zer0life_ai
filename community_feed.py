@@ -18,6 +18,7 @@ MAX_REQUEST_BYTES = 3 * 1024 * 1024
 PAGE_SIZE = 20
 POSTS_PER_MINUTE = 3
 COMMENTS_PER_MINUTE = 8
+POST_REWARD_ZRL = 10
 
 
 class RateLimitExceeded(Exception):
@@ -38,6 +39,14 @@ def _display_name(value):
     normalized = unicodedata.normalize("NFC", value)
     name = "".join(character for character in normalized if character.isprintable()).strip()
     return name[:48] or "Runner"
+
+
+def _profile_media_url(media_key):
+    if not isinstance(media_key, str) or not re.fullmatch(
+        r"[a-f0-9]{40}\.(?:jpg|png|webp|gif)", media_key
+    ):
+        return None
+    return f"/wallet/community/media/{media_key}"
 
 
 def _text(value, limit, field):
@@ -97,7 +106,7 @@ def _ensure_social_profile(db, telegram_id, display_name, now):
     current = str(telegram_id)
     existing = db.execute(
         """SELECT telegram_id, public_id, display_name, display_name_key,
-                  created_at, updated_at
+                  created_at, updated_at, avatar_key, banner_key
            FROM social_profiles WHERE telegram_id=?""",
         (current,),
     ).fetchone()
@@ -116,7 +125,7 @@ def _ensure_social_profile(db, telegram_id, display_name, now):
         )
         profile = db.execute(
             """SELECT telegram_id, public_id, display_name, display_name_key,
-                      created_at, updated_at
+                      created_at, updated_at, avatar_key, banner_key
                FROM social_profiles WHERE telegram_id=?""",
             (current,),
         ).fetchone()
@@ -133,6 +142,8 @@ def _community_profile_payload(db, row, viewer_id):
         "publicId": public_id,
         "displayName": row["display_name"],
         "tag": "#" + public_id[:5].upper(),
+        "avatarUrl": _profile_media_url(row["avatar_key"]),
+        "bannerUrl": _profile_media_url(row["banner_key"]),
         "followerCount": int(db.execute(
             "SELECT COUNT(*) FROM community_follows WHERE followee_id=?",
             (telegram_id,),
@@ -177,6 +188,7 @@ def _post_payload(db, row, telegram_id, media_url):
         "id": post_id,
         "author": row["display_name"],
         "authorPublicId": author_profile["public_id"],
+        "authorAvatarUrl": _profile_media_url(author_profile["avatar_key"]),
         "content": row["content"],
         "mediaUrl": f"{media_url}/{row['media_key']}" if row["media_key"] else None,
         "createdAt": int(row["created_at"]) * 1000,
@@ -219,8 +231,20 @@ def _post_payload(db, row, telegram_id, media_url):
     }
 
 
-def register_community_routes(app, db_path, connect, authenticate, admin_telegram_id=None):
+def register_community_routes(
+    app,
+    db_path,
+    connect,
+    authenticate,
+    admin_telegram_id=None,
+    ledger_entry=None,
+    balance_units=None,
+    zrl_scale=1_000_000,
+):
     """Register feed routes using the wallet service's verified Telegram session."""
+    if not callable(ledger_entry) or not callable(balance_units) or int(zrl_scale) <= 0:
+        raise ValueError("Community rewards require the wallet ledger callbacks")
+    post_reward_units = POST_REWARD_ZRL * int(zrl_scale)
     media_dir = os.path.join(os.path.dirname(db_path), "community-media")
     os.makedirs(media_dir, mode=0o750, exist_ok=True)
     with connect(db_path) as db:
@@ -240,6 +264,17 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                 ON community_posts(deleted_at, id DESC);
             CREATE INDEX IF NOT EXISTS community_posts_rate_idx
                 ON community_posts(telegram_id, created_at);
+            CREATE TABLE IF NOT EXISTS community_post_rewards (
+                post_id INTEGER PRIMARY KEY REFERENCES community_posts(id),
+                telegram_id TEXT NOT NULL,
+                amount_units INTEGER NOT NULL CHECK(amount_units > 0),
+                created_at INTEGER NOT NULL,
+                claimed_at INTEGER,
+                claim_event_id TEXT UNIQUE,
+                voided_at INTEGER
+            );
+            CREATE INDEX IF NOT EXISTS community_post_rewards_pending_idx
+                ON community_post_rewards(telegram_id, claimed_at, voided_at);
             CREATE TABLE IF NOT EXISTS community_comments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 post_id INTEGER NOT NULL REFERENCES community_posts(id),
@@ -312,8 +347,8 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
         if not isinstance(public_id, str) or not public_id or len(public_id) > 64:
             return None
         return db.execute(
-            """SELECT telegram_id, public_id, display_name, display_name_key,
-                      created_at, updated_at
+        """SELECT telegram_id, public_id, display_name, display_name_key,
+                  created_at, updated_at, avatar_key, banner_key
                FROM social_profiles WHERE public_id=?""",
             (public_id,),
         ).fetchone()
@@ -417,6 +452,12 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                     raise ValueError("Invalid feed cursor")
 
             with connect(db_path) as db:
+                viewer_profile = _ensure_social_profile(
+                    db,
+                    user["id"],
+                    user.get("username") or user.get("first_name") or "Runner",
+                    int(time.time()),
+                )
                 followed_filter = ""
                 followed_params = ()
                 if scope == "following":
@@ -446,10 +487,19 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                 media_url = base + "/wallet/community/media"
                 posts = [_post_payload(db, row, user["id"], media_url) for row in rows]
                 next_cursor = int(rows[-1]["id"]) if has_more and rows else None
+                pending_units = int(db.execute(
+                    """SELECT COALESCE(SUM(amount_units), 0)
+                       FROM community_post_rewards
+                       WHERE telegram_id=? AND claimed_at IS NULL AND voided_at IS NULL""",
+                    (str(user["id"]),),
+                ).fetchone()[0])
             return jsonify({
                 "success": True,
                 "posts": posts,
                 "nextCursor": next_cursor,
+                "pendingZrl": round(pending_units / int(zrl_scale), 6),
+                "rewardPerPostZrl": POST_REWARD_ZRL,
+                "viewerAvatarUrl": _profile_media_url(viewer_profile["avatar_key"]),
                 "isModerator": bool(admin_telegram_id and str(user["id"]) == str(admin_telegram_id)),
             })
         except PermissionError as error:
@@ -458,7 +508,7 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
             return jsonify({"success": False, "error": str(error)}), 400
         except Exception:
             current_app.logger.exception("Community feed read failed")
-            return jsonify({"success": False, "error": "The community feed is temporarily unavailable"}), 503
+            return jsonify({"success": False, "error": "The Zer0Net feed is temporarily unavailable"}), 503
 
     @bp.post("/wallet/community/posts")
     def create_post():
@@ -494,16 +544,34 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                        VALUES(?,?,?,?,?,?)""",
                     (str(user["id"]), display_name, content, media_key, media_mime, now),
                 )
+                post_id = int(cursor.lastrowid)
+                db.execute(
+                    """INSERT INTO community_post_rewards
+                       (post_id, telegram_id, amount_units, created_at)
+                       VALUES(?,?,?,?)""",
+                    (post_id, str(user["id"]), post_reward_units, now),
+                )
                 row = db.execute(
                     "SELECT * FROM community_posts WHERE id=?",
-                    (cursor.lastrowid,),
+                    (post_id,),
                 ).fetchone()
+                pending_units = int(db.execute(
+                    """SELECT COALESCE(SUM(amount_units), 0)
+                       FROM community_post_rewards
+                       WHERE telegram_id=? AND claimed_at IS NULL AND voided_at IS NULL""",
+                    (str(user["id"]),),
+                ).fetchone()[0])
                 db.commit()
                 base = request.url_root.rstrip("/")
                 result = _post_payload(
                     db, row, user["id"], base + "/wallet/community/media",
                 )
-            return jsonify({"success": True, "post": result})
+            return jsonify({
+                "success": True,
+                "post": result,
+                "rewardZrl": POST_REWARD_ZRL,
+                "pendingZrl": round(pending_units / int(zrl_scale), 6),
+            })
         except PermissionError as error:
             if media_path:
                 try:
@@ -533,6 +601,75 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                     pass
             current_app.logger.exception("Community post creation failed")
             return jsonify({"success": False, "error": "Your post could not be sent"}), 503
+
+    @bp.post("/wallet/community/rewards/claim")
+    def claim_post_rewards():
+        try:
+            data, user = body_and_user()
+            telegram_id = str(user["id"])
+            claimed_units = 0
+            with connect(db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                rewards = db.execute(
+                    """SELECT post_id, amount_units
+                       FROM community_post_rewards
+                       WHERE telegram_id=? AND claimed_at IS NULL AND voided_at IS NULL
+                       ORDER BY post_id""",
+                    (telegram_id,),
+                ).fetchall()
+                claimed_at = int(time.time())
+                for reward in rewards:
+                    post_id = int(reward["post_id"])
+                    amount = int(reward["amount_units"])
+                    event_id = f"zeronet-post-claim:{post_id}"
+                    inserted = ledger_entry(
+                        db,
+                        telegram_id,
+                        "zeronet_post_claim",
+                        amount,
+                        event_id,
+                    )
+                    if not inserted:
+                        existing = db.execute(
+                            """SELECT telegram_id, source, delta_units
+                               FROM wallet_ledger WHERE event_id=?""",
+                            (event_id,),
+                        ).fetchone()
+                        if not existing or (
+                            str(existing["telegram_id"]) != telegram_id
+                            or existing["source"] != "zeronet_post_claim"
+                            or int(existing["delta_units"]) != amount
+                        ):
+                            raise RuntimeError("A Zer0Net reward ledger entry could not be verified")
+                    db.execute(
+                        """UPDATE community_post_rewards
+                           SET claimed_at=?, claim_event_id=?
+                           WHERE post_id=? AND telegram_id=?
+                             AND claimed_at IS NULL AND voided_at IS NULL""",
+                        (claimed_at, event_id, post_id, telegram_id),
+                    )
+                    claimed_units += amount
+                pending_units = int(db.execute(
+                    """SELECT COALESCE(SUM(amount_units), 0)
+                       FROM community_post_rewards
+                       WHERE telegram_id=? AND claimed_at IS NULL AND voided_at IS NULL""",
+                    (telegram_id,),
+                ).fetchone()[0])
+                game_balance = int(balance_units(db, telegram_id))
+                db.commit()
+            return jsonify({
+                "success": True,
+                "claimedZrl": round(claimed_units / int(zrl_scale), 6),
+                "pendingZrl": round(pending_units / int(zrl_scale), 6),
+                "gameBalanceZrl": round(game_balance / int(zrl_scale), 6),
+            })
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            current_app.logger.exception("Zer0Net reward claim failed")
+            return jsonify({"success": False, "error": "Your Zer0Net rewards could not be claimed"}), 503
 
     @bp.post("/wallet/community/posts/like")
     def toggle_like():
@@ -622,6 +759,113 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
         except Exception:
             current_app.logger.exception("Community profile read failed")
             return jsonify({"success": False, "error": "The runner profile is temporarily unavailable"}), 503
+
+    @bp.post("/wallet/community/profile/image")
+    def update_profile_image():
+        if request.content_length is not None and request.content_length > MAX_REQUEST_BYTES:
+            return jsonify({"success": False, "error": "Image must be no larger than 2 MiB"}), 413
+        media_path = None
+        temporary_path = None
+        committed = False
+        old_media_key = None
+        try:
+            data, user = body_and_user()
+            field = data.get("field")
+            columns = {
+                "avatar": ("avatar_key", "avatar_mime"),
+                "banner": ("banner_key", "banner_mime"),
+            }
+            if field not in columns:
+                raise ValueError("Choose an avatar or profile banner")
+            image = _image_payload(data.get("image"))
+            if not image:
+                raise ValueError("Choose an image to upload")
+
+            image_bytes, mime, extension = image
+            media_key = secrets.token_hex(20) + extension
+            media_path = os.path.join(media_dir, media_key)
+            temporary_path = media_path + ".tmp"
+            with open(temporary_path, "xb") as image_file:
+                image_file.write(image_bytes)
+                image_file.flush()
+                os.fsync(image_file.fileno())
+            os.replace(temporary_path, media_path)
+            temporary_path = None
+
+            key_column, mime_column = columns[field]
+            now = int(time.time())
+            with connect(db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                profile = db.execute(
+                    """SELECT telegram_id, public_id, display_name, display_name_key,
+                              created_at, updated_at, avatar_key, banner_key
+                       FROM social_profiles WHERE telegram_id=?""",
+                    (str(user["id"]),),
+                ).fetchone()
+                if not profile:
+                    profile = _ensure_social_profile(
+                        db,
+                        user["id"],
+                        user.get("username") or user.get("first_name") or "Runner",
+                        now,
+                    )
+                old_media_key = profile[key_column]
+                db.execute(
+                    f"""UPDATE social_profiles
+                        SET {key_column}=?, {mime_column}=?, updated_at=?
+                        WHERE telegram_id=?""",
+                    (media_key, mime, now, str(user["id"])),
+                )
+                updated = db.execute(
+                    """SELECT telegram_id, public_id, display_name, display_name_key,
+                              created_at, updated_at, avatar_key, banner_key
+                       FROM social_profiles WHERE telegram_id=?""",
+                    (str(user["id"]),),
+                ).fetchone()
+                profile_payload = _community_profile_payload(db, updated, user["id"])
+                referenced = False
+                if old_media_key and old_media_key != media_key:
+                    referenced = db.execute(
+                        """SELECT 1 FROM community_posts WHERE media_key=?
+                           UNION ALL
+                           SELECT 1 FROM social_profiles
+                           WHERE avatar_key=? OR banner_key=? LIMIT 1""",
+                        (old_media_key, old_media_key, old_media_key),
+                    ).fetchone() is not None
+                db.commit()
+                committed = True
+
+            if old_media_key and old_media_key != media_key and not referenced:
+                try:
+                    os.remove(os.path.join(media_dir, old_media_key))
+                except OSError:
+                    pass
+            return jsonify({"success": True, "profile": profile_payload})
+        except PermissionError as error:
+            for path in (media_path, temporary_path):
+                if path and not committed:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            for path in (media_path, temporary_path):
+                if path and not committed:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            for path in (media_path, temporary_path):
+                if path and not committed:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+            current_app.logger.exception("Zer0Net profile image update failed")
+            return jsonify({"success": False, "error": "The profile image could not be updated"}), 503
 
     @bp.post("/wallet/community/follow")
     def toggle_follow():
@@ -714,7 +958,8 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                 rows = db.execute(
                     f"""SELECT f.id AS follow_id, p.telegram_id, p.public_id,
                                p.display_name, p.display_name_key,
-                               p.created_at, p.updated_at
+                                p.created_at, p.updated_at,
+                                p.avatar_key, p.banner_key
                         FROM community_follows f
                         JOIN social_profiles p ON p.telegram_id=f.{related_column}
                         WHERE f.{owner_column}=?"""
@@ -873,6 +1118,11 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                     "UPDATE community_posts SET deleted_at=? WHERE id=?",
                     (int(time.time()), post_id),
                 )
+                db.execute(
+                    """UPDATE community_post_rewards SET voided_at=?
+                       WHERE post_id=? AND claimed_at IS NULL AND voided_at IS NULL""",
+                    (int(time.time()), post_id),
+                )
                 if row["media_key"]:
                     image_path = os.path.join(media_dir, row["media_key"])
                 db.commit()
@@ -900,6 +1150,16 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                    WHERE media_key=? AND deleted_at IS NULL""",
                 (media_key,),
             ).fetchone()
+            if not row:
+                row = db.execute(
+                    "SELECT avatar_mime AS media_mime FROM social_profiles WHERE avatar_key=?",
+                    (media_key,),
+                ).fetchone()
+            if not row:
+                row = db.execute(
+                    "SELECT banner_mime AS media_mime FROM social_profiles WHERE banner_key=?",
+                    (media_key,),
+                ).fetchone()
         if not row or row["media_mime"] not in ALLOWED_IMAGES:
             return jsonify({"success": False, "error": "Image not found"}), 404
         path = os.path.join(media_dir, media_key)

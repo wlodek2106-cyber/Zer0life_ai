@@ -24,6 +24,9 @@
     const imageName = document.getElementById('community-image-name');
     const displayNameNode = document.getElementById('community-display-name');
     const selfAvatar = document.getElementById('community-self-avatar');
+    const pendingBalanceNode = document.getElementById('zeronet-pending-balance');
+    const claimButton = document.getElementById('zeronet-claim');
+    const rewardsStatus = document.getElementById('zeronet-rewards-status');
 
     const state = {
         posts: [],
@@ -40,7 +43,10 @@
         likeBusy: new Set(),
         deleteBusy: new Set(),
         expanded: new Set(),
-        scope: 'latest'
+        scope: 'latest',
+        pendingZrl: 0,
+        viewerAvatarUrl: '',
+        claiming: false
     };
 
     const icons = {
@@ -66,12 +72,12 @@
     function setDisplayName() {
         const name = displayName();
         displayNameNode.textContent = name;
-        selfAvatar.textContent = Array.from(name.trim())[0]?.toUpperCase() || 'R';
+        setAvatarImage(selfAvatar, name, state.viewerAvatarUrl);
     }
 
     async function api(path, payload, { retryRead = false } = {}) {
         const signedData = initData();
-        if (!signedData) throw new Error('Open Zer0Life Run from Telegram to use the community feed.');
+        if (!signedData) throw new Error('Open Zer0Life Run from Telegram to use Zer0Net.');
         const body = JSON.stringify({ initData: signedData, ...payload });
         let response;
         for (let attempt = 0; ; attempt += 1) {
@@ -92,7 +98,7 @@
                 if (path === '/wallet/community/posts') {
                     throw new Error('Could not confirm whether your post was saved. Refresh the feed before sending it again.');
                 }
-                throw new Error('Could not reach the community server from this Telegram session. Check your connection and try again.');
+                throw new Error('Could not reach the Zer0Net server from this Telegram session. Check your connection and try again.');
             }
 
             if (retryRead && [502, 503, 504].includes(response.status) && attempt < FEED_RETRY_DELAYS.length) {
@@ -105,7 +111,7 @@
         try {
             result = await response.json();
         } catch {
-            throw new Error('The community service returned an unreadable response.');
+            throw new Error('Zer0Net returned an unreadable response.');
         }
         if (!response.ok || result?.success === false) {
             throw new Error(result?.message || result?.error || 'Could not complete that request. Try again.');
@@ -134,6 +140,41 @@
     function initials(author) {
         const name = String(author || 'Runner').trim();
         return Array.from(name)[0]?.toUpperCase() || 'R';
+    }
+
+    function setAvatarImage(avatar, author, imageUrl) {
+        if (!avatar) return;
+        const initial = initials(author);
+        const url = safeMediaUrl(imageUrl);
+        avatar.classList.remove('has-image');
+        if (!url) {
+            avatar.textContent = initial;
+            return;
+        }
+        const image = make('img', '');
+        image.src = url;
+        image.alt = '';
+        image.loading = 'lazy';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => {
+            avatar.classList.remove('has-image');
+            avatar.textContent = initial;
+        }, { once: true });
+        avatar.replaceChildren(image);
+        avatar.classList.add('has-image');
+    }
+
+    function updateRewards(pendingZrl = state.pendingZrl) {
+        if (Number.isFinite(Number(pendingZrl))) state.pendingZrl = Math.max(0, Number(pendingZrl));
+        if (pendingBalanceNode) {
+            pendingBalanceNode.textContent = state.pendingZrl.toLocaleString('en-US', {
+                maximumFractionDigits: 6
+            });
+        }
+        if (claimButton) {
+            claimButton.disabled = state.claiming || state.pendingZrl <= 0;
+            claimButton.textContent = state.claiming ? 'Claiming…' : 'Claim';
+        }
     }
 
     function timeLabel(value) {
@@ -192,6 +233,7 @@
 
         const head = make('div', 'community-post-head');
         const avatar = make('span', 'community-avatar', initials(post.author));
+        setAvatarImage(avatar, post.author, post.authorAvatarUrl);
         avatar.setAttribute('aria-hidden', 'true');
         const author = make('div', 'community-post-author');
         const authorButton = make('button', '', String(post.author || 'Runner'));
@@ -340,6 +382,13 @@
         try {
             const payload = append ? { cursor: state.nextCursor } : {};
             const result = await api('/wallet/community/feed', { scope: state.scope, ...payload }, { retryRead: true });
+            if (Object.prototype.hasOwnProperty.call(result, 'pendingZrl')) {
+                updateRewards(result.pendingZrl);
+            }
+            if (Object.prototype.hasOwnProperty.call(result, 'viewerAvatarUrl')) {
+                state.viewerAvatarUrl = result.viewerAvatarUrl || '';
+                setDisplayName();
+            }
             const received = Array.isArray(result.posts) ? result.posts : [];
             if (append) state.posts = mergeUnique(state.posts, received);
             else if (polling) state.posts = mergeUnique(received, state.posts);
@@ -495,11 +544,14 @@
             if (state.imageData) payload.image = state.imageData;
             const result = await api('/wallet/community/posts', payload);
             if (!result.post) throw new Error('Your post was sent, but the feed could not display it.');
+            if (Object.prototype.hasOwnProperty.call(result, 'pendingZrl')) {
+                updateRewards(result.pendingZrl);
+            }
             state.posts = mergeUnique([result.post], state.posts);
             state.expanded.delete(String(result.post.id));
             postInput.value = '';
             removeImage();
-            setComposerMessage('Posted. Your miles are on the board.');
+            setComposerMessage(`Posted. +${Number(result.rewardZrl) || 10} ZRL added to your Zer0Net balance.`);
             renderFeed();
             screen.querySelector('.community-feed-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
@@ -507,6 +559,40 @@
         } finally {
             state.sending = false;
             updateComposer();
+        }
+    }
+
+    async function claimRewards() {
+        if (state.claiming || state.pendingZrl <= 0) return;
+        state.claiming = true;
+        if (rewardsStatus) {
+            rewardsStatus.textContent = '';
+            rewardsStatus.classList.remove('is-error');
+        }
+        updateRewards();
+        try {
+            const result = await api('/wallet/community/rewards/claim', {});
+            updateRewards(result.pendingZrl);
+            const claimed = Number(result.claimedZrl) || 0;
+            if (window.secureWallet?.applyResult) {
+                window.secureWallet.applyResult({
+                    availableZrl: Number(result.gameBalanceZrl) || 0
+                });
+            }
+            if (rewardsStatus) {
+                rewardsStatus.textContent = claimed > 0
+                    ? `Claimed ${claimed.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL. Added to your game balance.`
+                    : 'No new rewards to claim. Your game balance is up to date.';
+                rewardsStatus.classList.remove('is-error');
+            }
+        } catch (error) {
+            if (rewardsStatus) {
+                rewardsStatus.textContent = `${error.message || 'Could not confirm the claim.'} Refresh Zer0Net before trying again. Claims cannot credit the same post twice.`;
+                rewardsStatus.classList.add('is-error');
+            }
+        } finally {
+            state.claiming = false;
+            updateRewards();
         }
     }
 
@@ -627,6 +713,10 @@
     }));
 
     screen.addEventListener('click', event => {
+        if (event.target.closest('#zeronet-claim')) {
+            claimRewards();
+            return;
+        }
         const button = event.target.closest('[data-community-action]');
         const profileButton = event.target.closest('[data-open-profile]');
         if (profileButton?.dataset.openProfile) {

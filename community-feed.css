@@ -134,6 +134,17 @@ body.is-community-open .bottom-nav { visibility: hidden; pointer-events: none; }
 .community-orbit span { position: absolute; width: 7px; height: 7px; right: 23px; top: 28px; border-radius: 50%; background: var(--cf-lime); box-shadow: 0 0 20px rgba(197,255,86,.7); }
 .community-orbit i { position: absolute; width: 5px; height: 5px; left: 17px; bottom: 32px; border-radius: 50%; background: #b4d08d; }
 .community-orbit b { position: absolute; width: 1px; height: 88px; left: 71px; top: 28px; background: linear-gradient(transparent, rgba(197,255,86,.23), transparent); transform: rotate(49deg); }
+.zeronet-rewards { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; margin:12px 0; padding:13px; background:linear-gradient(145deg,rgba(31,44,24,.94),rgba(15,22,16,.98)); border:1px solid rgba(197,255,86,.24); border-radius:15px; box-shadow:0 9px 23px rgba(0,0,0,.15); }
+.zeronet-rewards-copy { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.zeronet-rewards-copy > strong { color:#eaf3de; font:800 16px "Barlow Condensed",sans-serif; letter-spacing:.02em; }
+.zeronet-rewards-copy > strong span { color:var(--cf-lime); }
+.zeronet-rewards-copy > strong small { color:#8d9a83; font:500 7px "DM Mono",monospace; letter-spacing:.08em; }
+.zeronet-rewards-copy > p { margin:0; color:#95a18c; font-size:9px; line-height:1.45; }
+#zeronet-claim { min-width:72px; min-height:36px; padding:0 12px; color:#10150c; background:var(--cf-lime); border:0; border-radius:10px; font:800 10px Manrope,sans-serif; cursor:pointer; }
+#zeronet-claim:disabled { color:#7e8a77; background:#252f23; cursor:not-allowed; }
+#zeronet-rewards-status { grid-column:1/-1; margin:0; color:#a6e98e; font-size:9px; line-height:1.4; }
+#zeronet-rewards-status:empty { display:none; }
+#zeronet-rewards-status.is-error { color:#ff9b8f; }
 .community-composer {
     padding: 15px;
     background: linear-gradient(145deg, rgba(21,30,20,.98), rgba(15,21,15,.98));
@@ -155,6 +166,8 @@ body.is-community-open .bottom-nav { visibility: hidden; pointer-events: none; }
     font: 700 13px "Barlow Condensed", sans-serif;
     text-transform: uppercase;
 }
+.community-avatar.has-image, .social-avatar.has-image, .social-profile-avatar.has-image { overflow:hidden; }
+.community-avatar img, .social-avatar img, .social-profile-avatar img { display:block; width:100%; height:100%; object-fit:cover; border-radius:inherit; }
 .community-composer-head > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .community-composer-head strong { overflow: hidden; max-width: 190px; color: #eff3e9; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .community-composer-head small { color: var(--cf-muted); font-size: 9px; }
@@ -274,9 +287,16 @@ body.is-community-open .bottom-nav { visibility: hidden; pointer-events: none; }
 .social-profile-toolbar { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:12px; padding:8px 0 12px; background:rgba(9,13,9,.92); backdrop-filter:blur(12px); }
 .social-profile-toolbar .community-back { flex-basis:36px; width:36px; height:36px; }
 .social-profile-cover { position:relative; min-height:108px; overflow:hidden; border:1px solid rgba(197,255,86,.2); border-radius:18px; background:radial-gradient(ellipse at 75% 35%,rgba(170,221,74,.3),transparent 35%),linear-gradient(125deg,#26351e,#111811 60%,#1b2817); }
+.social-profile-cover.has-banner::after { display:none; }
+.social-profile-cover > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.social-profile-edit-banner { position:absolute; right:10px; bottom:10px; z-index:1; min-height:29px; padding:0 10px; color:#e9f6d7; background:rgba(8,13,8,.76); border:1px solid rgba(197,255,86,.28); border-radius:8px; font:700 8px Manrope,sans-serif; cursor:pointer; backdrop-filter:blur(8px); }
+.social-profile-edit-banner:disabled, .social-profile-edit-avatar:disabled { opacity:.5; cursor:wait; }
 .social-profile-cover::after { position:absolute; content:""; inset:22px 15% -45px 47%; border:1px solid rgba(197,255,86,.18); border-radius:50%; transform:scaleY(.55) rotate(-22deg); box-shadow:0 0 45px rgba(197,255,86,.12); }
 .social-profile-identity { display:flex; align-items:flex-end; gap:12px; margin:-25px 13px 13px; position:relative; z-index:1; }
 .social-profile-avatar { display:grid; place-items:center; flex:0 0 62px; width:62px; height:62px; color:#d7f5a1; background:linear-gradient(145deg,#334629,#18231a); border:3px solid #0b100b; border-radius:50%; font:800 22px "Barlow Condensed",sans-serif; }
+.social-profile-avatar-wrap { position:relative; flex:0 0 62px; width:62px; height:62px; }
+.social-profile-avatar-wrap .social-profile-avatar { width:100%; height:100%; }
+.social-profile-edit-avatar { position:absolute; right:-4px; bottom:-3px; z-index:2; width:23px; height:23px; padding:0; color:#11160c; background:var(--cf-lime); border:2px solid #0b100b; border-radius:50%; font:800 12px Manrope,sans-serif; cursor:pointer; }
 .social-profile-identity-copy { min-width:0; padding-bottom:5px; }
 .social-profile-identity-copy h2 { overflow:hidden; margin:0 0 3px; color:#f0f3e9; font:800 21px/1.05 "Barlow Condensed",sans-serif; text-overflow:ellipsis; white-space:nowrap; }
 .social-profile-identity-copy p { margin:0; color:#91a087; font:400 9px "DM Mono",monospace; }

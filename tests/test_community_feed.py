@@ -407,6 +407,122 @@ class CommunityFeedTests(unittest.TestCase):
         )
         self.assertEqual(invalid.status_code, 400)
 
+    def test_zeronet_posts_earn_ten_zrl_each_and_claim_exactly_once(self):
+        with service._connect(self.db_path) as db:
+            balance_before = service._balance_units(db, "100")
+        first = self.post(
+            "/wallet/community/posts",
+            {"displayName": "Runner 100", "content": "First Zer0Net post"},
+            user="100",
+        )
+        self.assertEqual(first.status_code, 200, first.json)
+        self.assertEqual(first.json["rewardZrl"], 10)
+        self.assertEqual(first.json["pendingZrl"], 10)
+
+        second = self.post(
+            "/wallet/community/posts",
+            {"displayName": "Runner 100", "content": "Another Zer0Net post"},
+            user="100",
+        )
+        self.assertEqual(second.status_code, 200, second.json)
+        self.assertEqual(second.json["pendingZrl"], 20)
+        feed = self.post("/wallet/community/feed", user="100")
+        self.assertEqual(feed.status_code, 200, feed.json)
+        self.assertEqual(feed.json["pendingZrl"], 20)
+        self.assertEqual(feed.json["rewardPerPostZrl"], 10)
+
+        claimed = self.post("/wallet/community/rewards/claim", user="100")
+        self.assertEqual(claimed.status_code, 200, claimed.json)
+        self.assertEqual(claimed.json["claimedZrl"], 20)
+        self.assertEqual(claimed.json["pendingZrl"], 0)
+        self.assertEqual(claimed.json["gameBalanceZrl"], (balance_before + 20 * service.ZRL_SCALE) / service.ZRL_SCALE)
+        with service._connect(self.db_path) as db:
+            self.assertEqual(
+                service._balance_units(db, "100"),
+                balance_before + 20 * service.ZRL_SCALE,
+            )
+
+        repeated = self.post("/wallet/community/rewards/claim", user="100")
+        self.assertEqual(repeated.status_code, 200, repeated.json)
+        self.assertEqual(repeated.json["claimedZrl"], 0)
+        with service._connect(self.db_path) as db:
+            self.assertEqual(
+                service._balance_units(db, "100"),
+                balance_before + 20 * service.ZRL_SCALE,
+            )
+        other_user = self.post("/wallet/community/rewards/claim", user="200")
+        self.assertEqual(other_user.status_code, 200, other_user.json)
+        self.assertEqual(other_user.json["claimedZrl"], 0)
+
+        with service._connect(self.db_path) as db:
+            entries = db.execute(
+                """SELECT source, event_id, delta_units FROM wallet_ledger
+                   WHERE telegram_id='100' AND source='zeronet_post_claim'
+                   ORDER BY event_id"""
+            ).fetchall()
+            self.assertEqual(len(entries), 2)
+            self.assertEqual(
+                {row["event_id"] for row in entries},
+                {
+                    f"zeronet-post-claim:{first.json['post']['id']}",
+                    f"zeronet-post-claim:{second.json['post']['id']}",
+                },
+            )
+            self.assertTrue(all(int(row["delta_units"]) == 10 * service.ZRL_SCALE for row in entries))
+
+    def test_profile_avatar_and_banner_are_private_uploads_served_by_opaque_urls(self):
+        profile = self.post(
+            "/wallet/social/state",
+            {"displayName": "Runner 100"},
+            user="100",
+        ).json["profile"]
+        image = "data:image/png;base64," + base64.b64encode(PNG_BYTES).decode()
+
+        avatar = self.post(
+            "/wallet/community/profile/image",
+            {"field": "avatar", "image": image},
+            user="100",
+        )
+        self.assertEqual(avatar.status_code, 200, avatar.json)
+        avatar_url = avatar.json["profile"]["avatarUrl"]
+        self.assertRegex(avatar_url, r"^/wallet/community/media/[a-f0-9]{40}\.png$")
+        avatar_response = self.client.get(avatar_url)
+        self.assertEqual(avatar_response.status_code, 200)
+        self.assertEqual(avatar_response.mimetype, "image/png")
+        avatar_response.close()
+
+        banner = self.post(
+            "/wallet/community/profile/image",
+            {"field": "banner", "image": image},
+            user="100",
+        )
+        self.assertEqual(banner.status_code, 200, banner.json)
+        self.assertIsNotNone(banner.json["profile"]["bannerUrl"])
+
+        public_profile = self.post(
+            "/wallet/community/profile",
+            {"publicId": profile["publicId"]},
+            user="200",
+        )
+        self.assertEqual(public_profile.status_code, 200, public_profile.json)
+        self.assertEqual(public_profile.json["profile"]["avatarUrl"], avatar_url)
+        self.assertEqual(public_profile.json["profile"]["bannerUrl"], banner.json["profile"]["bannerUrl"])
+        feed = self.post("/wallet/community/feed", user="100")
+        self.assertEqual(feed.json["viewerAvatarUrl"], avatar_url)
+
+        invalid_field = self.post(
+            "/wallet/community/profile/image",
+            {"field": "cover", "image": image},
+            user="100",
+        )
+        self.assertEqual(invalid_field.status_code, 400)
+        unauthorized = self.post(
+            "/wallet/community/profile/image",
+            {"field": "avatar", "image": image},
+            signed=False,
+        )
+        self.assertEqual(unauthorized.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

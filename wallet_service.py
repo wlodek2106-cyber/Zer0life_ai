@@ -2029,10 +2029,17 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             return _response_error(str(exc), 401)
 
     app.register_blueprint(bp)
-    register_community_routes(
-        app, db_path, _connect, authenticated_user, admin_telegram_id,
-    )
     register_social_routes(app, db_path, _connect, authenticated_user)
+    register_community_routes(
+        app,
+        db_path,
+        _connect,
+        authenticated_user,
+        admin_telegram_id,
+        ledger_entry=_ledger_entry,
+        balance_units=_balance_units,
+        zrl_scale=ZRL_SCALE,
+    )
     register_recovery_routes(app, db_path, _connect, authenticated_user,
                              _ensure_account, _ledger_entry, admin_telegram_id, ZRL_SCALE)
     register_mobile_routes(app, db_path, _connect, authenticated_user,
