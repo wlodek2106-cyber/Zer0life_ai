@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./community-feed.css">
     <style>
         body, html {
             margin: 0;
@@ -2163,6 +2164,17 @@
             <img class="zr-hero-art" src="./assets/zerolife-run-3d-shoe.webp" alt="Black running shoe with luminous lime motion trails">
         </section>
 
+        <button class="zr-community-entry" id="open-community-feed" type="button">
+            <span class="zr-community-entry-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 5.5h16v11H9l-5 3v-14Z"/><path d="M8 10h8M8 13.5h5"/></svg>
+            </span>
+            <span class="zr-community-entry-copy">
+                <strong>Runner community</strong>
+                <small>Routes, race days, and the miles between</small>
+            </span>
+            <span class="zr-community-entry-arrow" aria-hidden="true">OPEN <b>↗</b></span>
+        </button>
+
         <button class="share-card-top-btn" onclick="openShareModal()">
             <span>📸</span> Share Run Card (TG Stories)
         </button>
@@ -2903,6 +2915,69 @@
             <div id="my-rank-sticky-container"></div>
         </div>
     </div>
+
+    <section class="community-screen" id="community-screen" aria-label="Runner community" aria-hidden="true">
+        <header class="community-topbar">
+            <button class="community-back" type="button" data-community-action="close" aria-label="Back to run dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="community-brand">
+                <span class="community-eyebrow">ZER0LIFE RUN / FIELD NOTES</span>
+                <h1>Community<span>.</span></h1>
+            </div>
+            <button class="community-refresh" type="button" data-community-action="refresh" aria-label="Refresh feed">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2"/></svg>
+            </button>
+        </header>
+
+        <main class="community-scroll">
+            <section class="community-intro">
+                <div>
+                    <p class="community-kicker"><span class="community-live-dot"></span> THE RUN NEVER HAPPENS ALONE</p>
+                    <h2>What’s moving<br><em>you today?</em></h2>
+                    <p class="community-intro-note">A good run is better shared. Drop a thought, a route, or a finish-line photo.</p>
+                </div>
+                <div class="community-orbit" aria-hidden="true"><span></span><i></i><b></b></div>
+            </section>
+
+            <section class="community-composer" aria-label="Write a community post">
+                <div class="community-composer-head">
+                    <span class="community-avatar community-avatar-self" id="community-self-avatar">R</span>
+                    <div><strong id="community-display-name">Runner</strong><small>Share with the pack</small></div>
+                    <span class="community-composer-tag">YOUR LOG</span>
+                </div>
+                <label class="community-sr-only" for="community-post-text">Write a post</label>
+                <textarea id="community-post-text" maxlength="1000" placeholder="The first kilometre was all headwind. Then the city opened up…" rows="3"></textarea>
+                <div class="community-image-preview" id="community-image-preview" hidden>
+                    <img id="community-image-preview-img" alt="Selected image preview">
+                    <div class="community-image-preview-meta"><span id="community-image-name">Image attached</span><button type="button" data-community-action="remove-image">Remove</button></div>
+                </div>
+                <div class="community-composer-foot">
+                    <div class="community-composer-tools">
+                        <input id="community-image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                        <button class="community-attach" type="button" data-community-action="pick-image">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>
+                            Add photo / meme
+                        </button>
+                        <span class="community-counter" id="community-post-counter">0 / 1,000</span>
+                    </div>
+                    <button class="community-post-submit" type="button" data-community-action="submit-post" disabled>
+                        <span>Post</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                </div>
+                <p class="community-composer-message" id="community-composer-message" role="status" aria-live="polite"></p>
+            </section>
+
+            <div class="community-feed-heading">
+                <div><span class="community-kicker">OUT ON THE ROAD</span><h2>Latest from runners</h2></div>
+                <span class="community-feed-live"><i></i> LIVE FEED</span>
+            </div>
+            <div class="community-feed-status" id="community-feed-status" role="status" aria-live="polite"></div>
+            <div class="community-feed-list" id="community-feed-list" aria-live="polite"></div>
+            <button class="community-load-more" id="community-load-more" type="button" data-community-action="load-more" hidden>Load older posts <span>↓</span></button>
+            <div class="community-bottom-note">KEEP SHOWING UP. THE REST FOLLOWS.</div>
+        </main>
+    </section>
 
     <!-- BOTTOM NAVIGATION -->
     <div class="bottom-nav">
@@ -5588,5 +5663,6 @@
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
     <script src="./wallet.js?v=english-withdrawal-v3"></script>
+    <script src="./community-feed.js"></script>
 </body>
 </html>

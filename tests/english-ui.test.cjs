@@ -19,6 +19,9 @@ const productionCopyFiles = [
     'wallet_withdrawal_otp.py',
     'withdrawal_errors.py',
     'merchant_payments.py',
+    'community_feed.py',
+    'community-feed.js',
+    'community-feed.css',
 ];
 
 test('user-facing app and bot copy stays in English', () => {
