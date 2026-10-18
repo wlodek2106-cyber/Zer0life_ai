@@ -2602,7 +2602,21 @@
                 <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Player Nickname:</label>
                 <input type="text" id="reg-username" class="custom-input-field" placeholder="e.g. CyberRunner" />
             </div>
-            <div class="custom-input-group" style="margin-top: 14px;">
+            <fieldset style="border: 0; padding: 0; margin: 18px 0 0;">
+                <legend style="font-size: 12px; color: #a8f07a; font-weight: 700; margin-bottom: 8px;">Choose how to register:</legend>
+                <div role="radiogroup" aria-label="Referral choice" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <label for="reg-referral-with" style="display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 8px; border: 1px solid rgba(168,240,122,0.35); border-radius: 10px; color: #e7f2df; font-size: 11px; cursor: pointer;">
+                        <input type="radio" id="reg-referral-with" name="registration-referral-choice" value="with_referral" />
+                        <span>Use invite code</span>
+                    </label>
+                    <label for="reg-referral-without" style="display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 8px; border: 1px solid rgba(168,240,122,0.35); border-radius: 10px; color: #e7f2df; font-size: 11px; cursor: pointer;">
+                        <input type="radio" id="reg-referral-without" name="registration-referral-choice" value="without_referral" />
+                        <span>Register without referral</span>
+                    </label>
+                </div>
+                <p style="font-size: 11px; color: #8a8d98; margin: 8px 0 0;">Your 1,000 ZRL registration bonus is the same either way.</p>
+            </fieldset>
+            <div class="custom-input-group" id="reg-referral-group" style="margin-top: 14px;">
                 <label style="font-size: 12px; color: #a8f07a; font-weight: 700;">Referral code (optional):</label>
                 <input type="text" id="reg-referral-code" class="custom-input-field" placeholder="Enter your inviter's code" maxlength="10" autocomplete="off" />
             </div>
@@ -4580,6 +4594,29 @@
             document.getElementById('reg-referral-code').value = incomingReferralMatch[1].toUpperCase();
         }
 
+        const referralCodeInput = document.getElementById('reg-referral-code');
+        const referralCodeGroup = document.getElementById('reg-referral-group');
+        const referralChoiceInputs = document.querySelectorAll('input[name="registration-referral-choice"]');
+        const useReferralChoice = document.getElementById('reg-referral-with');
+        const noReferralChoice = document.getElementById('reg-referral-without');
+        useReferralChoice.checked = Boolean(incomingReferralMatch);
+        noReferralChoice.checked = !incomingReferralMatch;
+
+        function syncReferralChoice() {
+            const useReferral = useReferralChoice.checked;
+            referralCodeGroup.hidden = !useReferral;
+            referralCodeInput.disabled = !useReferral;
+        }
+
+        referralChoiceInputs.forEach((choice) => choice.addEventListener('change', syncReferralChoice));
+        referralCodeInput.addEventListener('input', () => {
+            if (referralCodeInput.value.trim()) {
+                useReferralChoice.checked = true;
+                syncReferralChoice();
+            }
+        });
+        syncReferralChoice();
+
         document.getElementById('reg-submit-btn').onclick = async () => {
             triggerHaptic('medium');
             playSound('click');
@@ -4601,9 +4638,20 @@
             }
 
             let registrationReward = 0;
-            const referralCode = document.getElementById('reg-referral-code').value.trim().toUpperCase();
+            const referralChoice = useReferralChoice.checked ? 'with_referral' : 'without_referral';
+            const referralCode = referralChoice === 'with_referral'
+                ? referralCodeInput.value.trim().toUpperCase()
+                : '';
+            if (referralChoice === 'with_referral' && !referralCode) {
+                triggerHaptic('error');
+                tg.showAlert('Enter an invite code or choose to register without a referral.');
+                return;
+            }
             try {
-                const rewardResult = await window.secureWallet.request('/wallet/rewards/register', { referralCode });
+                const rewardResult = await window.secureWallet.request('/wallet/rewards/register', {
+                    referralCode,
+                    referralChoice,
+                });
                 registrationReward = Number(rewardResult.reward || 0);
                 window.secureWallet.applyResult(rewardResult);
             } catch (error) {
