@@ -22,6 +22,15 @@ test('a referral invite is preselected, but the player choice controls the regis
     assert.match(dashboard, /Enter an invite code or choose to register without a referral\./);
 });
 
+test('without-referral selection hides the code field and keeps profile creation visibly active', () => {
+    assert.match(dashboard, /referralCodeGroup\.hidden = !useReferral/);
+    assert.match(dashboard, /#register-modal #reg-referral-group\[hidden\]\s*\{\s*display:\s*none !important;\s*\}/);
+    assert.match(dashboard, /#register-modal #reg-submit-btn:not\(:disabled\)\s*\{[^}]*background:[^;]+!important;[^}]*color:[^;]+!important;/);
+    const submitButton = dashboard.match(/<button\b[^>]*id="reg-submit-btn"[^>]*>/);
+    assert.ok(submitButton, 'registration submit button exists');
+    assert.doesNotMatch(submitButton[0], /\bdisabled\b/);
+});
+
 test('server honors an explicit no-referral choice and still grants the registration bonus', () => {
     assert.match(walletService, /referral_choice == "without_referral":[\s\S]*?referral_code = ""/);
     assert.match(walletService, /UPDATE wallet_accounts SET referred_by = NULL WHERE telegram_id = \?/);
