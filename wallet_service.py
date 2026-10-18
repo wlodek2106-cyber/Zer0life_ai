@@ -1273,6 +1273,14 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             data = _json_body()
             user = authenticated_user(data)
             referral_code = str(data.get("referralCode") or "").strip().upper()
+            referral_choice = str(data.get("referralChoice") or "").strip()
+            if referral_choice and referral_choice not in {"with_referral", "without_referral"}:
+                return _response_error("Choose whether to register with or without a referral", 400)
+            if referral_choice == "without_referral":
+                # An explicit opt-out wins over a referral carried by a Telegram invite link.
+                referral_code = ""
+            elif referral_choice == "with_referral" and not referral_code:
+                return _response_error("Enter an invite code or choose to register without a referral", 400)
             if referral_code and not re.fullmatch(r"[A-F0-9]{10}", referral_code):
                 return _response_error("Invalid referral code", 400)
             with _connect(db_path) as db:
@@ -1285,7 +1293,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 if account["registration_claimed"]:
                     db.rollback()
                     return _response_error("Registration reward was already claimed", 409)
-                if referral_code:
+                if referral_choice == "without_referral":
+                    db.execute(
+                        "UPDATE wallet_accounts SET referred_by = NULL WHERE telegram_id = ?",
+                        (str(user["id"]),),
+                    )
+                elif referral_code:
                     referrer = db.execute(
                         "SELECT telegram_id FROM wallet_accounts WHERE referral_code = ?",
                         (referral_code,),

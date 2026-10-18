@@ -87,6 +87,38 @@ class AffiliateCommissionTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.json)
         self.assertEqual(response.json["availableZrl"], 1000)
 
+    def test_player_can_explicitly_register_without_referral_from_an_invite_link(self):
+        referral_code = self.wallet_state("500")["referralCode"]
+        response = self.post(
+            "/wallet/rewards/register",
+            {
+                "referralCode": referral_code,
+                "referralChoice": "without_referral",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(response.json["reward"], 1000)
+        self.assertEqual(response.json["availableZrl"], 1000)
+
+        with service._connect(self.db_path) as db:
+            player = db.execute(
+                "SELECT referred_by FROM wallet_accounts WHERE telegram_id = ?",
+                (PLAYER,),
+            ).fetchone()
+        self.assertIsNone(player["referred_by"])
+
+        self.assertTrue(self.credit_reward("run_reward", "no-referral-run", 10_000 * service.ZRL_SCALE))
+        for referrer_id in REFERRERS_BY_LEVEL:
+            self.assertEqual(self.wallet_state(referrer_id)["availableZrl"], 0)
+
+    def test_explicit_referral_choice_requires_a_code(self):
+        response = self.post(
+            "/wallet/rewards/register",
+            {"referralChoice": "with_referral"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invite code", response.json["error"])
+
     def credit_reward(self, source, event_id, amount_units):
         with service._connect(self.db_path) as db:
             db.execute("BEGIN IMMEDIATE")
