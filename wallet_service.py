@@ -21,6 +21,7 @@ from wallet_mobile import register_mobile_routes
 from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
 from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
 from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
+from community_feed import register_community_routes
 
 
 ZRL_DECIMALS = 6
@@ -2027,6 +2028,9 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             return _response_error(str(exc), 401)
 
     app.register_blueprint(bp)
+    register_community_routes(
+        app, db_path, _connect, authenticated_user, admin_telegram_id,
+    )
     register_recovery_routes(app, db_path, _connect, authenticated_user,
                              _ensure_account, _ledger_entry, admin_telegram_id, ZRL_SCALE)
     register_mobile_routes(app, db_path, _connect, authenticated_user,
