@@ -39,7 +39,8 @@
         commentBusy: new Set(),
         likeBusy: new Set(),
         deleteBusy: new Set(),
-        expanded: new Set()
+        expanded: new Set(),
+        scope: 'latest'
     };
 
     const icons = {
@@ -193,7 +194,10 @@
         const avatar = make('span', 'community-avatar', initials(post.author));
         avatar.setAttribute('aria-hidden', 'true');
         const author = make('div', 'community-post-author');
-        author.append(make('strong', '', String(post.author || 'Runner')));
+        const authorButton = make('button', '', String(post.author || 'Runner'));
+        authorButton.type = 'button';
+        authorButton.dataset.openProfile = String(post.authorPublicId || '');
+        author.append(authorButton);
         const time = make('time', '', timeLabel(post.createdAt));
         author.appendChild(time);
         const canDelete = state.isModerator || Boolean(post.isMine);
@@ -206,6 +210,11 @@
             head.appendChild(del);
         }
         card.appendChild(head);
+        if (post.timelineType === 'repost' && post.reposter) {
+            const context = make('p', 'community-post-context', '');
+            context.append(make('strong', '', String(post.reposter)), document.createTextNode(' reposted this'));
+            card.insertBefore(context, head);
+        }
 
         if (post.content) card.appendChild(make('p', 'community-post-content', String(post.content)));
         const mediaUrl = safeMediaUrl(post.mediaUrl);
@@ -237,6 +246,14 @@
         commentsToggle.innerHTML = icons.comment;
         commentsToggle.appendChild(make('span', '', `${Number(post.commentCount) || 0} ${Number(post.commentCount) === 1 ? 'reply' : 'replies'}`));
         actions.appendChild(commentsToggle);
+        const repost = make('button', `community-post-action${post.repostedByMe ? ' is-reposted' : ''}`);
+        repost.type = 'button';
+        repost.dataset.communityAction = 'repost';
+        repost.disabled = Boolean(post._repostBusy || post.isMine);
+        repost.setAttribute('aria-pressed', String(Boolean(post.repostedByMe)));
+        repost.setAttribute('aria-label', post.repostedByMe ? 'Remove repost' : 'Repost');
+        repost.textContent = `↻ ${Number(post.repostCount) || 0}`;
+        actions.appendChild(repost);
         card.appendChild(actions);
         if (post._actionError) card.appendChild(make('p', 'community-composer-message is-error', post._actionError));
 
@@ -322,7 +339,7 @@
 
         try {
             const payload = append ? { cursor: state.nextCursor } : {};
-            const result = await api('/wallet/community/feed', payload, { retryRead: true });
+            const result = await api('/wallet/community/feed', { scope: state.scope, ...payload }, { retryRead: true });
             const received = Array.isArray(result.posts) ? result.posts : [];
             if (append) state.posts = mergeUnique(state.posts, received);
             else if (polling) state.posts = mergeUnique(received, state.posts);
@@ -352,8 +369,7 @@
         document.body.classList.add('is-community-open');
         screen.setAttribute('aria-hidden', 'false');
         setDisplayName();
-        if (!state.posts.length) fetchFeed();
-        else renderFeed();
+        fetchFeed();
         if (state.timer) window.clearInterval(state.timer);
         state.timer = window.setInterval(() => {
             if (state.open && !document.hidden) fetchFeed({ polling: true });
@@ -574,18 +590,61 @@
         }
     }
 
+    async function toggleRepost(postId) {
+        const post = state.posts.find(item => String(item.id) === String(postId));
+        if (!post || post._repostBusy) return;
+        post._repostBusy = true;
+        const previous = Boolean(post.repostedByMe);
+        post.repostedByMe = !previous;
+        post.repostCount = Math.max(0, (Number(post.repostCount) || 0) + (previous ? -1 : 1));
+        renderFeed();
+        try {
+            const result = await api('/wallet/community/posts/repost', { postId: post.id });
+            post.repostedByMe = Boolean(result.repostedByMe);
+            post.repostCount = Number(result.repostCount) || 0;
+        } catch (error) {
+            post.repostedByMe = previous;
+            post.repostCount = Math.max(0, (Number(post.repostCount) || 0) + (previous ? 1 : -1));
+            post._actionError = error.message || 'Repost could not be updated.';
+        } finally {
+            post._repostBusy = false;
+            renderFeed();
+        }
+    }
+
+    screen.querySelectorAll('[data-feed-scope]').forEach(button => button.addEventListener('click', () => {
+        const next = button.dataset.feedScope;
+        if (!['latest', 'following'].includes(next) || state.scope === next) return;
+        state.scope = next;
+        screen.querySelectorAll('[data-feed-scope]').forEach(item => {
+            const active = item === button;
+            item.classList.toggle('is-active', active);
+            item.setAttribute('aria-pressed', String(active));
+        });
+        state.posts = [];
+        state.nextCursor = null;
+        fetchFeed();
+    }));
+
     screen.addEventListener('click', event => {
         const button = event.target.closest('[data-community-action]');
+        const profileButton = event.target.closest('[data-open-profile]');
+        if (profileButton?.dataset.openProfile) {
+            screen.dispatchEvent(new CustomEvent('social:open-profile', { detail: { publicId: profileButton.dataset.openProfile } }));
+            return;
+        }
         if (!button) return;
         const action = button.dataset.communityAction;
         const card = button.closest('.community-post');
         const postId = card?.dataset.postId;
         if (action === 'close') closeFeed();
+        else if (action === 'refresh') fetchFeed();
         else if (action === 'pick-image') imageInput.click();
         else if (action === 'remove-image') removeImage();
         else if (action === 'submit-post') submitPost();
         else if (action === 'load-more') fetchFeed({ append: true });
         else if (action === 'like' && postId) toggleLike(postId);
+        else if (action === 'repost' && postId) toggleRepost(postId);
         else if (action === 'toggle-comments' && postId) {
             if (state.expanded.has(String(postId))) state.expanded.delete(String(postId));
             else state.expanded.add(String(postId));
@@ -604,6 +663,7 @@
         submitComment(form);
     });
     document.getElementById('open-community-feed')?.addEventListener('click', openFeed);
+    document.getElementById('nav-chat')?.addEventListener('click', openFeed);
     postInput.addEventListener('input', () => {
         setComposerMessage('');
         updateComposer();

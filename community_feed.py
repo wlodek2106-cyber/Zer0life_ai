@@ -93,10 +93,80 @@ def _rate_check(db, table, telegram_id, now):
         raise RateLimitExceeded("You are posting too quickly. Please wait a minute.")
 
 
+def _ensure_social_profile(db, telegram_id, display_name, now):
+    current = str(telegram_id)
+    existing = db.execute(
+        """SELECT telegram_id, public_id, display_name, display_name_key,
+                  created_at, updated_at
+           FROM social_profiles WHERE telegram_id=?""",
+        (current,),
+    ).fetchone()
+    if existing:
+        return existing
+
+    name = _display_name(display_name)
+    for _ in range(8):
+        public_id = secrets.token_urlsafe(12)
+        db.execute(
+            """INSERT OR IGNORE INTO social_profiles
+               (telegram_id, public_id, display_name, display_name_key,
+                created_at, updated_at)
+               VALUES(?,?,?,?,?,?)""",
+            (current, public_id, name, name.casefold(), now, now),
+        )
+        profile = db.execute(
+            """SELECT telegram_id, public_id, display_name, display_name_key,
+                      created_at, updated_at
+               FROM social_profiles WHERE telegram_id=?""",
+            (current,),
+        ).fetchone()
+        if profile:
+            return profile
+    raise RuntimeError("Could not allocate a social profile for the community post")
+
+
+def _community_profile_payload(db, row, viewer_id):
+    telegram_id = str(row["telegram_id"])
+    public_id = row["public_id"]
+    is_me = telegram_id == str(viewer_id)
+    return {
+        "publicId": public_id,
+        "displayName": row["display_name"],
+        "tag": "#" + public_id[:5].upper(),
+        "followerCount": int(db.execute(
+            "SELECT COUNT(*) FROM community_follows WHERE followee_id=?",
+            (telegram_id,),
+        ).fetchone()[0]),
+        "followingCount": int(db.execute(
+            "SELECT COUNT(*) FROM community_follows WHERE follower_id=?",
+            (telegram_id,),
+        ).fetchone()[0]),
+        "postCount": int(db.execute(
+            """SELECT COUNT(*) FROM community_posts
+               WHERE telegram_id=? AND deleted_at IS NULL""",
+            (telegram_id,),
+        ).fetchone()[0]),
+        "repostCount": int(db.execute(
+            "SELECT COUNT(*) FROM community_post_reposts WHERE telegram_id=?",
+            (telegram_id,),
+        ).fetchone()[0]),
+        "isMe": is_me,
+        "isFollowing": False if is_me else db.execute(
+            """SELECT 1 FROM community_follows
+               WHERE follower_id=? AND followee_id=?""",
+            (str(viewer_id), telegram_id),
+        ).fetchone() is not None,
+        "joinedAt": int(row["created_at"] or row["updated_at"]) * 1000,
+    }
+
+
 def _post_payload(db, row, telegram_id, media_url):
     post_id = int(row["id"])
+    author_profile = _ensure_social_profile(
+        db, row["telegram_id"], row["display_name"], int(row["created_at"]),
+    )
     comments = db.execute(
-        """SELECT id, display_name, content, created_at
+        """SELECT id, telegram_id, display_name, content, created_at
            FROM community_comments
            WHERE post_id=? AND deleted_at IS NULL
            ORDER BY id DESC LIMIT 3""",
@@ -106,6 +176,7 @@ def _post_payload(db, row, telegram_id, media_url):
     return {
         "id": post_id,
         "author": row["display_name"],
+        "authorPublicId": author_profile["public_id"],
         "content": row["content"],
         "mediaUrl": f"{media_url}/{row['media_key']}" if row["media_key"] else None,
         "createdAt": int(row["created_at"]) * 1000,
@@ -121,10 +192,24 @@ def _post_payload(db, row, telegram_id, media_url):
             "SELECT COUNT(*) FROM community_comments WHERE post_id=? AND deleted_at IS NULL",
             (post_id,),
         ).fetchone()[0]),
+        "repostCount": int(db.execute(
+            "SELECT COUNT(*) FROM community_post_reposts WHERE post_id=?",
+            (post_id,),
+        ).fetchone()[0]),
+        "repostedByMe": db.execute(
+            "SELECT 1 FROM community_post_reposts WHERE post_id=? AND telegram_id=?",
+            (post_id, str(telegram_id)),
+        ).fetchone() is not None,
         "comments": [
             {
                 "id": int(comment["id"]),
                 "author": comment["display_name"],
+                "authorPublicId": _ensure_social_profile(
+                    db,
+                    comment["telegram_id"],
+                    comment["display_name"],
+                    int(comment["created_at"]),
+                )["public_id"],
                 "content": comment["content"],
                 "createdAt": int(comment["created_at"]) * 1000,
             }
@@ -174,6 +259,29 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                 created_at INTEGER NOT NULL,
                 PRIMARY KEY (post_id, telegram_id)
             );
+            CREATE TABLE IF NOT EXISTS community_follows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                follower_id TEXT NOT NULL,
+                followee_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                UNIQUE(follower_id, followee_id),
+                CHECK(follower_id <> followee_id)
+            );
+            CREATE INDEX IF NOT EXISTS community_follows_follower_idx
+                ON community_follows(follower_id, id DESC);
+            CREATE INDEX IF NOT EXISTS community_follows_followee_idx
+                ON community_follows(followee_id, id DESC);
+            CREATE TABLE IF NOT EXISTS community_post_reposts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL REFERENCES community_posts(id),
+                telegram_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                UNIQUE(post_id, telegram_id)
+            );
+            CREATE INDEX IF NOT EXISTS community_post_reposts_user_idx
+                ON community_post_reposts(telegram_id, id DESC);
+            CREATE INDEX IF NOT EXISTS community_post_reposts_post_idx
+                ON community_post_reposts(post_id);
             """
         )
 
@@ -200,10 +308,105 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
             (post_id,),
         ).fetchone()
 
+    def profile_by_public_id(db, public_id):
+        if not isinstance(public_id, str) or not public_id or len(public_id) > 64:
+            return None
+        return db.execute(
+            """SELECT telegram_id, public_id, display_name, display_name_key,
+                      created_at, updated_at
+               FROM social_profiles WHERE public_id=?""",
+            (public_id,),
+        ).fetchone()
+
+    def profile_timeline(db, profile, viewer_id, view, cursor, media_url):
+        target_id = str(profile["telegram_id"])
+        if view in {"posts", "media"}:
+            media_filter = " AND media_key IS NOT NULL" if view == "media" else ""
+            cursor_filter = " AND id < ?" if cursor is not None else ""
+            params = (target_id, cursor, PAGE_SIZE + 1) if cursor is not None else (target_id, PAGE_SIZE + 1)
+            rows = db.execute(
+                """SELECT * FROM community_posts
+                   WHERE telegram_id=? AND deleted_at IS NULL"""
+                + media_filter
+                + cursor_filter
+                + " ORDER BY id DESC LIMIT ?",
+                params,
+            ).fetchall()
+            timeline_type = "media" if view == "media" else "post"
+            entry_id = lambda row: int(row["id"])
+        elif view == "reposts":
+            cursor_filter = " AND r.id < ?" if cursor is not None else ""
+            params = (target_id, cursor, PAGE_SIZE + 1) if cursor is not None else (target_id, PAGE_SIZE + 1)
+            rows = db.execute(
+                """SELECT p.*, r.id AS profile_entry_id,
+                          r.created_at AS reposted_at
+                   FROM community_post_reposts r
+                   JOIN community_posts p ON p.id=r.post_id
+                   WHERE r.telegram_id=? AND p.deleted_at IS NULL"""
+                + cursor_filter
+                + " ORDER BY r.id DESC LIMIT ?",
+                params,
+            ).fetchall()
+            timeline_type = "repost"
+            entry_id = lambda row: int(row["profile_entry_id"])
+        else:
+            cursor_filter = " AND c.id < ?" if cursor is not None else ""
+            params = (target_id, cursor, PAGE_SIZE + 1) if cursor is not None else (target_id, PAGE_SIZE + 1)
+            rows = db.execute(
+                """SELECT p.*, c.id AS reply_entry_id,
+                          c.telegram_id AS reply_telegram_id,
+                          c.display_name AS reply_display_name,
+                          c.content AS reply_content,
+                          c.created_at AS reply_created_at
+                   FROM community_comments c
+                   JOIN community_posts p ON p.id=c.post_id
+                   WHERE c.telegram_id=? AND c.deleted_at IS NULL
+                     AND p.deleted_at IS NULL"""
+                + cursor_filter
+                + " ORDER BY c.id DESC LIMIT ?",
+                params,
+            ).fetchall()
+            timeline_type = "reply"
+            entry_id = lambda row: int(row["reply_entry_id"])
+
+        has_more = len(rows) > PAGE_SIZE
+        rows = rows[:PAGE_SIZE]
+        posts = []
+        for row in rows:
+            post = _post_payload(db, row, viewer_id, media_url)
+            post["timelineType"] = timeline_type
+            if view == "reposts":
+                post["repostedAt"] = int(row["reposted_at"]) * 1000
+                post["reposter"] = {
+                    "publicId": profile["public_id"],
+                    "displayName": profile["display_name"],
+                    "tag": "#" + profile["public_id"][:5].upper(),
+                }
+            elif view == "replies":
+                reply_profile = _ensure_social_profile(
+                    db,
+                    row["reply_telegram_id"],
+                    row["reply_display_name"],
+                    int(row["reply_created_at"]),
+                )
+                post["reply"] = {
+                    "id": int(row["reply_entry_id"]),
+                    "author": row["reply_display_name"],
+                    "authorPublicId": reply_profile["public_id"],
+                    "content": row["reply_content"],
+                    "createdAt": int(row["reply_created_at"]) * 1000,
+                }
+            posts.append(post)
+        next_cursor = entry_id(rows[-1]) if has_more and rows else None
+        return posts, next_cursor
+
     @bp.post("/wallet/community/feed")
     def community_feed():
         try:
             data, user = body_and_user()
+            scope = data.get("scope", "latest")
+            if scope not in {"latest", "following"}:
+                raise ValueError("Invalid community feed scope")
             cursor = data.get("cursor")
             if cursor is not None:
                 try:
@@ -214,18 +417,28 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                     raise ValueError("Invalid feed cursor")
 
             with connect(db_path) as db:
+                followed_filter = ""
+                followed_params = ()
+                if scope == "following":
+                    followed_filter = (
+                        " AND (telegram_id=? OR telegram_id IN "
+                        "(SELECT followee_id FROM community_follows WHERE follower_id=?))"
+                    )
+                    followed_params = (str(user["id"]), str(user["id"]))
                 if cursor is None:
                     rows = db.execute(
-                        """SELECT * FROM community_posts WHERE deleted_at IS NULL
-                           ORDER BY id DESC LIMIT ?""",
-                        (PAGE_SIZE + 1,),
+                        """SELECT * FROM community_posts WHERE deleted_at IS NULL"""
+                        + followed_filter
+                        + " ORDER BY id DESC LIMIT ?",
+                        (*followed_params, PAGE_SIZE + 1),
                     ).fetchall()
                 else:
                     rows = db.execute(
                         """SELECT * FROM community_posts
-                           WHERE deleted_at IS NULL AND id < ?
-                           ORDER BY id DESC LIMIT ?""",
-                        (cursor, PAGE_SIZE + 1),
+                           WHERE deleted_at IS NULL AND id < ?"""
+                        + followed_filter
+                        + " ORDER BY id DESC LIMIT ?",
+                        (cursor, *followed_params, PAGE_SIZE + 1),
                     ).fetchall()
                 has_more = len(rows) > PAGE_SIZE
                 rows = rows[:PAGE_SIZE]
@@ -365,6 +578,230 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
             current_app.logger.exception("Community like update failed")
             return jsonify({"success": False, "error": "The like could not be updated"}), 503
 
+    @bp.post("/wallet/community/profile")
+    def community_profile():
+        try:
+            data, user = body_and_user()
+            public_id = data.get("publicId")
+            view = data.get("view", "posts")
+            if view not in {"posts", "replies", "reposts", "media"}:
+                raise ValueError("Invalid profile timeline")
+            cursor = data.get("cursor")
+            if cursor is not None:
+                try:
+                    cursor = int(cursor)
+                except (TypeError, ValueError):
+                    raise ValueError("Invalid profile cursor")
+                if cursor <= 0:
+                    raise ValueError("Invalid profile cursor")
+
+            with connect(db_path) as db:
+                profile = profile_by_public_id(db, public_id)
+                if not profile:
+                    return jsonify({"success": False, "error": "Runner profile not found"}), 404
+                profile_payload = _community_profile_payload(db, profile, user["id"])
+                posts, next_cursor = profile_timeline(
+                    db,
+                    profile,
+                    user["id"],
+                    view,
+                    cursor,
+                    request.url_root.rstrip("/") + "/wallet/community/media",
+                )
+            return jsonify({
+                "success": True,
+                "profile": profile_payload,
+                "view": view,
+                "posts": posts,
+                "nextCursor": next_cursor,
+            })
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            current_app.logger.exception("Community profile read failed")
+            return jsonify({"success": False, "error": "The runner profile is temporarily unavailable"}), 503
+
+    @bp.post("/wallet/community/follow")
+    def toggle_follow():
+        try:
+            data, user = body_and_user()
+            target_public_id = data.get("targetPublicId")
+            should_follow = data.get("follow")
+            if not isinstance(should_follow, bool):
+                raise ValueError("Choose whether to follow or unfollow this runner")
+            now = int(time.time())
+            with connect(db_path) as db:
+                target = profile_by_public_id(db, target_public_id)
+                if not target:
+                    return jsonify({"success": False, "error": "Runner profile not found"}), 404
+                viewer_id = str(user["id"])
+                target_id = str(target["telegram_id"])
+                if viewer_id == target_id:
+                    raise ValueError("You cannot follow your own profile")
+                db.execute("BEGIN IMMEDIATE")
+                _ensure_social_profile(
+                    db,
+                    viewer_id,
+                    user.get("username") or "Runner",
+                    now,
+                )
+                if should_follow:
+                    db.execute(
+                        """INSERT OR IGNORE INTO community_follows
+                           (follower_id, followee_id, created_at) VALUES(?,?,?)""",
+                        (viewer_id, target_id, now),
+                    )
+                else:
+                    db.execute(
+                        "DELETE FROM community_follows WHERE follower_id=? AND followee_id=?",
+                        (viewer_id, target_id),
+                    )
+                following = db.execute(
+                    """SELECT 1 FROM community_follows
+                       WHERE follower_id=? AND followee_id=?""",
+                    (viewer_id, target_id),
+                ).fetchone() is not None
+                follower_count = int(db.execute(
+                    "SELECT COUNT(*) FROM community_follows WHERE followee_id=?",
+                    (target_id,),
+                ).fetchone()[0])
+                db.commit()
+            return jsonify({
+                "success": True,
+                "isFollowing": following,
+                "followerCount": follower_count,
+            })
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            current_app.logger.exception("Community follow update failed")
+            return jsonify({"success": False, "error": "The follow could not be updated"}), 503
+
+    @bp.post("/wallet/community/follows/list")
+    def list_follows():
+        try:
+            data, user = body_and_user()
+            public_id = data.get("publicId")
+            direction = data.get("direction")
+            if direction not in {"followers", "following"}:
+                raise ValueError("Choose followers or following")
+            cursor = data.get("cursor")
+            if cursor is not None:
+                try:
+                    cursor = int(cursor)
+                except (TypeError, ValueError):
+                    raise ValueError("Invalid followers cursor")
+                if cursor <= 0:
+                    raise ValueError("Invalid followers cursor")
+
+            with connect(db_path) as db:
+                target = profile_by_public_id(db, public_id)
+                if not target:
+                    return jsonify({"success": False, "error": "Runner profile not found"}), 404
+                target_id = str(target["telegram_id"])
+                if direction == "followers":
+                    related_column = "follower_id"
+                    owner_column = "followee_id"
+                else:
+                    related_column = "followee_id"
+                    owner_column = "follower_id"
+                cursor_filter = " AND f.id < ?" if cursor is not None else ""
+                params = (target_id, cursor, PAGE_SIZE + 1) if cursor is not None else (target_id, PAGE_SIZE + 1)
+                rows = db.execute(
+                    f"""SELECT f.id AS follow_id, p.telegram_id, p.public_id,
+                               p.display_name, p.display_name_key,
+                               p.created_at, p.updated_at
+                        FROM community_follows f
+                        JOIN social_profiles p ON p.telegram_id=f.{related_column}
+                        WHERE f.{owner_column}=?"""
+                    + cursor_filter
+                    + " ORDER BY f.id DESC LIMIT ?",
+                    params,
+                ).fetchall()
+                has_more = len(rows) > PAGE_SIZE
+                rows = rows[:PAGE_SIZE]
+                players = [
+                    _community_profile_payload(db, row, user["id"])
+                    for row in rows
+                ]
+                next_cursor = int(rows[-1]["follow_id"]) if has_more and rows else None
+            return jsonify({
+                "success": True,
+                "direction": direction,
+                "players": players,
+                "nextCursor": next_cursor,
+            })
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            current_app.logger.exception("Community follow list read failed")
+            return jsonify({"success": False, "error": "This runner list is temporarily unavailable"}), 503
+
+    @bp.post("/wallet/community/posts/repost")
+    def toggle_repost():
+        try:
+            data, user = body_and_user()
+            post_id = post_id_from(data)
+            now = int(time.time())
+            with connect(db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                post = get_post(db, post_id)
+                if not post:
+                    db.rollback()
+                    return jsonify({"success": False, "error": "Post not found"}), 404
+                viewer_id = str(user["id"])
+                if str(post["telegram_id"]) == viewer_id:
+                    db.rollback()
+                    return jsonify({"success": False, "error": "You cannot repost your own post"}), 400
+                existing = db.execute(
+                    """SELECT 1 FROM community_post_reposts
+                       WHERE post_id=? AND telegram_id=?""",
+                    (post_id, viewer_id),
+                ).fetchone()
+                if existing:
+                    db.execute(
+                        """DELETE FROM community_post_reposts
+                           WHERE post_id=? AND telegram_id=?""",
+                        (post_id, viewer_id),
+                    )
+                    reposted = False
+                else:
+                    _ensure_social_profile(
+                        db,
+                        viewer_id,
+                        user.get("username") or "Runner",
+                        now,
+                    )
+                    db.execute(
+                        """INSERT INTO community_post_reposts
+                           (post_id, telegram_id, created_at) VALUES(?,?,?)""",
+                        (post_id, viewer_id, now),
+                    )
+                    reposted = True
+                repost_count = int(db.execute(
+                    "SELECT COUNT(*) FROM community_post_reposts WHERE post_id=?",
+                    (post_id,),
+                ).fetchone()[0])
+                db.commit()
+            return jsonify({
+                "success": True,
+                "repostedByMe": reposted,
+                "repostCount": repost_count,
+            })
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+        except Exception:
+            current_app.logger.exception("Community repost update failed")
+            return jsonify({"success": False, "error": "The repost could not be updated"}), 503
+
     @bp.post("/wallet/community/comments")
     def create_comment():
         try:
@@ -387,9 +824,13 @@ def register_community_routes(app, db_path, connect, authenticate, admin_telegra
                        VALUES(?,?,?,?,?)""",
                     (post_id, str(user["id"]), display_name, content, now),
                 )
+                author_profile = _ensure_social_profile(
+                    db, user["id"], display_name, now,
+                )
                 comment = {
                     "id": int(cursor.lastrowid),
                     "author": display_name,
+                    "authorPublicId": author_profile["public_id"],
                     "content": content,
                     "createdAt": now * 1000,
                 }

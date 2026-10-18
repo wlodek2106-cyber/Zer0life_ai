@@ -22,6 +22,7 @@ from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALL
 from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
 from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
 from community_feed import register_community_routes
+from social_chat import register_social_routes
 
 
 ZRL_DECIMALS = 6
@@ -2031,6 +2032,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     register_community_routes(
         app, db_path, _connect, authenticated_user, admin_telegram_id,
     )
+    register_social_routes(app, db_path, _connect, authenticated_user)
     register_recovery_routes(app, db_path, _connect, authenticated_user,
                              _ensure_account, _ledger_entry, admin_telegram_id, ZRL_SCALE)
     register_mobile_routes(app, db_path, _connect, authenticated_user,
