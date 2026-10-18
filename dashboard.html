@@ -2925,12 +2925,19 @@
                 <span class="community-eyebrow">ZER0LIFE RUN / FIELD NOTES</span>
                 <h1>Community<span>.</span></h1>
             </div>
-            <button class="community-refresh" type="button" data-community-action="refresh" aria-label="Refresh feed">
+            <button class="community-refresh" type="button" data-community-action="refresh" data-social-action="refresh" aria-label="Refresh feed and social connections">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-2L20 12M4 12l2.5 5a7 7 0 0 0 12-2"/></svg>
             </button>
         </header>
 
         <main class="community-scroll">
+            <nav class="social-tabs" aria-label="Community sections" role="tablist">
+                <button class="social-tab is-active" id="social-tab-feed" type="button" role="tab" aria-selected="true" aria-controls="social-panel-feed" data-social-tab="feed">Feed</button>
+                <button class="social-tab" id="social-tab-friends" type="button" role="tab" aria-selected="false" aria-controls="social-panel-friends" data-social-tab="friends">Friends <span class="social-tab-count" data-social-count="friends" aria-label="Friends count"></span></button>
+                <button class="social-tab" id="social-tab-chats" type="button" role="tab" aria-selected="false" aria-controls="social-panel-chats" data-social-tab="chats">Chats <span class="social-tab-count" data-social-count="unread" aria-label="Unread messages"></span></button>
+            </nav>
+
+            <section class="social-panel is-active" id="social-panel-feed" role="tabpanel" aria-labelledby="social-tab-feed" data-social-panel="feed">
             <section class="community-intro">
                 <div>
                     <p class="community-kicker"><span class="community-live-dot"></span> THE RUN NEVER HAPPENS ALONE</p>
@@ -2976,6 +2983,196 @@
             <div class="community-feed-list" id="community-feed-list" aria-live="polite"></div>
             <button class="community-load-more" id="community-load-more" type="button" data-community-action="load-more" hidden>Load older posts <span>↓</span></button>
             <div class="community-bottom-note">KEEP SHOWING UP. THE REST FOLLOWS.</div>
+            </section>
+
+            <section class="social-panel" id="social-panel-friends" role="tabpanel" aria-labelledby="social-tab-friends" data-social-panel="friends" hidden>
+                <header class="social-view-heading">
+                    <div>
+                        <p class="community-kicker">YOUR RUNNING CIRCLE</p>
+                        <h2>Friends<span>.</span></h2>
+                        <p>Find your people, then keep each other moving.</p>
+                    </div>
+                    <span class="social-view-mark" aria-hidden="true">01 / 03</span>
+                </header>
+
+                <form class="social-search" id="social-player-search" role="search">
+                    <label for="social-player-query">Find a runner</label>
+                    <div class="social-search-row">
+                        <span class="social-search-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.2 4.2"/></svg>
+                        </span>
+                        <input id="social-player-query" name="query" type="search" autocomplete="off" placeholder="Search by runner name or ID" aria-describedby="social-search-hint">
+                        <button type="submit" class="social-search-submit">Search</button>
+                    </div>
+                    <small id="social-search-hint">Search Zer0Life runners by display name or public ID.</small>
+                </form>
+                <div class="social-search-results" id="social-player-results" aria-live="polite" aria-label="Runner search results">
+                    <div class="social-state-card" data-social-state="search-empty">
+                        <span class="social-state-index">SEARCH / READY</span>
+                        <p>Runner profiles will appear here.</p>
+                    </div>
+                    <div class="social-state-card" data-social-state="search-loading" hidden aria-label="Searching runners"><span class="social-loading-line"></span><span class="social-loading-line short"></span></div>
+                    <div class="social-state-card social-error-card" data-social-state="search-error" role="alert" hidden><strong>Search didn’t come through.</strong><p>Check your connection and try again.</p><button type="button" data-social-action="retry-search">Retry search</button></div>
+                    <template id="social-player-result-template">
+                        <article class="social-person-row" data-social-result>
+                            <span class="social-avatar" data-social-avatar aria-hidden="true"></span>
+                            <div class="social-person-copy"><strong data-social-display-name></strong><small data-social-player-tag></small></div>
+                            <input class="social-intro-input" type="text" maxlength="240" placeholder="Add a note (optional)" aria-label="Optional introduction message" data-social-initial-message>
+                            <button class="social-action-button" type="button" data-social-action="send-request" data-social-result-action="request">Connect</button>
+                        </article>
+                    </template>
+                </div>
+
+                <div class="social-list-section">
+                    <div class="social-section-heading">
+                        <div><span class="community-kicker">INBOUND</span><h3>Friend requests</h3></div>
+                        <span class="social-section-rule" aria-hidden="true"></span>
+                    </div>
+                    <div class="social-request-list" id="social-incoming-requests" aria-live="polite">
+                        <div class="social-state-card" data-social-state="incoming-empty">
+                            <span class="social-state-index">NO NEW PINGS</span>
+                            <p>When a runner asks to connect, you’ll see it here.</p>
+                        </div>
+                        <div class="social-state-card" data-social-state="incoming-loading" hidden><span class="social-loading-line"></span><span class="social-loading-line short"></span></div>
+                        <div class="social-state-card social-error-card" data-social-state="incoming-error" role="alert" hidden><strong>Requests are out of reach.</strong><p>Try refreshing your social space.</p><button type="button" data-social-action="refresh">Retry</button></div>
+                        <template id="social-incoming-request-template">
+                            <article class="social-request-row" data-social-request>
+                                <span class="social-avatar" data-social-avatar aria-hidden="true"></span>
+                                <div class="social-person-copy"><strong data-social-display-name></strong><small data-social-request-message></small><time data-social-created-at></time></div>
+                                <div class="social-request-actions">
+                                    <button class="social-action-button" type="button" data-social-action="accept-request" data-social-request-action="accept">Accept</button>
+                                    <button class="social-action-quiet" type="button" data-social-action="decline-request" data-social-request-action="decline">Decline</button>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="social-list-section">
+                    <div class="social-section-heading">
+                        <div><span class="community-kicker">OUTBOUND</span><h3>Sent requests</h3></div>
+                        <span class="social-section-rule" aria-hidden="true"></span>
+                    </div>
+                    <div class="social-request-list" id="social-outgoing-requests" aria-live="polite">
+                        <div class="social-state-card" data-social-state="outgoing-empty">
+                            <span class="social-state-index">IN MOTION</span>
+                            <p>Requests you send will be tracked here.</p>
+                        </div>
+                        <div class="social-state-card" data-social-state="outgoing-loading" hidden><span class="social-loading-line"></span><span class="social-loading-line short"></span></div>
+                        <div class="social-state-card social-error-card" data-social-state="outgoing-error" role="alert" hidden><strong>Sent requests are out of reach.</strong><p>Try refreshing your social space.</p><button type="button" data-social-action="refresh">Retry</button></div>
+                        <template id="social-outgoing-request-template">
+                            <article class="social-request-row social-request-pending" data-social-request>
+                                <span class="social-avatar" data-social-avatar aria-hidden="true"></span>
+                                <div class="social-person-copy"><strong data-social-display-name></strong><small data-social-request-message></small><time data-social-created-at></time></div>
+                                <span class="social-pending-label">PENDING</span>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="social-list-section">
+                    <div class="social-section-heading">
+                        <div><span class="community-kicker">THE PACK</span><h3>Your friends</h3></div>
+                        <span class="social-section-rule" aria-hidden="true"></span>
+                    </div>
+                    <div class="social-friend-list" id="social-friends-list" aria-live="polite">
+                        <div class="social-state-card" data-social-state="friends-empty">
+                            <span class="social-state-index">ROOM TO GROW</span>
+                            <p>Your accepted connections will land here. Start with a search above.</p>
+                        </div>
+                        <div class="social-state-card" data-social-state="friends-loading" hidden><span class="social-loading-line"></span><span class="social-loading-line short"></span></div>
+                        <div class="social-state-card social-error-card" data-social-state="friends-error" role="alert" hidden><strong>Your circle is out of reach.</strong><p>Check your connection and refresh.</p><button type="button" data-social-action="refresh">Retry</button></div>
+                        <template id="social-friend-template">
+                            <article class="social-person-row social-friend-row" data-social-friend>
+                                <span class="social-avatar" data-social-avatar aria-hidden="true"></span>
+                                <div class="social-person-copy"><strong data-social-display-name></strong><small data-social-last-message></small></div>
+                                <span class="social-unread-count" data-social-unread hidden></span>
+                                <button class="social-action-button" type="button" data-social-action="open-chat" data-social-friend-action="chat">Message</button>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+            </section>
+
+            <section class="social-panel social-chats-panel" id="social-panel-chats" role="tabpanel" aria-labelledby="social-tab-chats" data-social-panel="chats" hidden>
+                <header class="social-view-heading social-chat-heading">
+                    <div>
+                        <p class="community-kicker">PACE YOUR OWN WAY</p>
+                        <h2>Private chats<span>.</span></h2>
+                        <p>Direct notes between the miles.</p>
+                    </div>
+                    <span class="social-view-mark" aria-hidden="true">03 / 03</span>
+                </header>
+                <div class="social-chat-shell">
+                    <aside class="social-chat-sidebar" aria-label="Your conversations">
+                        <div class="social-section-heading social-chat-list-heading">
+                            <div><span class="community-kicker">DIRECT LINE</span><h3>Conversations</h3></div>
+                        </div>
+                        <div class="social-chat-list" id="social-chat-list" aria-live="polite">
+                            <div class="social-state-card" data-social-state="chats-empty">
+                                <span class="social-state-index">QUIET CHANNEL</span>
+                                <p>Choose a friend to start a private conversation.</p>
+                            </div>
+                            <div class="social-state-card" data-social-state="chats-loading" hidden><span class="social-loading-line"></span><span class="social-loading-line short"></span></div>
+                            <div class="social-state-card social-error-card" data-social-state="chats-error" role="alert" hidden><strong>Chats didn’t load.</strong><p>Refresh to check your messages.</p><button type="button" data-social-action="refresh">Retry</button></div>
+                            <template id="social-chat-item-template">
+                                <button class="social-chat-item" type="button" data-social-chat data-social-action="open-chat">
+                                    <span class="social-avatar" data-social-avatar aria-hidden="true"></span>
+                                    <span class="social-chat-item-copy"><strong data-social-display-name></strong><small data-social-last-message></small></span>
+                                    <span class="social-chat-item-meta"><time data-social-last-message-at></time><span class="social-unread-count" data-social-unread hidden></span></span>
+                                </button>
+                            </template>
+                        </div>
+                    </aside>
+                    <section class="social-chat-thread" id="social-chat-thread" aria-label="Selected conversation" aria-live="polite">
+                        <div class="social-chat-placeholder">
+                            <span class="social-chat-glyph" aria-hidden="true">
+                                <svg viewBox="0 0 32 32"><path d="M5.5 7.5h21v15h-12l-7 5v-5h-2z"/><path d="M11 13h10M11 17h7"/></svg>
+                            </span>
+                            <span class="social-state-index">YOUR NEXT CHECK-IN</span>
+                            <h3>Pick a runner.</h3>
+                            <p>Your private conversation will open here.</p>
+                        </div>
+                        <div class="social-chat-selected" data-social-selected hidden>
+                            <header class="social-chat-peer">
+                                <span class="social-avatar" data-social-peer-avatar aria-hidden="true"></span>
+                                <div><span class="community-kicker">PRIVATE CHANNEL</span><h3 data-social-peer-name></h3></div>
+                                <span class="social-secure-mark">1 : 1</span>
+                            </header>
+                            <div class="social-chat-messages" id="social-chat-messages" role="log" aria-live="polite" aria-relevant="additions text">
+                                <div class="social-message-empty" data-social-state="messages-empty" hidden>
+                                    <span class="social-state-index">FIRST NOTE, YOURS</span>
+                                    <p>No messages yet. Start the conversation.</p>
+                                </div>
+                            </div>
+                            <template id="social-chat-message-template">
+                                <article class="social-message" data-social-message>
+                                    <span class="social-message-sender" data-social-message-sender></span>
+                                    <p data-social-message-content></p>
+                                    <time data-social-message-time></time>
+                                </article>
+                            </template>
+                            <form class="social-chat-composer" id="social-chat-composer">
+                                <label class="community-sr-only" for="social-chat-input">Write a private message</label>
+                                <textarea id="social-chat-input" name="content" rows="1" maxlength="1000" placeholder="Send a quick check-in…" autocomplete="off"></textarea>
+                                <button type="submit" aria-label="Send message">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-5 16-3-7-8-1Z"/><path d="m12 13 8-9"/></svg>
+                                </button>
+                            </form>
+                            <p class="social-chat-status" id="social-chat-status" role="status" aria-live="polite"></p>
+                            <div class="social-chat-message-error" data-social-state="messages-error" role="alert" hidden><span>Messages could not be loaded.</span><button type="button" data-social-action="retry-chat">Retry</button></div>
+                        </div>
+                        <div class="social-chat-loading" data-social-state="chat-loading" hidden aria-label="Loading conversation">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <div class="social-chat-error" data-social-state="chat-error" role="alert" hidden>
+                            <strong>Couldn’t load this conversation.</strong>
+                            <p>Check your connection and try again.</p>
+                            <button type="button" data-social-action="retry-chat">Try again</button>
+                        </div>
+                    </section>
+                </div>
+            </section>
         </main>
     </section>
 
@@ -3005,19 +3202,13 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             Boosts
         </div>
-        <div class="nav-item" id="nav-dao" onclick="openDaoModal()">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 21h18"></path>
-                <path d="M3 10h18"></path>
-                <path d="M5 6l7-3 7 3"></path>
-                <path d="M4 10v11"></path>
-                <path d="M20 10v11"></path>
-                <path d="M8 14v3"></path>
-                <path d="M12 14v3"></path>
-                <path d="M16 14v3"></path>
+        <button class="nav-item nav-item-button" id="nav-chat" type="button" aria-label="Open community feed, friends and private chats" title="Chat">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-9.5A7.5 7.5 0 0 1 10.5 4h2A7.5 7.5 0 0 1 20 11.5Z"></path>
+                <path d="M8 11h8M8 14h5"></path>
             </svg>
-            DAO
-        </div>
+            Chat
+        </button>
     </div>
 
     <script src="./legacy-recovery.js?v=english-ui-3"></script>
@@ -5664,5 +5855,6 @@
     <script src="./recovery-actions.js?v=english-ui-3"></script>
     <script src="./wallet.js?v=english-withdrawal-v3"></script>
     <script src="./community-feed.js"></script>
+    <script src="./social-chat.js?v=social-chat-v1"></script>
 </body>
 </html>
