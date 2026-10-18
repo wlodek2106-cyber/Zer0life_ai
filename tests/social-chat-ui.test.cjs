@@ -15,7 +15,7 @@ const nav = dashboard.slice(navStart, navEnd);
 
 test('Chat replaces DAO and opens the existing community screen', () => {
     assert.match(nav, /id="nav-chat"[^>]*aria-label="Open Zer0Net, friends and private chats"/);
-    assert.match(nav, />\s*Chat\s*<\/button>/);
+    assert.match(nav, />\s*Zer0Net\s*<\/button>/);
     assert.doesNotMatch(nav, /id="nav-dao"|>\s*DAO\s*</);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
     assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-zeronet-v3"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-zeronet-v3"><\/script>/);
