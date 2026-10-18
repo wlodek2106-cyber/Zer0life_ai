@@ -18,7 +18,7 @@ test('Chat replaces DAO and opens the existing community screen', () => {
     assert.match(nav, />\s*Chat\s*<\/button>/);
     assert.doesNotMatch(nav, /id="nav-dao"|>\s*DAO\s*</);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
-    assert.match(dashboard, /<script src="\.\/community-feed\.js"><\/script>\s*<script src="\.\/social-chat\.js\?v=social-chat-v1"><\/script>/);
+    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-social-v2"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-social-v2"><\/script>/);
 });
 
 test('one screen exposes feed, friends, requests, and private chats', () => {
