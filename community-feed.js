@@ -5,6 +5,7 @@
     const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
     const MAX_POST_CHARS = 1000;
     const MAX_COMMENT_CHARS = 500;
+    const FEED_RETRY_DELAYS = [1500, 4000, 8000];
     const screen = document.getElementById('community-screen');
     if (!screen) return;
 
@@ -67,14 +68,38 @@
         selfAvatar.textContent = Array.from(name.trim())[0]?.toUpperCase() || 'R';
     }
 
-    async function api(path, payload) {
+    async function api(path, payload, { retryRead = false } = {}) {
         const signedData = initData();
         if (!signedData) throw new Error('Open Zer0Life Run from Telegram to use the community feed.');
-        const response = await fetch(API_BASE + path, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: signedData, ...payload })
-        });
+        const body = JSON.stringify({ initData: signedData, ...payload });
+        let response;
+        for (let attempt = 0; ; attempt += 1) {
+            try {
+                response = await fetch(API_BASE + path, {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body
+                });
+            } catch {
+                if (retryRead && attempt < FEED_RETRY_DELAYS.length) {
+                    await new Promise(resolve => window.setTimeout(resolve, FEED_RETRY_DELAYS[attempt]));
+                    continue;
+                }
+                if (path === '/wallet/community/posts') {
+                    throw new Error('Could not confirm whether your post was saved. Refresh the feed before sending it again.');
+                }
+                throw new Error('Could not reach the community server from this Telegram session. Check your connection and try again.');
+            }
+
+            if (retryRead && [502, 503, 504].includes(response.status) && attempt < FEED_RETRY_DELAYS.length) {
+                await new Promise(resolve => window.setTimeout(resolve, FEED_RETRY_DELAYS[attempt]));
+                continue;
+            }
+            break;
+        }
         let result;
         try {
             result = await response.json();
@@ -297,7 +322,7 @@
 
         try {
             const payload = append ? { cursor: state.nextCursor } : {};
-            const result = await api('/wallet/community/feed', payload);
+            const result = await api('/wallet/community/feed', payload, { retryRead: true });
             const received = Array.isArray(result.posts) ? result.posts : [];
             if (append) state.posts = mergeUnique(state.posts, received);
             else if (polling) state.posts = mergeUnique(received, state.posts);
