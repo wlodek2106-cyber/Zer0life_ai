@@ -3,20 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zer0Life Run 2.0 — Move to Earn</title>
-    <meta name="description" content="Discover Zer0Life Run 2.0, a Web3 Move-to-Earn running game. Track your movement, earn ZRL tokens, and explore the future of fitness powered by blockchain.">
+    <title>Zer0Life Run 2.0 | Telegram Move-to-Earn Running Game</title>
+    <meta name="description" content="Zer0Life Run 2.0 is a Telegram Move-to-Earn running game. Track runs and daily activity, explore in-game ZRL rewards, and launch the mini app directly in Telegram.">
     <link rel="canonical" href="https://wlodek2106-cyber.github.io/Zer0life_ai/">
     <meta name="robots" content="index, follow">
 
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Zer0Life Run 2.0 — Move to Earn">
-    <meta property="og:description" content="Run, earn ZRL tokens, and explore the future of fitness with Zer0Life Run 2.0.">
+    <meta property="og:title" content="Zer0Life Run 2.0 | Telegram Move-to-Earn Running Game">
+    <meta property="og:description" content="Track running and daily activity in Zer0Life Run 2.0, a Telegram Mini App with in-game ZRL rewards and community features.">
     <meta property="og:url" content="https://wlodek2106-cyber.github.io/Zer0life_ai/">
 
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Zer0Life Run 2.0 — Move to Earn">
-    <meta name="twitter:description" content="Run, earn ZRL tokens, and explore Web3 fitness.">
+    <meta name="twitter:title" content="Zer0Life Run 2.0 | Telegram Move-to-Earn Running Game">
+    <meta name="twitter:description" content="Track activity and explore in-game ZRL rewards in the Zer0Life Run Telegram Mini App.">
     <meta name="theme-color" content="#080c08">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Zer0Life Run 2.0",
+      "url": "https://wlodek2106-cyber.github.io/Zer0life_ai/",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
+      "description": "A Telegram Move-to-Earn running game for tracking activity and exploring in-game ZRL rewards."
+    }
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Manrope:wght@500;700;800;900&family=Montserrat:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
     <style>
@@ -30,16 +41,21 @@
 
         html, body {
             width: 100%;
-            height: 100%;
+            min-height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow-x: hidden;
             background: var(--ink);
             font-family: "Manrope", "Avenir Next", sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
-        body { user-select: none; }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-y: auto;
+            user-select: none;
+        }
 
         .main-container {
             position: relative;
@@ -310,6 +326,130 @@
             box-shadow: 0 0 0 4px #10170d, 0 0 0 6px #c8ff55, 0 16px 30px #a6ee493b;
         }
 
+        .seo-section {
+            position: relative;
+            padding: clamp(38px, 8vw, 76px) 20px calc(52px + env(safe-area-inset-bottom));
+            color: #dce7d5;
+            background:
+                radial-gradient(ellipse at 15% 0%, #23351c88, transparent 38%),
+                linear-gradient(180deg, #0b100c, #080c08 70%);
+            border-top: 1px solid #c8ff5524;
+            user-select: text;
+        }
+
+        .seo-content {
+            width: min(100%, 920px);
+            margin: 0 auto;
+        }
+
+        .seo-kicker {
+            margin: 0 0 10px;
+            color: var(--lime);
+            font: 700 10px/1.5 "DM Mono", monospace;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+        }
+
+        .seo-section h2 {
+            margin: 0 0 14px;
+            color: #f3f7ec;
+            font-size: clamp(24px, 5vw, 38px);
+            line-height: 1.12;
+            letter-spacing: -.04em;
+        }
+
+        .seo-section h3 {
+            margin: 0 0 8px;
+            color: #d8ff9e;
+            font-size: 16px;
+        }
+
+        .seo-section p,
+        .seo-section li {
+            color: #b5c2ae;
+            font-size: 14px;
+            line-height: 1.75;
+        }
+
+        .seo-intro {
+            max-width: 760px;
+            margin: 0 0 24px;
+        }
+
+        .seo-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            gap: 12px;
+            margin: 24px 0 34px;
+        }
+
+        .seo-feature-card {
+            padding: 18px;
+            border: 1px solid #c8ff5530;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #172119, #0e140f);
+            box-shadow: inset 0 1px #ffffff0b, 0 12px 28px #0004;
+        }
+
+        .seo-feature-card p {
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .seo-steps {
+            padding-left: 22px;
+            margin: 14px 0 22px;
+        }
+
+        .seo-telegram-link {
+            display: inline-flex;
+            min-height: 48px;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            border: 1px solid #e7ffb4;
+            border-radius: 13px;
+            color: #0b1107;
+            background: linear-gradient(112deg, #e1ff9e, #c8ff55 55%, #a8e847);
+            box-shadow: 0 5px 0 #050805, 0 12px 25px #a6ee4930;
+            font-size: 14px;
+            font-weight: 900;
+            text-decoration: none;
+        }
+
+        .seo-telegram-link:focus-visible {
+            outline: 2px solid #efffc5;
+            outline-offset: 4px;
+        }
+
+        .seo-faq {
+            margin-top: 36px;
+        }
+
+        .seo-faq details {
+            padding: 15px 0;
+            border-bottom: 1px solid #c8ff5524;
+        }
+
+        .seo-faq summary {
+            color: #eef6e7;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .seo-faq details p {
+            margin: 10px 0 0;
+        }
+
+        .seo-disclaimer {
+            margin-top: 26px;
+            padding: 14px 16px;
+            border-left: 2px solid #c8ff5570;
+            background: #c8ff5509;
+            font-size: 12px !important;
+        }
+
         @keyframes zl-art-arrive {
             from { transform: scale(1.04); opacity: .65; }
             to { transform: scale(1); opacity: 1; }
@@ -369,7 +509,7 @@
                 <span class="zl-edition">RUN 2.0</span>
             </header>
             <section class="zl-content">
-                <h1 class="zl-title">
+                <h1 class="zl-title" aria-label="Zer0Life Run 2.0">
                     <span>ZERØLIFE</span>
                     <span class="zl-title-run">RUN</span>
                 </h1>
@@ -381,26 +521,95 @@
         </main>
     </div>
 
+    <section class="seo-section" aria-labelledby="seo-heading">
+        <div class="seo-content">
+            <p class="seo-kicker">Telegram Move-to-Earn running game</p>
+            <h2 id="seo-heading">Move, play and explore Zer0Life Run 2.0</h2>
+            <p class="seo-intro">
+                Zer0Life Run 2.0 is a Web3 running game inside Telegram. Open the Mini App, track running and daily activity, and explore in-game ZRL rewards and community features from your Telegram account.
+            </p>
+
+            <div class="seo-feature-grid">
+                <article class="seo-feature-card">
+                    <h3>Running and daily activity</h3>
+                    <p>Use the Zer0Life Run Mini App to follow your activity and the game features available to your profile.</p>
+                </article>
+                <article class="seo-feature-card">
+                    <h3>In-game ZRL rewards</h3>
+                    <p>New player profiles can claim a one-time 1,000 ZRL registration bonus. No invite code is required to register.</p>
+                </article>
+                <article class="seo-feature-card">
+                    <h3>Made for Telegram</h3>
+                    <p>Launch Zer0Life Run from its Telegram bot without installing a separate mobile app.</p>
+                </article>
+            </div>
+
+            <h2>How to start playing</h2>
+            <ol class="seo-steps">
+                <li>Open the official Zer0Life Run bot in Telegram.</li>
+                <li>Tap the launch button to open the Mini App.</li>
+                <li>Create your player profile. You can enter an invite code or register without a referral.</li>
+                <li>Review the in-app activity, reward and withdrawal rules before playing.</li>
+            </ol>
+            <a
+                class="seo-telegram-link"
+                id="telegram-start-link"
+                href="https://t.me/Zer0lifelabs_ai_bot"
+                rel="noopener noreferrer"
+            >Open Zer0Life Run in Telegram</a>
+
+            <div class="seo-faq">
+                <h2>Frequently asked questions</h2>
+                <details>
+                    <summary>What is Zer0Life Run?</summary>
+                    <p>Zer0Life Run is a Telegram Mini App that combines running and daily activity with Web3 game features and in-game ZRL rewards.</p>
+                </details>
+                <details>
+                    <summary>Do I need an invite code to register?</summary>
+                    <p>No. You can choose to register without a referral. The one-time registration bonus is the same either way.</p>
+                </details>
+                <details>
+                    <summary>Are ZRL rewards or earnings guaranteed?</summary>
+                    <p>No. Reward eligibility depends on the current game rules and activity verification. Token values and withdrawal availability can change; no financial return is guaranteed.</p>
+                </details>
+            </div>
+
+            <p class="seo-disclaimer">
+                ZRL is an in-game token. Review the current terms, eligibility, limits and withdrawal conditions in the Mini App. This game does not promise investment returns.
+            </p>
+        </div>
+    </section>
+
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand(); 
-        
-        if (tg.disableVerticalSwipes) {
-            tg.disableVerticalSwipes();
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            if (tg.disableVerticalSwipes) {
+                tg.disableVerticalSwipes();
+            }
+            tg.ready();
         }
-        
-        tg.ready(); 
 
         const startBtn = document.getElementById('start-btn');
         const incomingParams = new URLSearchParams(window.location.search);
-        const incomingReferral = incomingParams.get('ref') || tg.initDataUnsafe?.start_param || '';
+        const incomingReferral = incomingParams.get('ref') || tg?.initDataUnsafe?.start_param || '';
         const referralMatch = String(incomingReferral).match(/(?:ref[_-]?)?([A-F0-9]{10})$/i);
+        const telegramBotUrl = new URL('https://t.me/Zer0lifelabs_ai_bot');
+        if (referralMatch) {
+            telegramBotUrl.searchParams.set('start', `ref_${referralMatch[1].toUpperCase()}`);
+        }
+        document.getElementById('telegram-start-link').href = telegramBotUrl.toString();
+
         startBtn.addEventListener('click', () => {
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
             startBtn.innerText = "Loading...";
             startBtn.style.opacity = "0.7";
             
             setTimeout(() => { 
+                if (!tg?.initDataUnsafe?.user?.id) {
+                    window.location.href = telegramBotUrl.toString();
+                    return;
+                }
                 const dashboardUrl = new URL('dashboard.html', window.location.href);
                 dashboardUrl.searchParams.set('build', 'affiliate-v2');
                 if (referralMatch) {
