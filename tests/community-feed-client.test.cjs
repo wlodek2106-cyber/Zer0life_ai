@@ -13,6 +13,16 @@ const apiEnd = source.indexOf('\n\n    function make(', apiStart);
 assert.notEqual(apiStart, -1, 'community api function exists');
 assert.notEqual(apiEnd, -1, 'community api function has a following boundary');
 const apiDefinition = source.slice(apiStart, apiEnd).trim();
+const walletRefreshStart = source.indexOf('    function refreshWalletStateInBackground(');
+const walletRefreshEnd = source.indexOf('\n\n    async function claimRewards(', walletRefreshStart);
+assert.notEqual(walletRefreshStart, -1, 'background wallet refresh helper exists');
+assert.notEqual(walletRefreshEnd, -1, 'background wallet refresh helper has a following boundary');
+const walletRefreshDefinition = source.slice(walletRefreshStart, walletRefreshEnd).trim();
+const claimStart = source.indexOf('    async function claimRewards(');
+const claimEnd = source.indexOf('\n\n    async function toggleLike(', claimStart);
+assert.notEqual(claimStart, -1, 'claim handler exists');
+assert.notEqual(claimEnd, -1, 'claim handler has a following boundary');
+const claimDefinition = source.slice(claimStart, claimEnd);
 
 function apiBaseFrom(text) {
     return text.match(/const API_BASE\s*=\s*['"]([^'"]+)['"]/)?.[1];
@@ -71,4 +81,41 @@ test('community post writes are never retried after an uncertain network failure
         /Could not confirm whether your post was saved/
     );
     assert.equal(requests, 1);
+});
+
+test('wallet state refresh after Claim runs in the background', async () => {
+    let finishWalletRequest;
+    let appliedState = null;
+    let requestStarted = false;
+    const sandbox = {
+        console: { warn() {} },
+        Promise,
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${walletRefreshDefinition}\nglobalThis.refreshWallet = refreshWalletStateInBackground;`, sandbox);
+
+    const wallet = {
+        request(path) {
+            assert.equal(path, '/wallet/state');
+            requestStarted = true;
+            return new Promise(resolve => { finishWalletRequest = resolve; });
+        },
+        applyResult(result) {
+            appliedState = result;
+        },
+    };
+
+    const refreshReturn = sandbox.refreshWallet(wallet);
+    assert.equal(refreshReturn, undefined, 'Claim must not await the wallet refresh promise');
+    assert.doesNotMatch(claimDefinition, /await\s+wallet\.request/);
+    assert.match(claimDefinition, /refreshWalletStateInBackground\(wallet\)/);
+
+    await Promise.resolve();
+    assert.equal(requestStarted, true);
+    assert.equal(appliedState, null, 'the UI can finish Claim while wallet refresh is pending');
+
+    const serverWalletState = { availableZrl: 42 };
+    finishWalletRequest(serverWalletState);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(appliedState, serverWalletState);
 });
