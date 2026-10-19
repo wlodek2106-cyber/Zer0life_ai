@@ -562,11 +562,25 @@
         }
     }
 
+    function refreshWalletStateInBackground(wallet) {
+        if (!wallet?.request || !wallet?.applyResult) return;
+        Promise.resolve()
+            .then(() => wallet.request('/wallet/state'))
+            .then(walletState => {
+                const refreshedBalance = Number(walletState?.availableZrl);
+                if (!Number.isFinite(refreshedBalance) || refreshedBalance < 0) {
+                    throw new Error('Wallet response did not include a valid available balance.');
+                }
+                wallet.applyResult(walletState);
+            })
+            .catch(error => console.warn('Wallet refresh after Zer0Net claim:', error.message));
+    }
+
     async function claimRewards() {
         if (state.claiming || state.pendingZrl <= 0) return;
         state.claiming = true;
         if (rewardsStatus) {
-            rewardsStatus.textContent = '';
+            rewardsStatus.textContent = 'Sending your claim securely…';
             rewardsStatus.classList.remove('is-error');
         }
         updateRewards();
@@ -582,27 +596,13 @@
             if (wallet?.applyResult) {
                 wallet.applyResult({ availableZrl: gameBalance });
             }
-            let walletSynced = false;
-            if (wallet?.request && wallet?.applyResult) {
-                try {
-                    const walletState = await wallet.request('/wallet/state');
-                    const refreshedBalance = Number(walletState?.availableZrl);
-                    if (!Number.isFinite(refreshedBalance) || refreshedBalance < 0) {
-                        throw new Error('Wallet response did not include a valid available balance.');
-                    }
-                    gameBalance = refreshedBalance;
-                    wallet.applyResult(walletState);
-                    walletSynced = true;
-                } catch (error) {
-                    console.warn('Wallet refresh after Zer0Net claim:', error.message);
-                }
-            }
             if (rewardsStatus) {
                 rewardsStatus.textContent = claimed > 0
-                    ? `Claimed ${claimed.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL. Game balance: ${gameBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL.${walletSynced ? ' Wallet refreshed.' : ' If Wallet still shows the old amount, reopen it to refresh.'}`
+                    ? `Claimed ${claimed.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL. Game balance: ${gameBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL.`
                     : `No new rewards to claim. Game balance: ${gameBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })} ZRL.`;
                 rewardsStatus.classList.remove('is-error');
             }
+            refreshWalletStateInBackground(wallet);
         } catch (error) {
             if (rewardsStatus) {
                 rewardsStatus.textContent = `${error.message || 'Could not confirm the claim.'} Refresh Zer0Net before trying again. Claims cannot credit the same post twice.`;
