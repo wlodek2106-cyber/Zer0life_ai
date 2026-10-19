@@ -17,8 +17,10 @@ test('Chat replaces DAO and opens the existing community screen', () => {
     assert.match(nav, /id="nav-chat"[^>]*aria-label="Open Zer0Net, friends and private chats"/);
     assert.match(nav, />\s*Zer0Net\s*<\/button>/);
     assert.doesNotMatch(nav, /id="nav-dao"|>\s*DAO\s*</);
+    assert.doesNotMatch(dashboard, /zr-community-entry|open-community-feed/);
+    assert.match(dashboard, /class="nav-item nav-item-button" id="nav-chat"[^>]*title="Zer0Net"/);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
-    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-profile-bio-v1"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-profile-bio-v1"><\/script>/);
+    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zeronet-single-entry-v1"><\/script>\s*<script src="\.\/social-chat\.js\?v=zeronet-single-entry-v1"><\/script>/);
 });
 
 test('Zer0Net rewards each new post and lets the runner claim into the game wallet', () => {

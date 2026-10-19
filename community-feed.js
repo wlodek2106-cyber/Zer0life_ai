@@ -752,7 +752,6 @@
         event.preventDefault();
         submitComment(form);
     });
-    document.getElementById('open-community-feed')?.addEventListener('click', openFeed);
     document.getElementById('nav-chat')?.addEventListener('click', openFeed);
     postInput.addEventListener('input', () => {
         setComposerMessage('');
