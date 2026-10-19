@@ -2002,14 +2002,25 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 ).fetchone()
                 amount = int(account["pending_run_units"])
                 if amount <= 0:
+                    balance = _balance_units(db, user["id"])
                     db.rollback()
-                    return _response_error("No run rewards to claim", 409)
+                    return jsonify({
+                        "success": False,
+                        "error": "No run rewards to claim",
+                        "pendingRunZrl": 0,
+                        "availableZrl": _zrl(balance),
+                    }), 409
                 event_id = f"run-claim:{user['id']}:{secrets.token_urlsafe(12)}"
                 _ledger_entry(db, user["id"], "run_reward", amount, event_id)
                 db.execute("UPDATE wallet_accounts SET pending_run_units = 0 WHERE telegram_id = ?", (user["id"],))
                 balance = _balance_units(db, user["id"])
                 db.commit()
-            return jsonify({"success": True, "reward": _zrl(amount), "availableZrl": _zrl(balance)})
+            return jsonify({
+                "success": True,
+                "reward": _zrl(amount),
+                "availableZrl": _zrl(balance),
+                "pendingRunZrl": 0,
+            })
         except PermissionError as exc:
             return _response_error(str(exc), 401)
         except Exception:
