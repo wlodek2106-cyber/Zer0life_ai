@@ -303,7 +303,23 @@ body.is-community-open .bottom-nav { visibility: hidden; pointer-events: none; }
 .social-profile-follow { margin-left:auto; min-height:34px; padding:0 13px; color:#161b10; background:var(--cf-lime); border:0; border-radius:10px; font:800 9px Manrope,sans-serif; cursor:pointer; }
 .social-profile-follow.is-following { color:#dce7d2; background:#202b1d; border:1px solid rgba(197,255,86,.3); }
 .social-profile-follow:disabled { opacity:.55; }
-.social-profile-bio { margin:0 13px 13px; color:#cbd5c2; font-size:10px; line-height:1.55; }
+.social-profile-bio-panel { margin:0 13px 14px; }
+.social-profile-bio-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:7px; }
+.social-profile-bio-label { color:#a9ba9e; font:700 8px "DM Mono",monospace; letter-spacing:.14em; }
+.social-profile-bio-toggle { min-height:27px; padding:0 10px; color:#d8f6a8; background:#172116; border:1px solid rgba(197,255,86,.2); border-radius:8px; font:700 8px Manrope,sans-serif; cursor:pointer; }
+.social-profile-bio-toggle:disabled, .social-profile-bio-cancel:disabled, .social-profile-bio-save:disabled { opacity:.55; cursor:wait; }
+.social-profile-bio { margin:0; color:#cbd5c2; font-size:10px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+.social-profile-bio.is-empty { color:#87947f; }
+.social-profile-bio-editor { display:grid; gap:8px; }
+.social-profile-bio-input { width:100%; min-height:76px; padding:10px 11px; color:#edf2e6; background:rgba(8,13,9,.7); border:1px solid rgba(197,255,86,.22); border-radius:10px; font:400 10px/1.55 Manrope,sans-serif; resize:vertical; }
+.social-profile-bio-input::placeholder { color:#75816f; }
+.social-profile-bio-input:focus { outline:2px solid rgba(197,255,86,.55); outline-offset:1px; }
+.social-profile-bio-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.social-profile-bio-count { color:#82907b; font:400 8px "DM Mono",monospace; }
+.social-profile-bio-actions { display:flex; align-items:center; gap:7px; }
+.social-profile-bio-cancel, .social-profile-bio-save { min-height:30px; padding:0 11px; border-radius:8px; font:700 8px Manrope,sans-serif; cursor:pointer; }
+.social-profile-bio-cancel { color:#c1ccb7; background:#141c14; border:1px solid rgba(211,239,190,.12); }
+.social-profile-bio-save { color:#11160c; background:var(--cf-lime); border:1px solid transparent; }
 .social-profile-stats { display:flex; gap:18px; margin:0 13px 14px; }
 .social-profile-stat { padding:0; color:#8d9a85; background:none; border:0; font:500 9px Manrope,sans-serif; cursor:pointer; }
 .social-profile-stat strong { color:#edf1e7; font-size:12px; }

@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import sqlite3
 import tempfile
 import time
 import unittest
@@ -78,6 +79,92 @@ class SocialChatTests(unittest.TestCase):
         )
         self.assertEqual(accepted.status_code, 200, accepted.json)
         return first, second, created.json["requestId"]
+
+    def test_profile_bio_is_persistent_public_and_clearable(self):
+        profile = self.profile("100", "Runner Alpha")
+        self.assertEqual(profile["bio"], "")
+        bio = "Road miles and fresh air.\n<script>alert(1)</script>"
+        saved = self.post(
+            "/wallet/social/profile/bio",
+            {"bio": bio, "telegramId": "200"},
+            user="100",
+        )
+        self.assertEqual(saved.status_code, 200, saved.json)
+        self.assertEqual(saved.json["profile"]["bio"], bio)
+
+        refreshed = self.post("/wallet/social/state", {"displayName": "Runner Alpha"}, user="100")
+        self.assertEqual(refreshed.status_code, 200, refreshed.json)
+        self.assertEqual(refreshed.json["profile"]["bio"], bio)
+
+        public = self.post(
+            "/wallet/community/profile",
+            {"publicId": profile["publicId"]},
+            user="200",
+        )
+        self.assertEqual(public.status_code, 200, public.json)
+        self.assertEqual(public.json["profile"]["bio"], bio)
+
+        too_long = self.post(
+            "/wallet/social/profile/bio",
+            {"bio": "x" * 161},
+            user="100",
+        )
+        self.assertEqual(too_long.status_code, 400)
+        invalid_type = self.post(
+            "/wallet/social/profile/bio",
+            {"bio": ["not", "text"]},
+            user="100",
+        )
+        self.assertEqual(invalid_type.status_code, 400)
+        missing = self.post("/wallet/social/profile/bio", {}, user="100")
+        self.assertEqual(missing.status_code, 400)
+        unauthorized = self.post(
+            "/wallet/social/profile/bio",
+            {"bio": "not signed"},
+            signed=False,
+        )
+        self.assertEqual(unauthorized.status_code, 401)
+
+        cleared = self.post("/wallet/social/profile/bio", {"bio": ""}, user="100")
+        self.assertEqual(cleared.status_code, 200, cleared.json)
+        self.assertEqual(cleared.json["profile"]["bio"], "")
+
+    def test_existing_social_profile_schema_adds_bio_without_losing_profile(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        db_path = os.path.join(folder.name, "wallet_ledger.sqlite3")
+        with sqlite3.connect(db_path) as db:
+            db.execute(
+                """CREATE TABLE social_profiles (
+                    telegram_id TEXT PRIMARY KEY,
+                    public_id TEXT NOT NULL UNIQUE,
+                    display_name TEXT NOT NULL,
+                    display_name_key TEXT NOT NULL,
+                    created_at INTEGER NOT NULL DEFAULT 0,
+                    updated_at INTEGER NOT NULL,
+                    avatar_key TEXT,
+                    avatar_mime TEXT,
+                    banner_key TEXT,
+                    banner_mime TEXT
+                )"""
+            )
+            db.execute(
+                """INSERT INTO social_profiles
+                   (telegram_id, public_id, display_name, display_name_key,
+                    created_at, updated_at)
+                   VALUES('100', 'legacy-public-id', 'Legacy Runner',
+                          'legacy runner', 1, 1)"""
+            )
+
+        app = Flask(__name__)
+        service.register_wallet_routes(app, folder.name, admin_telegram_id="999")
+        response = app.test_client().post(
+            "/wallet/social/state",
+            json={"initData": init_data("100"), "displayName": "Legacy Runner"},
+        )
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(response.json["profile"]["publicId"], "legacy-public-id")
+        self.assertEqual(response.json["profile"]["bio"], "")
 
     def test_signed_identity_controls_profiles_and_requests(self):
         denied = self.post("/wallet/social/state", {"displayName": "Spoof"}, signed=False)

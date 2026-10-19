@@ -106,7 +106,7 @@ def _ensure_social_profile(db, telegram_id, display_name, now):
     current = str(telegram_id)
     existing = db.execute(
         """SELECT telegram_id, public_id, display_name, display_name_key,
-                  created_at, updated_at, avatar_key, banner_key
+                  created_at, updated_at, bio, avatar_key, banner_key
            FROM social_profiles WHERE telegram_id=?""",
         (current,),
     ).fetchone()
@@ -125,7 +125,7 @@ def _ensure_social_profile(db, telegram_id, display_name, now):
         )
         profile = db.execute(
             """SELECT telegram_id, public_id, display_name, display_name_key,
-                      created_at, updated_at, avatar_key, banner_key
+                      created_at, updated_at, bio, avatar_key, banner_key
                FROM social_profiles WHERE telegram_id=?""",
             (current,),
         ).fetchone()
@@ -141,6 +141,7 @@ def _community_profile_payload(db, row, viewer_id):
     return {
         "publicId": public_id,
         "displayName": row["display_name"],
+        "bio": row["bio"] or "",
         "tag": "#" + public_id[:5].upper(),
         "avatarUrl": _profile_media_url(row["avatar_key"]),
         "bannerUrl": _profile_media_url(row["banner_key"]),
@@ -348,7 +349,7 @@ def register_community_routes(
             return None
         return db.execute(
         """SELECT telegram_id, public_id, display_name, display_name_key,
-                  created_at, updated_at, avatar_key, banner_key
+                  created_at, updated_at, bio, avatar_key, banner_key
                FROM social_profiles WHERE public_id=?""",
             (public_id,),
         ).fetchone()
@@ -798,7 +799,7 @@ def register_community_routes(
                 db.execute("BEGIN IMMEDIATE")
                 profile = db.execute(
                     """SELECT telegram_id, public_id, display_name, display_name_key,
-                              created_at, updated_at, avatar_key, banner_key
+                              created_at, updated_at, bio, avatar_key, banner_key
                        FROM social_profiles WHERE telegram_id=?""",
                     (str(user["id"]),),
                 ).fetchone()
@@ -818,7 +819,7 @@ def register_community_routes(
                 )
                 updated = db.execute(
                     """SELECT telegram_id, public_id, display_name, display_name_key,
-                              created_at, updated_at, avatar_key, banner_key
+                              created_at, updated_at, bio, avatar_key, banner_key
                        FROM social_profiles WHERE telegram_id=?""",
                     (str(user["id"]),),
                 ).fetchone()
@@ -959,7 +960,7 @@ def register_community_routes(
                     f"""SELECT f.id AS follow_id, p.telegram_id, p.public_id,
                                p.display_name, p.display_name_key,
                                 p.created_at, p.updated_at,
-                                p.avatar_key, p.banner_key
+                                 p.bio, p.avatar_key, p.banner_key
                         FROM community_follows f
                         JOIN social_profiles p ON p.telegram_id=f.{related_column}
                         WHERE f.{owner_column}=?"""

@@ -3,6 +3,7 @@
 
     const API_BASE = 'https://zer0life-ai-iz5n.onrender.com';
     const MESSAGE_LIMIT = 1000;
+    const PROFILE_BIO_LIMIT = 160;
     const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
     const PROFILE_IMAGE_SOURCE_LIMIT = 20 * 1024 * 1024;
     const screen = document.getElementById('community-screen');
@@ -26,6 +27,9 @@
         profileCursor: null,
         profileView: 'posts',
         profileBusy: false,
+        profileBioEditing: false,
+        profileBioBusy: false,
+        profileBioDraft: '',
         profileImageBusy: false,
         followersDirection: 'followers',
         followersCursor: null,
@@ -302,6 +306,7 @@
             identity.appendChild(follow);
         }
         profileContent.appendChild(identity);
+        profileContent.appendChild(renderProfileBio(profile));
         const stats = node('div', 'social-profile-stats');
         [['followers', profile.followerCount], ['following', profile.followingCount], ['posts', profile.postCount]].forEach(([kind, amount]) => {
             const button = node('button', 'social-profile-stat');
@@ -324,6 +329,65 @@
             views.appendChild(button);
         });
         profileContent.appendChild(views);
+    }
+
+    function renderProfileBio(profile) {
+        const section = node('section', 'social-profile-bio-panel');
+        const heading = node('div', 'social-profile-bio-head');
+        heading.appendChild(node('span', 'social-profile-bio-label', 'ABOUT'));
+        if (profile.isMe) {
+            const edit = node(
+                'button',
+                'social-profile-bio-toggle',
+                state.profileBioEditing ? 'Cancel' : (profile.bio ? 'Edit bio' : 'Add bio')
+            );
+            edit.type = 'button';
+            edit.dataset.profileAction = state.profileBioEditing ? 'cancel-bio' : 'edit-bio';
+            edit.disabled = state.profileBioBusy;
+            heading.appendChild(edit);
+        }
+        section.appendChild(heading);
+
+        if (state.profileBioEditing && profile.isMe) {
+            const form = node('form', 'social-profile-bio-editor');
+            const input = node('textarea', 'social-profile-bio-input');
+            input.dataset.profileBioInput = 'true';
+            input.maxLength = PROFILE_BIO_LIMIT;
+            input.rows = 3;
+            input.placeholder = 'Tell runners a little about yourself.';
+            input.setAttribute('aria-label', 'Profile description');
+            input.value = state.profileBioDraft;
+
+            const footer = node('div', 'social-profile-bio-footer');
+            const counter = node('span', 'social-profile-bio-count', `${input.value.length} / ${PROFILE_BIO_LIMIT}`);
+            counter.setAttribute('aria-live', 'polite');
+            const actions = node('div', 'social-profile-bio-actions');
+            const cancel = node('button', 'social-profile-bio-cancel', 'Cancel');
+            cancel.type = 'button';
+            cancel.dataset.profileAction = 'cancel-bio';
+            cancel.disabled = state.profileBioBusy;
+            const save = node('button', 'social-profile-bio-save', 'Save bio');
+            save.type = 'submit';
+            save.disabled = state.profileBioBusy;
+            actions.append(cancel, save);
+            footer.append(counter, actions);
+            form.append(input, footer);
+            input.addEventListener('input', () => {
+                state.profileBioDraft = input.value;
+                counter.textContent = `${input.value.length} / ${PROFILE_BIO_LIMIT}`;
+            });
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                state.profileBioDraft = input.value;
+                saveProfileBio();
+            });
+            section.appendChild(form);
+        } else if (typeof profile.bio === 'string' && profile.bio.trim()) {
+            section.appendChild(node('p', 'social-profile-bio', profile.bio));
+        } else if (profile.isMe) {
+            section.appendChild(node('p', 'social-profile-bio is-empty', 'Add a short description to your profile.'));
+        }
+        return section;
     }
 
     function renderProfilePosts() {
@@ -394,6 +458,10 @@
         profileStatus.textContent = append ? 'Loading more activity…' : 'Loading runner profile…';
         profileStatus.className = 'social-profile-state';
         if (!append) {
+            if (state.profileId !== publicId) {
+                state.profileBioEditing = false;
+                state.profileBioDraft = '';
+            }
             state.profileId = publicId;
             state.profilePosts = [];
             state.profileCursor = null;
@@ -506,6 +574,36 @@
             if (state.profile?.publicId === publicId) renderProfileHeader();
             if (field === 'avatar' && profileAvatarInput) profileAvatarInput.value = '';
             if (field === 'banner' && profileBannerInput) profileBannerInput.value = '';
+        }
+    }
+
+    async function saveProfileBio() {
+        if (!state.profile?.isMe || state.profileBioBusy) return;
+        const publicId = state.profile.publicId;
+        const input = $('[data-profile-bio-input]', profileContent);
+        const bio = String(input?.value ?? state.profileBioDraft ?? '');
+        state.profileBioDraft = bio;
+        state.profileBioBusy = true;
+        profileContent.querySelectorAll('button, textarea').forEach(control => { control.disabled = true; });
+        profileStatus.textContent = 'Saving profile description…';
+        profileStatus.className = 'social-profile-state';
+        try {
+            const result = await api('/wallet/social/profile/bio', { bio });
+            state.myProfile = { ...(state.myProfile || {}), ...result.profile };
+            if (state.profile?.publicId === publicId) {
+                state.profile = { ...state.profile, ...result.profile };
+                state.profileBioEditing = false;
+                state.profileBioDraft = '';
+                profileStatus.textContent = 'Profile description updated.';
+            }
+        } catch (error) {
+            if (state.profile?.publicId === publicId) {
+                profileStatus.className = 'social-profile-state social-error-card';
+                profileStatus.textContent = error.message || 'The profile description could not be updated.';
+            }
+        } finally {
+            state.profileBioBusy = false;
+            if (state.profile?.publicId === publicId) renderProfileHeader();
         }
     }
 
@@ -1035,8 +1133,19 @@
                 profileAvatarInput?.click();
             } else if (action === 'change-banner' && state.profile?.isMe) {
                 profileBannerInput?.click();
+            } else if (action === 'edit-bio' && state.profile?.isMe && !state.profileBioBusy) {
+                state.profileBioDraft = String(state.profile.bio || '');
+                state.profileBioEditing = true;
+                renderProfileHeader();
+                $('[data-profile-bio-input]', profileContent)?.focus();
+            } else if (action === 'cancel-bio' && state.profile?.isMe && !state.profileBioBusy) {
+                state.profileBioEditing = false;
+                state.profileBioDraft = '';
+                renderProfileHeader();
             } else if (action === 'back') {
                 followersSheet.hidden = true;
+                state.profileBioEditing = false;
+                state.profileBioDraft = '';
                 setProfileMode(false);
                 profilePostsNode.replaceChildren();
             } else if (action === 'follow') {

@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 
 
 MAX_DISPLAY_NAME = 48
+MAX_PROFILE_BIO = 160
 MAX_REQUEST_MESSAGE = 500
 MAX_MESSAGE_CHARS = 1000
 PLAYER_SEARCH_LIMIT = 20
@@ -39,6 +40,7 @@ def _profile_payload(row):
     return {
         "publicId": public_id,
         "displayName": row["display_name"],
+        "bio": row["bio"] or "",
         "tag": "#" + public_id[:5].upper(),
         "avatarUrl": f"/wallet/community/media/{row['avatar_key']}" if row["avatar_key"] else None,
         "bannerUrl": f"/wallet/community/media/{row['banner_key']}" if row["banner_key"] else None,
@@ -78,7 +80,7 @@ def _ensure_profile(db, user, display_name):
         )
         return db.execute(
             """SELECT telegram_id, public_id, display_name, display_name_key,
-                      created_at, updated_at, avatar_key, banner_key
+                      created_at, updated_at, bio, avatar_key, banner_key
                FROM social_profiles WHERE telegram_id=?""",
             (telegram_id,),
         ).fetchone()
@@ -95,7 +97,7 @@ def _ensure_profile(db, user, display_name):
             )
             return db.execute(
                     """SELECT telegram_id, public_id, display_name, display_name_key,
-                              created_at, updated_at, avatar_key, banner_key
+                              created_at, updated_at, bio, avatar_key, banner_key
                        FROM social_profiles WHERE telegram_id=?""",
                 (telegram_id,),
             ).fetchone()
@@ -109,7 +111,7 @@ def _profile_by_public_id(db, public_id):
         return None
     return db.execute(
         """SELECT telegram_id, public_id, display_name, display_name_key,
-                  created_at, updated_at, avatar_key, banner_key
+                  created_at, updated_at, bio, avatar_key, banner_key
            FROM social_profiles WHERE public_id=?""",
         (public_id,),
     ).fetchone()
@@ -158,7 +160,7 @@ def _friends_for(db, telegram_id):
     for row in rows:
         friend_id = row["friend_id"]
         profile = db.execute(
-            """SELECT public_id, display_name, avatar_key, banner_key
+            """SELECT public_id, display_name, bio, avatar_key, banner_key
                FROM social_profiles WHERE telegram_id=?""",
             (friend_id,),
         ).fetchone()
@@ -178,6 +180,7 @@ def _friends_for(db, telegram_id):
         friends.append({
             "publicId": profile["public_id"],
             "displayName": profile["display_name"],
+            "bio": profile["bio"] or "",
             "avatarUrl": f"/wallet/community/media/{profile['avatar_key']}" if profile["avatar_key"] else None,
             "bannerUrl": f"/wallet/community/media/{profile['banner_key']}" if profile["banner_key"] else None,
             "lastMessage": latest["content"] if latest else "",
@@ -208,6 +211,7 @@ def register_social_routes(app, db_path, connect, authenticate):
                 public_id TEXT NOT NULL UNIQUE,
                 display_name TEXT NOT NULL,
                 display_name_key TEXT NOT NULL,
+                bio TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL,
                 avatar_key TEXT,
@@ -266,6 +270,10 @@ def register_social_routes(app, db_path, connect, authenticate):
             db.execute(
                 "ALTER TABLE social_profiles ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0"
             )
+        if "bio" not in profile_columns:
+            db.execute(
+                "ALTER TABLE social_profiles ADD COLUMN bio TEXT NOT NULL DEFAULT ''"
+            )
         for column in ("avatar_key", "avatar_mime", "banner_key", "banner_mime"):
             if column not in profile_columns:
                 db.execute(f"ALTER TABLE social_profiles ADD COLUMN {column} TEXT")
@@ -299,6 +307,39 @@ def register_social_routes(app, db_path, connect, authenticate):
         except ValueError as error:
             return jsonify({"success": False, "error": str(error)}), 400
 
+    @bp.post("/wallet/social/profile/bio")
+    def update_profile_bio():
+        try:
+            data, user = body_and_user()
+            if "bio" not in data:
+                raise ValueError("Profile bio is required")
+            bio = _plain_text(data["bio"], MAX_PROFILE_BIO, "Profile bio", allow_empty=True)
+            with connect(db_path) as db:
+                profile = db.execute(
+                    """SELECT telegram_id, public_id, display_name, display_name_key,
+                              created_at, updated_at, bio, avatar_key, banner_key
+                       FROM social_profiles WHERE telegram_id=?""",
+                    (str(user["id"]),),
+                ).fetchone()
+                if not profile:
+                    profile = _ensure_profile(db, user, data.get("displayName"))
+                db.execute(
+                    """UPDATE social_profiles
+                       SET bio=?, updated_at=? WHERE telegram_id=?""",
+                    (bio, _now(), str(user["id"])),
+                )
+                updated = db.execute(
+                    """SELECT telegram_id, public_id, display_name, display_name_key,
+                              created_at, updated_at, bio, avatar_key, banner_key
+                       FROM social_profiles WHERE telegram_id=?""",
+                    (str(user["id"]),),
+                ).fetchone()
+            return jsonify({"success": True, "profile": _profile_payload(updated)})
+        except PermissionError as error:
+            return jsonify({"success": False, "error": str(error)}), 401
+        except ValueError as error:
+            return jsonify({"success": False, "error": str(error)}), 400
+
     @bp.post("/wallet/social/search")
     def search_players():
         try:
@@ -310,7 +351,7 @@ def register_social_routes(app, db_path, connect, authenticate):
             with connect(db_path) as db:
                 rows = db.execute(
                     """SELECT p.public_id, p.display_name, p.created_at, p.updated_at,
-                              p.avatar_key, p.banner_key,
+                              p.bio, p.avatar_key, p.banner_key,
                               EXISTS(
                                   SELECT 1 FROM community_follows f
                                   WHERE f.follower_id=? AND f.followee_id=p.telegram_id

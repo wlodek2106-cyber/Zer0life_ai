@@ -18,7 +18,7 @@ test('Chat replaces DAO and opens the existing community screen', () => {
     assert.match(nav, />\s*Zer0Net\s*<\/button>/);
     assert.doesNotMatch(nav, /id="nav-dao"|>\s*DAO\s*</);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
-    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-zeronet-v3"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-zeronet-v3"><\/script>/);
+    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zerolife-profile-bio-v1"><\/script>\s*<script src="\.\/social-chat\.js\?v=zerolife-profile-bio-v1"><\/script>/);
 });
 
 test('Zer0Net rewards each new post and lets the runner claim into the game wallet', () => {
@@ -38,6 +38,15 @@ test('Zer0Net runner profiles support editable avatars and banners', () => {
     assert.match(controller, /dataset\.profileAction = 'change-banner'/);
     assert.match(controller, /profile\.avatarUrl/);
     assert.match(controller, /profile\.bannerUrl/);
+});
+
+test('Zer0Net runner profiles support a public editable bio', () => {
+    assert.match(controller, /const PROFILE_BIO_LIMIT = 160/);
+    assert.match(controller, /\/wallet\/social\/profile\/bio/);
+    assert.match(controller, /data-profile-bio-input/);
+    assert.match(controller, /node\('p', 'social-profile-bio', profile\.bio\)/);
+    assert.match(controller, /state\.profileBioEditing/);
+    assert.match(controller, /Save bio/);
 });
 
 test('one screen exposes feed, friends, requests, and private chats', () => {
