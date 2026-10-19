@@ -20,7 +20,7 @@ test('Chat replaces DAO and opens the existing community screen', () => {
     assert.doesNotMatch(dashboard, /zr-community-entry|open-community-feed/);
     assert.match(dashboard, /class="nav-item nav-item-button" id="nav-chat"[^>]*title="Zer0Net"/);
     assert.match(communityController, /getElementById\('nav-chat'\)\?\.addEventListener\('click', openFeed\)/);
-    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zeronet-single-entry-v1"><\/script>\s*<script src="\.\/social-chat\.js\?v=zeronet-single-entry-v1"><\/script>/);
+    assert.match(dashboard, /<script src="\.\/community-feed\.js\?v=zeronet-claim-wallet-sync-v1"><\/script>\s*<script src="\.\/social-chat\.js\?v=zeronet-single-entry-v1"><\/script>/);
 });
 
 test('Zer0Net rewards each new post and lets the runner claim into the game wallet', () => {
@@ -28,8 +28,11 @@ test('Zer0Net rewards each new post and lets the runner claim into the game wall
     assert.match(dashboard, /id="zeronet-claim"/);
     assert.match(dashboard, /Earn 10 ZRL for every new post/);
     assert.match(communityController, /rewardZrl\) \|\| 10/);
+    assert.match(communityController, /claimable Zer0Net rewards\. Tap Claim to move them to your game balance/);
     assert.match(communityController, /\/wallet\/community\/rewards\/claim/);
-    assert.match(communityController, /availableZrl: Number\(result\.gameBalanceZrl\)/);
+    assert.match(communityController, /wallet\.applyResult\(\{ availableZrl: gameBalance \}\)/);
+    assert.match(communityController, /wallet\.request\('\/wallet\/state'\)/);
+    assert.match(communityController, /Game balance: \$\{gameBalance\.toLocaleString/);
 });
 
 test('Zer0Net runner profiles support editable avatars and banners', () => {

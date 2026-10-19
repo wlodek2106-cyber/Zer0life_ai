@@ -436,6 +436,9 @@ class CommunityFeedTests(unittest.TestCase):
         self.assertEqual(claimed.json["claimedZrl"], 20)
         self.assertEqual(claimed.json["pendingZrl"], 0)
         self.assertEqual(claimed.json["gameBalanceZrl"], (balance_before + 20 * service.ZRL_SCALE) / service.ZRL_SCALE)
+        wallet_state = self.post("/wallet/state", user="100")
+        self.assertEqual(wallet_state.status_code, 200, wallet_state.json)
+        self.assertEqual(wallet_state.json["availableZrl"], claimed.json["gameBalanceZrl"])
         with service._connect(self.db_path) as db:
             self.assertEqual(
                 service._balance_units(db, "100"),
@@ -453,6 +456,18 @@ class CommunityFeedTests(unittest.TestCase):
         other_user = self.post("/wallet/community/rewards/claim", user="200")
         self.assertEqual(other_user.status_code, 200, other_user.json)
         self.assertEqual(other_user.json["claimedZrl"], 0)
+        other_post = self.post(
+            "/wallet/community/posts",
+            {"displayName": "Runner 200", "content": "A post from another player"},
+            user="200",
+        )
+        self.assertEqual(other_post.status_code, 200, other_post.json)
+        other_claim = self.post("/wallet/community/rewards/claim", user="200")
+        self.assertEqual(other_claim.status_code, 200, other_claim.json)
+        self.assertEqual(other_claim.json["claimedZrl"], 10)
+        self.assertEqual(other_claim.json["gameBalanceZrl"], 10)
+        with service._connect(self.db_path) as db:
+            self.assertEqual(service._balance_units(db, "200"), 10 * service.ZRL_SCALE)
 
         with service._connect(self.db_path) as db:
             entries = db.execute(
