@@ -1240,7 +1240,6 @@
 
     const openSocial = () => window.setTimeout(() => refreshState(), 0);
     document.getElementById('nav-chat')?.addEventListener('click', openSocial);
-    document.getElementById('open-community-feed')?.addEventListener('click', openSocial);
     window.setInterval(() => {
         if (document.body.classList.contains('is-community-open') && state.loaded) {
             refreshState({ quiet: true });
