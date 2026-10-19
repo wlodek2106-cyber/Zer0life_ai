@@ -5781,7 +5781,31 @@
                     tg.showAlert(`Tokens successfully claimed: +${Number(result.reward).toFixed(2)} ZRL.`);
                 } catch (error) {
                     triggerHaptic('error');
-                    tg.showAlert(error.message);
+                    if (error.status === 409 && error.message === 'No run rewards to claim') {
+                        try {
+                            if (!window.legacyRecovery?.preserve) {
+                                throw new Error('The local history archive is unavailable.');
+                            }
+                            window.legacyRecovery.preserve(STORAGE_PREFIX);
+                            let current = error.data;
+                            if (!Number.isFinite(Number(current?.availableZrl))
+                                    || !Number.isFinite(Number(current?.pendingRunZrl))) {
+                                current = await window.secureWallet.request('/wallet/state');
+                            }
+                            window.secureWallet.applyResult(current);
+                            updateUI();
+                            saveData();
+                            const pending = Math.max(0, Number(current.pendingRunZrl) || 0);
+                            const balance = Math.max(0, Number(current.availableZrl) || 0);
+                            tg.showAlert(pending > 0
+                                ? `Wallet refreshed. ${pending.toFixed(2)} ZRL remain pending; try Claim again.`
+                                : `No verified run rewards are pending. Current game balance: ${balance.toFixed(2)} ZRL. If the reward is missing from this balance, keep app data and send this screen for review.`);
+                        } catch (refreshError) {
+                            tg.showAlert(`No run rewards were confirmed by the server. Wallet could not refresh. Your local history was preserved; do not clear Telegram app data.`);
+                        }
+                    } else {
+                        tg.showAlert(error.message);
+                    }
                 }
             } else {
                 triggerHaptic('warning');
@@ -5873,7 +5897,7 @@
     </script>
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
-    <script src="./wallet.js?v=english-withdrawal-v3"></script>
+    <script src="./wallet.js?v=run-claim-reconcile-2026-10-19"></script>
     <script src="./community-feed.js?v=zeronet-claim-nonblocking-v2"></script>
     <script src="./social-chat.js?v=zeronet-single-entry-v1"></script>
 </body>

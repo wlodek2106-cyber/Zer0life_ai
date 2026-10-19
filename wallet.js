@@ -21,6 +21,7 @@
         if (!response.ok || !result.success) {
             const error = new Error(result.error || `Wallet request failed (${response.status})`);
             error.status = response.status;
+            error.data = result;
             throw error;
         }
         return result;
