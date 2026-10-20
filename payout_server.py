@@ -4,11 +4,11 @@ import time
 import threading
 import requests
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from solana.rpc.api import Client
+from security_config import configure_cors
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+configure_cors(app)
 
 # Connect to Solana through Helius RPC for reliable, fast indexing.
 HELIUS_RPC_URL = os.getenv("HELIUS_RPC_URL", "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY")
