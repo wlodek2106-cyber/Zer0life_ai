@@ -1,9 +1,1 @@
-Aiogram==3.3.0
-Flask==3.0.0
-flask-cors==4.0.0
-solana==0.32.0
-solders>=0.20.0,<0.21.0
-base58==2.1.1
-requests
-PyNaCl>=1.5,<2
-apscheduler==3.10.4
+-r requirements.lock

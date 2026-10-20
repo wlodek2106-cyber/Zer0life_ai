@@ -17,7 +17,6 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
 
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from solana.rpc.api import Client
 from solders.pubkey import Pubkey
 from solders.keypair import Keypair
@@ -32,23 +31,9 @@ from spl.token.instructions import transfer_checked, TransferCheckedParams, get_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 api_app = Flask(__name__)
-CORS(api_app, resources={r"/*": {"origins": "*"}})
+from security_config import configure_cors
 
-@api_app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "ok"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-        return response, 200
-
-@api_app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-    return response
+configure_cors(api_app)
 
 TOKEN = os.getenv("BOT_TOKEN")
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
