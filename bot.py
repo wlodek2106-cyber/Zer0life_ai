@@ -29,6 +29,14 @@ from spl.token.instructions import transfer_checked, TransferCheckedParams, get_
 
 # Marathon scheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from launch_reminders import (
+    LAUNCH_REMINDER_CHANNEL_URL,
+    LAUNCH_REMINDER_TEXT,
+    LAUNCH_REMINDER_TIMEZONE,
+    LaunchReminderPreferences,
+    last_launch_reminder_at,
+    next_launch_reminder_at,
+)
 
 api_app = Flask(__name__)
 from security_config import configure_cors
@@ -73,6 +81,9 @@ def migrate_legacy_data_file(filename):
 
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 STATS_FILE = os.path.join(DATA_DIR, "leaderboard_stats.json")
+launch_reminder_preferences = LaunchReminderPreferences(
+    os.path.join(DATA_DIR, "launch_reminder_preferences.json")
+)
 migrate_legacy_data_file("users.json")
 migrate_legacy_data_file("leaderboard_stats.json")
 
@@ -155,6 +166,56 @@ async def send_broadcast_to_all(text: str):
         except Exception as e:
             logging.error(f"Failed to send broadcast to {user_id}: {e}")
 
+async def send_launch_reminder():
+    if not bot:
+        return
+
+    try:
+        opted_out_user_ids = launch_reminder_preferences.disabled_user_ids()
+    except Exception as exc:
+        logging.error(
+            "Launch reminder skipped because preferences could not be read: %s",
+            type(exc).__name__,
+        )
+        return
+
+    recipients = {str(user_id) for user_id in load_users()} - opted_out_user_ids
+    if not recipients:
+        logging.info("Launch reminder skipped because there are no eligible recipients.")
+        return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Follow @zer0life_official",
+            url=LAUNCH_REMINDER_CHANNEL_URL,
+        )]
+    ])
+    sent_count = 0
+    failed_count = 0
+    for user_id in recipients:
+        try:
+            await bot.send_message(
+                chat_id=int(user_id),
+                text=LAUNCH_REMINDER_TEXT,
+                reply_markup=keyboard,
+                parse_mode="HTML",
+            )
+            sent_count += 1
+        except Exception as exc:
+            failed_count += 1
+            logging.warning(
+                "Launch reminder delivery failed (%s).",
+                type(exc).__name__,
+            )
+        await asyncio.sleep(0.05)
+
+    logging.info(
+        "Launch reminder completed: sent=%s failed=%s opted_out=%s",
+        sent_count,
+        failed_count,
+        len(opted_out_user_ids),
+    )
+
 @api_app.route('/broadcast', methods=['POST'])
 def api_broadcast():
     try:
@@ -229,6 +290,7 @@ async def crypto_market_price_alerts():
             logging.error(f"Phantom price fetch error: {e}")
 
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
+launch_reminder_scheduler = AsyncIOScheduler(timezone=LAUNCH_REMINDER_TIMEZONE)
 
 async def send_marathon_start_push():
     # Announce the event without modifying any participant progress.
@@ -253,10 +315,49 @@ def schedule_marathon_start():
     )
     marathon_scheduler.start()
 
+async def schedule_launch_reminders():
+    first_run = next_launch_reminder_at(
+        datetime.datetime.now(LAUNCH_REMINDER_TIMEZONE)
+    )
+    last_run = last_launch_reminder_at()
+    if first_run is None or last_run is None:
+        logging.info("Launch reminders are not scheduled because the campaign has ended.")
+        return
+
+    launch_reminder_scheduler.add_job(
+        send_launch_reminder,
+        "cron",
+        hour=18,
+        minute=0,
+        timezone=LAUNCH_REMINDER_TIMEZONE,
+        start_date=first_run,
+        end_date=last_run,
+        id="zerolife_ai_trader_launch_reminder",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=300,
+    )
+    if not launch_reminder_scheduler.running:
+        launch_reminder_scheduler.start()
+    logging.info(
+        "English launch reminders scheduled from %s through %s (Europe/Warsaw).",
+        first_run.isoformat(),
+        last_run.isoformat(),
+    )
+
 def start_periodic_notifications():
     asyncio.run_coroutine_threadsafe(automated_ecosystem_notifications(), bot_loop)
     asyncio.run_coroutine_threadsafe(crypto_market_price_alerts(), bot_loop)
     schedule_marathon_start() 
+    launch_reminder_future = asyncio.run_coroutine_threadsafe(
+        schedule_launch_reminders(),
+        bot_loop,
+    )
+    try:
+        launch_reminder_future.result(timeout=10)
+    except Exception:
+        logging.exception("Could not start the launch reminder schedule.")
 # ==============================================================================
 
 @api_app.route('/update-stats', methods=['POST'])
@@ -415,6 +516,37 @@ async def cmd_start(message: types.Message):
         reply_markup=keyboard,
         parse_mode="HTML"
     )
+
+@dp.message(Command("stopreminders"))
+async def cmd_stop_launch_reminders(message: types.Message):
+    if message.from_user is None:
+        return
+    try:
+        launch_reminder_preferences.set_enabled(message.from_user.id, False)
+    except Exception:
+        logging.exception("Could not save launch reminder opt-out.")
+        await message.answer(
+            "I couldn't save your reminder preference. Please try again later."
+        )
+        return
+    await message.answer(
+        "Launch reminders are stopped. Send /startreminders to receive them again."
+    )
+
+@dp.message(Command("startreminders"))
+async def cmd_start_launch_reminders(message: types.Message):
+    if message.from_user is None:
+        return
+    try:
+        launch_reminder_preferences.set_enabled(message.from_user.id, True)
+        save_user(message.from_user.id)
+    except Exception:
+        logging.exception("Could not save launch reminder opt-in.")
+        await message.answer(
+            "I couldn't update your reminder preference. Please try again later."
+        )
+        return
+    await message.answer("Launch reminders are enabled.")
 
 def setup_webhook_sync():
     if bot and RENDER_URL:
