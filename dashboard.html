@@ -2840,8 +2840,16 @@
                         Scan the QR or copy the complete Solana Pay link in a compatible wallet.
                         Do not send SOL to a plain address; the payment reference is required.
                     </p>
+                    <p style="margin:0 0 6px;color:#a8f07a;font-size:11px;text-align:left;">Merchant wallet address:</p>
+                    <div id="boots-pay-recipient"
+                         style="margin-bottom:8px;padding:10px;border:1px solid #282d3d;border-radius:10px;background:#111610;color:#d8eacb;font:11px/1.45 monospace;overflow-wrap:anywhere;user-select:all;"></div>
+                    <button class="wallet-action-btn" id="copy-boots-merchant-address" type="button"
+                            style="width:100%;margin-bottom:10px;">Copy merchant wallet address</button>
                     <button class="wallet-action-btn" id="copy-boots-pay-link" type="button"
-                            style="width:100%;margin-bottom:12px;">Copy Solana Pay Link</button>
+                            style="width:100%;margin-bottom:12px;">Copy Solana Pay request</button>
+                    <p style="margin:0 0 12px;color:#f6c978;font-size:11px;line-height:1.45;">
+                        The address alone does not include this purchase’s reference and cannot activate Boots. Pay using the QR or Solana Pay request.
+                    </p>
                     <a id="open-boots-wallet-pay" class="wallet-action-btn" href="#" target="_blank"
                        rel="noopener noreferrer"
                        style="display:block;width:100%;margin-bottom:12px;text-align:center;text-decoration:none;">
@@ -3935,20 +3943,25 @@
             const checkout = document.getElementById('boots-solana-pay-checkout');
             const invoiceBox = document.getElementById('boots-pay-invoice');
             const walletLink = document.getElementById('open-boots-wallet-pay');
+            const copyAddressButton = document.getElementById('copy-boots-merchant-address');
             checkout.hidden = false;
             invoiceBox.hidden = invoice.status === 'confirmed';
             if (invoice.status === 'confirmed') {
                 walletLink.hidden = true;
+                copyAddressButton.hidden = true;
                 setBootsPayStatus('This Boots purchase is already confirmed.');
                 return;
             }
-            if (!invoice.payUri || !invoice.purchaseId) {
+            if (!invoice.payUri || !invoice.purchaseId || !invoice.recipient) {
                 walletLink.hidden = true;
+                copyAddressButton.hidden = true;
                 setBootsPayStatus('The payment link is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
             walletLink.href = invoice.payUri;
             walletLink.hidden = false;
+            copyAddressButton.hidden = false;
+            document.getElementById('boots-pay-recipient').textContent = invoice.recipient;
             document.getElementById('boots-pay-amount').textContent =
                 `${Number(invoice.amountSol).toFixed(1)} SOL`;
             document.getElementById('boots-pay-qr').src =
@@ -4039,6 +4052,20 @@
                 setBootsPayStatus('Solana Pay link copied. Open it in a compatible wallet and pay once.');
             } catch {
                 setBootsPayStatus('Copy was blocked. Scan the QR code with a compatible wallet.', true);
+            }
+        });
+
+        document.getElementById('copy-boots-merchant-address').addEventListener('click', async () => {
+            const recipient = activeBootsPayment?.recipient;
+            if (!recipient) {
+                setBootsPayStatus('The merchant address is unavailable. Refresh Wallet and try again.', true);
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(recipient);
+                setBootsPayStatus('Merchant wallet address copied. Use the QR or Solana Pay request to pay this Boots invoice.');
+            } catch {
+                setBootsPayStatus('Could not copy the merchant address. Press and hold the address to copy it.', true);
             }
         });
 

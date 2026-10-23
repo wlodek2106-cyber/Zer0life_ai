@@ -97,7 +97,10 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     const purchaseFlow = checkout.slice(checkout.indexOf('async function purchaseVerifiedBooster'));
     assert.match(html, /id="boots-solana-pay-checkout"/);
     assert.match(html, /id="boots-pay-qr"/);
-    assert.match(html, /Copy Solana Pay Link/);
+    assert.match(html, /id="boots-pay-recipient"/);
+    assert.match(html, /id="copy-boots-merchant-address"[^>]*>Copy merchant wallet address/);
+    assert.match(html, /id="copy-boots-pay-link"[^>]*>Copy Solana Pay request/);
+    assert.match(html, /The address alone does not include this purchase.s reference and cannot activate Boots/);
     assert.match(html, /id="open-boots-wallet-pay"/);
     assert.match(html, /id="boots-tx-signature-input"/);
     assert.equal((html.match(/<button class="booster-price-btn" type="button"/g) || []).length, 5);
@@ -110,6 +113,9 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /\/wallet\/boots\/payments\/prepare/);
     assert.match(checkout, /\/wallet\/boots\/payments\/verify/);
     assert.match(checkout, /walletLink\.href = invoice\.payUri/);
+    assert.match(checkout, /boots-pay-recipient'\)\.textContent = invoice\.recipient/);
+    assert.match(checkout, /copy-boots-merchant-address'\)\.addEventListener\('click'[\s\S]*writeText\(recipient\)/);
+    assert.match(checkout, /copy-boots-pay-link'\)\.addEventListener\('click'[\s\S]*writeText\(activeBootsPayment\.payUri\)/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
     assert.match(checkout, /pendingBootsPayments/);
     assert.match(checkout, /do not pay again/i);
