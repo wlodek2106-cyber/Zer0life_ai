@@ -2853,7 +2853,7 @@
                     <a id="open-boots-wallet-pay" class="wallet-action-btn" href="#" target="_blank"
                        rel="noopener noreferrer"
                        style="display:block;width:100%;margin-bottom:12px;text-align:center;text-decoration:none;">
-                        Open in Solana wallet ↗
+                        Open in Phantom ↗
                     </a>
                     <p style="margin:0 0 12px;color:#a8f07a;font-size:11px;line-height:1.45;">
                         If Telegram does not open your wallet, scan the QR above or copy the complete link.
@@ -3938,6 +3938,13 @@
             status.style.color = isError ? '#fca5a5' : '#c9d4c8';
         }
 
+        function createPhantomPayLink(payUri) {
+            const bridgeUrl = new URL('wallet-pay.html', window.location.href);
+            bridgeUrl.searchParams.set('request', payUri);
+            const appOrigin = window.location.origin;
+            return `https://phantom.com/ul/browse/${encodeURIComponent(bridgeUrl.href)}?ref=${encodeURIComponent(appOrigin)}`;
+        }
+
         function showBootsPayInvoice(invoice) {
             activeBootsPayment = invoice;
             const checkout = document.getElementById('boots-solana-pay-checkout');
@@ -3958,7 +3965,7 @@
                 setBootsPayStatus('The payment link is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
-            walletLink.href = invoice.payUri;
+            walletLink.href = createPhantomPayLink(invoice.payUri);
             walletLink.hidden = false;
             copyAddressButton.hidden = false;
             document.getElementById('boots-pay-recipient').textContent = invoice.recipient;
@@ -4076,20 +4083,25 @@
                 setBootsPayStatus('The payment request is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
-            setBootsPayStatus('Opening the Solana Pay request. If iPhone asks, tap Open, then approve in your wallet.');
+            const phantomLink = createPhantomPayLink(payUri);
+            setBootsPayStatus('Opening Phantom. Review the recipient and amount before approving.');
             const telegram = window.Telegram?.WebApp;
             if (typeof telegram?.openLink === 'function') {
                 try {
-                    telegram.openLink(payUri);
+                    telegram.openLink(phantomLink);
                     return;
-                } catch (error) {
-                    console.warn('Telegram could not open the Solana Pay request; trying the device link handler.', error);
+                } catch {
+                    // Fall through to the browser's universal-link handler.
                 }
             }
             try {
-                window.location.assign(payUri);
+                window.location.assign(phantomLink);
             } catch {
-                setBootsPayStatus('Could not open the wallet. Scan the QR code or copy the Solana Pay request.', true);
+                try {
+                    window.location.assign(payUri);
+                } catch {
+                    setBootsPayStatus('Could not open Phantom. Scan the QR code or copy the Solana Pay request.', true);
+                }
             }
         });
 

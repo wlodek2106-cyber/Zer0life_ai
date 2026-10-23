@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080c09">
+  <title>Boots payment · Zer0Life Run</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #080c09;
+      color: #f4f7ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: radial-gradient(ellipse at 50% 0%, #203018 0, #0a100b 48%, #050706 100%);
+    }
+    main {
+      width: min(100%, 440px);
+      padding: 28px 22px;
+      border: 1px solid #435536;
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(28, 41, 23, .96), rgba(8, 14, 10, .98));
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+    }
+    .eyebrow {
+      color: #a8f07a;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+    }
+    h1 { margin: 14px 0 8px; font-size: 26px; line-height: 1.15; }
+    p { color: #b9c5b2; line-height: 1.5; }
+    .details {
+      margin: 22px 0;
+      padding: 16px;
+      border: 1px solid #35452c;
+      border-radius: 16px;
+      background: rgba(6, 11, 7, .65);
+    }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; }
+    .row span { color: #91a08b; }
+    .row strong { text-align: right; overflow-wrap: anywhere; }
+    button, a.button {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 13px;
+      padding: 15px 18px;
+      font: inherit;
+      font-weight: 800;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .primary { color: #10170c; background: #b8fb44; }
+    .secondary { color: #ddf5c9; border: 1px solid #4d603b; background: #182217; }
+    .status { min-height: 24px; color: #a8f07a; font-size: 13px; }
+    .warning { margin-top: 20px; color: #9aa493; font-size: 12px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">ZER0LIFE RUN · BOOTS PAYMENT</div>
+    <h1>Continue in Phantom</h1>
+    <p id="instruction">Preparing your invoice-bound Solana Pay request…</p>
+    <section class="details" id="payment-details" hidden aria-label="Payment details">
+      <div class="row"><span>Amount</span><strong id="payment-amount"></strong></div>
+      <div class="row"><span>Recipient</span><strong id="payment-recipient"></strong></div>
+    </section>
+    <a class="button primary" id="open-payment" href="#" hidden>Open payment in Phantom</a>
+    <button class="secondary" id="copy-payment-request" type="button" hidden>Copy Solana Pay request</button>
+    <p class="status" id="payment-status" role="status" aria-live="polite"></p>
+    <p class="warning">Approve only after checking the amount and recipient. After payment, return to Zer0Life Run to verify the transaction.</p>
+  </main>
+  <script>
+    (() => {
+      const instruction = document.getElementById('instruction');
+      const details = document.getElementById('payment-details');
+      const amountText = document.getElementById('payment-amount');
+      const recipientText = document.getElementById('payment-recipient');
+      const status = document.getElementById('payment-status');
+      const openButton = document.getElementById('open-payment');
+      const copyButton = document.getElementById('copy-payment-request');
+      const request = new URLSearchParams(window.location.search).get('request') || '';
+      const queryIndex = request.indexOf('?');
+      const recipient = request.startsWith('solana:') && queryIndex > 7
+        ? request.slice(7, queryIndex)
+        : '';
+      const params = new URLSearchParams(queryIndex >= 0 ? request.slice(queryIndex + 1) : '');
+      const amount = Number(params.get('amount'));
+      const reference = params.get('reference') || '';
+      const isBase58 = value => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+
+      if (!recipient || !isBase58(recipient) || !isBase58(reference) || !Number.isFinite(amount) || amount <= 0) {
+        instruction.textContent = 'This payment request is incomplete or invalid. Return to Zer0Life Run and prepare a new Boots invoice.';
+        return;
+      }
+
+      details.hidden = false;
+      amountText.textContent = `${amount} SOL`;
+      recipientText.textContent = `${recipient.slice(0, 6)}…${recipient.slice(-4)}`;
+      instruction.textContent = 'Opening the exact Solana Pay request in Phantom. If it does not open automatically, use the button below.';
+      openButton.href = request;
+      openButton.hidden = false;
+      copyButton.hidden = false;
+
+      const openPayment = event => {
+        event?.preventDefault();
+        status.textContent = 'Opening Phantom payment…';
+        try {
+          window.location.assign(request);
+        } catch {
+          status.textContent = 'Could not open the payment. Use the QR or return to Zer0Life Run.';
+        }
+      };
+      openButton.addEventListener('click', openPayment);
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(request);
+          status.textContent = 'Solana Pay request copied. Open it in Phantom.';
+        } catch {
+          status.textContent = 'Copy was blocked. Use the Open payment in Phantom button.';
+        }
+      });
+
+      window.setTimeout(() => {
+        if (document.visibilityState === 'visible') openPayment();
+      }, 450);
+      window.setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          status.textContent = 'If Phantom did not open, tap Open payment in Phantom.';
+        }
+      }, 1800);
+    })();
+  </script>
+</body>
+</html>

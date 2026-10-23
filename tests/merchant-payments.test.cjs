@@ -104,6 +104,7 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(html, /transaction signature \(Tx\), not the wallet address/);
     assert.match(html, /The address alone does not include this purchase.s reference and cannot activate Boots/);
     assert.match(html, /id="open-boots-wallet-pay"/);
+    assert.match(html, /Open in Phantom/);
     assert.match(html, /id="boots-tx-signature-input"/);
     assert.equal((html.match(/<button class="booster-price-btn" type="button"/g) || []).length, 5);
     assert.doesNotMatch(html, /<div class="booster-price-btn"/);
@@ -114,12 +115,20 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.ok(purchaseFlow.indexOf('checkout.hidden = false') < purchaseFlow.indexOf('await window.secureWallet.refresh()'));
     assert.match(checkout, /\/wallet\/boots\/payments\/prepare/);
     assert.match(checkout, /\/wallet\/boots\/payments\/verify/);
-    assert.match(checkout, /walletLink\.href = invoice\.payUri/);
+    assert.match(checkout, /function createPhantomPayLink\(payUri\)/);
+    assert.match(checkout, /walletLink\.href = createPhantomPayLink\(invoice\.payUri\)/);
+    assert.match(checkout, /https:\/\/phantom\.com\/ul\/browse\//);
+    assert.match(checkout, /new URL\('wallet-pay\.html', window\.location\.href\)/);
     assert.match(checkout, /boots-pay-recipient'\)\.textContent = invoice\.recipient/);
     assert.match(checkout, /copy-boots-merchant-address'\)\.addEventListener\('click'[\s\S]*writeText\(recipient\)/);
     assert.match(checkout, /copy-boots-pay-link'\)\.addEventListener\('click'[\s\S]*writeText\(activeBootsPayment\.payUri\)/);
-    assert.match(checkout, /open-boots-wallet-pay'\)\.addEventListener\('click', \(event\)[\s\S]*telegram\.openLink\(payUri\)/);
-    assert.match(checkout, /window\.location\.assign\(payUri\)/);
+    assert.match(checkout, /open-boots-wallet-pay'\)\.addEventListener\('click', \(event\)[\s\S]*telegram\.openLink\(phantomLink\)/);
+    assert.match(checkout, /window\.location\.assign\(phantomLink\)/);
+    const phantomBridge = fs.readFileSync(path.join(__dirname, '../wallet-pay.html'), 'utf8');
+    assert.match(phantomBridge, /request\.startsWith\('solana:'\)/);
+    assert.match(phantomBridge, /reference/);
+    assert.match(phantomBridge, /window\.location\.assign\(request\)/);
+    assert.match(phantomBridge, /Open payment in Phantom/);
     assert.match(checkout, /txSignature === activeBootsPayment\.recipient \|\| txSignature\.startsWith\('solana:'\)/);
     assert.match(checkout, /This is the merchant address or payment request, not a Tx signature/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
@@ -132,4 +141,36 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(depositPanel, /copied address alone omits your unique reference/i);
     assert.match(depositFlow, /copyAddressButton\.onclick[\s\S]*copyDepositText\(address\)/);
     assert.match(depositFlow, /copyDepositPayLinkButton\.onclick[\s\S]*copyDepositText\(activeDepositPayUri\)/);
+});
+
+test('Phantom universal link preserves the exact invoice URI and unique reference', () => {
+    const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
+    const checkout = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
+    const helper = checkout.match(/function createPhantomPayLink\(payUri\) \{[\s\S]*?\n        \}/);
+    assert.ok(helper, 'Phantom Universal Link builder exists');
+
+    const request = 'solana:11111111111111111111111111111111?amount=0.2&reference=11111111111111111111111111111111&label=Zer0Life+Run&message=Boots+1500+ZRL%2Fkm';
+    const context = {
+        window: {
+            location: {
+                href: 'https://wlodek2106-cyber.github.io/Zer0life_ai/dashboard.html?build=test',
+                origin: 'https://wlodek2106-cyber.github.io',
+            },
+        },
+        URL,
+        encodeURIComponent,
+        paymentRequest: request,
+    };
+    vm.runInNewContext(
+        `${helper[0]}\nglobalThis.generatedLink = createPhantomPayLink(paymentRequest);`,
+        context,
+    );
+
+    const universalLink = new URL(context.generatedLink);
+    assert.equal(universalLink.origin, 'https://phantom.com');
+    assert.ok(universalLink.pathname.startsWith('/ul/browse/'));
+    assert.equal(universalLink.searchParams.get('ref'), 'https://wlodek2106-cyber.github.io');
+    const bridgeUrl = new URL(decodeURIComponent(universalLink.pathname.slice('/ul/browse/'.length)));
+    assert.equal(bridgeUrl.pathname, '/Zer0life_ai/wallet-pay.html');
+    assert.equal(bridgeUrl.searchParams.get('request'), request);
 });
