@@ -19,7 +19,7 @@ test("Get Started keeps the Telegram launch and referral handoff", () => {
   assert.match(html, /id="start-btn"/);
   assert.match(html, /tg\.HapticFeedback\.impactOccurred\('medium'\)/);
   assert.match(html, /new URL\('dashboard\.html', window\.location\.href\)/);
-  assert.match(html, /searchParams\.set\('build', 'affiliate-v2'\)/);
+  assert.match(html, /searchParams\.set\('build', 'boots-solana-pay-checkout-v2'\)/);
   assert.match(html, /searchParams\.set\('ref', referralMatch\[1\]\.toUpperCase\(\)\)/);
 });
 

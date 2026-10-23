@@ -89,15 +89,25 @@ test('legacy pending Merchant purchases remain eligible for recovery after new B
     assert.doesNotMatch(condition, /merchantPaymentsEnabled/);
 });
 
-test('Boots store renders Solana Pay QR, copies the complete URI, and waits for finalized Tx', () => {
+test('Boots store exposes working price buttons and a visible Solana Pay checkout', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     const checkout = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
+    const purchaseFlow = checkout.slice(checkout.indexOf('async function purchaseVerifiedBooster'));
     assert.match(html, /id="boots-solana-pay-checkout"/);
     assert.match(html, /id="boots-pay-qr"/);
     assert.match(html, /Copy Solana Pay Link/);
+    assert.match(html, /id="open-boots-wallet-pay"/);
     assert.match(html, /id="boots-tx-signature-input"/);
+    assert.equal((html.match(/<button class="booster-price-btn" type="button"/g) || []).length, 5);
+    assert.doesNotMatch(html, /<div class="booster-price-btn"/);
+    assert.match(html, /onclick="buyTimedBooster\(0\.2/);
+    assert.match(html, /onclick="buyBooster\(0\.5/);
+    assert.match(purchaseFlow, /checkout\.hidden = false/);
+    assert.match(purchaseFlow, /Preparing a secure Solana Pay invoice/);
+    assert.ok(purchaseFlow.indexOf('checkout.hidden = false') < purchaseFlow.indexOf('await window.secureWallet.refresh()'));
     assert.match(checkout, /\/wallet\/boots\/payments\/prepare/);
     assert.match(checkout, /\/wallet\/boots\/payments\/verify/);
+    assert.match(checkout, /walletLink\.href = invoice\.payUri/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
     assert.match(checkout, /pendingBootsPayments/);
     assert.match(checkout, /do not pay again/i);
