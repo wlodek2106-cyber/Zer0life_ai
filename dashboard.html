@@ -4069,6 +4069,30 @@
             }
         });
 
+        document.getElementById('open-boots-wallet-pay').addEventListener('click', (event) => {
+            event.preventDefault();
+            const payUri = activeBootsPayment?.payUri;
+            if (!payUri) {
+                setBootsPayStatus('The payment request is unavailable. Refresh Wallet and try again.', true);
+                return;
+            }
+            setBootsPayStatus('Opening the Solana Pay request. If iPhone asks, tap Open, then approve in your wallet.');
+            const telegram = window.Telegram?.WebApp;
+            if (typeof telegram?.openLink === 'function') {
+                try {
+                    telegram.openLink(payUri);
+                    return;
+                } catch (error) {
+                    console.warn('Telegram could not open the Solana Pay request; trying the device link handler.', error);
+                }
+            }
+            try {
+                window.location.assign(payUri);
+            } catch {
+                setBootsPayStatus('Could not open the wallet. Scan the QR code or copy the Solana Pay request.', true);
+            }
+        });
+
         document.getElementById('verify-boots-payment').addEventListener('click', async () => {
             const button = document.getElementById('verify-boots-payment');
             const txSignature = document.getElementById('boots-tx-signature-input').value.trim();

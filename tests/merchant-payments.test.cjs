@@ -118,6 +118,8 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /boots-pay-recipient'\)\.textContent = invoice\.recipient/);
     assert.match(checkout, /copy-boots-merchant-address'\)\.addEventListener\('click'[\s\S]*writeText\(recipient\)/);
     assert.match(checkout, /copy-boots-pay-link'\)\.addEventListener\('click'[\s\S]*writeText\(activeBootsPayment\.payUri\)/);
+    assert.match(checkout, /open-boots-wallet-pay'\)\.addEventListener\('click', \(event\)[\s\S]*telegram\.openLink\(payUri\)/);
+    assert.match(checkout, /window\.location\.assign\(payUri\)/);
     assert.match(checkout, /txSignature === activeBootsPayment\.recipient \|\| txSignature\.startsWith\('solana:'\)/);
     assert.match(checkout, /This is the merchant address or payment request, not a Tx signature/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
