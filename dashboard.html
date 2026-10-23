@@ -2791,7 +2791,11 @@
                     </div>
                     <p style="font-size: 11px; color: #a8f07a; margin: 4px 0 8px;">Deposit address:</p>
                     <div id="deposit-full-addr" style="background: #181b24; padding: 10px; border-radius: 12px; font-size: 11px; word-break: break-all; color: #a8f07a; border: 1px solid #282d3d; margin-bottom: 12px; user-select: all;"></div>
-                    <button class="wallet-action-btn" id="copy-addr-btn" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy Solana Pay Link</button>
+                    <button class="wallet-action-btn" id="copy-addr-btn" type="button" style="width: 100%; background: #181b24; border-color: #a8f07a; color: #a8f07a; margin-bottom: 12px;">📋 Copy wallet address</button>
+                    <button class="wallet-action-btn" id="copy-deposit-pay-link" type="button" style="width: 100%; margin-bottom: 8px;">Copy Solana Pay request</button>
+                    <p style="font-size:11px;line-height:1.45;color:#f6c978;margin:0 0 12px;">
+                        For automatic credit, use the QR or Solana Pay request. Sending to the copied address alone omits your unique reference and will not be credited automatically.
+                    </p>
 
                     <div class="custom-input-group" style="margin-bottom: 12px; text-align: left;">
                         <label style="font-size: 11px; color: #14f195; font-weight: 700;">Solana Transaction Signature (Tx):</label>
@@ -5574,6 +5578,7 @@
                 const detailsBox = document.getElementById('deposit-details-box');
                 const verifyButton = document.getElementById('check-deposit-status-btn');
                 const copyButton = document.getElementById('copy-addr-btn');
+                const copyPayLinkButton = document.getElementById('copy-deposit-pay-link');
                 const signatureInput = document.getElementById('tx-signature-input');
                 document.getElementById('deposit-full-addr').innerText = SHARED_POOL_WALLET;
                 document.getElementById('deposit-qr-img').removeAttribute('src');
@@ -5583,6 +5588,7 @@
                 setDepositStatus('Preparing secure deposit details…');
                 verifyButton.disabled = true;
                 copyButton.disabled = true;
+                copyPayLinkButton.disabled = true;
                 signatureInput.disabled = true;
                 activeDepositReference = '';
                 activeDepositPayUri = '';
@@ -5613,6 +5619,7 @@
                         `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(activeDepositPayUri)}`;
                     verifyButton.disabled = false;
                     copyButton.disabled = false;
+                    copyPayLinkButton.disabled = false;
                     signatureInput.disabled = false;
                     setDepositStatus('');
                 } catch (error) {
@@ -5623,15 +5630,53 @@
                 }
             };
 
-            const copyPayLinkButton = document.getElementById('copy-addr-btn');
-            copyPayLinkButton.onclick = async () => {
+            async function copyDepositText(value) {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(value);
+                    return;
+                }
+                const textArea = document.createElement('textarea');
+                textArea.value = value;
+                textArea.setAttribute('readonly', '');
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                const copied = document.execCommand('copy');
+                textArea.remove();
+                if (!copied) throw new Error('Clipboard access is unavailable.');
+            }
+
+            const copyAddressButton = document.getElementById('copy-addr-btn');
+            copyAddressButton.onclick = async () => {
                 triggerHaptic('success');
                 playSound('click');
+                const address = document.getElementById('deposit-full-addr').innerText.trim();
+                if (!address) {
+                    tg.showAlert('Prepare your deposit details before copying the wallet address.');
+                    return;
+                }
                 try {
-                    await navigator.clipboard.writeText(activeDepositPayUri);
-                    tg.showAlert('✅ Solana Pay link copied. Use it in a compatible wallet.');
+                    await copyDepositText(address);
+                    tg.showAlert('✅ Wallet address copied. For automatic credit, use the QR or Solana Pay request.');
                 } catch {
-                    tg.showAlert('Could not copy the Solana Pay link. Please scan the QR code instead.');
+                    tg.showAlert('Could not copy the wallet address. Press and hold the address to copy it.');
+                }
+            };
+
+            const copyDepositPayLinkButton = document.getElementById('copy-deposit-pay-link');
+            copyDepositPayLinkButton.onclick = async () => {
+                triggerHaptic('success');
+                playSound('click');
+                if (!activeDepositPayUri) {
+                    tg.showAlert('Prepare your deposit details before copying the Solana Pay request.');
+                    return;
+                }
+                try {
+                    await copyDepositText(activeDepositPayUri);
+                    tg.showAlert('✅ Solana Pay request copied with your unique reference.');
+                } catch {
+                    tg.showAlert('Could not copy the payment request. Please scan the QR code instead.');
                 }
             };
 
