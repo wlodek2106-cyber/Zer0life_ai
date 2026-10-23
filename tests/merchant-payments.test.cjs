@@ -146,6 +146,15 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /formatBootsSolAmount\(invoice\.amountSol\)/);
     assert.match(checkout, /pending\.find\(invoice => invoice\.purchaseId === savedPurchaseId\)/);
     assert.match(checkout, /invoice\.pendingBootsPayments/);
+    const restoreFlow = checkout.slice(
+        checkout.indexOf('async function restorePendingBootsPayment'),
+        checkout.indexOf('async function purchaseVerifiedBooster'),
+    );
+    assert.match(restoreFlow, /window\.secureWallet\.getState\(\)/);
+    assert.match(restoreFlow, /if \(!refreshFromServer\) return/);
+    assert.match(restoreFlow, /await window\.secureWallet\.refresh\(\)/);
+    assert.match(restoreFlow, /selectionVersion !== bootsPaymentSelectionVersion/);
+    assert.match(purchaseFlow, /pendingBootsPayments: invoice\.pendingBootsPayments/);
     assert.match(checkout, /do not pay again/i);
     assert.doesNotMatch(checkout, /secureWallet\.spend\(['"]booster/);
     assert.match(html, /Your in-game SOL balance will not be charged/);

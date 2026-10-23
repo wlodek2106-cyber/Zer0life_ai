@@ -3930,6 +3930,7 @@
 
         let boosterPurchaseBusy = false;
         let activeBootsPayment = null;
+        let bootsPaymentSelectionVersion = 0;
         function bootsPaymentStorageKey() {
             const playerId = tg?.initDataUnsafe?.user?.id;
             if (!playerId) throw new Error('Open Zer0Life Run in Telegram to prepare a Boots payment.');
@@ -3989,6 +3990,7 @@
         }
 
         function showBootsPayInvoice(invoice) {
+            bootsPaymentSelectionVersion += 1;
             activeBootsPayment = invoice;
             const checkout = document.getElementById('boots-solana-pay-checkout');
             const invoiceBox = document.getElementById('boots-pay-invoice');
@@ -4025,11 +4027,10 @@
             checkout.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
         }
 
-        async function restorePendingBootsPayment() {
-            try {
-                const refreshed = await window.secureWallet.refresh();
-                const pending = Array.isArray(refreshed.pendingBootsPayments)
-                    ? refreshed.pendingBootsPayments.filter(invoice => invoice?.status === 'pending')
+        async function restorePendingBootsPayment({ refreshFromServer = false } = {}) {
+            const showPendingInvoices = state => {
+                const pending = Array.isArray(state?.pendingBootsPayments)
+                    ? state.pendingBootsPayments.filter(invoice => invoice?.status === 'pending')
                     : [];
                 if (pending.length) {
                     let savedPurchaseId = null;
@@ -4055,13 +4056,27 @@
                     document.getElementById('boots-solana-pay-checkout').hidden = true;
                     renderPendingBootsInvoices([], null);
                 }
+            };
+
+            // Opening the Boots store uses the Wallet snapshot already in memory.
+            // The prepare endpoint supplies the authoritative invoice list on a
+            // tariff tap, so a full Wallet refresh is only needed after a conflict.
+            showPendingInvoices(window.secureWallet.getState());
+            if (!refreshFromServer) return;
+
+            const selectionVersion = bootsPaymentSelectionVersion;
+            try {
+                const refreshed = await window.secureWallet.refresh();
+                if (selectionVersion !== bootsPaymentSelectionVersion) return;
+                showPendingInvoices(refreshed);
             } catch {
-                // Wallet displays its own refresh error; the user can retry from the store.
+                // Keep the cached invoice visible; the user can retry from the store.
             }
         }
 
         async function purchaseVerifiedBooster(costSol, name) {
             if (boosterPurchaseBusy) return;
+            bootsPaymentSelectionVersion += 1;
             boosterPurchaseBusy = true;
             const checkout = document.getElementById('boots-solana-pay-checkout');
             const invoiceBox = document.getElementById('boots-pay-invoice');
@@ -4089,6 +4104,12 @@
                     purchaseId,
                     costSol,
                 });
+                if (Array.isArray(invoice.pendingBootsPayments)) {
+                    window.secureWallet.applyResult({
+                        ...(window.secureWallet.getState() || {}),
+                        pendingBootsPayments: invoice.pendingBootsPayments,
+                    });
+                }
                 if (invoice.status === 'confirmed') {
                     if (invoice.purchaseId === purchaseId) localStorage.removeItem(storageKey);
                     showBootsPayInvoice(invoice);
@@ -4113,7 +4134,7 @@
                 }
             } catch (error) {
                 if (error.status === 409) {
-                    await restorePendingBootsPayment();
+                    await restorePendingBootsPayment({ refreshFromServer: true });
                 }
                 setBootsPayStatus(error.message || 'Could not prepare the Solana Pay invoice.', true);
                 triggerHaptic('error');
@@ -4190,6 +4211,7 @@
                 );
                 return;
             }
+            bootsPaymentSelectionVersion += 1;
             button.disabled = true;
             button.textContent = 'Verifying finalized Tx…';
             setBootsPayStatus('Checking the finalized transaction on Solana…');
