@@ -38,7 +38,8 @@ async function fixture({ pendingPurchases = [] } = {}) {
             if (route === '/wallet/state') result = { ...account };
             if (route === '/wallet/boots/payments/prepare') {
                 result = { success: true, purchaseId: body.purchaseId, status: 'pending',
-                    amountSol: .2, payUri: 'solana:merchant?amount=0.2&reference=unique' };
+                    amountSol: Number(body.costSol),
+                    payUri: `solana:merchant?amount=${body.costSol}&reference=unique` };
             }
             if (route === '/wallet/boots/payments/verify') {
                 result = { success: true, purchaseId: body.purchaseId, status: 'confirmed',
@@ -96,6 +97,8 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     const depositFlow = html.slice(html.indexOf('async function copyDepositText'), html.indexOf("document.getElementById('check-deposit-status-btn').onclick"));
     const purchaseFlow = checkout.slice(checkout.indexOf('async function purchaseVerifiedBooster'));
     assert.match(html, /id="boots-solana-pay-checkout"/);
+    assert.match(html, /id="boots-pending-invoices"/);
+    assert.match(html, /id="boots-pending-invoice-list"/);
     assert.match(html, /id="boots-pay-qr"/);
     assert.match(html, /id="boots-pay-recipient"/);
     assert.match(html, /id="copy-boots-merchant-address"[^>]*>Copy merchant wallet address/);
@@ -138,6 +141,11 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /This is the merchant address or payment request, not a Tx signature/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
     assert.match(checkout, /pendingBootsPayments/);
+    assert.match(checkout, /function renderPendingBootsInvoices/);
+    assert.match(checkout, /Each open invoice remains payable/);
+    assert.match(checkout, /formatBootsSolAmount\(invoice\.amountSol\)/);
+    assert.match(checkout, /pending\.find\(invoice => invoice\.purchaseId === savedPurchaseId\)/);
+    assert.match(checkout, /invoice\.pendingBootsPayments/);
     assert.match(checkout, /do not pay again/i);
     assert.doesNotMatch(checkout, /secureWallet\.spend\(['"]booster/);
     assert.match(html, /Your in-game SOL balance will not be charged/);

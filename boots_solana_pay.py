@@ -19,6 +19,7 @@ from merchant_payments import MERCHANT_SOL_WALLET, PACKAGES
 LAMPORTS_PER_SOL = 1_000_000_000
 _EVENT_ID_RE = re.compile(r"[A-Za-z0-9:_-]{1,120}\Z")
 _SIGNATURE_RE = re.compile(r"[1-9A-HJ-NP-Za-km-z]{64,90}\Z")
+MAX_PENDING_INVOICES = len(PACKAGES)
 
 
 class BootsPayError(ValueError):
@@ -108,7 +109,8 @@ class BootsSolanaPay:
                     created_at INTEGER NOT NULL,
                     settled_at INTEGER
                 );
-                CREATE UNIQUE INDEX IF NOT EXISTS wallet_boots_pending_owner_idx
+                DROP INDEX IF EXISTS wallet_boots_pending_owner_idx;
+                CREATE INDEX IF NOT EXISTS wallet_boots_pending_owner_idx
                     ON wallet_boots_solana_payments(telegram_id)
                     WHERE status='pending';
                 CREATE INDEX IF NOT EXISTS wallet_boots_owner_created_idx
@@ -191,6 +193,11 @@ class BootsSolanaPay:
             ).fetchall()
         return [self._serialize(row) for row in rows]
 
+    def _serialize_prepared(self, row, telegram_id):
+        invoice = self._serialize(row)
+        invoice["pendingBootsPayments"] = self.pending(telegram_id)
+        return invoice
+
     def prepare(self, telegram_id, purchase_id, cost):
         telegram_id = str(telegram_id)
         purchase_id = str(purchase_id or "").strip()
@@ -212,40 +219,53 @@ class BootsSolanaPay:
                         lamports, booster_rate, duration_seconds):
                     raise BootsPayError("A purchase ID cannot be reused for another Boots package", 409)
                 db.commit()
-                return self._serialize(existing)
+                row = existing
+            else:
+                if db.execute(
+                    "SELECT 1 FROM wallet_spend_events WHERE event_id=?", (purchase_id,)
+                ).fetchone():
+                    raise BootsPayError("This purchase ID has already been used", 409)
 
-            if db.execute(
-                "SELECT 1 FROM wallet_spend_events WHERE event_id=?", (purchase_id,)
-            ).fetchone():
-                raise BootsPayError("This purchase ID has already been used", 409)
-
-            pending = db.execute(
-                """SELECT * FROM wallet_boots_solana_payments
-                   WHERE telegram_id=? AND status='pending' LIMIT 1""",
-                (telegram_id,),
-            ).fetchone()
-            if pending:
-                raise BootsPayError(
-                    "A Boots payment is already waiting. Reopen its QR and verify its Tx before starting another.",
-                    409,
-                )
-
-            self.ensure_account(db, telegram_id)
-            reference = self._new_reference(db)
-            db.execute(
-                """INSERT INTO wallet_boots_solana_payments
-                   (purchase_id,telegram_id,reference,recipient,lamports,booster_rate,
-                    duration_seconds,created_at)
-                   VALUES(?,?,?,?,?,?,?,?)""",
-                (purchase_id, telegram_id, reference, MERCHANT_SOL_WALLET, lamports,
-                 booster_rate, duration_seconds, self.now()),
-            )
-            db.commit()
-            row = db.execute(
-                "SELECT * FROM wallet_boots_solana_payments WHERE purchase_id=?",
-                (purchase_id,),
-            ).fetchone()
-        return self._serialize(row)
+                pending = db.execute(
+                    """SELECT * FROM wallet_boots_solana_payments
+                       WHERE telegram_id=? AND status='pending'
+                       ORDER BY created_at,purchase_id""",
+                    (telegram_id,),
+                ).fetchall()
+                same_package = next((
+                    candidate for candidate in pending
+                    if (int(candidate["lamports"]), int(candidate["booster_rate"]),
+                        int(candidate["duration_seconds"])) ==
+                       (lamports, booster_rate, duration_seconds)
+                ), None)
+                if same_package:
+                    # A retry or second tap for the same tariff reuses its
+                    # existing invoice instead of creating duplicate payable QR codes.
+                    db.commit()
+                    row = same_package
+                else:
+                    if len(pending) >= MAX_PENDING_INVOICES:
+                        raise BootsPayError(
+                            "There are already open invoices for every Boots tariff. "
+                            "Verify one of them before opening another.",
+                            409,
+                        )
+                    self.ensure_account(db, telegram_id)
+                    reference = self._new_reference(db)
+                    db.execute(
+                        """INSERT INTO wallet_boots_solana_payments
+                           (purchase_id,telegram_id,reference,recipient,lamports,booster_rate,
+                            duration_seconds,created_at)
+                           VALUES(?,?,?,?,?,?,?,?)""",
+                        (purchase_id, telegram_id, reference, MERCHANT_SOL_WALLET,
+                         lamports, booster_rate, duration_seconds, self.now()),
+                    )
+                    db.commit()
+                    row = db.execute(
+                        "SELECT * FROM wallet_boots_solana_payments WHERE purchase_id=?",
+                        (purchase_id,),
+                    ).fetchone()
+        return self._serialize_prepared(row, telegram_id)
 
     def _signature_used(self, db, signature, purchase_id):
         if db.execute(
@@ -360,16 +380,36 @@ class BootsSolanaPay:
                 raise BootsPayError("This transaction signature has already been used", 409)
 
             self.ensure_account(db, telegram_id)
-            expires = self.now() + int(current["duration_seconds"]) if current["duration_seconds"] else 0
+            settled_at = self.now()
+            account = db.execute(
+                "SELECT booster_rate,booster_expires FROM wallet_accounts WHERE telegram_id=?",
+                (telegram_id,),
+            ).fetchone()
+            current_rate = int(account["booster_rate"])
+            current_expires = int(account["booster_expires"] or 0)
+            current_is_active = current_expires == 0 or current_expires > settled_at
+            incoming_rate = int(current["booster_rate"])
+            if current_is_active and (
+                current_rate > incoming_rate
+                or (current_rate == incoming_rate and current_expires == 0)
+            ):
+                effective_rate = current_rate
+                expires = current_expires
+            else:
+                effective_rate = incoming_rate
+                expires = (
+                    settled_at + int(current["duration_seconds"])
+                    if current["duration_seconds"] else 0
+                )
             db.execute(
                 "UPDATE wallet_accounts SET booster_rate=?,booster_expires=? WHERE telegram_id=?",
-                (int(current["booster_rate"]), expires, telegram_id),
+                (effective_rate, expires, telegram_id),
             )
             updated = db.execute(
                 """UPDATE wallet_boots_solana_payments
                    SET status='confirmed',tx_signature=?,settled_at=?
                    WHERE purchase_id=? AND telegram_id=? AND status='pending'""",
-                (signature, self.now(), purchase_id, telegram_id),
+                (signature, settled_at, purchase_id, telegram_id),
             )
             if updated.rowcount != 1:
                 db.rollback()
