@@ -2860,10 +2860,10 @@
                     </p>
                     <div class="custom-input-group" style="margin-bottom:10px;text-align:left;">
                         <label for="boots-tx-signature-input"
-                               style="font-size:11px;color:#14f195;font-weight:700;">Solana transaction signature (Tx)</label>
+                               style="font-size:11px;color:#14f195;font-weight:700;">Transaction signature (Tx) from the wallet — not the address</label>
                         <input id="boots-tx-signature-input" class="custom-input-field" type="text"
                                autocomplete="off" autocapitalize="off" spellcheck="false"
-                               placeholder="Paste the transaction signature from your wallet">
+                               placeholder="Paste the transaction signature (Tx), not the wallet address">
                     </div>
                     <button class="claim-btn" id="verify-boots-payment" type="button"
                             style="width:100%;background:#a8f07a;color:#000;font-weight:800;">
@@ -4078,6 +4078,13 @@
             }
             if (!txSignature) {
                 setBootsPayStatus('Paste the transaction signature from your wallet first.', true);
+                return;
+            }
+            if (txSignature === activeBootsPayment.recipient || txSignature.startsWith('solana:')) {
+                setBootsPayStatus(
+                    'This is the merchant address or payment request, not a Tx signature. Complete the payment in your wallet, then paste its transaction signature.',
+                    true,
+                );
                 return;
             }
             button.disabled = true;

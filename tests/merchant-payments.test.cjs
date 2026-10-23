@@ -100,6 +100,8 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(html, /id="boots-pay-recipient"/);
     assert.match(html, /id="copy-boots-merchant-address"[^>]*>Copy merchant wallet address/);
     assert.match(html, /id="copy-boots-pay-link"[^>]*>Copy Solana Pay request/);
+    assert.match(html, /Transaction signature \(Tx\) from the wallet — not the address/);
+    assert.match(html, /transaction signature \(Tx\), not the wallet address/);
     assert.match(html, /The address alone does not include this purchase.s reference and cannot activate Boots/);
     assert.match(html, /id="open-boots-wallet-pay"/);
     assert.match(html, /id="boots-tx-signature-input"/);
@@ -116,6 +118,8 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /boots-pay-recipient'\)\.textContent = invoice\.recipient/);
     assert.match(checkout, /copy-boots-merchant-address'\)\.addEventListener\('click'[\s\S]*writeText\(recipient\)/);
     assert.match(checkout, /copy-boots-pay-link'\)\.addEventListener\('click'[\s\S]*writeText\(activeBootsPayment\.payUri\)/);
+    assert.match(checkout, /txSignature === activeBootsPayment\.recipient \|\| txSignature\.startsWith\('solana:'\)/);
+    assert.match(checkout, /This is the merchant address or payment request, not a Tx signature/);
     assert.match(checkout, /result\.status !== 'confirmed'/);
     assert.match(checkout, /pendingBootsPayments/);
     assert.match(checkout, /do not pay again/i);
