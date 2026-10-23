@@ -92,6 +92,8 @@ test('legacy pending Merchant purchases remain eligible for recovery after new B
 test('Boots store exposes working price buttons and a visible Solana Pay checkout', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
     const checkout = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
+    const depositPanel = html.slice(html.indexOf('<!-- DEPOSIT MODAL -->'), html.indexOf('<!-- BOOSTERS MODAL -->'));
+    const depositFlow = html.slice(html.indexOf('async function copyDepositText'), html.indexOf("document.getElementById('check-deposit-status-btn').onclick"));
     const purchaseFlow = checkout.slice(checkout.indexOf('async function purchaseVerifiedBooster'));
     assert.match(html, /id="boots-solana-pay-checkout"/);
     assert.match(html, /id="boots-pay-qr"/);
@@ -113,4 +115,9 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /do not pay again/i);
     assert.doesNotMatch(checkout, /secureWallet\.spend\(['"]booster/);
     assert.match(html, /Your in-game SOL balance will not be charged/);
+    assert.match(depositPanel, /id="copy-addr-btn"[^>]*>📋 Copy wallet address/);
+    assert.match(depositPanel, /id="copy-deposit-pay-link"[^>]*>Copy Solana Pay request/);
+    assert.match(depositPanel, /copied address alone omits your unique reference/i);
+    assert.match(depositFlow, /copyAddressButton\.onclick[\s\S]*copyDepositText\(address\)/);
+    assert.match(depositFlow, /copyDepositPayLinkButton\.onclick[\s\S]*copyDepositText\(activeDepositPayUri\)/);
 });
