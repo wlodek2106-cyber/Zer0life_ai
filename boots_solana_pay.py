@@ -107,8 +107,19 @@ class BootsSolanaPay:
                     status TEXT NOT NULL DEFAULT 'pending',
                     tx_signature TEXT UNIQUE,
                     created_at INTEGER NOT NULL,
-                    settled_at INTEGER
+                    settled_at INTEGER,
+                    hidden_at INTEGER
                 );
+            """)
+            columns = {
+                row["name"]
+                for row in db.execute("PRAGMA table_info(wallet_boots_solana_payments)")
+            }
+            if "hidden_at" not in columns:
+                db.execute(
+                    "ALTER TABLE wallet_boots_solana_payments ADD COLUMN hidden_at INTEGER"
+                )
+            db.executescript("""
                 DROP INDEX IF EXISTS wallet_boots_pending_owner_idx;
                 CREATE INDEX IF NOT EXISTS wallet_boots_pending_owner_idx
                     ON wallet_boots_solana_payments(telegram_id)
@@ -168,6 +179,7 @@ class BootsSolanaPay:
             "success": True,
             "purchaseId": row["purchase_id"],
             "status": row["status"],
+            "hidden": row["hidden_at"] is not None,
             "recipient": row["recipient"],
             "reference": row["reference"],
             "amountLamports": int(row["lamports"]),
@@ -188,7 +200,7 @@ class BootsSolanaPay:
         with self.connect(self.path) as db:
             rows = db.execute(
                 """SELECT * FROM wallet_boots_solana_payments
-                   WHERE telegram_id=? AND status='pending'
+                   WHERE telegram_id=? AND status='pending' AND hidden_at IS NULL
                    ORDER BY created_at,purchase_id""",
                 (str(telegram_id),),
             ).fetchall()
@@ -198,9 +210,74 @@ class BootsSolanaPay:
             ).fetchone()
         return [self._serialize(row, account) for row in rows]
 
+    def hidden_pending(self, telegram_id):
+        with self.connect(self.path) as db:
+            rows = db.execute(
+                """SELECT * FROM wallet_boots_solana_payments
+                   WHERE telegram_id=? AND status='pending' AND hidden_at IS NOT NULL
+                   ORDER BY created_at,purchase_id""",
+                (str(telegram_id),),
+            ).fetchall()
+            account = db.execute(
+                "SELECT booster_rate,booster_expires FROM wallet_accounts WHERE telegram_id=?",
+                (str(telegram_id),),
+            ).fetchone()
+        return [self._serialize(row, account) for row in rows]
+
+    def hide_pending(self, telegram_id):
+        telegram_id = str(telegram_id)
+        with self.connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            result = db.execute(
+                """UPDATE wallet_boots_solana_payments
+                   SET hidden_at=?
+                   WHERE telegram_id=? AND status='pending' AND hidden_at IS NULL""",
+                (self.now(), telegram_id),
+            )
+            hidden_count = result.rowcount
+            db.commit()
+        return {
+            "hiddenCount": hidden_count,
+            "pendingBootsPayments": self.pending(telegram_id),
+            "hiddenBootsPayments": self.hidden_pending(telegram_id),
+        }
+
+    def restore_pending(self, telegram_id, purchase_id):
+        telegram_id = str(telegram_id)
+        purchase_id = str(purchase_id or "").strip()
+        if not _EVENT_ID_RE.fullmatch(purchase_id):
+            raise BootsPayError("A valid Boots purchase ID is required")
+        with self.connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                """SELECT * FROM wallet_boots_solana_payments
+                   WHERE purchase_id=? AND telegram_id=? AND status='pending'""",
+                (purchase_id, telegram_id),
+            ).fetchone()
+            if row is None:
+                db.rollback()
+                raise BootsPayError("Open Boots invoice not found", 404)
+            db.execute(
+                """UPDATE wallet_boots_solana_payments SET hidden_at=NULL
+                   WHERE purchase_id=? AND telegram_id=? AND status='pending'""",
+                (purchase_id, telegram_id),
+            )
+            db.commit()
+        with self.connect(self.path) as db:
+            row = db.execute(
+                "SELECT * FROM wallet_boots_solana_payments WHERE purchase_id=?",
+                (purchase_id,),
+            ).fetchone()
+        return {
+            **self._serialize(row),
+            "pendingBootsPayments": self.pending(telegram_id),
+            "hiddenBootsPayments": self.hidden_pending(telegram_id),
+        }
+
     def _serialize_prepared(self, row, telegram_id):
         invoice = self._serialize(row)
         invoice["pendingBootsPayments"] = self.pending(telegram_id)
+        invoice["hiddenBootsPayments"] = self.hidden_pending(telegram_id)
         return invoice
 
     def prepare(self, telegram_id, purchase_id, cost):
@@ -223,6 +300,16 @@ class BootsSolanaPay:
                         int(existing["duration_seconds"])) != (
                         lamports, booster_rate, duration_seconds):
                     raise BootsPayError("A purchase ID cannot be reused for another Boots package", 409)
+                if existing["status"] == "pending" and existing["hidden_at"] is not None:
+                    db.execute(
+                        """UPDATE wallet_boots_solana_payments SET hidden_at=NULL
+                           WHERE purchase_id=? AND telegram_id=? AND status='pending'""",
+                        (purchase_id, telegram_id),
+                    )
+                    existing = db.execute(
+                        "SELECT * FROM wallet_boots_solana_payments WHERE purchase_id=?",
+                        (purchase_id,),
+                    ).fetchone()
                 db.commit()
                 row = existing
             else:
@@ -246,6 +333,16 @@ class BootsSolanaPay:
                 if same_package:
                     # A retry or second tap for the same tariff reuses its
                     # existing invoice instead of creating duplicate payable QR codes.
+                    if same_package["hidden_at"] is not None:
+                        db.execute(
+                            """UPDATE wallet_boots_solana_payments SET hidden_at=NULL
+                               WHERE purchase_id=? AND telegram_id=? AND status='pending'""",
+                            (same_package["purchase_id"], telegram_id),
+                        )
+                        same_package = db.execute(
+                            "SELECT * FROM wallet_boots_solana_payments WHERE purchase_id=?",
+                            (same_package["purchase_id"],),
+                        ).fetchone()
                     db.commit()
                     row = same_package
                 else:
