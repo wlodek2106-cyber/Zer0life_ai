@@ -146,7 +146,7 @@ class BootsSolanaPay:
                 return reference
         raise RuntimeError("Could not allocate a unique Solana Pay reference")
 
-    def _serialize(self, row):
+    def _serialize(self, row, account=None):
         amount = Decimal(int(row["lamports"])) / Decimal(LAMPORTS_PER_SOL)
         amount_text = format(amount, "f")
         pay_uri = None
@@ -157,11 +157,12 @@ class BootsSolanaPay:
                 "label": "Zer0Life Run",
                 "message": f"Boots {row['booster_rate']} ZRL per km",
             })
-        with self.connect(self.path) as db:
-            account = db.execute(
-                "SELECT booster_rate,booster_expires FROM wallet_accounts WHERE telegram_id=?",
-                (str(row["telegram_id"]),),
-            ).fetchone()
+        if account is None:
+            with self.connect(self.path) as db:
+                account = db.execute(
+                    "SELECT booster_rate,booster_expires FROM wallet_accounts WHERE telegram_id=?",
+                    (str(row["telegram_id"]),),
+                ).fetchone()
         expires = int(account["booster_expires"] or 0)
         return {
             "success": True,
@@ -191,7 +192,11 @@ class BootsSolanaPay:
                    ORDER BY created_at,purchase_id""",
                 (str(telegram_id),),
             ).fetchall()
-        return [self._serialize(row) for row in rows]
+            account = db.execute(
+                "SELECT booster_rate,booster_expires FROM wallet_accounts WHERE telegram_id=?",
+                (str(telegram_id),),
+            ).fetchone()
+        return [self._serialize(row, account) for row in rows]
 
     def _serialize_prepared(self, row, telegram_id):
         invoice = self._serialize(row)
