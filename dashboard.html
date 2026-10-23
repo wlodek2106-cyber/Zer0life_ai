@@ -2832,6 +2832,20 @@
                      style="margin:0 0 12px;padding:10px;border:1px solid rgba(246,201,120,.45);border-radius:12px;background:rgba(246,201,120,.07);text-align:left;">
                     <p id="boots-pending-invoices-warning" style="margin:0 0 8px;color:#f6c978;font-size:11px;line-height:1.45;"></p>
                     <div id="boots-pending-invoice-list" style="display:grid;gap:6px;"></div>
+                    <button class="wallet-action-btn" id="hide-pending-boots-invoices" type="button"
+                            style="width:100%;margin-top:8px;font-size:11px;">
+                        Hide open requests from this list
+                    </button>
+                    <p style="margin:7px 0 0;color:#b8a580;font-size:10px;line-height:1.4;">
+                        Hiding does not cancel a Solana Pay request. It may still be paid.
+                    </p>
+                </div>
+                <div id="boots-hidden-invoices" hidden
+                     style="margin:0 0 12px;padding:10px;border:1px solid rgba(168,240,122,.28);border-radius:12px;background:rgba(168,240,122,.04);text-align:left;">
+                    <p style="margin:0 0 8px;color:#a8f07a;font-size:11px;line-height:1.45;">
+                        Hidden requests are still payable. Restore a request to verify a payment or open it again.
+                    </p>
+                    <div id="boots-hidden-invoice-list" style="display:grid;gap:6px;"></div>
                 </div>
                 <div id="boots-pay-invoice" hidden>
                     <p style="margin:0 0 10px;font-size:14px;color:#f2f7ef;">
@@ -3959,15 +3973,18 @@
             const panel = document.getElementById('boots-pending-invoices');
             const warning = document.getElementById('boots-pending-invoices-warning');
             const list = document.getElementById('boots-pending-invoice-list');
+            const hideButton = document.getElementById('hide-pending-boots-invoices');
             const pending = Array.isArray(invoices)
                 ? invoices.filter(invoice => invoice?.status === 'pending' && invoice.purchaseId)
                 : [];
             list.replaceChildren();
-            panel.hidden = pending.length < 2;
-            if (pending.length < 2) return;
+            panel.hidden = pending.length === 0;
+            hideButton.hidden = pending.length === 0;
+            if (!pending.length) return;
 
-            warning.textContent =
-                'Each open invoice remains payable. Pay only the tariff you intend; paying more than one charges you for each.';
+            warning.textContent = pending.length > 1
+                ? 'Each open invoice remains payable. Pay only the tariff you intend; paying more than one charges you for each.'
+                : 'This open invoice remains payable until paid. Hiding it does not cancel the payment request.';
             for (const invoice of pending) {
                 const isSelected = invoice.purchaseId === selectedPurchaseId;
                 const button = document.createElement('button');
@@ -3990,6 +4007,33 @@
             }
         }
 
+        function renderHiddenBootsInvoices(invoices) {
+            const panel = document.getElementById('boots-hidden-invoices');
+            const list = document.getElementById('boots-hidden-invoice-list');
+            const hidden = Array.isArray(invoices)
+                ? invoices.filter(invoice => invoice?.status === 'pending' && invoice.purchaseId)
+                : [];
+            list.replaceChildren();
+            panel.hidden = hidden.length === 0;
+            for (const invoice of hidden) {
+                const row = document.createElement('div');
+                row.style.cssText =
+                    'display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:11px;';
+                const label = document.createElement('span');
+                label.style.cssText = 'color:#e0e8d8;line-height:1.4;';
+                label.textContent =
+                    `${formatBootsSolAmount(invoice.amountSol)} — ${nameForBoosterRate(invoice.boosterRate)}`;
+                const restore = document.createElement('button');
+                restore.type = 'button';
+                restore.className = 'wallet-action-btn';
+                restore.textContent = 'Restore';
+                restore.style.cssText = 'padding:7px 10px;font-size:10px;white-space:nowrap;';
+                restore.addEventListener('click', () => restoreHiddenBootsInvoice(invoice, restore));
+                row.append(label, restore);
+                list.append(row);
+            }
+        }
+
         function showBootsPayInvoice(invoice) {
             bootsPaymentSelectionVersion += 1;
             activeBootsPayment = invoice;
@@ -4000,6 +4044,10 @@
             renderPendingBootsInvoices(
                 invoice.pendingBootsPayments || (invoice.status === 'pending' ? [invoice] : []),
                 invoice.purchaseId,
+            );
+            renderHiddenBootsInvoices(
+                invoice.hiddenBootsPayments
+                ?? window.secureWallet.getState()?.hiddenBootsPayments,
             );
             checkout.hidden = false;
             invoiceBox.hidden = invoice.status === 'confirmed';
@@ -4033,6 +4081,9 @@
                 const pending = Array.isArray(state?.pendingBootsPayments)
                     ? state.pendingBootsPayments.filter(invoice => invoice?.status === 'pending')
                     : [];
+                const hidden = Array.isArray(state?.hiddenBootsPayments)
+                    ? state.hiddenBootsPayments.filter(invoice => invoice?.status === 'pending')
+                    : [];
                 if (pending.length) {
                     let savedPurchaseId = null;
                     try {
@@ -4042,7 +4093,11 @@
                     } catch {}
                     const selected = pending.find(invoice => invoice.purchaseId === savedPurchaseId)
                         || pending[pending.length - 1];
-                    showBootsPayInvoice({ ...selected, pendingBootsPayments: pending });
+                    showBootsPayInvoice({
+                        ...selected,
+                        pendingBootsPayments: pending,
+                        hiddenBootsPayments: hidden,
+                    });
                     if (pending.length > 1) {
                         setBootsPayStatus(
                             `${pending.length} open Boots invoices. The selected invoice is ${formatBootsSolAmount(selected.amountSol)}; each listed request remains payable.`,
@@ -4052,10 +4107,20 @@
                             `You have an unpaid ${formatBootsSolAmount(selected.amountSol)} Boots invoice. Verify or finish this one before starting another.`,
                         );
                     }
+                } else if (hidden.length) {
+                    activeBootsPayment = null;
+                    document.getElementById('boots-solana-pay-checkout').hidden = false;
+                    document.getElementById('boots-pay-invoice').hidden = true;
+                    renderPendingBootsInvoices([], null);
+                    renderHiddenBootsInvoices(hidden);
+                    setBootsPayStatus(
+                        `${hidden.length} request(s) hidden from the active list. They are not cancelled; restore one if you need to verify or reopen it.`,
+                    );
                 } else {
                     activeBootsPayment = null;
                     document.getElementById('boots-solana-pay-checkout').hidden = true;
                     renderPendingBootsInvoices([], null);
+                    renderHiddenBootsInvoices([]);
                 }
             };
 
@@ -4072,6 +4137,72 @@
                 showPendingInvoices(refreshed);
             } catch {
                 // Keep the cached invoice visible; the user can retry from the store.
+            }
+        }
+
+        async function confirmHidePendingBootsInvoices() {
+            const message =
+                'Hide all your open Boots requests from the active list? This does not cancel or revoke the Solana Pay requests. They can still be paid, and a late payment may still activate Boots.';
+            const telegram = window.Telegram?.WebApp;
+            if (typeof telegram?.showConfirm === 'function') {
+                return new Promise(resolve => telegram.showConfirm(message, resolve));
+            }
+            return window.confirm(message);
+        }
+
+        document.getElementById('hide-pending-boots-invoices').addEventListener('click', async event => {
+            const button = event.currentTarget;
+            const state = window.secureWallet.getState() || {};
+            const pending = Array.isArray(state.pendingBootsPayments)
+                ? state.pendingBootsPayments.filter(invoice => invoice?.status === 'pending')
+                : [];
+            if (!pending.length) return;
+            if (!await confirmHidePendingBootsInvoices()) return;
+            button.disabled = true;
+            try {
+                const result = await window.secureWallet.request(
+                    '/wallet/boots/payments/hide-pending',
+                    {},
+                );
+                window.secureWallet.applyResult({ ...state, ...result });
+                activeBootsPayment = null;
+                document.getElementById('boots-pay-invoice').hidden = true;
+                document.getElementById('boots-solana-pay-checkout').hidden = false;
+                renderPendingBootsInvoices(result.pendingBootsPayments, null);
+                renderHiddenBootsInvoices(result.hiddenBootsPayments);
+                setBootsPayStatus(
+                    `${result.hiddenCount || 0} open request(s) hidden from the active list. They are still payable and can be restored below; no payment record was deleted.`,
+                );
+            } catch (error) {
+                setBootsPayStatus(error.message || 'Could not hide your open requests.', true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        async function restoreHiddenBootsInvoice(invoice, button) {
+            button.disabled = true;
+            try {
+                const result = await window.secureWallet.request(
+                    '/wallet/boots/payments/restore',
+                    { purchaseId: invoice.purchaseId },
+                );
+                window.secureWallet.applyResult({
+                    ...(window.secureWallet.getState() || {}),
+                    ...result,
+                });
+                localStorage.setItem(bootsPaymentStorageKey(), JSON.stringify({
+                    purchaseId: invoice.purchaseId,
+                    costSol: invoice.amountSol,
+                }));
+                showBootsPayInvoice(result);
+                setBootsPayStatus(
+                    `Restored the ${formatBootsSolAmount(invoice.amountSol)} request. Check the amount and recipient before paying.`,
+                );
+            } catch (error) {
+                setBootsPayStatus(error.message || 'Could not restore this request.', true);
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -4109,6 +4240,7 @@
                     window.secureWallet.applyResult({
                         ...(window.secureWallet.getState() || {}),
                         pendingBootsPayments: invoice.pendingBootsPayments,
+                        hiddenBootsPayments: invoice.hiddenBootsPayments || [],
                     });
                 }
                 if (invoice.status === 'confirmed') {

@@ -498,7 +498,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         # Public release marker, including on 401s, enables a deployment check
         # without obtaining a player's signed Telegram session or balance.
         response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-deposits-reference-1"
-        response.headers["X-Zer0Life-Boots-Pay"] = "solana-pay-reference-1"
+        response.headers["X-Zer0Life-Boots-Pay"] = "solana-pay-hidden-invoices-1"
         return response
 
     def authenticated_user(data):
@@ -607,6 +607,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     "pendingPurchases": merchant.pending(str(user["id"])),
                     "lastMerchantPurchase": merchant.receipt(str(user["id"])),
                     "pendingBootsPayments": boots_payments.pending(str(user["id"])),
+                    "hiddenBootsPayments": boots_payments.hidden_pending(str(user["id"])),
                     "walletAddress": address,
                     "referralCode": account["referral_code"],
                     "affiliateLevels": affiliate_levels,
@@ -1236,6 +1237,35 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         except Exception:
             app.logger.exception("Boots Solana Pay verification failed")
             return _response_error("Could not verify this Boots payment yet. Do not pay again.", 503)
+
+    @bp.post("/wallet/boots/payments/hide-pending")
+    def boots_payment_hide_pending():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            return jsonify(boots_payments.hide_pending(str(user["id"])))
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except Exception:
+            app.logger.exception("Could not hide open Boots invoices")
+            return _response_error("Could not hide open Boots invoices. No payment record was deleted.", 503)
+
+    @bp.post("/wallet/boots/payments/restore")
+    def boots_payment_restore():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            result = boots_payments.restore_pending(
+                str(user["id"]), data.get("purchaseId")
+            )
+            return jsonify(result)
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except BootsPayError as exc:
+            return _response_error(str(exc), exc.status)
+        except Exception:
+            app.logger.exception("Could not restore a hidden Boots invoice")
+            return _response_error("Could not restore this Boots invoice. No payment record was deleted.", 503)
 
     @bp.post("/wallet/purchases/status")
     def merchant_purchase_status():

@@ -99,6 +99,9 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(html, /id="boots-solana-pay-checkout"/);
     assert.match(html, /id="boots-pending-invoices"/);
     assert.match(html, /id="boots-pending-invoice-list"/);
+    assert.match(html, /id="hide-pending-boots-invoices"/);
+    assert.match(html, /id="boots-hidden-invoices"/);
+    assert.match(html, /id="boots-hidden-invoice-list"/);
     assert.match(html, /id="boots-pay-qr"/);
     assert.match(html, /id="boots-pay-recipient"/);
     assert.match(html, /id="copy-boots-merchant-address"[^>]*>Copy merchant wallet address/);
@@ -149,6 +152,13 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     assert.match(checkout, /result\.status !== 'confirmed'/);
     assert.match(checkout, /pendingBootsPayments/);
     assert.match(checkout, /function renderPendingBootsInvoices/);
+    assert.match(checkout, /async function confirmHidePendingBootsInvoices/);
+    assert.match(checkout, /\/wallet\/boots\/payments\/hide-pending/);
+    assert.match(checkout, /\/wallet\/boots\/payments\/restore/);
+    assert.match(checkout, /function renderHiddenBootsInvoices/);
+    assert.match(html, /Hiding does not cancel a Solana Pay request/);
+    assert.match(html, /Hidden requests are still payable/);
+    assert.match(checkout, /This does not cancel or revoke the Solana Pay requests/);
     assert.match(checkout, /Each open invoice remains payable/);
     assert.match(checkout, /formatBootsSolAmount\(invoice\.amountSol\)/);
     assert.match(checkout, /pending\.find\(invoice => invoice\.purchaseId === savedPurchaseId\)/);

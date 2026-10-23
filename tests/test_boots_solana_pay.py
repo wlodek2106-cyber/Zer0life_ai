@@ -279,6 +279,75 @@ class BootsSolanaPayTests(unittest.TestCase):
         self.assertEqual(duplicate.json["purchaseId"], invoices[2]["purchaseId"])
         self.assertEqual(len(duplicate.json["pendingBootsPayments"]), len(tariffs))
 
+    def test_hide_pending_invoices_only_hides_the_authenticated_players_requests(self):
+        own_first = self.prepare(purchase_id="hide-own-first", cost=.2).json
+        own_second = self.prepare(purchase_id="hide-own-second", cost=1).json
+        other = self.prepare(purchase_id="hide-other-player", cost=.5, user="201").json
+
+        hidden = self.post("/wallet/boots/payments/hide-pending", user="200")
+        self.assertEqual(hidden.status_code, 200, hidden.json)
+        self.assertEqual(hidden.json["hiddenCount"], 2)
+        self.assertEqual(hidden.json["pendingBootsPayments"], [])
+        self.assertEqual(
+            [invoice["purchaseId"] for invoice in hidden.json["hiddenBootsPayments"]],
+            [own_first["purchaseId"], own_second["purchaseId"]],
+        )
+        self.assertEqual(
+            [invoice["purchaseId"] for invoice in service.BootsSolanaPay(
+                self.path, service._connect, service._ensure_account, service._utc_now,
+                self.app.logger,
+            ).pending("201")],
+            [other["purchaseId"]],
+        )
+        with service._connect(self.path) as db:
+            records = db.execute(
+                """SELECT purchase_id,status,hidden_at
+                   FROM wallet_boots_solana_payments ORDER BY purchase_id"""
+            ).fetchall()
+        self.assertEqual(len(records), 3)
+        self.assertTrue(all(row["status"] == "pending" for row in records))
+        self.assertEqual(sum(row["hidden_at"] is not None for row in records), 2)
+
+    def test_hidden_invoice_remains_payable_and_can_be_restored_for_verification(self):
+        invoice = self.prepare(purchase_id="hidden-can-still-settle").json
+        hidden = self.post("/wallet/boots/payments/hide-pending")
+        self.assertEqual(hidden.status_code, 200)
+        self.assertEqual(hidden.json["pendingBootsPayments"], [])
+
+        response, _ = self.verify(
+            invoice["purchaseId"],
+            self.signature,
+            self.transaction(invoice["reference"]),
+        )
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(response.json["status"], "confirmed")
+        self.assertEqual(self.account()["booster_rate"], 1500)
+        self.assertEqual(
+            self.post("/wallet/state").json["hiddenBootsPayments"],
+            [],
+        )
+
+        second = self.prepare(purchase_id="hidden-restore-test", cost=1).json
+        self.post("/wallet/boots/payments/hide-pending")
+        restored = self.post(
+            "/wallet/boots/payments/restore",
+            {"purchaseId": second["purchaseId"]},
+        )
+        self.assertEqual(restored.status_code, 200, restored.json)
+        self.assertFalse(restored.json["hidden"])
+        self.assertEqual(restored.json["pendingBootsPayments"][0]["purchaseId"], second["purchaseId"])
+        self.assertEqual(restored.json["hiddenBootsPayments"], [])
+
+    def test_hidden_invoice_cannot_be_restored_by_another_telegram_account(self):
+        invoice = self.prepare(purchase_id="hidden-other-owner").json
+        self.post("/wallet/boots/payments/hide-pending")
+        response = self.post(
+            "/wallet/boots/payments/restore",
+            {"purchaseId": invoice["purchaseId"]},
+            user="201",
+        )
+        self.assertEqual(response.status_code, 404)
+
     def test_existing_unique_pending_index_is_migrated_for_multiple_invoices(self):
         with service._connect(self.path) as db:
             db.execute("DROP INDEX IF EXISTS wallet_boots_pending_owner_idx")
@@ -298,6 +367,38 @@ class BootsSolanaPayTests(unittest.TestCase):
                 if row[1] == "wallet_boots_pending_owner_idx"
             )
         self.assertEqual(index[2], 0, "pending invoice index must no longer be unique")
+
+    def test_existing_payment_table_is_migrated_with_hidden_at_column(self):
+        legacy_path = os.path.join(self.folder.name, "legacy-wallet.sqlite3")
+        with service._connect(legacy_path) as db:
+            db.execute("""
+                CREATE TABLE wallet_boots_solana_payments (
+                    purchase_id TEXT PRIMARY KEY,
+                    telegram_id TEXT NOT NULL,
+                    reference TEXT NOT NULL UNIQUE,
+                    recipient TEXT NOT NULL,
+                    lamports INTEGER NOT NULL,
+                    booster_rate INTEGER NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    tx_signature TEXT UNIQUE,
+                    created_at INTEGER NOT NULL,
+                    settled_at INTEGER
+                )
+            """)
+        service.BootsSolanaPay(
+            legacy_path,
+            service._connect,
+            service._ensure_account,
+            service._utc_now,
+            self.app.logger,
+        )
+        with service._connect(legacy_path) as db:
+            columns = {
+                row["name"]
+                for row in db.execute("PRAGMA table_info(wallet_boots_solana_payments)")
+            }
+        self.assertIn("hidden_at", columns)
 
     def test_late_lower_tariff_payment_does_not_downgrade_active_boots(self):
         short_invoice = self.prepare(purchase_id="boots-short-late", cost=.2).json
@@ -357,7 +458,10 @@ class BootsSolanaPayTests(unittest.TestCase):
         self.assertFalse(state["merchantPaymentsEnabled"])
         self.assertTrue(state["bootsSolanaPayEnabled"])
         self.assertEqual(state["pendingBootsPayments"], [])
-        self.assertEqual(response.headers["X-Zer0Life-Boots-Pay"], "solana-pay-reference-1")
+        self.assertEqual(
+            response.headers["X-Zer0Life-Boots-Pay"],
+            "solana-pay-hidden-invoices-1",
+        )
 
     def test_unauthenticated_invoice_request_is_rejected(self):
         response = self.client.post(
@@ -365,6 +469,13 @@ class BootsSolanaPayTests(unittest.TestCase):
             json={"purchaseId": "unauthorized", "costSol": .2},
         )
         self.assertEqual(response.status_code, 401)
+        hide = self.client.post("/wallet/boots/payments/hide-pending", json={})
+        self.assertEqual(hide.status_code, 401)
+        restore = self.client.post(
+            "/wallet/boots/payments/restore",
+            json={"purchaseId": "boots-any"},
+        )
+        self.assertEqual(restore.status_code, 401)
 
 
 if __name__ == "__main__":
