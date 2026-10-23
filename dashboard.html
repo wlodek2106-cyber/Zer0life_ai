@@ -525,7 +525,6 @@
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
-            cursor: pointer;
         }
 
         .booster-card:hover {
@@ -572,6 +571,12 @@
             color: #a8f07a;
             border-radius: 12px;
             padding: 10px;
+            width: 100%;
+            min-height: 44px;
+            display: block;
+            appearance: none;
+            -webkit-appearance: none;
+            font-family: inherit;
             font-size: 13px;
             font-weight: 700;
             text-align: center;
@@ -579,9 +584,18 @@
             transition: 0.2s;
         }
 
-        .booster-card:hover .booster-price-btn {
+        .booster-price-btn:not(:disabled):hover {
             background: #a8f07a;
             color: #000;
+        }
+
+        .booster-price-btn:disabled {
+            cursor: wait;
+            opacity: 0.65;
+        }
+
+        #open-boots-wallet-pay[hidden] {
+            display: none !important;
         }
 
         .custom-input-group {
@@ -2824,6 +2838,14 @@
                     </p>
                     <button class="wallet-action-btn" id="copy-boots-pay-link" type="button"
                             style="width:100%;margin-bottom:12px;">Copy Solana Pay Link</button>
+                    <a id="open-boots-wallet-pay" class="wallet-action-btn" href="#" target="_blank"
+                       rel="noopener noreferrer"
+                       style="display:block;width:100%;margin-bottom:12px;text-align:center;text-decoration:none;">
+                        Open in Solana wallet ↗
+                    </a>
+                    <p style="margin:0 0 12px;color:#a8f07a;font-size:11px;line-height:1.45;">
+                        If Telegram does not open your wallet, scan the QR above or copy the complete link.
+                    </p>
                     <div class="custom-input-group" style="margin-bottom:10px;text-align:left;">
                         <label for="boots-tx-signature-input"
                                style="font-size:11px;color:#14f195;font-weight:700;">Solana transaction signature (Tx)</label>
@@ -2842,36 +2864,41 @@
             </section>
 
             <div class="booster-grid">
-                <div class="booster-card featured" onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 7d)', 168)">
+                <div class="booster-card featured">
                     <div class="booster-badge" style="color: #14f195; background: rgba(20,241,149,0.15);">⏳ Boots 7 Days</div>
                     <div class="booster-multiplier">Boots x2 (7d)</div>
                     <div class="booster-rate">1,500 ZRL / km (Active 7 Days)</div>
-                    <div class="booster-price-btn" style="background: #14f195; color: #000; border: none;">0.2 SOL</div>
+                    <button class="booster-price-btn" type="button" style="background: #14f195; color: #000; border: none;"
+                            onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 7d)', 168)">0.2 SOL</button>
                 </div>
 
-                <div class="booster-card" onclick="buyBooster(0.5, 3000, 'Starter (3,000 ZRL/km)')">
+                <div class="booster-card">
                     <div class="booster-badge">Starter</div>
                     <div class="booster-multiplier">2x Speed</div>
                     <div class="booster-rate">3,000 ZRL / km</div>
-                    <div class="booster-price-btn">0.5 SOL</div>
+                    <button class="booster-price-btn" type="button"
+                            onclick="buyBooster(0.5, 3000, 'Starter (3,000 ZRL/km)')">0.5 SOL</button>
                 </div>
-                <div class="booster-card" onclick="buyBooster(1, 6000, 'Standard (6,000 ZRL/km)')">
+                <div class="booster-card">
                     <div class="booster-badge" style="color: #a8f07a; background: rgba(168,240,122,0.1);">Standard</div>
                     <div class="booster-multiplier">3x Speed</div>
                     <div class="booster-rate">6,000 ZRL / km</div>
-                    <div class="booster-price-btn">1 SOL</div>
+                    <button class="booster-price-btn" type="button"
+                            onclick="buyBooster(1, 6000, 'Standard (6,000 ZRL/km)')">1 SOL</button>
                 </div>
-                <div class="booster-card featured" onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">
+                <div class="booster-card featured">
                     <div class="booster-badge" style="color: #3b82f6; background: rgba(59,130,246,0.1);">Pro Tier</div>
                     <div class="booster-multiplier">26x Speed</div>
                     <div class="booster-rate">13,000 ZRL / km</div>
-                    <div class="booster-price-btn">5 SOL</div>
+                    <button class="booster-price-btn" type="button"
+                            onclick="buyBooster(5, 13000, 'Pro Tier (13,000 ZRL/km)')">5 SOL</button>
                 </div>
-                <div class="booster-card" onclick="buyBooster(10, 30000, 'Whale (30,000 ZRL/km)')">
+                <div class="booster-card">
                     <div class="booster-badge" style="color: #a855f7; background: rgba(168,85,247,0.1);">Whale</div>
                     <div class="booster-multiplier">60x Speed</div>
                     <div class="booster-rate">30,000 ZRL / km</div>
-                    <div class="booster-price-btn">10 SOL</div>
+                    <button class="booster-price-btn" type="button"
+                            onclick="buyBooster(10, 30000, 'Whale (30,000 ZRL/km)')">10 SOL</button>
                 </div>
             </div>
         </div>
@@ -3903,16 +3930,21 @@
             activeBootsPayment = invoice;
             const checkout = document.getElementById('boots-solana-pay-checkout');
             const invoiceBox = document.getElementById('boots-pay-invoice');
+            const walletLink = document.getElementById('open-boots-wallet-pay');
             checkout.hidden = false;
             invoiceBox.hidden = invoice.status === 'confirmed';
             if (invoice.status === 'confirmed') {
+                walletLink.hidden = true;
                 setBootsPayStatus('This Boots purchase is already confirmed.');
                 return;
             }
             if (!invoice.payUri || !invoice.purchaseId) {
+                walletLink.hidden = true;
                 setBootsPayStatus('The payment link is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
+            walletLink.href = invoice.payUri;
+            walletLink.hidden = false;
             document.getElementById('boots-pay-amount').textContent =
                 `${Number(invoice.amountSol).toFixed(1)} SOL`;
             document.getElementById('boots-pay-qr').src =
@@ -3941,6 +3973,14 @@
         async function purchaseVerifiedBooster(costSol, name) {
             if (boosterPurchaseBusy) return;
             boosterPurchaseBusy = true;
+            const checkout = document.getElementById('boots-solana-pay-checkout');
+            const invoiceBox = document.getElementById('boots-pay-invoice');
+            const priceButtons = [...document.querySelectorAll('#boosters-modal .booster-price-btn')];
+            checkout.hidden = false;
+            invoiceBox.hidden = true;
+            setBootsPayStatus(`Preparing a secure Solana Pay invoice for ${name}…`);
+            checkout.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+            priceButtons.forEach(button => { button.disabled = true; });
             triggerHaptic('medium');
             try {
                 const walletState = await window.secureWallet.refresh();
@@ -3984,6 +4024,7 @@
                 triggerHaptic('error');
             } finally {
                 boosterPurchaseBusy = false;
+                priceButtons.forEach(button => { button.disabled = false; });
             }
         }
 
@@ -4047,11 +4088,11 @@
         }
 
         window.buyBooster = function(costSol, rate, name) {
-            purchaseVerifiedBooster(costSol, name);
+            return purchaseVerifiedBooster(costSol, name);
         };
 
         window.buyTimedBooster = function(costSol, rate, name) {
-            purchaseVerifiedBooster(costSol, name);
+            return purchaseVerifiedBooster(costSol, name);
         };
 
         window.openDaoModal = function() {
@@ -6071,7 +6112,7 @@
     </script>
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
-    <script src="./wallet.js?v=boots-solana-pay-reference-1"></script>
+    <script src="./wallet.js?v=boots-solana-pay-reference-2"></script>
     <script src="./community-feed.js?v=zeronet-claim-nonblocking-v2"></script>
     <script src="./social-chat.js?v=zeronet-single-entry-v1"></script>
 </body>
