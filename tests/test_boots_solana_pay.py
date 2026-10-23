@@ -147,6 +147,29 @@ class BootsSolanaPayTests(unittest.TestCase):
         self.assertEqual(query["reference"], [invoice["reference"]])
         self.assertEqual(len(__import__("base58").b58decode(invoice["reference"])), 32)
 
+    def test_all_five_boots_tariffs_create_exact_solana_pay_invoices(self):
+        for index, (cost, expected_lamports) in enumerate((
+            ("0.2", 200_000_000),
+            ("0.5", 500_000_000),
+            ("1", 1_000_000_000),
+            ("5", 5_000_000_000),
+            ("10", 10_000_000_000),
+        )):
+            with self.subTest(cost=cost):
+                invoice = self.prepare(
+                    purchase_id=f"boots-tier-{index}",
+                    cost=cost,
+                    user=str(300 + index),
+                )
+                self.assertEqual(invoice.status_code, 200, invoice.json)
+                self.assertEqual(invoice.json["amountLamports"], expected_lamports)
+                parsed = urlparse(invoice.json["payUri"])
+                self.assertEqual(parse_qs(parsed.query)["amount"], [cost])
+                self.assertEqual(
+                    parse_qs(parsed.query)["reference"],
+                    [invoice.json["reference"]],
+                )
+
     def test_finalized_exact_payment_activates_once_and_leaves_game_sol_unchanged(self):
         invoice = self.prepare().json
         before = self.account()["sol_lamports"]
