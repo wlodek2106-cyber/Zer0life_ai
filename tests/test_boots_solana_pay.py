@@ -231,16 +231,100 @@ class BootsSolanaPayTests(unittest.TestCase):
                 self.assertEqual(self.account(user)["booster_rate"], 300)
                 self.assertEqual(self.account(user)["sol_lamports"], 0)
 
-    def test_invoice_is_bound_to_telegram_account_and_only_one_can_be_pending(self):
+    def test_invoice_is_bound_to_telegram_account_and_different_tariffs_can_be_pending(self):
         first = self.prepare().json
-        other = self.prepare(purchase_id="boots-direct-2", user="200")
-        self.assertEqual(other.status_code, 409)
+        same_tariff = self.prepare(purchase_id="boots-direct-same-tariff", cost=.2)
+        self.assertEqual(same_tariff.status_code, 200)
+        self.assertEqual(same_tariff.json["purchaseId"], first["purchaseId"])
+
+        other = self.prepare(purchase_id="boots-direct-2", cost=1, user="200")
+        self.assertEqual(other.status_code, 200, other.json)
+        self.assertEqual(other.json["amountLamports"], 1_000_000_000)
+        self.assertEqual(
+            [invoice["amountSol"] for invoice in other.json["pendingBootsPayments"]],
+            [.2, 1.0],
+        )
         replay_as_other = self.post(
             "/wallet/boots/payments/verify",
             {"purchaseId": first["purchaseId"], "txSignature": self.signature},
             user="201",
         )
         self.assertEqual(replay_as_other.status_code, 404)
+
+    def test_all_tariffs_keep_their_exact_amount_with_other_invoices_open(self):
+        tariffs = [
+            (.2, 200_000_000),
+            (.5, 500_000_000),
+            (1, 1_000_000_000),
+            (5, 5_000_000_000),
+            (10, 10_000_000_000),
+        ]
+        invoices = []
+        for index, (cost, expected_lamports) in enumerate(tariffs):
+            response = self.prepare(
+                purchase_id=f"multi-tariff-{index}",
+                cost=cost,
+            )
+            self.assertEqual(response.status_code, 200, response.json)
+            self.assertEqual(response.json["amountLamports"], expected_lamports)
+            self.assertEqual(len(response.json["pendingBootsPayments"]), index + 1)
+            self.assertEqual(
+                response.json["pendingBootsPayments"][-1]["amountLamports"],
+                expected_lamports,
+            )
+            invoices.append(response.json)
+
+        duplicate = self.prepare(purchase_id="multi-tariff-retry", cost=1)
+        self.assertEqual(duplicate.status_code, 200, duplicate.json)
+        self.assertEqual(duplicate.json["purchaseId"], invoices[2]["purchaseId"])
+        self.assertEqual(len(duplicate.json["pendingBootsPayments"]), len(tariffs))
+
+    def test_existing_unique_pending_index_is_migrated_for_multiple_invoices(self):
+        with service._connect(self.path) as db:
+            db.execute("DROP INDEX IF EXISTS wallet_boots_pending_owner_idx")
+            db.execute(
+                """CREATE UNIQUE INDEX wallet_boots_pending_owner_idx
+                   ON wallet_boots_solana_payments(telegram_id)
+                   WHERE status='pending'"""
+            )
+
+        # Registering routes initializes the payment service against the existing
+        # database, just as a deployed server restart does during migration.
+        service.register_wallet_routes(Flask("boots-index-migration"), self.folder.name)
+
+        with service._connect(self.path) as db:
+            index = next(
+                row for row in db.execute("PRAGMA index_list(wallet_boots_solana_payments)")
+                if row[1] == "wallet_boots_pending_owner_idx"
+            )
+        self.assertEqual(index[2], 0, "pending invoice index must no longer be unique")
+
+    def test_late_lower_tariff_payment_does_not_downgrade_active_boots(self):
+        short_invoice = self.prepare(purchase_id="boots-short-late", cost=.2).json
+        standard_invoice = self.prepare(purchase_id="boots-standard-first", cost=1).json
+
+        standard_signature = str(self.sender.sign_message(b"standard Boots payment"))
+        response, _ = self.verify(
+            standard_invoice["purchaseId"],
+            standard_signature,
+            self.transaction(
+                standard_invoice["reference"],
+                signature=standard_signature,
+                lamports=1_000_000_000,
+            ),
+        )
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(self.account()["booster_rate"], 6000)
+        self.assertEqual(self.account()["booster_expires"], 0)
+
+        response, _ = self.verify(
+            short_invoice["purchaseId"],
+            self.signature,
+            self.transaction(short_invoice["reference"], signature=self.signature),
+        )
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(self.account()["booster_rate"], 6000)
+        self.assertEqual(self.account()["booster_expires"], 0)
 
     def test_invalid_package_and_replayed_signature_are_rejected(self):
         for cost in ["NaN", "-1", "0.200000001", "11", None]:

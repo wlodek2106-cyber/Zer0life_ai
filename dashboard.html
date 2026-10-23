@@ -2828,6 +2828,11 @@
                 <h3 style="margin:0 0 8px;color:#14f195;font-size:15px;">Complete Boots payment</h3>
                 <p id="boots-pay-status" role="status" aria-live="polite"
                    style="margin:0 0 12px;color:#c9d4c8;font-size:12px;line-height:1.5;"></p>
+                <div id="boots-pending-invoices" hidden
+                     style="margin:0 0 12px;padding:10px;border:1px solid rgba(246,201,120,.45);border-radius:12px;background:rgba(246,201,120,.07);text-align:left;">
+                    <p id="boots-pending-invoices-warning" style="margin:0 0 8px;color:#f6c978;font-size:11px;line-height:1.45;"></p>
+                    <div id="boots-pending-invoice-list" style="display:grid;gap:6px;"></div>
+                </div>
                 <div id="boots-pay-invoice" hidden>
                     <p style="margin:0 0 10px;font-size:14px;color:#f2f7ef;">
                         Exact amount: <strong id="boots-pay-amount" style="color:#14f195;"></strong>
@@ -3944,12 +3949,55 @@
             return `https://solflare.com/ul/v1/browse/${encodeURIComponent(bridgeUrl.href)}?ref=${encodeURIComponent(appUrl)}`;
         }
 
+        function formatBootsSolAmount(amount) {
+            return `${Number(amount).toLocaleString('en-US', { maximumFractionDigits: 1 })} SOL`;
+        }
+
+        function renderPendingBootsInvoices(invoices, selectedPurchaseId) {
+            const panel = document.getElementById('boots-pending-invoices');
+            const warning = document.getElementById('boots-pending-invoices-warning');
+            const list = document.getElementById('boots-pending-invoice-list');
+            const pending = Array.isArray(invoices)
+                ? invoices.filter(invoice => invoice?.status === 'pending' && invoice.purchaseId)
+                : [];
+            list.replaceChildren();
+            panel.hidden = pending.length < 2;
+            if (pending.length < 2) return;
+
+            warning.textContent =
+                'Each open invoice remains payable. Pay only the tariff you intend; paying more than one charges you for each.';
+            for (const invoice of pending) {
+                const isSelected = invoice.purchaseId === selectedPurchaseId;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'wallet-action-btn';
+                button.style.cssText = 'width:100%;padding:9px;text-align:left;font-size:11px;';
+                button.textContent =
+                    `${isSelected ? 'Current invoice' : 'Open invoice'}: ${formatBootsSolAmount(invoice.amountSol)} — ${nameForBoosterRate(invoice.boosterRate)}`;
+                button.disabled = isSelected;
+                button.setAttribute('aria-pressed', String(isSelected));
+                if (!isSelected) {
+                    button.addEventListener('click', () => {
+                        showBootsPayInvoice({ ...invoice, pendingBootsPayments: pending });
+                        setBootsPayStatus(
+                            `Opened the ${formatBootsSolAmount(invoice.amountSol)} invoice for ${nameForBoosterRate(invoice.boosterRate)}. Check this exact amount before paying.`,
+                        );
+                    });
+                }
+                list.append(button);
+            }
+        }
+
         function showBootsPayInvoice(invoice) {
             activeBootsPayment = invoice;
             const checkout = document.getElementById('boots-solana-pay-checkout');
             const invoiceBox = document.getElementById('boots-pay-invoice');
             const walletLink = document.getElementById('open-boots-wallet-pay');
             const copyAddressButton = document.getElementById('copy-boots-merchant-address');
+            renderPendingBootsInvoices(
+                invoice.pendingBootsPayments || (invoice.status === 'pending' ? [invoice] : []),
+                invoice.purchaseId,
+            );
             checkout.hidden = false;
             invoiceBox.hidden = invoice.status === 'confirmed';
             if (invoice.status === 'confirmed') {
@@ -3969,7 +4017,7 @@
             copyAddressButton.hidden = false;
             document.getElementById('boots-pay-recipient').textContent = invoice.recipient;
             document.getElementById('boots-pay-amount').textContent =
-                `${Number(invoice.amountSol).toFixed(1)} SOL`;
+                formatBootsSolAmount(invoice.amountSol);
             document.getElementById('boots-pay-qr').src =
                 `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(invoice.payUri)}`;
             document.getElementById('boots-tx-signature-input').value = '';
@@ -3980,13 +4028,32 @@
         async function restorePendingBootsPayment() {
             try {
                 const refreshed = await window.secureWallet.refresh();
-                const pending = refreshed.pendingBootsPayments?.[0];
-                if (pending) {
-                    showBootsPayInvoice(pending);
-                    setBootsPayStatus('You have an unpaid Boots invoice. Complete or verify this one before creating another.');
+                const pending = Array.isArray(refreshed.pendingBootsPayments)
+                    ? refreshed.pendingBootsPayments.filter(invoice => invoice?.status === 'pending')
+                    : [];
+                if (pending.length) {
+                    let savedPurchaseId = null;
+                    try {
+                        savedPurchaseId = JSON.parse(
+                            localStorage.getItem(bootsPaymentStorageKey()) || 'null',
+                        )?.purchaseId || null;
+                    } catch {}
+                    const selected = pending.find(invoice => invoice.purchaseId === savedPurchaseId)
+                        || pending[pending.length - 1];
+                    showBootsPayInvoice({ ...selected, pendingBootsPayments: pending });
+                    if (pending.length > 1) {
+                        setBootsPayStatus(
+                            `${pending.length} open Boots invoices. The selected invoice is ${formatBootsSolAmount(selected.amountSol)}; each listed request remains payable.`,
+                        );
+                    } else {
+                        setBootsPayStatus(
+                            `You have an unpaid ${formatBootsSolAmount(selected.amountSol)} Boots invoice. Verify or finish this one before starting another.`,
+                        );
+                    }
                 } else {
                     activeBootsPayment = null;
                     document.getElementById('boots-solana-pay-checkout').hidden = true;
+                    renderPendingBootsInvoices([], null);
                 }
             } catch {
                 // Wallet displays its own refresh error; the user can retry from the store.
@@ -4023,7 +4090,7 @@
                     costSol,
                 });
                 if (invoice.status === 'confirmed') {
-                    localStorage.removeItem(storageKey);
+                    if (invoice.purchaseId === purchaseId) localStorage.removeItem(storageKey);
                     showBootsPayInvoice(invoice);
                     await window.secureWallet.refresh();
                     tg.showAlert(`Boots are already active: ${name}.`);
@@ -4031,6 +4098,19 @@
                 }
                 localStorage.setItem(storageKey, JSON.stringify({ purchaseId: invoice.purchaseId, costSol }));
                 showBootsPayInvoice(invoice);
+                const otherPendingCount = Math.max(
+                    0,
+                    (invoice.pendingBootsPayments?.length || 1) - 1,
+                );
+                if (otherPendingCount) {
+                    setBootsPayStatus(
+                        `${formatBootsSolAmount(invoice.amountSol)} invoice ready for ${name}. ${otherPendingCount} older invoice(s) remain payable; paying more than one will charge each request.`,
+                    );
+                } else if (invoice.purchaseId !== purchaseId) {
+                    setBootsPayStatus(
+                        `An open ${formatBootsSolAmount(invoice.amountSol)} invoice for ${name} already exists. This same-price invoice was reopened; no duplicate was created.`,
+                    );
+                }
             } catch (error) {
                 if (error.status === 409) {
                     await restorePendingBootsPayment();
@@ -4122,7 +4202,13 @@
                     setBootsPayStatus(result.message || 'Transaction is still pending. Do not pay again.');
                     return;
                 }
-                localStorage.removeItem(bootsPaymentStorageKey());
+                const storageKey = bootsPaymentStorageKey();
+                try {
+                    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+                    if (saved?.purchaseId === activeBootsPayment.purchaseId) {
+                        localStorage.removeItem(storageKey);
+                    }
+                } catch {}
                 window.secureWallet.applyResult({
                     ...(window.secureWallet.getState() || {}),
                     ...result,
