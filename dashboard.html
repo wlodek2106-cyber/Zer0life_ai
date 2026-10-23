@@ -3946,6 +3946,7 @@
         function createSolflarePayLink(payUri) {
             const bridgeUrl = new URL('wallet-pay.html', window.location.href);
             bridgeUrl.searchParams.set('request', payUri);
+            bridgeUrl.searchParams.set('build', 'boots-solana-pay-tap-v5');
             const appUrl = new URL('./', window.location.href).href;
             return `https://solflare.com/ul/v1/browse/${encodeURIComponent(bridgeUrl.href)}?ref=${encodeURIComponent(appUrl)}`;
         }

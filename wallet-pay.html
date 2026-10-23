@@ -108,21 +108,21 @@
       details.hidden = false;
       amountText.textContent = `${amount} SOL`;
       recipientText.textContent = `${recipient.slice(0, 6)}…${recipient.slice(-4)}`;
-      instruction.textContent = 'Opening the exact Solana Pay request in Solflare. If it does not open automatically, use the button below.';
+      instruction.textContent = 'Your exact payment request is ready. Tap below to open it in Solflare.';
       openButton.href = request;
+      openButton.target = '_self';
       openButton.hidden = false;
       copyButton.hidden = false;
 
-      const openPayment = event => {
-        event?.preventDefault();
-        status.textContent = 'Opening Solflare payment…';
-        try {
-          window.location.assign(request);
-        } catch {
-          status.textContent = 'Could not open the payment. Use the QR or return to Zer0Life Run.';
-        }
-      };
-      openButton.addEventListener('click', openPayment);
+      status.textContent = 'Tap “Open payment in Solflare” to continue.';
+      openButton.addEventListener('click', () => {
+        status.textContent = 'Sending the payment request to Solflare…';
+        window.setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            status.textContent = 'If nothing opened, tap the payment button again or copy the request.';
+          }
+        }, 1800);
+      });
       copyButton.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(request);
@@ -132,14 +132,6 @@
         }
       });
 
-      window.setTimeout(() => {
-        if (document.visibilityState === 'visible') openPayment();
-      }, 450);
-      window.setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          status.textContent = 'If Solflare did not open, tap Open payment in Solflare.';
-        }
-      }, 1800);
     })();
   </script>
 </body>
