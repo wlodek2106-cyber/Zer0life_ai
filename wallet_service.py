@@ -19,6 +19,7 @@ from flask import Blueprint, jsonify, request
 from wallet_recovery import recovery_state, register_recovery_routes
 from wallet_mobile import register_mobile_routes
 from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
+from boots_solana_pay import BootsSolanaPay, BootsPayError
 from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
 from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
 from community_feed import register_community_routes
@@ -485,6 +486,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         db_path, _connect, _ensure_account, _rpc_client, _utc_now,
         SHARED_POOL_WALLET, app.logger,
     )
+    boots_payments = BootsSolanaPay(db_path, _connect, _ensure_account, _utc_now, app.logger)
     approvals = WithdrawalApprovals(
         db_path, _connect, _create_wallet_challenge, _balance_units,
         ZRL_SCALE, DAILY_WITHDRAW_CAP, SHARED_POOL_WALLET,
@@ -496,6 +498,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         # Public release marker, including on 401s, enables a deployment check
         # without obtaining a player's signed Telegram session or balance.
         response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-deposits-reference-1"
+        response.headers["X-Zer0Life-Boots-Pay"] = "solana-pay-reference-1"
         return response
 
     def authenticated_user(data):
@@ -598,10 +601,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     "withdrawalMode": "trusted_destination_v2",
                     "trustedWithdrawalAddress": account["trusted_withdrawal_address"],
                     "pendingWithdrawalApprovals": approvals.pending(str(user["id"])),
-                    "merchantPaymentsEnabled": True,
+                    "merchantPaymentsEnabled": False,
+                    "bootsSolanaPayEnabled": True,
                     "merchantRecipient": MERCHANT_SOL_WALLET,
                     "pendingPurchases": merchant.pending(str(user["id"])),
                     "lastMerchantPurchase": merchant.receipt(str(user["id"])),
+                    "pendingBootsPayments": boots_payments.pending(str(user["id"])),
                     "walletAddress": address,
                     "referralCode": account["referral_code"],
                     "affiliateLevels": affiliate_levels,
@@ -1196,6 +1201,42 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             app.logger.exception("secure withdrawal failed")
             return _response_error("Withdrawal is temporarily unavailable", 503)
 
+    @bp.post("/wallet/boots/payments/prepare")
+    def boots_payment_prepare():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            result = boots_payments.prepare(
+                str(user["id"]), data.get("purchaseId"), data.get("costSol")
+            )
+            return jsonify(result)
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except BootsPayError as exc:
+            return _response_error(str(exc), exc.status)
+        except Exception:
+            app.logger.exception("Boots Solana Pay invoice preparation failed")
+            return _response_error("Could not prepare a Boots payment. No game balance was charged.", 503)
+
+    @bp.post("/wallet/boots/payments/verify")
+    def boots_payment_verify():
+        try:
+            data = _json_body()
+            user = authenticated_user(data)
+            result = boots_payments.verify(
+                str(user["id"]), data.get("purchaseId"), data.get("txSignature")
+            )
+            return jsonify(result), 202 if result["status"] == "pending" else 200
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except BootsPayError as exc:
+            return _response_error(str(exc), exc.status)
+        except requests.RequestException:
+            return _response_error("Could not check Solana right now. Your game balance was not charged.", 503)
+        except Exception:
+            app.logger.exception("Boots Solana Pay verification failed")
+            return _response_error("Could not verify this Boots payment yet. Do not pay again.", 503)
+
     @bp.post("/wallet/purchases/status")
     def merchant_purchase_status():
         try:
@@ -1218,14 +1259,13 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             user = authenticated_user(data)
             purpose = str(data.get("purpose", ""))
             event_id = str(data.get("eventId", ""))
-            if purpose not in ("repair", "dao_vote", "booster") or not event_id:
-                return _response_error("Invalid wallet spend request", 400)
             if purpose == "booster":
-                try:
-                    result = merchant.purchase(str(user["id"]), event_id, data.get("costSol"))
-                    return jsonify(result), 202 if result["status"] == "pending" else 200
-                except MerchantError as exc:
-                    return _response_error(str(exc), exc.status)
+                return _response_error(
+                    "Boots now use Solana Pay. Your in-game SOL balance was not charged; refresh the app.",
+                    410,
+                )
+            if purpose not in ("repair", "dao_vote") or not event_id:
+                return _response_error("Invalid wallet spend request", 400)
 
             zrl_cost = {"repair": 50, "dao_vote": 10}
             now = _utc_now()

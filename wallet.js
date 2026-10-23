@@ -289,7 +289,7 @@
                 : receipt.status === 'failed' ? 'Your latest payment failed. The cost was refunded.'
                     : 'Your Merchant payment is awaiting confirmation.', receipt);
         }
-        if (!merchantTask && nextState.merchantPaymentsEnabled && Array.isArray(nextState.pendingPurchases)) {
+        if (!merchantTask && Array.isArray(nextState.pendingPurchases) && nextState.pendingPurchases.length) {
             try {
                 const saved = JSON.parse(localStorage.getItem(purchaseStorageKey()) || 'null');
                 const purchaseId = nextState.pendingPurchases[0]?.purchaseId || saved?.eventId;
@@ -579,42 +579,7 @@
 
     async function spend(purpose, payload = {}) {
         if (purpose === 'booster') {
-            if (merchantTask) throw new Error('Your previous payment is still being checked. Another charge is blocked.');
-            if (!state?.merchantPaymentsEnabled) {
-                throw new Error('The Boots payment server has not been updated yet. You were not charged.');
-            }
-            const key = purchaseStorageKey();
-            const saved = JSON.parse(localStorage.getItem(key) || 'null');
-            if (saved && Number(saved.costSol) !== Number(payload.costSol)) {
-                throw new Error('Check your previous Boots purchase first. Open Wallet to refresh its status.');
-            }
-            const eventId = saved?.eventId || (window.crypto?.randomUUID
-                ? window.crypto.randomUUID()
-                : `zr-boots-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-            // Persist BEFORE the request: a lost HTTP response must not cause a
-            // new payment ID, including after closing Telegram or reloading.
-            localStorage.setItem(key, JSON.stringify({ eventId, costSol: payload.costSol }));
-            merchantTask = (async () => {
-                merchantMessage('Preparing payment to Merchant…');
-                if (byId('booster-payment-tx')) byId('booster-payment-tx').hidden = true;
-                let result;
-                try {
-                    result = await post('/wallet/spend', { ...payload, purpose, eventId });
-                } catch (error) {
-                    // Definitive validation failures cannot have reserved SOL.
-                    if ([400, 401, 402, 403, 409].includes(error.status)) localStorage.removeItem(key);
-                    merchantMessage('');
-                    throw error;
-                }
-                if (purchaseStorageKey() !== key) throw new Error('Your profile changed. Another player’s result was not applied.');
-                renderWallet(Object.assign({}, state || {}, result));
-                return monitorPurchase(result.purchaseId, key);
-            })();
-            try {
-                return await merchantTask;
-            } finally {
-                merchantTask = null;
-            }
+            throw new Error('Boots now use Solana Pay. Your in-game SOL balance was not charged.');
         }
         const eventId = window.crypto?.randomUUID
             ? window.crypto.randomUUID()

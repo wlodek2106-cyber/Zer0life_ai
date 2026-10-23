@@ -19,7 +19,7 @@ from solders.keypair import Keypair
 from solders.transaction import Transaction
 from solders.transaction_status import TransactionConfirmationStatus as Confirmation
 import wallet_service as service
-from merchant_payments import MERCHANT_SOL_WALLET
+from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
 
 TOKEN = "synthetic-merchant-test-token"
 
@@ -90,11 +90,19 @@ class MerchantTests(unittest.TestCase):
         return (client or self.client).post(route, json={"initData": init_data(user), **(body or {})})
 
     def buy(self, event="boots-test", cost=.2, **kwargs):
-        return self.post("/wallet/spend", {
-            "purpose": "booster", "eventId": event, "costSol": cost,
-            # Untrusted fields must never control the recipient or rate.
-            "recipient": str(self.key.pubkey()), "boosterRate": 999999,
-        }, **kwargs)
+        # Exercise the legacy settlement service directly. New public API
+        # requests may no longer create these game-balance-funded purchases.
+        user = kwargs.pop("user", "200")
+        merchant = MerchantPayments(
+            self.path, service._connect, service._ensure_account,
+            service._rpc_client, service._utc_now, service.SHARED_POOL_WALLET,
+            self.app.logger,
+        )
+        try:
+            result = merchant.purchase(user, event, cost)
+            return NS(status_code=202 if result["status"] == "pending" else 200, json=result)
+        except MerchantError as exc:
+            return NS(status_code=exc.status, json={"error": str(exc)})
 
     def status(self, event="boots-test", **kwargs):
         return self.post("/wallet/purchases/status", {"purchaseId": event}, **kwargs)
@@ -232,7 +240,8 @@ class MerchantTests(unittest.TestCase):
         self.buy()
         state = self.post("/wallet/state").json
         other = self.post("/wallet/state", user="201").json
-        self.assertTrue(state["merchantPaymentsEnabled"])
+        self.assertFalse(state["merchantPaymentsEnabled"])
+        self.assertTrue(state["bootsSolanaPayEnabled"])
         self.assertEqual(state["pendingPurchases"][0]["purchaseId"], "boots-test")
         self.assertEqual(other["pendingPurchases"], [])
         self.assertNotIn("signed_transaction", json.dumps(state))
@@ -256,6 +265,21 @@ class MerchantTests(unittest.TestCase):
         })
         self.assertEqual(result.status_code, 401)
         self.assertEqual(self.chain.sent, [])
+
+    def test_old_booster_spend_route_is_disabled_without_deducting_game_sol(self):
+        before = self.account()["sol_lamports"]
+        result = self.buy_via_spend_route()
+        self.assertEqual(result.status_code, 410, result.json)
+        self.assertIn("Solana Pay", result.json["error"])
+        self.assertEqual(self.account()["sol_lamports"], before)
+        self.assertEqual(self.chain.sent, [])
+
+    def buy_via_spend_route(self):
+        return self.post("/wallet/spend", {
+            "purpose": "booster",
+            "eventId": "old-client-boots",
+            "costSol": .2,
+        })
 
 
 if __name__ == "__main__":

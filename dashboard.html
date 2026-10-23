@@ -2801,7 +2801,46 @@
                style="font-size:12px;line-height:1.5;"></p>
             <a id="booster-payment-tx" hidden target="_blank" rel="noopener noreferrer"
                style="font-size:12px;color:#a8f07a;">View transfer in Solana Explorer ↗</a>
-            
+
+            <div style="margin:10px 0 16px;padding:10px 12px;border:1px solid rgba(20,241,149,.28);border-radius:12px;color:#a8f07a;font-size:12px;line-height:1.45;">
+                Pay Boots directly with Solana Pay. Your in-game SOL balance will not be charged.
+            </div>
+            <section id="boots-solana-pay-checkout" hidden
+                     style="margin:0 0 16px;padding:14px;border:1px solid rgba(20,241,149,.34);border-radius:16px;background:rgba(20,241,149,.06);text-align:center;">
+                <h3 style="margin:0 0 8px;color:#14f195;font-size:15px;">Complete Boots payment</h3>
+                <p id="boots-pay-status" role="status" aria-live="polite"
+                   style="margin:0 0 12px;color:#c9d4c8;font-size:12px;line-height:1.5;"></p>
+                <div id="boots-pay-invoice" hidden>
+                    <p style="margin:0 0 10px;font-size:14px;color:#f2f7ef;">
+                        Exact amount: <strong id="boots-pay-amount" style="color:#14f195;"></strong>
+                    </p>
+                    <div style="display:inline-block;padding:8px;border-radius:12px;background:#fff;margin-bottom:10px;">
+                        <img id="boots-pay-qr" src="" alt="Solana Pay Boots purchase QR code"
+                             style="display:block;width:180px;height:180px;">
+                    </div>
+                    <p style="margin:0 0 10px;color:#a8f07a;font-size:11px;line-height:1.45;">
+                        Scan the QR or copy the complete Solana Pay link in a compatible wallet.
+                        Do not send SOL to a plain address; the payment reference is required.
+                    </p>
+                    <button class="wallet-action-btn" id="copy-boots-pay-link" type="button"
+                            style="width:100%;margin-bottom:12px;">Copy Solana Pay Link</button>
+                    <div class="custom-input-group" style="margin-bottom:10px;text-align:left;">
+                        <label for="boots-tx-signature-input"
+                               style="font-size:11px;color:#14f195;font-weight:700;">Solana transaction signature (Tx)</label>
+                        <input id="boots-tx-signature-input" class="custom-input-field" type="text"
+                               autocomplete="off" autocapitalize="off" spellcheck="false"
+                               placeholder="Paste the transaction signature from your wallet">
+                    </div>
+                    <button class="claim-btn" id="verify-boots-payment" type="button"
+                            style="width:100%;background:#a8f07a;color:#000;font-weight:800;">
+                        Verify Tx & Activate Boots
+                    </button>
+                    <p style="margin:9px 0 0;color:#8a8d98;font-size:10px;line-height:1.45;">
+                        Boots activate only after the exact payment is finalized on Solana. If it is pending, do not pay again.
+                    </p>
+                </div>
+            </section>
+
             <div class="booster-grid">
                 <div class="booster-card featured" onclick="buyTimedBooster(0.2, 1500, 'Boots x2 (1,500 ZRL/km - 7d)', 168)">
                     <div class="booster-badge" style="color: #14f195; background: rgba(20,241,149,0.15);">⏳ Boots 7 Days</div>
@@ -3847,30 +3886,164 @@
         };
 
         let boosterPurchaseBusy = false;
+        let activeBootsPayment = null;
+        function bootsPaymentStorageKey() {
+            const playerId = tg?.initDataUnsafe?.user?.id;
+            if (!playerId) throw new Error('Open Zer0Life Run in Telegram to prepare a Boots payment.');
+            return `zerolife-boots-solana-pay:${playerId}`;
+        }
+
+        function setBootsPayStatus(message, isError = false) {
+            const status = document.getElementById('boots-pay-status');
+            status.textContent = String(message || '');
+            status.style.color = isError ? '#fca5a5' : '#c9d4c8';
+        }
+
+        function showBootsPayInvoice(invoice) {
+            activeBootsPayment = invoice;
+            const checkout = document.getElementById('boots-solana-pay-checkout');
+            const invoiceBox = document.getElementById('boots-pay-invoice');
+            checkout.hidden = false;
+            invoiceBox.hidden = invoice.status === 'confirmed';
+            if (invoice.status === 'confirmed') {
+                setBootsPayStatus('This Boots purchase is already confirmed.');
+                return;
+            }
+            if (!invoice.payUri || !invoice.purchaseId) {
+                setBootsPayStatus('The payment link is unavailable. Refresh Wallet and try again.', true);
+                return;
+            }
+            document.getElementById('boots-pay-amount').textContent =
+                `${Number(invoice.amountSol).toFixed(1)} SOL`;
+            document.getElementById('boots-pay-qr').src =
+                `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(invoice.payUri)}`;
+            document.getElementById('boots-tx-signature-input').value = '';
+            setBootsPayStatus('Invoice ready. Pay once, then paste the transaction signature.');
+            checkout.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function restorePendingBootsPayment() {
+            try {
+                const refreshed = await window.secureWallet.refresh();
+                const pending = refreshed.pendingBootsPayments?.[0];
+                if (pending) {
+                    showBootsPayInvoice(pending);
+                    setBootsPayStatus('You have an unpaid Boots invoice. Complete or verify this one before creating another.');
+                } else {
+                    activeBootsPayment = null;
+                    document.getElementById('boots-solana-pay-checkout').hidden = true;
+                }
+            } catch {
+                // Wallet displays its own refresh error; the user can retry from the store.
+            }
+        }
+
         async function purchaseVerifiedBooster(costSol, name) {
             if (boosterPurchaseBusy) return;
             boosterPurchaseBusy = true;
             triggerHaptic('medium');
             try {
-                const result = await window.secureWallet.spend('booster', { costSol });
-                if (result.status !== 'confirmed') {
-                    tg.showAlert('Payment is awaiting Solana confirmation. Do not pay again. The status check will resume when you reopen the app.');
+                const walletState = await window.secureWallet.refresh();
+                const pending = walletState.pendingBootsPayments?.[0];
+                if (pending) {
+                    showBootsPayInvoice(pending);
+                    if (Number(pending.amountSol) !== Number(costSol)) {
+                        setBootsPayStatus('A different Boots invoice is still open. Verify it before choosing another package.', true);
+                    }
                     return;
                 }
-                boosterExpiryTime = Number(result.boosterExpires || 0);
-                saveData();
-                updateUI();
-                updateEnergyUI();
-                document.getElementById('boosters-modal').style.display = 'none';
-                triggerHaptic('success');
-                playSound('success');
-                tg.showAlert(`Boots activated: ${name}. The payment transfer to Merchant was confirmed.`);
+
+                const storageKey = bootsPaymentStorageKey();
+                let saved = null;
+                try { saved = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch {}
+                const purchaseId = saved && Number(saved.costSol) === Number(costSol)
+                    ? saved.purchaseId
+                    : (window.crypto?.randomUUID
+                        ? window.crypto.randomUUID()
+                        : `zr-boots-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+                // Keep the same id after a timeout so retrying cannot create another invoice.
+                localStorage.setItem(storageKey, JSON.stringify({ purchaseId, costSol }));
+                const invoice = await window.secureWallet.request('/wallet/boots/payments/prepare', {
+                    purchaseId,
+                    costSol,
+                });
+                if (invoice.status === 'confirmed') {
+                    localStorage.removeItem(storageKey);
+                    showBootsPayInvoice(invoice);
+                    await window.secureWallet.refresh();
+                    tg.showAlert(`Boots are already active: ${name}.`);
+                    return;
+                }
+                localStorage.setItem(storageKey, JSON.stringify({ purchaseId: invoice.purchaseId, costSol }));
+                showBootsPayInvoice(invoice);
             } catch (error) {
+                if (error.status === 409) {
+                    await restorePendingBootsPayment();
+                }
+                setBootsPayStatus(error.message || 'Could not prepare the Solana Pay invoice.', true);
                 triggerHaptic('error');
-                tg.showAlert(error.message);
             } finally {
                 boosterPurchaseBusy = false;
             }
+        }
+
+        document.getElementById('copy-boots-pay-link').addEventListener('click', async () => {
+            if (!activeBootsPayment?.payUri) return;
+            try {
+                await navigator.clipboard.writeText(activeBootsPayment.payUri);
+                setBootsPayStatus('Solana Pay link copied. Open it in a compatible wallet and pay once.');
+            } catch {
+                setBootsPayStatus('Copy was blocked. Scan the QR code with a compatible wallet.', true);
+            }
+        });
+
+        document.getElementById('verify-boots-payment').addEventListener('click', async () => {
+            const button = document.getElementById('verify-boots-payment');
+            const txSignature = document.getElementById('boots-tx-signature-input').value.trim();
+            if (!activeBootsPayment?.purchaseId) {
+                setBootsPayStatus('Prepare a Boots invoice first.', true);
+                return;
+            }
+            if (!txSignature) {
+                setBootsPayStatus('Paste the transaction signature from your wallet first.', true);
+                return;
+            }
+            button.disabled = true;
+            button.textContent = 'Verifying finalized Tx…';
+            setBootsPayStatus('Checking the finalized transaction on Solana…');
+            try {
+                const result = await window.secureWallet.request('/wallet/boots/payments/verify', {
+                    purchaseId: activeBootsPayment.purchaseId,
+                    txSignature,
+                });
+                if (result.status !== 'confirmed') {
+                    setBootsPayStatus(result.message || 'Transaction is still pending. Do not pay again.');
+                    return;
+                }
+                localStorage.removeItem(bootsPaymentStorageKey());
+                window.secureWallet.applyResult({
+                    ...(window.secureWallet.getState() || {}),
+                    ...result,
+                });
+                await window.secureWallet.refresh().catch(() => null);
+                activeBootsPayment = null;
+                boostersModal.style.display = 'none';
+                triggerHaptic('success');
+                playSound('success');
+                tg.showAlert(`Boots activated: ${nameForBoosterRate(result.boosterRate)}. Solana Tx finalized.`);
+            } catch (error) {
+                setBootsPayStatus(error.message || 'Could not verify this transaction. Do not pay again.', true);
+                triggerHaptic('error');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Verify Tx & Activate Boots';
+            }
+        });
+
+        function nameForBoosterRate(rate) {
+            const names = { 1500: 'Boots x2 (7d)', 3000: 'Starter', 6000: 'Standard',
+                13000: 'Pro Tier', 30000: 'Whale' };
+            return names[Number(rate)] || 'Boots';
         }
 
         window.buyBooster = function(costSol, rate, name) {
@@ -5844,6 +6017,7 @@
             triggerHaptic('light');
             playSound('click');
             boostersModal.style.display = 'flex';
+            restorePendingBootsPayment();
         });
 
         const LEVELS = [
@@ -5897,7 +6071,7 @@
     </script>
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
-    <script src="./wallet.js?v=run-claim-reconcile-2026-10-19"></script>
+    <script src="./wallet.js?v=boots-solana-pay-reference-1"></script>
     <script src="./community-feed.js?v=zeronet-claim-nonblocking-v2"></script>
     <script src="./social-chat.js?v=zeronet-single-entry-v1"></script>
 </body>

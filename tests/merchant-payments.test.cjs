@@ -5,37 +5,47 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../wallet.js'), 'utf8');
 
-async function fixture({ outcome = 'confirmed', dropResponse = false, cached = false, enabled = true } = {}) {
-    const storage = new Map(), calls = [], labels = new Map();
-    for (const id of ['booster-payment-status', 'booster-payment-tx']) labels.set(id, { textContent: '', hidden: true });
-    const localStorage = {
-        getItem: key => storage.get(key) ?? null,
-        setItem: (key, value) => storage.set(key, value),
-        removeItem: key => storage.delete(key),
+async function fixture({ pendingPurchases = [] } = {}) {
+    const calls = [];
+    const account = {
+        success: true,
+        referralCode: 'TESTUSER',
+        availableZrl: 25,
+        gameSolBalance: 2,
+        farms: [],
+        boosterRate: 300,
+        merchantPaymentsEnabled: false,
+        bootsSolanaPayEnabled: true,
+        pendingPurchases,
+        pendingBootsPayments: [],
     };
-    if (cached) localStorage.setItem('zerolife-merchant-purchase:200', JSON.stringify({ eventId: 'saved-id', costSol: .2 }));
-    const account = { success: true, referralCode: 'TESTUSER', availableZrl: 25,
-        gameSolBalance: 2, farms: [], boosterRate: 300, merchantPaymentsEnabled: enabled, pendingPurchases: [] };
-    const window = { Telegram: { WebApp: { initData: 'synthetic', initDataUnsafe: { user: { id: 200 } } } },
-        addEventListener() {}, crypto: { randomUUID: () => 'new-purchase-id' } };
+    const window = {
+        Telegram: { WebApp: { initData: 'synthetic', initDataUnsafe: { user: { id: 200 } } } },
+        addEventListener() {},
+        crypto: { randomUUID: () => 'new-purchase-id' },
+    };
     const context = {
-        window, localStorage, document: { getElementById: id => labels.get(id) || null },
-        console: { warn() {} }, setTimeout: (fn, delay) => { if (delay === 3000) setImmediate(fn); },
+        window,
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+        document: { getElementById: () => null },
+        console: { warn() {} },
+        setTimeout: (fn, delay) => { if (delay === 3000) setImmediate(fn); },
         async fetch(url, options) {
-            const route = new URL(url).pathname, body = JSON.parse(options.body);
+            const route = new URL(url).pathname;
+            const body = JSON.parse(options.body);
             calls.push({ route, body });
             let result = { success: true };
             if (route === '/wallet/state') result = { ...account };
-            if (route === '/wallet/spend') {
-                account.gameSolBalance = 1.8;
-                if (dropResponse) throw new TypeError('Synthetic response lost');
-                result = { success: true, purchaseId: body.eventId, status: 'pending', gameSolBalance: 1.8 };
+            if (route === '/wallet/boots/payments/prepare') {
+                result = { success: true, purchaseId: body.purchaseId, status: 'pending',
+                    amountSol: .2, payUri: 'solana:merchant?amount=0.2&reference=unique' };
+            }
+            if (route === '/wallet/boots/payments/verify') {
+                result = { success: true, purchaseId: body.purchaseId, status: 'confirmed',
+                    boosterRate: 1500, txHash: body.txSignature };
             }
             if (route === '/wallet/purchases/status') {
-                account.boosterRate = outcome === 'confirmed' ? 1500 : 300;
-                account.gameSolBalance = outcome === 'failed' ? 2 : 1.8;
-                result = { ...account, purchaseId: body.purchaseId, status: outcome,
-                    txHash: 'synthetic-signature', message: 'Synthetic payment failed; SOL restored' };
+                result = { ...account, purchaseId: body.purchaseId, status: 'confirmed' };
             }
             return { ok: true, json: async () => result };
         },
@@ -43,81 +53,54 @@ async function fixture({ outcome = 'confirmed', dropResponse = false, cached = f
     vm.runInNewContext(source, context);
     await new Promise(resolve => setImmediate(resolve));
     calls.length = 0;
-    return { api: window.secureWallet, storage, calls, labels, account };
+    return { api: window.secureWallet, calls, account };
 }
 
-test('Boots waits for finality and persists its id before a single spend request', async () => {
+test('legacy game-balance Boots spend is blocked without an API request', async () => {
     const f = await fixture();
-    const result = await f.api.spend('booster', { costSol: .2, eventId: 'attacker-id' });
-    assert.equal(result.status, 'confirmed');
-    assert.equal(f.api.getState().boosterRate, 1500);
-    assert.equal(f.calls.filter(c => c.route === '/wallet/spend').length, 1);
-    assert.equal(f.calls.find(c => c.route === '/wallet/spend').body.eventId, 'new-purchase-id');
-    assert.equal(f.storage.size, 0);
-    assert.match(f.labels.get('booster-payment-status').textContent, /confirmed/);
-    assert.equal(f.labels.get('booster-payment-status').hidden, false);
-    assert.match(f.labels.get('booster-payment-tx').href, /^https:\/\/explorer.solana.com\/tx\//);
-});
-
-test('double click cannot create another payment while the first is running', async () => {
-    const f = await fixture();
-    const first = f.api.spend('booster', { costSol: .2 });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /Another charge is blocked/);
-    await first;
-    assert.equal(f.calls.filter(c => c.route === '/wallet/spend').length, 1);
-});
-
-test('lost spend response keeps the payment id so a retry cannot debit a second time', async () => {
-    const f = await fixture({ dropResponse: true });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /response lost/);
-    const saved = JSON.parse([...f.storage.values()][0]);
-    assert.equal(saved.eventId, 'new-purchase-id');
-    assert.equal(f.labels.get('booster-payment-status').textContent, '');
-    assert.equal(f.labels.get('booster-payment-status').hidden, true);
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }));
-    assert.deepEqual(f.calls.filter(c => c.route === '/wallet/spend').map(c => c.body.eventId),
-        ['new-purchase-id', 'new-purchase-id']);
-});
-
-test('failed merchant transfer restores displayed SOL and does not activate Boots', async () => {
-    const f = await fixture({ outcome: 'failed' });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /SOL restored/);
+    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /Solana Pay/);
+    assert.equal(f.calls.some(call => call.route === '/wallet/spend'), false);
     assert.equal(f.api.getState().gameSolBalance, 2);
-    assert.equal(f.api.getState().boosterRate, 300);
-    assert.equal(f.storage.size, 0);
-    assert.match(f.labels.get('booster-payment-status').textContent, /SOL restored/);
 });
 
-test('old backend cannot be charged by the updated purchase UI', async () => {
-    const f = await fixture({ enabled: false });
-    await assert.rejects(f.api.spend('booster', { costSol: .2 }), /has not been updated yet/);
-    assert.equal(f.calls.length, 0);
-    assert.equal(f.storage.size, 0);
+test('Solana Pay invoice and Tx verification use authenticated Wallet API requests', async () => {
+    const f = await fixture();
+    const invoice = await f.api.request('/wallet/boots/payments/prepare', {
+        purchaseId: 'new-purchase-id',
+        costSol: .2,
+    });
+    assert.equal(invoice.status, 'pending');
+    assert.match(invoice.payUri, /^solana:/);
+    const verified = await f.api.request('/wallet/boots/payments/verify', {
+        purchaseId: invoice.purchaseId,
+        txSignature: 'synthetic-transaction-signature',
+    });
+    assert.equal(verified.status, 'confirmed');
+    assert.equal(f.calls.length, 2);
+    assert.equal(f.calls[0].route, '/wallet/boots/payments/prepare');
+    assert.equal(f.calls[0].body.initData, 'synthetic');
+    assert.equal(f.calls[1].route, '/wallet/boots/payments/verify');
+    assert.equal(f.calls[1].body.txSignature, 'synthetic-transaction-signature');
 });
 
-test('an existing payment is resumed on refresh without a new spend request', async () => {
-    const f = await fixture({ cached: true });
-    assert.equal(f.calls.filter(c => c.route === '/wallet/spend').length, 0);
-    assert.equal(f.storage.size, 0);
-    assert.equal(f.api.getState().boosterRate, 1500);
+test('legacy pending Merchant purchases remain eligible for recovery after new Boots payments switch', () => {
+    const condition = source.slice(source.indexOf('if (!merchantTask'), source.indexOf('async function refresh'));
+    assert.match(condition, /Array\.isArray\(nextState\.pendingPurchases\)/);
+    assert.doesNotMatch(condition, /merchantPaymentsEnabled/);
 });
 
-test('pending purchase never reports activation and keeps its id for the next session', async () => {
-    const f = await fixture({ outcome: 'pending' });
-    const result = await f.api.spend('booster', { costSol: .2 });
-    assert.equal(result.status, 'pending');
-    assert.equal(f.api.getState().boosterRate, 300);
-    assert.equal(f.storage.size, 1);
-    assert.match(f.labels.get('booster-payment-status').textContent, /still being checked/);
-});
-
-test('game store requires confirmed status before showing success or closing', () => {
+test('Boots store renders Solana Pay QR, copies the complete URI, and waits for finalized Tx', () => {
     const html = fs.readFileSync(path.join(__dirname, '../dashboard.html'), 'utf8');
-    const purchase = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
-    assert(purchase.indexOf("result.status !== 'confirmed'") < purchase.indexOf("boosters-modal').style.display = 'none'"));
-    assert.match(purchase, /finally\s*\{\s*boosterPurchaseBusy = false/);
-    assert.match(html, /<p id="booster-payment-status" role="status" aria-live="polite" hidden/);
-    assert.match(html, /VIP Boosters Store<\/span>/);
-    assert.doesNotMatch(html, /Merchant Flow|Boots payment\s*→\s*57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db/);
-    assert.doesNotMatch(source, /Check the payment status in Wallet\. Do not send another payment manually\./);
+    const checkout = html.slice(html.indexOf('let boosterPurchaseBusy'), html.indexOf('window.openDaoModal'));
+    assert.match(html, /id="boots-solana-pay-checkout"/);
+    assert.match(html, /id="boots-pay-qr"/);
+    assert.match(html, /Copy Solana Pay Link/);
+    assert.match(html, /id="boots-tx-signature-input"/);
+    assert.match(checkout, /\/wallet\/boots\/payments\/prepare/);
+    assert.match(checkout, /\/wallet\/boots\/payments\/verify/);
+    assert.match(checkout, /result\.status !== 'confirmed'/);
+    assert.match(checkout, /pendingBootsPayments/);
+    assert.match(checkout, /do not pay again/i);
+    assert.doesNotMatch(checkout, /secureWallet\.spend\(['"]booster/);
+    assert.match(html, /Your in-game SOL balance will not be charged/);
 });
