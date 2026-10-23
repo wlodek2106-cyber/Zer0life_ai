@@ -134,8 +134,15 @@ test('Boots store exposes working price buttons and a visible Solana Pay checkou
     const solflareBridge = fs.readFileSync(path.join(__dirname, '../wallet-pay.html'), 'utf8');
     assert.match(solflareBridge, /request\.startsWith\('solana:'\)/);
     assert.match(solflareBridge, /reference/);
-    assert.match(solflareBridge, /window\.location\.assign\(request\)/);
     assert.match(solflareBridge, /Open payment in Solflare/);
+    assert.match(solflareBridge, /openButton\.href = request/);
+    assert.match(solflareBridge, /openButton\.target = '_self'/);
+    assert.doesNotMatch(solflareBridge, /window\.location\.assign\(request\)/);
+    const bridgeBeforeUserClick = solflareBridge.slice(
+        0,
+        solflareBridge.indexOf("openButton.addEventListener('click'"),
+    );
+    assert.doesNotMatch(bridgeBeforeUserClick, /setTimeout|window\.location\.assign/);
     assert.doesNotMatch(solflareBridge, /Phantom|phantom\.com/);
     assert.match(checkout, /txSignature === activeBootsPayment\.recipient \|\| txSignature\.startsWith\('solana:'\)/);
     assert.match(checkout, /This is the merchant address or payment request, not a Tx signature/);
@@ -194,4 +201,5 @@ test('Solflare universal link preserves the exact invoice URI and unique referen
     const bridgeUrl = new URL(decodeURIComponent(universalLink.pathname.slice('/ul/v1/browse/'.length)));
     assert.equal(bridgeUrl.pathname, '/Zer0life_ai/wallet-pay.html');
     assert.equal(bridgeUrl.searchParams.get('request'), request);
+    assert.equal(bridgeUrl.searchParams.get('build'), 'boots-solana-pay-tap-v5');
 });
