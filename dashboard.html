@@ -2837,7 +2837,7 @@
                              style="display:block;width:180px;height:180px;">
                     </div>
                     <p style="margin:0 0 10px;color:#a8f07a;font-size:11px;line-height:1.45;">
-                        Scan the QR or copy the complete Solana Pay link in a compatible wallet.
+                        Scan the QR with Solflare or copy the complete Solana Pay request and open it in Solflare.
                         Do not send SOL to a plain address; the payment reference is required.
                     </p>
                     <p style="margin:0 0 6px;color:#a8f07a;font-size:11px;text-align:left;">Merchant wallet address:</p>
@@ -2848,15 +2848,14 @@
                     <button class="wallet-action-btn" id="copy-boots-pay-link" type="button"
                             style="width:100%;margin-bottom:12px;">Copy Solana Pay request</button>
                     <p style="margin:0 0 12px;color:#f6c978;font-size:11px;line-height:1.45;">
-                        The address alone does not include this purchase’s reference and cannot activate Boots. Pay using the QR or Solana Pay request.
+                        The address alone does not include this purchase’s reference and cannot activate Boots. Use the Solflare button, QR, or Solana Pay request.
                     </p>
-                    <a id="open-boots-wallet-pay" class="wallet-action-btn" href="#" target="_blank"
-                       rel="noopener noreferrer"
+                    <a id="open-boots-wallet-pay" class="wallet-action-btn" href="#"
                        style="display:block;width:100%;margin-bottom:12px;text-align:center;text-decoration:none;">
-                        Open in Phantom ↗
+                        Open in Solflare ↗
                     </a>
                     <p style="margin:0 0 12px;color:#a8f07a;font-size:11px;line-height:1.45;">
-                        If Telegram does not open your wallet, scan the QR above or copy the complete link.
+                        This button opens Solflare directly. If it is not installed, install Solflare and retry.
                     </p>
                     <div class="custom-input-group" style="margin-bottom:10px;text-align:left;">
                         <label for="boots-tx-signature-input"
@@ -3938,11 +3937,11 @@
             status.style.color = isError ? '#fca5a5' : '#c9d4c8';
         }
 
-        function createPhantomPayLink(payUri) {
+        function createSolflarePayLink(payUri) {
             const bridgeUrl = new URL('wallet-pay.html', window.location.href);
             bridgeUrl.searchParams.set('request', payUri);
-            const appOrigin = window.location.origin;
-            return `https://phantom.com/ul/browse/${encodeURIComponent(bridgeUrl.href)}?ref=${encodeURIComponent(appOrigin)}`;
+            const appUrl = new URL('./', window.location.href).href;
+            return `https://solflare.com/ul/v1/browse/${encodeURIComponent(bridgeUrl.href)}?ref=${encodeURIComponent(appUrl)}`;
         }
 
         function showBootsPayInvoice(invoice) {
@@ -3965,7 +3964,7 @@
                 setBootsPayStatus('The payment link is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
-            walletLink.href = createPhantomPayLink(invoice.payUri);
+            walletLink.href = createSolflarePayLink(invoice.payUri);
             walletLink.hidden = false;
             copyAddressButton.hidden = false;
             document.getElementById('boots-pay-recipient').textContent = invoice.recipient;
@@ -4007,16 +4006,8 @@
             priceButtons.forEach(button => { button.disabled = true; });
             triggerHaptic('medium');
             try {
-                const walletState = await window.secureWallet.refresh();
-                const pending = walletState.pendingBootsPayments?.[0];
-                if (pending) {
-                    showBootsPayInvoice(pending);
-                    if (Number(pending.amountSol) !== Number(costSol)) {
-                        setBootsPayStatus('A different Boots invoice is still open. Verify it before choosing another package.', true);
-                    }
-                    return;
-                }
-
+                // The server's prepare endpoint checks for pending invoices. Skip
+                // an extra full Wallet refresh so every tariff opens faster.
                 const storageKey = bootsPaymentStorageKey();
                 let saved = null;
                 try { saved = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch {}
@@ -4056,9 +4047,9 @@
             if (!activeBootsPayment?.payUri) return;
             try {
                 await navigator.clipboard.writeText(activeBootsPayment.payUri);
-                setBootsPayStatus('Solana Pay link copied. Open it in a compatible wallet and pay once.');
+                setBootsPayStatus('Solana Pay request copied. Open it in Solflare and pay once.');
             } catch {
-                setBootsPayStatus('Copy was blocked. Scan the QR code with a compatible wallet.', true);
+                setBootsPayStatus('Copy was blocked. Scan the QR code with Solflare.', true);
             }
         });
 
@@ -4070,7 +4061,7 @@
             }
             try {
                 await navigator.clipboard.writeText(recipient);
-                setBootsPayStatus('Merchant wallet address copied. Use the QR or Solana Pay request to pay this Boots invoice.');
+                setBootsPayStatus('Merchant address copied. Use the Solflare button, QR, or Solana Pay request to pay this invoice.');
             } catch {
                 setBootsPayStatus('Could not copy the merchant address. Press and hold the address to copy it.', true);
             }
@@ -4083,25 +4074,21 @@
                 setBootsPayStatus('The payment request is unavailable. Refresh Wallet and try again.', true);
                 return;
             }
-            const phantomLink = createPhantomPayLink(payUri);
-            setBootsPayStatus('Opening Phantom. Review the recipient and amount before approving.');
+            const solflareLink = createSolflarePayLink(payUri);
+            setBootsPayStatus('Opening Solflare. Review the recipient and amount before approving.');
             const telegram = window.Telegram?.WebApp;
             if (typeof telegram?.openLink === 'function') {
                 try {
-                    telegram.openLink(phantomLink);
+                    telegram.openLink(solflareLink);
                     return;
                 } catch {
                     // Fall through to the browser's universal-link handler.
                 }
             }
             try {
-                window.location.assign(phantomLink);
+                window.location.assign(solflareLink);
             } catch {
-                try {
-                    window.location.assign(payUri);
-                } catch {
-                    setBootsPayStatus('Could not open Phantom. Scan the QR code or copy the Solana Pay request.', true);
-                }
+                setBootsPayStatus('Could not open Solflare. Confirm that Solflare is installed, then retry.', true);
             }
         });
 

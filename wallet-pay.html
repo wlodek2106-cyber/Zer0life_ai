@@ -70,13 +70,13 @@
 <body>
   <main>
     <div class="eyebrow">ZER0LIFE RUN · BOOTS PAYMENT</div>
-    <h1>Continue in Phantom</h1>
+    <h1>Continue in Solflare</h1>
     <p id="instruction">Preparing your invoice-bound Solana Pay request…</p>
     <section class="details" id="payment-details" hidden aria-label="Payment details">
       <div class="row"><span>Amount</span><strong id="payment-amount"></strong></div>
       <div class="row"><span>Recipient</span><strong id="payment-recipient"></strong></div>
     </section>
-    <a class="button primary" id="open-payment" href="#" hidden>Open payment in Phantom</a>
+    <a class="button primary" id="open-payment" href="#" hidden>Open payment in Solflare</a>
     <button class="secondary" id="copy-payment-request" type="button" hidden>Copy Solana Pay request</button>
     <p class="status" id="payment-status" role="status" aria-live="polite"></p>
     <p class="warning">Approve only after checking the amount and recipient. After payment, return to Zer0Life Run to verify the transaction.</p>
@@ -108,14 +108,14 @@
       details.hidden = false;
       amountText.textContent = `${amount} SOL`;
       recipientText.textContent = `${recipient.slice(0, 6)}…${recipient.slice(-4)}`;
-      instruction.textContent = 'Opening the exact Solana Pay request in Phantom. If it does not open automatically, use the button below.';
+      instruction.textContent = 'Opening the exact Solana Pay request in Solflare. If it does not open automatically, use the button below.';
       openButton.href = request;
       openButton.hidden = false;
       copyButton.hidden = false;
 
       const openPayment = event => {
         event?.preventDefault();
-        status.textContent = 'Opening Phantom payment…';
+        status.textContent = 'Opening Solflare payment…';
         try {
           window.location.assign(request);
         } catch {
@@ -126,9 +126,9 @@
       copyButton.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(request);
-          status.textContent = 'Solana Pay request copied. Open it in Phantom.';
+          status.textContent = 'Solana Pay request copied. Open it in Solflare.';
         } catch {
-          status.textContent = 'Copy was blocked. Use the Open payment in Phantom button.';
+          status.textContent = 'Copy was blocked. Use the Open payment in Solflare button.';
         }
       });
 
@@ -137,7 +137,7 @@
       }, 450);
       window.setTimeout(() => {
         if (document.visibilityState === 'visible') {
-          status.textContent = 'If Phantom did not open, tap Open payment in Phantom.';
+          status.textContent = 'If Solflare did not open, tap Open payment in Solflare.';
         }
       }, 1800);
     })();
