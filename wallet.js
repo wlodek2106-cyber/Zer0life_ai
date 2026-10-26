@@ -60,7 +60,7 @@
     }
 
     function assertSession(owner) {
-        if (!owner || initData() !== owner) throw new Error('Your Telegram profile changed. Reopen Wallet. No funds were sent.');
+        if (!owner || initData() !== owner) throw new Error('Your Telegram profile changed. Reopen Wallet to check the withdrawal status before trying again.');
     }
 
     function preserveLegacyBalance() {
