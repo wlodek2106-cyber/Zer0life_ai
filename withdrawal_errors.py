@@ -1,6 +1,23 @@
 """Allowlisted withdrawal diagnostics: never log exception messages or RPC URLs."""
 
 import hashlib
+import time
+
+
+READ_STAGES = frozenset({
+    "get_sol_balance", "get_zrl_balance", "get_recipient_token_account",
+    "get_token_account_rent", "get_fee_balance", "get_latest_blockhash",
+    "get_signature_statuses",
+})
+
+
+def _exception_chain(exc):
+    chain, seen = [], set()
+    while exc is not None and id(exc) not in seen and len(chain) < 8:
+        seen.add(id(exc))
+        chain.append(exc)
+        exc = exc.__cause__ or exc.__context__
+    return chain
 
 
 class WithdrawalRpcError(Exception):
@@ -10,10 +27,30 @@ class WithdrawalRpcError(Exception):
 
 
 def rpc_call(stage, operation, *args, **kwargs):
-    try:
-        return operation(*args, **kwargs)
-    except Exception as exc:
-        raise WithdrawalRpcError(stage) from exc
+    # Retrying a broadcast is safe ONLY with the identical signed bytes.
+    # Never rebuild/re-sign a transaction here, or retry an ambiguous timeout.
+    retryable = stage in READ_STAGES or (
+        stage == "broadcast_transaction" and len(args) == 1
+        and isinstance(args[0], bytes) and not kwargs
+    )
+    for attempt in range(3):
+        try:
+            return operation(*args, **kwargs)
+        except Exception as exc:
+            response = next((
+                item.response for item in _exception_chain(exc)
+                if getattr(getattr(item, "response", None), "status_code", None) == 429
+            ), None)
+            if not retryable or response is None or attempt == 2:
+                raise WithdrawalRpcError(stage) from exc
+            try:
+                retry_after = float(getattr(response, "headers", {}).get("Retry-After", 0))
+            except (TypeError, ValueError, OverflowError):
+                retry_after = 0
+            # A long provider quota window should fail explicitly, not hang Wallet.
+            if retry_after > 2:
+                raise WithdrawalRpcError(stage) from exc
+            time.sleep(max(0.5 * (2 ** attempt), min(2, retry_after)))
 
 
 KNOWN_ERRORS = {
@@ -33,11 +70,7 @@ KNOWN_ERRORS = {
 
 
 def describe_failure(exc, nonce):
-    chain, seen, current = [], set(), exc
-    while current is not None and id(current) not in seen and len(chain) < 8:
-        seen.add(id(current))
-        chain.append(current)
-        current = current.__cause__ or current.__context__
+    chain = _exception_chain(exc)
     status = next((
         getattr(getattr(item, "response", None), "status_code", None)
         for item in chain

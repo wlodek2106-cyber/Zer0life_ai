@@ -439,6 +439,26 @@ def _rpc_client():
     return Client(os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"))
 
 
+def _withdrawal_receipt(row):
+    return {
+        "nonce": row["nonce"], "asset": row["asset"],
+        "amount": row["amount_units"] / (1_000_000_000 if row["asset"] == "SOL" else ZRL_SCALE),
+        "address": row["address"], "txHash": row["tx_signature"],
+        "status": row["status"], "createdAt": row["created_at"],
+    }
+
+
+def _withdrawal_result(db, row):
+    account = db.execute(
+        "SELECT sol_lamports FROM wallet_accounts WHERE telegram_id=?", (row["telegram_id"],),
+    ).fetchone()
+    return {
+        **_withdrawal_receipt(row),
+        "availableZrl": _zrl(_balance_units(db, row["telegram_id"])),
+        "gameSolBalance": account["sol_lamports"] / 1_000_000_000,
+    }
+
+
 def _onchain_balances(address):
     balances = {"solBalance": None, "zrlBalance": None, "zrlConfigured": bool(os.getenv("ZRL_MINT"))}
     try:
@@ -499,6 +519,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         # without obtaining a player's signed Telegram session or balance.
         response.headers["X-Zer0Life-Wallet-Schema"] = "telegram-deposits-reference-1"
         response.headers["X-Zer0Life-Boots-Pay"] = "solana-pay-hidden-invoices-1"
+        response.headers["X-Zer0Life-Withdrawals"] = "receipts-rate-limit-retry-1"
         return response
 
     def authenticated_user(data):
@@ -631,6 +652,13 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                          "address": row["address"], "txHash": row["tx_signature"], "status": row["status"]}
                         for row in db.execute(
                             "SELECT nonce,asset,amount_units,address,tx_signature,status FROM wallet_withdrawals WHERE telegram_id=? AND status IN ('processing','submitted')",
+                            (user["id"],),
+                        )
+                    ],
+                    "withdrawalHistory": [
+                        _withdrawal_receipt(row) for row in db.execute(
+                            """SELECT * FROM wallet_withdrawals WHERE telegram_id=?
+                               ORDER BY created_at DESC, rowid DESC LIMIT 20""",
                             (user["id"],),
                         )
                     ],
@@ -964,15 +992,20 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             if not row:
                 return _response_error("Withdrawal not found", 404)
             if row["status"] in ("processing", "submitted") and row["tx_signature"]:
-                response = requests.post(
-                    os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),
-                    json={"jsonrpc": "2.0", "id": 1, "method": "getSignatureStatuses",
-                          "params": [[row["tx_signature"]], {"searchTransactionHistory": True}]},
-                    timeout=15,
-                )
-                response.raise_for_status()
-                chain = response.json().get("result", {}).get("value", [None])[0]
-                if chain and chain.get("confirmationStatus") == "finalized":
+                def read_status():
+                    response = requests.post(
+                        os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),
+                        json={"jsonrpc": "2.0", "id": 1, "method": "getSignatureStatuses",
+                              "params": [[row["tx_signature"]], {"searchTransactionHistory": True}]},
+                        timeout=15,
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                    if payload.get("error") or len(payload.get("result", {}).get("value", [])) != 1:
+                        raise ValueError("Invalid RPC status response")
+                    return payload["result"]["value"][0]
+                chain = withdrawal_rpc("get_signature_statuses", read_status)
+                if isinstance(chain, dict) and chain.get("confirmationStatus") == "finalized" and "err" in chain:
                     with _connect(db_path) as db:
                         db.execute("BEGIN IMMEDIATE")
                         current = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
@@ -987,11 +1020,8 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                                        ("failed" if failed else "confirmed", nonce))
                         db.commit()
                         row = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
-            return jsonify(
-                success=True, status=row["status"], asset=row["asset"],
-                amount=row["amount_units"] / (1_000_000_000 if row["asset"] == "SOL" else ZRL_SCALE),
-                address=row["address"], txHash=row["tx_signature"],
-            )
+            with _connect(db_path) as db:
+                return jsonify(success=True, **_withdrawal_result(db, row))
         except PermissionError as error:
             return _response_error(str(error), 401)
         except Exception:
@@ -1061,10 +1091,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     return _response_error("Withdrawal belongs to another account", 403)
                 if previous and previous["status"] in ("processing", "submitted", "confirmed"):
                     db.rollback()
-                    return jsonify({
-                        "success": True, "status": previous["status"],
-                        "txHash": previous["tx_signature"], "replayed": True,
-                    })
+                    return jsonify(success=True, replayed=True, **_withdrawal_result(db, previous))
                 if (challenge["telegram_id"] != user["id"] or challenge["used"]
                     or challenge["expires_at"] < _utc_now()
                     or challenge["purpose"] not in ("withdraw_zrl", "withdraw_sol")):
@@ -1163,8 +1190,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     reserved = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
                     if reserved["tx_signature"]:
                         db.commit()
-                        return jsonify(success=True, status="processing", asset=asset,
-                                       txHash=reserved["tx_signature"],
+                        return jsonify(success=True, **_withdrawal_result(db, reserved),
                                        message="Broadcast confirmation is uncertain; funds remain reserved until chain verification"), 202
                     if asset == "ZRL":
                         _ledger_entry(db, user["id"], "withdrawal_refund", amount_units, f"withdraw-refund:{nonce}")
@@ -1189,11 +1215,9 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     "UPDATE wallet_withdrawals SET status = 'submitted', tx_signature = ? WHERE nonce = ?",
                     (tx_signature, nonce),
                 )
-            return jsonify({
-                "success": True, "status": "submitted", "asset": asset,
-                "amount": amount_units / (1_000_000_000 if asset == "SOL" else ZRL_SCALE),
-                "txHash": tx_signature,
-            })
+                receipt = db.execute("SELECT * FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()
+                result = _withdrawal_result(db, receipt)
+            return jsonify(success=True, **result)
         except ApprovalError as exc:
             return _response_error(str(exc), exc.status)
         except PermissionError as exc:

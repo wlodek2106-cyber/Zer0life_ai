@@ -16,7 +16,7 @@ async function fixture(options = {}) {
         appendChild(child) { this.children.push(child); },
     });
     for (const id of ['withdraw-zrl-btn', 'withdraw-sol-btn', 'asset-zrl-bal', 'asset-sol-bal',
-        'wallet-trusted-destination', 'pending-withdrawals']) {
+        'wallet-trusted-destination', 'pending-withdrawals', 'withdrawal-history']) {
         nodes.set(id, makeNode());
     }
     const calls = [], alerts = [];
@@ -45,11 +45,19 @@ async function fixture(options = {}) {
             calls.push({ route, body });
             let result = { success: true };
             let ok = true;
-            if (route === '/wallet/state') result = { ...state };
+            if (route === '/wallet/state') {
+                if (options.failRefreshAfterWrite && state.withdrawalHistory?.length) throw new Error('synthetic offline');
+                result = { ...state };
+            }
             if (route === '/wallet/withdrawals/request') {
                 if (options.autoWithdraw) {
-                    result = { success: true, status: 'submitted', txHash: 'synthetic-tx' };
-                    state.pendingWithdrawals = [{ nonce: 'auto-nonce', asset: body.asset, status: 'submitted' }];
+                    result = { success: true, nonce: 'auto-nonce', amount: Number(body.amount),
+                        asset: body.asset, address: body.address, createdAt: 1793050000,
+                        availableZrl: 24, gameSolBalance: 2,
+                        status: options.autoStatus || 'submitted', txHash: '7'.repeat(88) };
+                    state.availableZrl = result.availableZrl;
+                    state.pendingWithdrawals = [result];
+                    state.withdrawalHistory = [result];
                 } else {
                 result = { success: true, nonce: 'server-nonce', address: body.address, amount: body.amount, asset: body.asset };
                     state.pendingWithdrawalApprovals = [result];
@@ -93,7 +101,7 @@ test('a saved destination sends subsequent withdrawals without another Telegram 
     await f.api.withdraw('ZRL');
     assert.equal(f.calls.filter(x => x.route === '/wallet/withdrawals/request').length, 1);
     assert.equal(f.calls.filter(x => x.route === '/wallet/withdrawals/confirm').length, 0);
-    assert(f.alerts.some(text => text.includes('Withdrawal submitted to Solana')));
+    assert(f.alerts.some(text => text.includes('1 ZRL: Sent to Solana')));
     assert(f.nodes.get('wallet-trusted-destination').textContent.includes('no repeat code'));
 });
 
@@ -166,4 +174,66 @@ test('switching Telegram profile while entering an amount prevents a withdrawal 
     await f.api.withdraw('SOL');
     assert(!f.calls.some(x => x.route === '/wallet/withdrawals/request'));
     assert(f.alerts.some(text => text.includes('Your Telegram profile changed')));
+});
+
+test('ambiguous broadcast is labelled reserved, never claimed to be sent', async () => {
+    const f = await fixture({ autoWithdraw: true, autoStatus: 'processing',
+        state: { trustedWithdrawalAddress: address } });
+    await f.api.withdraw('ZRL');
+    assert(f.alerts.some(text => text.includes('1 ZRL: Broadcast not confirmed')));
+    assert(!f.alerts.some(text => /submitted|Sent to Solana/.test(text)));
+    assert(f.nodes.get('withdrawal-history').children[0].children[0].textContent.includes('funds reserved'));
+    assert(f.alerts.every(text => text.length <= 256));
+});
+
+test('confirmed ZRL receipt remains after reload, with amount, destination and transaction link', async () => {
+    const receipt = { nonce: 'receipt-1', status: 'confirmed', asset: 'ZRL', amount: 10,
+        address, txHash: '7'.repeat(88), createdAt: 1793050000 };
+    for (let reload = 0; reload < 2; reload++) {
+        const f = await fixture({ state: { withdrawalHistory: [receipt], pendingWithdrawals: [] } });
+        const row = f.nodes.get('withdrawal-history').children[0];
+        assert(row.children[0].textContent.includes('10 ZRL · Confirmed on Solana'));
+        assert(row.children[1].textContent.includes(address));
+        assert.equal(row.children[2].href, `https://explorer.solana.com/tx/${receipt.txHash}`);
+        assert.equal(row.children[2].rel, 'noopener noreferrer');
+        assert.equal(f.nodes.get('pending-withdrawals').children.length, 0);
+    }
+});
+
+test('failed receipts report refund; unknown hashes never become explorer links', async () => {
+    const f = await fixture({ state: { withdrawalHistory: [
+        { nonce: 'failed', status: 'failed', amount: 10, asset: 'ZRL', address, txHash: null },
+        { nonce: 'pending', status: 'processing', amount: 1, asset: 'SOL', address, txHash: 'javascript:bad' },
+    ] } });
+    const rows = f.nodes.get('withdrawal-history').children;
+    assert(rows[0].children[0].textContent.includes('amount returned'));
+    assert.equal(rows[0].children.length, 2);
+    assert(rows[1].children[0].textContent.includes('Broadcast not confirmed'));
+    assert.equal(rows[1].children.length, 2);
+    f.api.applyResult({ withdrawalHistory: [] });
+    assert.equal(f.nodes.get('withdrawal-history').children.length, 0);
+    assert.equal(f.nodes.get('withdrawal-history').textContent, 'No withdrawals yet.');
+});
+
+test('successful withdrawal keeps authoritative balance and receipt even if refresh is offline', async () => {
+    const f = await fixture({ autoWithdraw: true, failRefreshAfterWrite: true,
+        state: { trustedWithdrawalAddress: address } });
+    await f.api.withdraw('ZRL');
+    assert.equal(f.api.getState().availableZrl, 24);
+    assert.equal(f.api.getState().pendingWithdrawals.length, 1);
+    assert(f.nodes.get('withdrawal-history').children[0].children[0].textContent.includes('1 ZRL'));
+    assert(f.alerts.some(text => text.includes('Sent to Solana')));
+    assert(f.nodes.get('withdraw-zrl-btn').disabled);
+});
+
+test('a failed refresh after a profile change clears the previous owner receipts', async () => {
+    const options = { state: { withdrawalHistory: [
+        { nonce: 'old-owner', amount: 10, asset: 'ZRL', status: 'confirmed', address },
+    ] } };
+    const f = await fixture(options);
+    options.failRefreshAfterWrite = true;
+    f.window.Telegram.WebApp.initData = 'another-synthetic-profile';
+    await assert.rejects(f.api.refresh());
+    assert.equal(f.api.getState(), null);
+    assert.equal(f.nodes.get('withdrawal-history').children.length, 0);
 });
