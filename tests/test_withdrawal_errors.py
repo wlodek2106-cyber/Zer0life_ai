@@ -1,6 +1,7 @@
 """No real network, credentials or funds."""
 from types import SimpleNamespace as NS
 import unittest
+from unittest.mock import Mock, patch
 from withdrawal_errors import describe_failure, rpc_call
 
 
@@ -53,3 +54,44 @@ class WithdrawalErrorDiagnostics(unittest.TestCase):
 
     def test_success_is_unchanged(self):
         self.assertEqual(rpc_call("read", lambda value: value, 17), 17)
+
+    def rate_limit(self, retry_after="0"):
+        error = RuntimeError("synthetic-sensitive-provider-url")
+        error.response = NS(status_code=429, headers={"Retry-After": retry_after})
+        return error
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_read_429_retries_are_bounded_and_respect_short_retry_after(self, sleep):
+        operation = Mock(side_effect=[self.rate_limit("1"), self.rate_limit(), 17])
+        self.assertEqual(rpc_call("get_zrl_balance", operation), 17)
+        self.assertEqual(operation.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 1])
+        operation = Mock(side_effect=self.rate_limit())
+        with self.assertRaises(Exception) as error:
+            rpc_call("get_zrl_balance", operation)
+        self.assertEqual(operation.call_count, 3)
+        self.assertEqual(describe_failure(error.exception, "n")["code"], "RPC_RATE_LIMITED")
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_broadcast_429_reuses_identical_signed_bytes(self, sleep):
+        signed = b"synthetic-signed-transaction"
+        operation = Mock(side_effect=[self.rate_limit(), "same-signature"])
+        self.assertEqual(rpc_call("broadcast_transaction", operation, signed), "same-signature")
+        self.assertEqual([call.args for call in operation.call_args_list], [(signed,), (signed,)])
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_timeouts_access_denial_arbitrary_writes_and_long_quota_do_not_retry(self, sleep):
+        denied = RuntimeError()
+        denied.response = NS(status_code=403)
+        for stage, error, args in [
+            ("get_zrl_balance", denied, ()),
+            ("broadcast_transaction", TimeoutError(), (b"synthetic-tx",)),
+            ("arbitrary_write", self.rate_limit(), ()),
+            ("broadcast_transaction", self.rate_limit(), ("not-signed-bytes",)),
+            ("get_zrl_balance", self.rate_limit("60"), ()),
+        ]:
+            operation = Mock(side_effect=error)
+            with self.assertRaises(Exception):
+                rpc_call(stage, operation, *args)
+            self.assertEqual(operation.call_count, 1)
+        sleep.assert_not_called()

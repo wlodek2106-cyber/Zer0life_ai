@@ -14,5 +14,5 @@ test('run-claim conflicts refresh the displayed authoritative balance', () => {
     assert.match(dashboard, /window\.legacyRecovery\.preserve\(STORAGE_PREFIX\)/);
     assert.match(dashboard, /window\.secureWallet\.applyResult\(current\)/);
     assert.match(dashboard, /Current game balance: \$\{balance\.toFixed\(2\)\} ZRL/);
-    assert.match(dashboard, /wallet\.js\?v=boots-solana-pay-reference-2/);
+    assert.match(dashboard, /wallet\.js\?v=withdrawal-receipts-retry-1/);
 });

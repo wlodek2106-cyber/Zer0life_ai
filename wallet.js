@@ -4,6 +4,8 @@
     const initData = () => telegramApp?.initData || '';
     const byId = (id) => document.getElementById(id);
     let state = null;
+    let stateOwner = '';
+    let walletFresh = false;
     let busy = false;
     let merchantTask = null;
     let releaseGateShown = false;
@@ -39,13 +41,14 @@
     }
 
     function renderWithdrawalControls() {
-        const ready = Boolean(initData() && state?.telegramId
+        const supported = Boolean(initData() && state?.telegramId
             && ['telegram_otp_v1', 'trusted_destination_v2'].includes(state?.withdrawalMode));
+        const ready = walletFresh && supported;
         ['withdraw-zrl-btn', 'withdraw-sol-btn'].forEach(id => {
             if (byId(id)) byId(id).disabled = busy || !ready;
         });
         const status = byId('wallet-withdrawal-status');
-        if (state && !ready && status) {
+        if (state && !supported && status) {
             releaseGateShown = true;
             status.textContent = initData()
                 ? 'Waiting for the server update required for Telegram withdrawals. Your balances are safe.'
@@ -57,7 +60,7 @@
     }
 
     function assertSession(owner) {
-        if (!owner || initData() !== owner) throw new Error('Your Telegram profile changed. Reopen Wallet. No funds were sent.');
+        if (!owner || initData() !== owner) throw new Error('Your Telegram profile changed. Reopen Wallet to check the withdrawal status before trying again.');
     }
 
     function preserveLegacyBalance() {
@@ -90,6 +93,8 @@
 
     function renderWallet(nextState) {
         state = nextState;
+        stateOwner = initData();
+        walletFresh = true;
         window.legacyRecovery?.setState(nextState);
         window.recoveryActions?.setState(nextState);
         window.legacyFarmReview?.setState(nextState);
@@ -106,7 +111,7 @@
         const withdrawalStatus = byId('wallet-withdrawal-status');
         if (withdrawalStatus && pendingTransfers.length
                 && ['telegram_otp_v1', 'trusted_destination_v2'].includes(nextState.withdrawalMode)) {
-            withdrawalStatus.textContent = `${pendingTransfers.length} ${pendingTransfers.length === 1 ? 'transfer has' : 'transfers have'} been submitted and ${pendingTransfers.length === 1 ? 'is' : 'are'} awaiting Solana confirmation. Status updates automatically; do not submit again.`;
+            withdrawalStatus.textContent = `${pendingTransfers.length} withdrawal(s) have reserved funds. Broadcast or final confirmation is still pending. Status updates automatically; do not submit again.`;
         }
         if (byId('asset-zrl-bal')) byId('asset-zrl-bal').textContent = Number(nextState.availableZrl || 0).toFixed(2);
         if (byId('asset-zrl-usd')) {
@@ -274,13 +279,14 @@
                 const destination = String(withdrawal.address || '');
                 const shortDestination = destination ? `${destination.slice(0, 7)}…${destination.slice(-6)}` : 'address hidden';
                 const progress = withdrawal.status === 'processing'
-                    ? 'processing'
+                    ? 'broadcast not confirmed — funds reserved'
                     : 'awaiting final Solana confirmation';
                 label.textContent = `${withdrawal.asset} ${amount} → ${shortDestination} · ${progress}${withdrawal.txHash ? ` · ${withdrawal.txHash.slice(0, 8)}…${withdrawal.txHash.slice(-6)}` : ''}`;
                 row.appendChild(label);
                 pendingList.appendChild(row);
             });
         }
+        renderWithdrawalHistory(nextState);
         scheduleWithdrawalStatusChecks();
         if (!merchantTask && nextState.lastMerchantPurchase) {
             const receipt = nextState.lastMerchantPurchase;
@@ -304,6 +310,82 @@
         }
     }
 
+    function withdrawalProgress(status) {
+        return {
+            processing: 'Broadcast not confirmed — funds reserved; do not submit again',
+            submitted: 'Sent to Solana — awaiting final confirmation; funds reserved',
+            confirmed: 'Confirmed on Solana',
+            failed: 'Failed — amount returned to your game balance',
+        }[status] || 'Status unavailable — do not submit again; refresh Wallet';
+    }
+
+    function renderWithdrawalHistory(nextState) {
+        const list = byId('withdrawal-history');
+        if (!list) return;
+        list.replaceChildren();
+        const history = Array.isArray(nextState.withdrawalHistory) ? nextState.withdrawalHistory : null;
+        if (!history || !history.length) {
+            list.textContent = history ? 'No withdrawals yet.' : 'Withdrawal receipts require the latest server update. Pending funds remain reserved.';
+            return;
+        }
+        for (const receipt of history) {
+            const row = document.createElement('div');
+            row.style.cssText = 'padding:12px 0;border-bottom:1px solid #ffffff18;font-size:12px;line-height:1.6;overflow-wrap:anywhere;';
+            const title = document.createElement('strong');
+            title.textContent = `${receipt.amount} ${receipt.asset} · ${withdrawalProgress(receipt.status)}`;
+            row.appendChild(title);
+            const detail = document.createElement('p');
+            detail.style.cssText = 'margin:5px 0;color:#b5bdad;';
+            const date = new Date(Number(receipt.createdAt) * 1000);
+            detail.textContent = `To: ${receipt.address || 'Unavailable'}${Number.isFinite(date.getTime()) ? ' · ' + date.toLocaleString() : ''}`;
+            row.appendChild(detail);
+            if (typeof receipt.txHash === 'string' && /^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(receipt.txHash)) {
+                const link = document.createElement('a');
+                link.href = `https://explorer.solana.com/tx/${encodeURIComponent(receipt.txHash)}`;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.cssText = 'color:#c8ff55;text-decoration:underline;';
+                link.textContent = receipt.status === 'processing'
+                    ? 'Check transaction (broadcast is unconfirmed)' : 'View transaction on Solana Explorer';
+                row.appendChild(link);
+            }
+            list.appendChild(row);
+        }
+    }
+
+    function withdrawalNotice(result, fallback) {
+        const amount = result.amount ?? fallback.amount ?? '';
+        const asset = result.asset || fallback.asset || '';
+        return `${amount} ${asset}: ${withdrawalProgress(result.status)}. Receipt: Wallet → Your withdrawals.`;
+    }
+
+    function rememberWithdrawalResult(result, fallback = {}) {
+        // Preserve the server receipt immediately, even if the following state
+        // refresh fails. A native alert must not delay status polling.
+        if (result.nonce && state) {
+            const receipt = { ...fallback, ...result };
+            const old = state.withdrawalHistory || [];
+            renderWallet({
+                ...state,
+                availableZrl: result.availableZrl ?? state.availableZrl,
+                gameSolBalance: result.gameSolBalance ?? state.gameSolBalance,
+                withdrawalHistory: [receipt, ...old.filter(item => item.nonce !== result.nonce)].slice(0, 20),
+                pendingWithdrawals: [
+                    ...(state.pendingWithdrawals || []).filter(item => item.nonce !== result.nonce),
+                    ...(['processing', 'submitted'].includes(result.status) ? [receipt] : []),
+                ],
+            });
+        }
+    }
+
+    async function showWithdrawalResult(result, fallback) {
+        const owner = initData();
+        rememberWithdrawalResult(result, fallback);
+        await refresh().catch(() => {});
+        assertSession(owner);
+        alertUser(withdrawalNotice(result, fallback));
+    }
+
     async function copyReferralLink() {
         const input = byId('affiliate-link');
         if (!input?.value) {
@@ -321,6 +403,7 @@
     }
 
     async function refresh() {
+        const owner = initData();
         try {
             try {
                 const legacy = preserveLegacyBalance();
@@ -332,13 +415,20 @@
                 window.legacyRecovery?.setWarning('Your legacy history has not synced with the server yet. The local copy is preserved; your current balance was loaded separately.');
             }
             const nextState = await post('/wallet/state');
+            assertSession(owner);
             renderWallet(nextState);
             return nextState;
         } catch (error) {
-            state = null;
+            walletFresh = false;
+            if (!owner || owner !== initData() || stateOwner !== owner) {
+                state = null;
+                stateOwner = '';
+                byId('withdrawal-history')?.replaceChildren();
+                byId('pending-withdrawals')?.replaceChildren();
+            }
             renderWithdrawalControls();
             const label = byId('wallet-withdrawal-status');
-            if (label) label.textContent = 'Could not refresh Wallet. Balances were not changed. Reopen Wallet.';
+            if (label) label.textContent = 'Could not refresh Wallet. Showing the last known balances and receipts for this session; new withdrawals are paused until Wallet refreshes.';
             console.warn('Zer0Life wallet state:', error.message);
             throw error;
         }
@@ -415,10 +505,7 @@
             });
             assertSession(owner);
             if (approval.status) {
-                alertUser(approval.status === 'confirmed'
-                    ? 'Withdrawal confirmed on Solana.'
-                    : `Withdrawal submitted to Solana. The amount is reserved; do not submit it again.${approval.txHash ? '\nSolana: ' + approval.txHash : ''}`);
-                await refresh();
+                await showWithdrawalResult(approval, { amount, asset, address });
                 return;
             }
             await refresh();
@@ -452,9 +539,8 @@
         const code = String(value).trim();
         if (!/^\d{6}$/.test(code)) throw new Error('Enter the 6-digit code from the bot message.');
         const result = await post('/wallet/withdrawals/confirm', { nonce: approval.nonce, code });
-        alertUser(result.status === 'confirmed' ? 'Withdrawal confirmed on Solana.'
-            : `Your transfer is processing. The amount is reserved; do not submit another withdrawal.${result.txHash ? '\nSolana: ' + result.txHash : ''}`);
-        await refresh();
+        assertSession(owner);
+        await showWithdrawalResult(result, approval);
     }
 
     async function approveWithdrawal(nonce, cancel = false) {
@@ -513,7 +599,10 @@
     }
 
     async function checkWithdrawal(nonce, refreshAfter = true) {
+        const owner = initData();
         const result = await post('/wallet/withdrawals/status', { nonce });
+        assertSession(owner);
+        rememberWithdrawalResult(result);
         if (byId('wallet-withdrawal-status')) {
             const amount = Number(result.amount || 0).toFixed(result.asset === 'SOL' ? 4 : 2);
             byId('wallet-withdrawal-status').textContent = result.status === 'confirmed'

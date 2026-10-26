@@ -271,3 +271,101 @@ class TelegramWithdrawals(unittest.TestCase):
         state = self.post("/wallet/state").json
         self.assertEqual(state["availableZrl"], 20000)
         self.assertEqual(state["gameSolBalance"], 2)
+
+    def test_confirmed_receipt_survives_reload_and_is_owner_scoped(self):
+        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        result = self.confirm(nonce)
+        self.assertEqual(result.json["nonce"], nonce)
+        self.assertEqual(result.json["amount"], 10)
+        self.assertEqual(result.json["asset"], "ZRL")
+        self.assertEqual(result.json["address"], str(self.recipient.pubkey()))
+        outcome = {"err": None, "confirmationStatus": "finalized"}
+        response = NS(raise_for_status=lambda: None, json=lambda: {"result": {"value": [outcome]}})
+        with patch.object(service.requests, "post", return_value=response):
+            self.assertEqual(self.post("/wallet/withdrawals/status", {"nonce": nonce}).json["status"], "confirmed")
+        for _ in range(2):
+            state = self.post("/wallet/state").json
+            self.assertEqual(state["pendingWithdrawals"], [])
+            receipt = state["withdrawalHistory"][0]
+            self.assertEqual(receipt["status"], "confirmed")
+            self.assertEqual(receipt["txHash"], result.json["txHash"])
+            self.assertEqual(receipt["amount"], 10)
+            self.assertEqual(state["availableZrl"], 19990)
+        self.assertEqual(self.post("/wallet/state", user="201").json["withdrawalHistory"], [])
+        self.assertEqual(self.post("/wallet/withdrawals/status", {"nonce": nonce}, user="201").status_code, 404)
+        self.assertEqual(len(self.chain.sent), 1)
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_rate_limited_reads_and_broadcast_do_not_double_pay(self, sleep):
+        from unittest.mock import Mock
+        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        error = RuntimeError("synthetic-sensitive-url")
+        error.response = NS(status_code=429, headers={})
+        self.chain.get_token_account_balance = Mock(
+            side_effect=[error, NS(value=NS(amount="1000000000000"))])
+        real_send = self.chain.send_raw_transaction
+        attempted = []
+        def send(raw):
+            attempted.append(raw)
+            if len(attempted) == 1:
+                raise error
+            return real_send(raw)
+        self.chain.send_raw_transaction = send
+        result = self.confirm(nonce)
+        self.assertEqual(result.status_code, 200, result.json)
+        self.assertEqual(result.json["status"], "submitted")
+        self.assertEqual(len(attempted), 2)
+        self.assertEqual(attempted[0], attempted[1])
+        self.assertEqual(len(self.chain.sent), 1)
+        self.assertEqual(self.post("/wallet/state").json["availableZrl"], 19990)
+        self.assertEqual(self.confirm(nonce).json["txHash"], result.json["txHash"])
+        self.assertEqual(len(attempted), 2)
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_exhausted_rate_limit_refunds_before_broadcast_but_reserves_after_signing(self, sleep):
+        from unittest.mock import Mock
+        for stage in ("read", "broadcast"):
+            self.recipient = Keypair()
+            nonce = self.request(asset="ZRL", amount="10", event="rate-limit-" + stage).json["nonce"]
+            error = RuntimeError("synthetic-sensitive-url")
+            error.response = NS(status_code=429, headers={})
+            target = "get_token_account_balance" if stage == "read" else "send_raw_transaction"
+            with patch.object(self.chain, target, Mock(side_effect=error)) as operation:
+                result = self.confirm(nonce)
+            self.assertEqual(operation.call_count, 3)
+            state = self.post("/wallet/state").json
+            self.assertEqual(state["availableZrl"], 20000 if stage == "read" else 19990)
+            self.assertEqual(state["withdrawalHistory"][0]["status"], "failed" if stage == "read" else "processing")
+            self.assertEqual(result.status_code, 503 if stage == "read" else 202)
+            if stage == "read":
+                self.assertTrue(result.json["balanceRestored"])
+            else:
+                self.assertTrue(result.json["txHash"])
+                self.assertEqual(result.json["nonce"], nonce)
+
+    @patch("withdrawal_errors.time.sleep")
+    def test_status_429_retries_and_malformed_finalized_reply_never_confirms(self, sleep):
+        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        self.confirm(nonce)
+        error = RuntimeError()
+        error.response = NS(status_code=429, headers={})
+        good = NS(raise_for_status=lambda: None, json=lambda: {
+            "result": {"value": [{"err": None, "confirmationStatus": "finalized"}]}})
+        with patch.object(service.requests, "post", side_effect=[error, good]) as operation:
+            result = self.post("/wallet/withdrawals/status", {"nonce": nonce})
+        self.assertEqual(operation.call_count, 2)
+        self.assertEqual(result.json["status"], "confirmed")
+        # A second user's transfer must not be confirmed from an incomplete RPC reply.
+        second = self.post("/wallet/withdrawals/request", {
+            "asset": "ZRL", "amount": "10", "requestId": "status-second-request",
+            "address": str(self.recipient.pubkey()),
+        }, user="201")
+        self.assertEqual(second.status_code, 200, second.json)
+        nonce2 = second.json["nonce"]
+        code = self.code()
+        self.confirm(nonce2, code, user="201")
+        bad = NS(raise_for_status=lambda: None, json=lambda: {
+            "result": {"value": [{"confirmationStatus": "finalized"}]}})
+        with patch.object(service.requests, "post", return_value=bad):
+            result = self.post("/wallet/withdrawals/status", {"nonce": nonce2}, user="201")
+        self.assertEqual(result.json["status"], "submitted")
