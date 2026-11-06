@@ -3393,6 +3393,45 @@
                         URL.revokeObjectURL(url);
                     });
                     adminPanel.appendChild(exportButton);
+                    adminPanel.querySelector('#marathon-payout-preview')?.remove();
+                    const previewButton = document.createElement('button');
+                    previewButton.id = 'marathon-payout-preview';
+                    previewButton.type = 'button';
+                    previewButton.textContent = 'Проверить предварительные призы';
+                    previewButton.style.marginTop = '10px';
+                    previewButton.style.marginLeft = '8px';
+                    previewButton.style.background = '#d9e7ff';
+                    previewButton.addEventListener('click', async () => {
+                        previewButton.disabled = true;
+                        adminStatus.textContent = 'Проверяю расчёт без начисления токенов…';
+                        try {
+                            const ranked = [...participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
+                            const payouts = ranked.map((p, index) => ({
+                                telegramId: String(p.telegramId),
+                                rank: index + 1,
+                                sidneyBonus: index === 0 && String(p.name || '').toLowerCase() === 'sidney'
+                            }));
+                            const previewResponse = await fetch('https://zer0life-ai-iz5n.onrender.com/wallet/admin/marathon-payout', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    initData: tg.initData,
+                                    competitionId: 'zer0life-marathon-2026-10',
+                                    payouts,
+                                    dryRun: true
+                                })
+                            });
+                            const preview = await previewResponse.json();
+                            if (!previewResponse.ok || !preview.success || preview.dryRun !== true) throw new Error(preview.error || 'Preview request failed');
+                            adminStatus.textContent = 'ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ · БЕЗ ВЫПЛАТ\\nОснова: lifetime-дистанция, НЕ подтверждённый рейтинг марафона\\nУчастников: ' + payouts.length + '\\nСумма по текущей сортировке: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL';
+                            adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (включён бонус Sidney)' : '')).join('\\n');
+                        } catch (error) {
+                            adminStatus.textContent = 'Ошибка предварительного расчёта: ' + (error.message || 'unknown error');
+                        } finally {
+                            previewButton.disabled = false;
+                        }
+                    });
+                    adminPanel.appendChild(previewButton);
                 } catch (error) {
                     adminStatus.textContent = 'Ошибка: ' + (error.message || 'Не удалось получить список');
                 } finally {
