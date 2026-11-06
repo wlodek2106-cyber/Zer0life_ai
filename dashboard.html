@@ -2139,7 +2139,7 @@
             }
         }
 
-        #marathon-admin-panel{position:fixed;left:12px;right:12px;bottom:86px;z-index:1200;background:#11151d;border:1px solid rgba(20,241,149,.45);border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.5);color:#fff;max-height:42vh;overflow:auto;font-family:Manrope,sans-serif}
+        #marathon-admin-panel{position:fixed;left:12px;right:12px;bottom:86px;z-index:1200;background:#11151d;border:1px solid rgba(20,241,149,.45);border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.5);color:#fff;max-height:34vh;overflow:auto;font-family:Manrope,sans-serif}
         #marathon-admin-panel[hidden]{display:none!important}
         #marathon-admin-panel button{background:#14f195;color:#07110d;border:0;border-radius:9px;padding:10px 14px;font-weight:800}
         #marathon-admin-status{font-size:11px;color:#c5d0dc;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -3372,11 +3372,11 @@
                     const result = await response.json();
                     if (!response.ok || !result.success) throw new Error(result.error || 'Roster request failed (' + response.status + ')');
                     const participants = Array.isArray(result.participants) ? result.participants : [];
-                    adminStatus.textContent = 'Участников: ' + participants.length + '\\nИстория: ' + (result.historicalCompleteness || 'status unavailable') + '\\nПериод данных: ' + (result.historyStart || '—') + ' — ' + (result.historyEnd || '—');
+                    adminStatus.textContent = 'Участников: ' + participants.length + '\nИстория: ' + (result.historicalCompleteness || 'status unavailable') + '\nПериод данных: ' + (result.historyStart || '—') + ' — ' + (result.historyEnd || '—');
                     adminData.textContent = participants.map((p, index) => {
-                        const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' ? JSON.stringify(p.dailyDistancesKm) : '{}';
+                        const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' && Object.keys(p.dailyDistancesKm).length ? JSON.stringify(p.dailyDistancesKm) : 'нет ежедневной истории';
                         return (index + 1) + '. ' + String(p.name || 'Runner') + ' | Telegram ID: ' + String(p.telegramId) + ' | Lifetime: ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km | Daily: ' + daily;
-                    }).join('\\n') || 'Список пока пуст.';
+                    }).join('\n') || 'Список пока пуст.';
                     adminPanel.querySelector('#marathon-roster-export')?.remove();
                     const exportButton = document.createElement('button');
                     exportButton.id = 'marathon-roster-export';
