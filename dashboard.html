@@ -3438,7 +3438,7 @@
                 }
                 const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
                 const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km').join('\\n');
-                const message = 'Confirm real credits by lifetime distance (this is not the historical marathon ranking):\\n' + summary + '\\nTotal participants: ' + ranked.length + '. Ranks 4 and below receive 10,000 ZRL each. Sidney получает бонус 200 000 ZRL, если занимает 1-е место. Операция защищена от повторного creditedия.';
+                const message = 'Confirm real credits by lifetime distance (this is not the historical marathon ranking):\\n' + summary + '\\nTotal participants: ' + ranked.length + '. Ranks 4 and below receive 10,000 ZRL each. Sidney receives an additional 200,000 ZRL if ranked first. Duplicate credits are prevented.';
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
                     payoutButton.disabled = true;
@@ -3465,8 +3465,8 @@
                         const credited = Array.isArray(result.payouts) ? result.payouts : [];
                         const total = credited.reduce((sum, p) => sum + Number(p.amount || 0) + Number(p.bonus || 0), 0);
                         const already = credited.filter(p => p.prizeCredited === false && p.bonusCredited !== true).length;
-                        adminStatus.textContent = 'CREDITS PROCESSED\\nParticipants: ' + credited.length + '\\nВсего по плану: ' + (total || 'см. детализацию') + ' ZRL\\nAlready credited (not duplicated): ' + already;
-                        adminData.textContent = credited.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · приз ' + Number(p.amount || 0).toLocaleString() + ' ZRL · бонус ' + Number(p.bonus || 0).toLocaleString() + ' ZRL · ' + (p.prizeCredited ? 'credited' : 'уже был credited')).join('\\n');
+                        adminStatus.textContent = 'CREDITS PROCESSED\\nParticipants: ' + credited.length + '\\nPlanned total: ' + (total || 'see details') + ' ZRL\\nAlready credited (not duplicated): ' + already;
+                        adminData.textContent = credited.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · prize ' + Number(p.amount || 0).toLocaleString() + ' ZRL · bonus ' + Number(p.bonus || 0).toLocaleString() + ' ZRL · ' + (p.prizeCredited ? 'credited' : 'already credited')).join('\\n');
                     } catch (error) {
                         adminStatus.textContent = 'PAYOUT ERROR: ' + (error.message || 'unknown error');
                     } finally {
@@ -3508,7 +3508,7 @@
                         'Participants: ' + payouts.length,
                         'Total by current sorting: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL'
                     ].join(String.fromCharCode(10));
-                    adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (бонус Sidney)' : '')).join(String.fromCharCode(10));
+                    adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (Sidney bonus)' : '')).join(String.fromCharCode(10));
                 } catch (error) {
                     adminStatus.textContent = 'Preview error: ' + (error.message || 'unknown error');
                 } finally {
