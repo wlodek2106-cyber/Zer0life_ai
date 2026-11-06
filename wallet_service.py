@@ -525,6 +525,101 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
     def authenticated_user(data):
         return _verify_telegram_init_data(data.get("initData"))
 
+    @bp.post("/wallet/admin/marathon-payout")
+    def admin_marathon_payout():
+        try:
+            data = _json_body()
+            admin = authenticated_user(data)
+            if not admin_telegram_id or admin["id"] != str(admin_telegram_id):
+                return _response_error("Administrator access required", 403)
+
+            competition_id = str(data.get("competitionId", ""))
+            if not re.fullmatch(r"[A-Za-z0-9_-]{3,64}", competition_id):
+                return _response_error("Invalid competition ID", 400)
+            payouts = data.get("payouts")
+            if not isinstance(payouts, list) or not payouts or len(payouts) > 500:
+                return _response_error("Provide between 1 and 500 participant payouts", 400)
+
+            prepared = []
+            seen_ids = set()
+            seen_ranks = set()
+            for item in payouts:
+                if not isinstance(item, dict):
+                    return _response_error("Invalid payout entry", 400)
+                telegram_id = str(item.get("telegramId", "")).strip()
+                if not telegram_id.isdigit() or len(telegram_id) > 24 or telegram_id in seen_ids:
+                    return _response_error("Invalid or duplicate participant Telegram ID", 400)
+                try:
+                    rank = int(item.get("rank"))
+                except (TypeError, ValueError):
+                    return _response_error("Invalid participant rank", 400)
+                if rank < 1 or rank > 500 or rank in seen_ranks:
+                    return _response_error("Invalid or duplicate participant rank", 400)
+                if rank == 1:
+                    amount = 500_000
+                elif rank == 2:
+                    amount = 300_000
+                elif rank == 3:
+                    amount = 200_000
+                else:
+                    amount = 10_000
+                bonus = item.get("sidneyBonus") is True
+                if bonus and rank != 1:
+                    return _response_error("The additional bonus is only valid for rank 1", 400)
+                prepared.append({
+                    "telegramId": telegram_id,
+                    "rank": rank,
+                    "amount": amount,
+                    "bonus": 200_000 if bonus else 0,
+                })
+                seen_ids.add(telegram_id)
+                seen_ranks.add(rank)
+
+            preview = [{
+                "telegramId": item["telegramId"],
+                "rank": item["rank"],
+                "prizeZrl": item["amount"],
+                "bonusZrl": item["bonus"],
+                "totalZrl": item["amount"] + item["bonus"],
+            } for item in prepared]
+            if data.get("dryRun", True) is not False:
+                return jsonify({"success": True, "dryRun": True, "payouts": preview,
+                                "totalZrl": sum(x["totalZrl"] for x in preview)})
+
+            credited = []
+            with _connect(db_path) as db:
+                db.execute("BEGIN IMMEDIATE")
+                try:
+                    for item in prepared:
+                        _ensure_account(db, item["telegramId"])
+                        prize_event = f"marathon:{competition_id}:rank:{item['rank']}:{item['telegramId']}"
+                        inserted = _ledger_entry(
+                            db, item["telegramId"], "marathon_prize",
+                            item["amount"] * ZRL_SCALE, prize_event,
+                        )
+                        bonus_inserted = False
+                        if item["bonus"]:
+                            bonus_inserted = _ledger_entry(
+                                db, item["telegramId"], "marathon_bonus",
+                                item["bonus"] * ZRL_SCALE,
+                                f"marathon:{competition_id}:bonus:{item['telegramId']}",
+                            )
+                        credited.append({
+                            **item,
+                            "prizeCredited": inserted,
+                            "bonusCredited": bonus_inserted,
+                        })
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                    raise
+            return jsonify({"success": True, "dryRun": False, "payouts": credited})
+        except PermissionError as exc:
+            return _response_error(str(exc), 401)
+        except Exception:
+            app.logger.exception("Marathon payout failed")
+            return _response_error("Marathon payout failed; check server logs", 503)
+
     def current_wallet(db, telegram_id):
         row = db.execute(
             "SELECT address FROM wallet_accounts WHERE telegram_id = ?",
