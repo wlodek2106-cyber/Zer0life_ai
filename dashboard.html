@@ -3423,8 +3423,8 @@
                             });
                             const preview = await previewResponse.json();
                             if (!previewResponse.ok || !preview.success || preview.dryRun !== true) throw new Error(preview.error || 'Preview request failed');
-                            adminStatus.textContent = 'ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ · БЕЗ ВЫПЛАТ\\nОснова: lifetime-дистанция, НЕ подтверждённый рейтинг марафона\\nУчастников: ' + payouts.length + '\\nСумма по текущей сортировке: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL';
-                            adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (включён бонус Sidney)' : '')).join('\\n');
+                            adminStatus.textContent = 'ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ · БЕЗ ВЫПЛАТ\nОснова: lifetime-дистанция, НЕ подтверждённый рейтинг марафона\nУчастников: ' + payouts.length + '\nСумма по текущей сортировке: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL';
+                            adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (включён бонус Sidney)' : '')).join('\n');
                         } catch (error) {
                             adminStatus.textContent = 'Ошибка предварительного расчёта: ' + (error.message || 'unknown error');
                         } finally {
