@@ -696,16 +696,8 @@
         setState: renderWallet,
     };
 
-    if (typeof totalBalance !== 'undefined') {
-        totalBalance = 0;
-        earnedZrlBalance = 0;
-        unclaimedZRL = 0;
-        poolDeposit = 0;
-        solBalance = 0;
-        casinoTotalWon = 0;
-        totalCasinoTurnover = 0;
-        freeSpins = 0;
-    }
+    // Keep the locally cached display until the authenticated server snapshot arrives.
+    // A temporary network/auth failure must not make a returning player appear to have 0 ZRL.
     byId('affiliate-copy-btn')?.addEventListener('click', copyReferralLink);
     ['wallet-btn', 'nav-wallet'].forEach((id) => {
         byId(id)?.addEventListener('click', () => { setTimeout(() => refresh().catch(() => {}), 0); });
