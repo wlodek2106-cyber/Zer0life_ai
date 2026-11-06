@@ -3691,11 +3691,11 @@
         let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
         const todayDistanceDateKey = new Date().toISOString().slice(0, 10);
         const savedDistanceDateKey = localStorage.getItem(STORAGE_PREFIX + 'today_distance_date');
-        if (savedDistanceDateKey && savedDistanceDateKey !== todayDistanceDateKey) {
+        if (savedDistanceDateKey !== todayDistanceDateKey) {
+            // Legacy clients did not persist a trustworthy date for todayDistance.
+            // Reset this display-only counter once; lifetime distance remains untouched.
             todayDistance = 0;
             localStorage.setItem(STORAGE_PREFIX + 'today_distance', '0');
-        }
-        if (savedDistanceDateKey !== todayDistanceDateKey) {
             localStorage.setItem(STORAGE_PREFIX + 'today_distance_date', todayDistanceDateKey);
         }
         let totalDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_distance')) || 0.00; 
