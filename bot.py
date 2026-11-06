@@ -377,11 +377,31 @@ def update_stats():
                 previous_distance = max(0.0, float(previous.get('distance', 0.0))) if isinstance(previous, dict) else 0.0
             except (TypeError, ValueError):
                 previous_distance = 0.0
+            previous_record = previous if isinstance(previous, dict) else {}
+            daily_distances = previous_record.get("dailyDistances", {})
+            if not isinstance(daily_distances, dict):
+                daily_distances = {}
+            today_key = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+            try:
+                incoming_today = max(0.0, float(data.get("todayDistance", 0.0)))
+            except (TypeError, ValueError):
+                incoming_today = 0.0
+            if incoming_today > 0:
+                daily_distances[today_key] = max(
+                    float(daily_distances.get(today_key, 0.0) or 0.0),
+                    incoming_today,
+                )
+            cutoff = (datetime.datetime.now(datetime.timezone.utc).date() - datetime.timedelta(days=35)).isoformat()
+            daily_distances = {
+                day: value for day, value in daily_distances.items()
+                if isinstance(day, str) and day >= cutoff
+            }
             stats[tg_id] = {
                 "name": data.get('username', 'Runner'),
-                "wallet": data.get('walletAddress', ''),
+                "wallet": data.get('walletAddress', previous_record.get('wallet', '')),
                 "distance": max(previous_distance, incoming_distance),
-                "balance": float(previous.get('balance', 0.0)) if isinstance(previous, dict) else 0.0
+                "dailyDistances": daily_distances,
+                "balance": float(previous_record.get('balance', 0.0) or 0.0)
             }
             save_stats_data(stats)
         return jsonify({"success": True})
@@ -392,11 +412,35 @@ def update_stats():
 def get_leaderboard():
     try:
         stats = load_stats()
-        sorted_users = sorted(stats.values(), key=lambda x: x['distance'], reverse=True)
-        
+        period = str(request.args.get("period", "all")).lower()
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        if period == "daily":
+            start_day = today
+        elif period == "weekly":
+            start_day = today - datetime.timedelta(days=6)
+        elif period in ("monthly", "30d", "marathon"):
+            start_day = today - datetime.timedelta(days=29)
+        else:
+            start_day = None
+
+        ranked_users = []
+        for telegram_id, user in stats.items():
+            if not isinstance(user, dict):
+                continue
+            if start_day is None:
+                dist = float(user.get("distance", 0.0) or 0.0)
+            else:
+                daily = user.get("dailyDistances", {})
+                dist = sum(
+                    max(0.0, float(value or 0.0))
+                    for day, value in daily.items()
+                    if isinstance(day, str) and start_day.isoformat() <= day <= today.isoformat()
+                ) if isinstance(daily, dict) else 0.0
+            ranked_users.append((user, dist))
+        sorted_users = sorted(ranked_users, key=lambda item: item[1], reverse=True)
+
         leaderboard = []
-        for index, user in enumerate(sorted_users[:50], start=1):
-            dist = float(user.get('distance', 0.0))
+        for index, (user, dist) in enumerate(sorted_users[:50], start=1):
             level = int(dist // 5) + 1
             
             leaderboard.append({
