@@ -2161,11 +2161,11 @@
     <section id="marathon-admin-panel" hidden aria-label="Marathon admin tools">
         <div style="font-weight:800;font-size:13px;margin-bottom:8px;">ZER0LIFE · MARATHON ADMIN</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <button id="marathon-roster-load" type="button">Загрузить список участников</button>
-            <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Проверить предварительные призы</button>
-            <button id="marathon-payout-send" type="button" style="background:#14f195;opacity:1;display:block;width:100%;margin-top:8px;">НАЧИСЛИТЬ ZRL УЧАСТНИКАМ</button>
+            <button id="marathon-roster-load" type="button">Load participant list</button>
+            <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview prize allocation</button>
+            <button id="marathon-payout-send" type="button" style="background:#14f195;opacity:1;display:block;width:100%;margin-top:8px;">DISTRIBUTE ZRL TO PARTICIPANTS</button>
         </div>
-        <div id="marathon-admin-status">Сначала загрузи список участников.</div>
+        <div id="marathon-admin-status">Load the participant list first.</div>
         <pre id="marathon-admin-data"></pre>
     </section>
 
@@ -3369,7 +3369,7 @@
 
             loadButton.addEventListener('click', async () => {
                 loadButton.disabled = true;
-                adminStatus.textContent = 'Получаю защищённый список участников…';
+                adminStatus.textContent = 'Loading secure participant roster…';
                 adminData.textContent = '';
                 previewButton.disabled = true;
                 previewButton.style.opacity = '.55';
@@ -3384,20 +3384,20 @@
                     rosterResult = result;
                     const participants = Array.isArray(result.participants) ? result.participants : [];
                     adminStatus.textContent = [
-                        'Участников: ' + participants.length,
-                        'История: ' + (result.historicalCompleteness || 'нет данных'),
-                        'Период данных: ' + (result.historyStart || '—') + ' — ' + (result.historyEnd || '—')
+                        'Participants: ' + participants.length,
+                        'History: ' + (result.historicalCompleteness || 'unavailable'),
+                        'Data period: ' + (result.historyStart || '—') + ' — ' + (result.historyEnd || '—')
                     ].join(String.fromCharCode(10));
                     adminData.textContent = participants.map((p, index) => {
-                        const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' && Object.keys(p.dailyDistancesKm).length ? JSON.stringify(p.dailyDistancesKm) : 'нет ежедневной истории';
+                        const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' && Object.keys(p.dailyDistancesKm).length ? JSON.stringify(p.dailyDistancesKm) : 'no daily history';
                         return (index + 1) + '. ' + String(p.name || 'Runner') + ' | Telegram ID: ' + String(p.telegramId) + ' | Lifetime: ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km | Daily: ' + daily;
-                    }).join(String.fromCharCode(10)) || 'Список пока пуст.';
+                    }).join(String.fromCharCode(10)) || 'No participants found.';
 
                     adminPanel.querySelector('#marathon-roster-export')?.remove();
                     const exportButton = document.createElement('button');
                     exportButton.id = 'marathon-roster-export';
                     exportButton.type = 'button';
-                    exportButton.textContent = 'Скачать JSON';
+                    exportButton.textContent = 'Download JSON';
                     exportButton.style.marginTop = '10px';
                     exportButton.addEventListener('click', () => {
                         const blob = new Blob([JSON.stringify(rosterResult, null, 2)], { type: 'application/json' });
@@ -3414,7 +3414,7 @@
                     payoutButton.disabled = false;
                     payoutButton.style.opacity = '1';
                 } catch (error) {
-                    adminStatus.textContent = 'Ошибка: ' + (error.message || 'Не удалось получить список');
+                    adminStatus.textContent = 'Error: ' + (error.message || 'Could not load participant list');
                 } finally {
                     loadButton.disabled = false;
                 }
@@ -3422,28 +3422,28 @@
 
             payoutButton.addEventListener('click', () => {
                 if (!rosterResult || !Array.isArray(rosterResult.participants) || !rosterResult.participants.length) {
-                    adminStatus.textContent = 'Сначала загружаю список участников…';
+                    adminStatus.textContent = 'Loading participant list…';
                     try {
                         const rosterResponse = await fetch('https://zer0life-ai-iz5n.onrender.com/admin/marathon-roster', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ initData: tg.initData })
                         });
                         const roster = await rosterResponse.json();
-                        if (!rosterResponse.ok || !roster.success) throw new Error(roster.error || 'Не удалось загрузить список');
+                        if (!rosterResponse.ok || !roster.success) throw new Error(roster.error || 'Could not load participant list');
                         rosterResult = roster;
                     } catch (error) {
-                        adminStatus.textContent = 'Ошибка загрузки списка: ' + (error.message || 'unknown error');
+                        adminStatus.textContent = 'Roster loading error: ' + (error.message || 'unknown error');
                         return;
                     }
                 }
                 const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
                 const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km').join('\\n');
-                const message = 'Подтверди реальные начисления по lifetime-дистанции (это не исторический рейтинг марафона):\\n' + summary + '\\nВсего участников: ' + ranked.length + '. Для 4-го места и ниже — по 10 000 ZRL. Sidney получает бонус 200 000 ZRL, если занимает 1-е место. Операция защищена от повторного начисления.';
+                const message = 'Confirm real credits by lifetime distance (this is not the historical marathon ranking):\\n' + summary + '\\nTotal participants: ' + ranked.length + '. Ranks 4 and below receive 10,000 ZRL each. Sidney получает бонус 200 000 ZRL, если занимает 1-е место. Операция защищена от повторного creditedия.';
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
                     payoutButton.disabled = true;
                     previewButton.disabled = true;
-                    adminStatus.textContent = 'Выполняю реальные начисления ZRL…';
+                    adminStatus.textContent = 'Processing real ZRL credits…';
                     try {
                         const payouts = ranked.map((p, index) => ({
                             telegramId: String(p.telegramId),
@@ -3465,10 +3465,10 @@
                         const credited = Array.isArray(result.payouts) ? result.payouts : [];
                         const total = credited.reduce((sum, p) => sum + Number(p.amount || 0) + Number(p.bonus || 0), 0);
                         const already = credited.filter(p => p.prizeCredited === false && p.bonusCredited !== true).length;
-                        adminStatus.textContent = 'НАЧИСЛЕНИЯ ОБРАБОТАНЫ\\nУчастников: ' + credited.length + '\\nВсего по плану: ' + (total || 'см. детализацию') + ' ZRL\\nПовторно не начислено: ' + already;
-                        adminData.textContent = credited.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · приз ' + Number(p.amount || 0).toLocaleString() + ' ZRL · бонус ' + Number(p.bonus || 0).toLocaleString() + ' ZRL · ' + (p.prizeCredited ? 'начислен' : 'уже был начислен')).join('\\n');
+                        adminStatus.textContent = 'CREDITS PROCESSED\\nParticipants: ' + credited.length + '\\nВсего по плану: ' + (total || 'см. детализацию') + ' ZRL\\nAlready credited (not duplicated): ' + already;
+                        adminData.textContent = credited.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · приз ' + Number(p.amount || 0).toLocaleString() + ' ZRL · бонус ' + Number(p.bonus || 0).toLocaleString() + ' ZRL · ' + (p.prizeCredited ? 'credited' : 'уже был credited')).join('\\n');
                     } catch (error) {
-                        adminStatus.textContent = 'ОШИБКА НАЧИСЛЕНИЯ: ' + (error.message || 'unknown error');
+                        adminStatus.textContent = 'PAYOUT ERROR: ' + (error.message || 'unknown error');
                     } finally {
                         payoutButton.disabled = false;
                         previewButton.disabled = false;
@@ -3478,11 +3478,11 @@
 
             previewButton.addEventListener('click', async () => {
                 if (!rosterResult || !Array.isArray(rosterResult.participants)) {
-                    adminStatus.textContent = 'Сначала загрузи список участников.';
+                    adminStatus.textContent = 'Load the participant list first.';
                     return;
                 }
                 previewButton.disabled = true;
-                adminStatus.textContent = 'Проверяю расчёт без начисления токенов…';
+                adminStatus.textContent = 'Calculating preview without transferring tokens…';
                 try {
                     const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
                     const payouts = ranked.map((p, index) => ({
@@ -3503,14 +3503,14 @@
                     const preview = await response.json();
                     if (!response.ok || !preview.success || preview.dryRun !== true) throw new Error(preview.error || 'Preview request failed');
                     adminStatus.textContent = [
-                        'ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ · БЕЗ ВЫПЛАТ',
-                        'Основа: lifetime-дистанция, НЕ подтверждённый рейтинг марафона',
-                        'Участников: ' + payouts.length,
-                        'Сумма по текущей сортировке: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL'
+                        'PREVIEW ONLY · NO PAYOUTS',
+                        'Basis: lifetime distance, NOT verified marathon ranking',
+                        'Participants: ' + payouts.length,
+                        'Total by current sorting: ' + Number(preview.totalZrl || 0).toLocaleString() + ' ZRL'
                     ].join(String.fromCharCode(10));
                     adminData.textContent = preview.payouts.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · ' + Number(p.totalZrl || 0).toLocaleString() + ' ZRL' + (p.bonusZrl ? ' (бонус Sidney)' : '')).join(String.fromCharCode(10));
                 } catch (error) {
-                    adminStatus.textContent = 'Ошибка предварительного расчёта: ' + (error.message || 'unknown error');
+                    adminStatus.textContent = 'Preview error: ' + (error.message || 'unknown error');
                 } finally {
                     previewButton.disabled = false;
                 }
