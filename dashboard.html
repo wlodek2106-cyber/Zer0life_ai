@@ -2163,7 +2163,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
             <button id="marathon-roster-load" type="button">Загрузить список участников</button>
             <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Проверить предварительные призы</button>
-            <button id="marathon-payout-send" type="button" disabled style="background:#14f195;opacity:.55;">НАЧИСЛИТЬ ZRL УЧАСТНИКАМ</button>
+            <button id="marathon-payout-send" type="button" style="background:#14f195;opacity:1;display:block;width:100%;margin-top:8px;">НАЧИСЛИТЬ ZRL УЧАСТНИКАМ</button>
         </div>
         <div id="marathon-admin-status">Сначала загрузи список участников.</div>
         <pre id="marathon-admin-data"></pre>
@@ -3422,8 +3422,19 @@
 
             payoutButton.addEventListener('click', () => {
                 if (!rosterResult || !Array.isArray(rosterResult.participants) || !rosterResult.participants.length) {
-                    adminStatus.textContent = 'Сначала загрузи список участников.';
-                    return;
+                    adminStatus.textContent = 'Сначала загружаю список участников…';
+                    try {
+                        const rosterResponse = await fetch('https://zer0life-ai-iz5n.onrender.com/admin/marathon-roster', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ initData: tg.initData })
+                        });
+                        const roster = await rosterResponse.json();
+                        if (!rosterResponse.ok || !roster.success) throw new Error(roster.error || 'Не удалось загрузить список');
+                        rosterResult = roster;
+                    } catch (error) {
+                        adminStatus.textContent = 'Ошибка загрузки списка: ' + (error.message || 'unknown error');
+                        return;
+                    }
                 }
                 const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
                 const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km').join('\\n');
