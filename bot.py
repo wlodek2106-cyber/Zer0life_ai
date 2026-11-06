@@ -606,7 +606,7 @@ def setup_webhook_sync():
                 )
             ), bot_loop)
             menu_future.result(timeout=5)
-            logging.info(f"Webhook registered: {webhook_url}")
+            logging.info("Telegram webhook registered successfully.")
         except Exception as e:
             logging.error(f"Webhook setup error: {e}")
 
