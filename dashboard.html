@@ -2164,6 +2164,7 @@
             <button id="marathon-roster-load" type="button">Load participant list</button>
             <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview prize allocation</button>
             <button id="marathon-payout-send" type="button" style="background:#14f195;opacity:1;display:block;width:100%;margin-top:8px;">DISTRIBUTE ZRL TO PARTICIPANTS</button>
+            <button id="marathon-credit-self" type="button" style="background:#a8f07a;color:#07110d;width:100%;margin-top:8px;">CREDIT MY 300,000 ZRL PRIZE</button>
         </div>
         <div id="marathon-admin-status">Load the participant list first.</div>
         <pre id="marathon-admin-data"></pre>
@@ -6646,6 +6647,75 @@
             updateWalletUI();
             updateEnergyUI();
         }
+
+        // Admin marathon controls use the signed Telegram WebApp session; no client-supplied user ID is trusted.
+        (() => {
+            const adminPanel = document.getElementById('marathon-admin-panel');
+            const adminStatus = document.getElementById('marathon-admin-status');
+            const adminData = document.getElementById('marathon-admin-data');
+            const adminId = String(tg.initDataUnsafe?.user?.id || '');
+            const isAdmin = adminId === '428821665' && Boolean(tg.initData);
+            if (!adminPanel || !isAdmin) return;
+            adminPanel.hidden = false;
+            const adminPost = async (path, payload = {}) => {
+                const response = await fetch('https://zer0life-ai-iz5n.onrender.com' + path, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    cache: 'no-store',
+                    body: JSON.stringify({ initData: tg.initData, ...payload })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result.success) throw new Error(result.error || 'Request failed (' + response.status + ')');
+                return result;
+            };
+            let roster = null;
+            document.getElementById('marathon-roster-load')?.addEventListener('click', async () => {
+                adminStatus.textContent = 'Loading verified participant data…';
+                try {
+                    roster = await adminPost('/admin/marathon-roster');
+                    adminStatus.textContent = 'Participants: ' + roster.participantCount
+                        + '\\nDaily history: ' + (roster.historyStart || 'none') + ' — ' + (roster.historyEnd || 'none')
+                        + '\\n' + roster.historicalCompleteness;
+                    adminData.textContent = roster.participants.map((p, i) =>
+                        (i + 1) + '. ' + p.name + ' · ' + p.lifetimeDistanceKm + ' km · Telegram ID ' + p.telegramId
+                    ).join('\\n');
+                    document.getElementById('marathon-payout-preview').disabled = false;
+                } catch (error) { adminStatus.textContent = 'Roster error: ' + error.message; }
+            });
+            document.getElementById('marathon-payout-preview')?.addEventListener('click', () => {
+                if (!roster) return;
+                const sorted = [...roster.participants].sort((a, b) => b.lifetimeDistanceKm - a.lifetimeDistanceKm);
+                adminData.textContent = sorted.map((p, i) => {
+                    const rank = i + 1;
+                    const prize = rank === 1 ? 500000 : rank === 2 ? 300000 : rank === 3 ? 200000 : 10000;
+                    const bonus = rank === 1 && /sidney/i.test(p.name) ? 200000 : 0;
+                    return rank + '. ' + p.name + ' — ' + (prize + bonus).toLocaleString() + ' ZRL';
+                }).join('\\n');
+                adminStatus.textContent = 'Preview only. Lifetime distance is not proof of the completed marathon ranking.';
+            });
+            document.getElementById('marathon-payout-send')?.addEventListener('click', async () => {
+                adminStatus.textContent = 'Not sent: verified Oct 7–Nov 6 daily history is required before distributing the full leaderboard.';
+            });
+            document.getElementById('marathon-credit-self')?.addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                button.disabled = true;
+                adminStatus.textContent = 'Crediting the approved 300,000 ZRL rank-2 prize to your authenticated Telegram account…';
+                try {
+                    const result = await adminPost('/wallet/admin/marathon-payout', {
+                        competitionId: 'zerolife-run-oct2026',
+                        payouts: [{ telegramId: adminId, rank: 2 }],
+                        dryRun: false
+                    });
+                    await window.secureWallet?.refresh();
+                    adminStatus.textContent = result.payouts?.[0]?.prizeCredited
+                        ? '300,000 ZRL credited. Wallet refreshed.'
+                        : 'This prize was already credited earlier; no duplicate was added. Wallet refreshed.';
+                } catch (error) {
+                    adminStatus.textContent = 'Credit error: ' + error.message;
+                    button.disabled = false;
+                }
+            });
+        })();
 
         checkRegistration();
         updateCheckinUI();
