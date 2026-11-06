@@ -3355,7 +3355,12 @@
         tg.expand();
         tg.ready();
 
-        const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
+        // Never create a temporary wallet identity outside the Telegram WebApp.
+        if (!tg.initData || !tg.initDataUnsafe?.user?.id) {
+            document.body.innerHTML = '<main style="min-height:100vh;background:#07090d;color:#f4f7fb;display:grid;place-items:center;padding:28px;font-family:Arial,sans-serif;text-align:center"><section><h2>Open Zer0Life Run in Telegram</h2><p>This page was opened outside Telegram, so your real account and wallet cannot be loaded. No new profile has been created. Return to Telegram and open the bot menu again.</p></section></main>';
+            throw new Error('Telegram WebApp initData is missing; refusing to create a temporary account.');
+        }
+        const telegramId = String(tg.initDataUnsafe.user.id);
         const isMarathonAdmin = String(telegramId) === '428821665';
         if (isMarathonAdmin) {
             const adminPanel = document.getElementById('marathon-admin-panel');
