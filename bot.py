@@ -411,6 +411,60 @@ def update_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@api_app.route('/admin/marathon-roster', methods=['POST'])
+def admin_marathon_roster():
+    """Return participant identifiers and retained stats to the verified admin only."""
+    try:
+        data = request.get_json(silent=True) or {}
+        admin = _verify_telegram_init_data(data.get("initData"))
+        if admin["id"] != str(ADMIN_TELEGRAM_ID):
+            return jsonify({"error": "Administrator access required"}), 403
+
+        with stats_write_lock:
+            stats = load_stats()
+        participants = []
+        history_days = set()
+        for telegram_id, user in stats.items():
+            if not isinstance(user, dict):
+                continue
+            daily = user.get("dailyDistances", {})
+            if not isinstance(daily, dict):
+                daily = {}
+            clean_daily = {}
+            for day, value in daily.items():
+                try:
+                    if isinstance(day, str):
+                        clean_daily[day] = max(0.0, float(value or 0.0))
+                        history_days.add(day)
+                except (TypeError, ValueError):
+                    continue
+            try:
+                total_distance = max(0.0, float(user.get("distance", 0.0) or 0.0))
+            except (TypeError, ValueError):
+                total_distance = 0.0
+            participants.append({
+                "telegramId": str(telegram_id),
+                "name": str(user.get("name", "Runner"))[:80],
+                "lifetimeDistanceKm": round(total_distance, 2),
+                "dailyDistancesKm": clean_daily,
+            })
+        participants.sort(
+            key=lambda item: item["lifetimeDistanceKm"], reverse=True
+        )
+        return jsonify({
+            "success": True,
+            "historicalCompleteness": "daily history exists only from the daily-tracking deployment onward",
+            "historyStart": min(history_days) if history_days else None,
+            "historyEnd": max(history_days) if history_days else None,
+            "participantCount": len(participants),
+            "participants": participants,
+        })
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+    except Exception:
+        logging.exception("Admin marathon roster request failed")
+        return jsonify({"error": "Could not load marathon roster"}), 503
+
 @api_app.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
     try:
