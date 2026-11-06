@@ -3377,7 +3377,9 @@
                         const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' ? JSON.stringify(p.dailyDistancesKm) : '{}';
                         return (index + 1) + '. ' + String(p.name || 'Runner') + ' | Telegram ID: ' + String(p.telegramId) + ' | Lifetime: ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km | Daily: ' + daily;
                     }).join('\\n') || 'Список пока пуст.';
+                    adminPanel.querySelector('#marathon-roster-export')?.remove();
                     const exportButton = document.createElement('button');
+                    exportButton.id = 'marathon-roster-export';
                     exportButton.type = 'button';
                     exportButton.textContent = 'Скачать JSON';
                     exportButton.style.marginTop = '10px';
