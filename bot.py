@@ -60,7 +60,7 @@ RENDER_DISK_DIR = os.getenv("RENDER_DISK_PATH", "/var/data")
 DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
 os.makedirs(DATA_DIR, exist_ok=True)
 
-from wallet_service import register_wallet_routes
+from wallet_service import register_wallet_routes, _verify_telegram_init_data
 register_wallet_routes(api_app, DATA_DIR, admin_telegram_id=ADMIN_TELEGRAM_ID)
 
 def migrate_legacy_data_file(filename):
@@ -367,7 +367,10 @@ def update_stats():
         if not data or 'telegramId' not in data:
             return jsonify({"error": "Invalid data"}), 400
 
+        authenticated = _verify_telegram_init_data(data.get("initData"))
         tg_id = str(data['telegramId'])
+        if authenticated["id"] != tg_id:
+            return jsonify({"error": "Telegram identity mismatch"}), 403
         incoming_distance = max(0.0, float(data.get('distance', 0.0)))
 
         with stats_write_lock:
