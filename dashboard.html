@@ -3689,6 +3689,13 @@
         let freeSpins = parseInt(localStorage.getItem(STORAGE_PREFIX + 'free_spins')) || 0;
         
         let todayDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'today_distance')) || 0.00;
+        const todayDistanceDateKey = new Date().toISOString().slice(0, 10);
+        const savedDistanceDateKey = localStorage.getItem(STORAGE_PREFIX + 'today_distance_date');
+        if (savedDistanceDateKey !== todayDistanceDateKey) {
+            todayDistance = 0;
+            localStorage.setItem(STORAGE_PREFIX + 'today_distance', '0');
+            localStorage.setItem(STORAGE_PREFIX + 'today_distance_date', todayDistanceDateKey);
+        }
         let totalDistance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_distance')) || 0.00; 
         let unclaimedZRL = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'unclaimed')) || 0.00;
         let todaySteps = parseInt(localStorage.getItem(STORAGE_PREFIX + 'today_steps')) || 0;
@@ -4988,6 +4995,7 @@
                         username: username,
                         walletAddress: userWallet,
                         distance: totalDistance,
+                        todayDistance: todayDistance,
                         avatar: myAvatar
                     })
                 });
