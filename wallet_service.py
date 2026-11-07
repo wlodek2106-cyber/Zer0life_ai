@@ -533,9 +533,6 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             if not admin_telegram_id or admin["id"] != str(admin_telegram_id):
                 return _response_error("Administrator access required", 403)
 
-            if data.get("dryRun", True) is False:
-                return _response_error("Real marathon payouts are locked until the 30-day competition is complete and its final ranking is verified", 409)
-
             competition_id = str(data.get("competitionId", ""))
             if not re.fullmatch(r"[A-Za-z0-9_-]{3,64}", competition_id):
                 return _response_error("Invalid competition ID", 400)
