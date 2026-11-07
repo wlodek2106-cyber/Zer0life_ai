@@ -533,6 +533,9 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             if not admin_telegram_id or admin["id"] != str(admin_telegram_id):
                 return _response_error("Administrator access required", 403)
 
+            if data.get("dryRun", True) is False:
+                return _response_error("Real marathon payouts are locked until the 30-day competition is complete and its final ranking is verified", 409)
+
             competition_id = str(data.get("competitionId", ""))
             if not re.fullmatch(r"[A-Za-z0-9_-]{3,64}", competition_id):
                 return _response_error("Invalid competition ID", 400)
@@ -562,15 +565,13 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 elif rank == 3:
                     amount = 200_000
                 else:
-                    amount = 10_000
-                bonus = item.get("sidneyBonus") is True
-                if bonus and rank != 1:
-                    return _response_error("The additional bonus is only valid for rank 1", 400)
+                    amount = 0
+                bonus = False
                 prepared.append({
                     "telegramId": telegram_id,
                     "rank": rank,
                     "amount": amount,
-                    "bonus": 200_000 if bonus else 0,
+                    "bonus": 0,
                 })
                 seen_ids.add(telegram_id)
                 seen_ranks.add(rank)
