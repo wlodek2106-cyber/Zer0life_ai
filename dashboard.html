@@ -3354,11 +3354,31 @@
 
     <script src="./legacy-recovery.js?v=english-ui-3"></script>
     <script>
-        const tg = window.Telegram.WebApp;
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            document.body.innerHTML = '<main style="padding:32px;color:#fff;background:#080b08;font:16px sans-serif">Open Zer0Life Run from its Telegram bot so your existing account can be securely identified. No new account was created.</main>';
+            throw new Error('Telegram WebApp context is unavailable');
+        }
         tg.expand();
         tg.ready();
 
-        const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
+        // Prefer Telegram's parsed user object; if WebApp initDataUnsafe is not
+        // populated yet, recover the same user ID from Telegram's signed initData.
+        let telegramUser = tg.initDataUnsafe?.user || null;
+        if (!telegramUser && typeof tg.initData === 'string' && tg.initData) {
+            try {
+                const initParams = new URLSearchParams(tg.initData);
+                const rawUser = initParams.get('user');
+                if (rawUser) telegramUser = JSON.parse(rawUser);
+            } catch (error) {
+                console.error('Could not parse Telegram initData user', error);
+            }
+        }
+        const telegramId = telegramUser?.id ? String(telegramUser.id) : '';
+        if (!telegramId) {
+            document.body.innerHTML = '<main style="padding:32px;color:#fff;background:#080b08;font:16px sans-serif"><h2>Telegram account not detected</h2><p>Close this window and reopen Zer0Life Run from the official Telegram bot. Your old account and balances have not been replaced.</p></main>';
+            throw new Error('Telegram user ID missing; refusing to create a demo account');
+        }
         const isMarathonAdmin = String(telegramId) === '428821665';
         if (isMarathonAdmin) {
             const adminPanel = document.getElementById('marathon-admin-panel');
