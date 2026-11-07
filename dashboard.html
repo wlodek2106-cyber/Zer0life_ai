@@ -2140,6 +2140,8 @@
         }
 
         #marathon-admin-panel{position:fixed;left:12px;right:12px;bottom:86px;z-index:2147483000;pointer-events:auto;touch-action:manipulation;background:#11151d;border:1px solid rgba(20,241,149,.45);border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.5);color:#fff;max-height:34vh;overflow:auto;font-family:Manrope,sans-serif}
+        #marathon-admin-panel button{ -webkit-tap-highlight-color:rgba(20,241,149,.25); user-select:none; -webkit-user-select:none; }
+        #marathon-payout-send{min-height:48px; position:relative; isolation:isolate;}
         #marathon-admin-panel[hidden]{display:none!important}
         #marathon-admin-panel button{position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;cursor:pointer;background:#14f195;color:#07110d;border:0;border-radius:9px;padding:10px 14px;font-weight:800}
         #marathon-admin-status{font-size:11px;color:#c5d0dc;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -3446,7 +3448,8 @@
                 }
             });
 
-            payoutButton.addEventListener('click', async () => {
+            window.runMarathonPayout = async () => {
+                adminStatus.textContent = 'Button tap received — preparing payout…';
                 if (!rosterResult || !Array.isArray(rosterResult.participants) || !rosterResult.participants.length) {
                     adminStatus.textContent = 'Loading participant list…';
                     try {
@@ -3530,7 +3533,8 @@
                         previewButton.disabled = false;
                     }
                 });
-            });
+            };
+            payoutButton.onclick = window.runMarathonPayout;
 
             previewButton.addEventListener('click', async () => {
                 if (!rosterResult || !Array.isArray(rosterResult.participants)) {
