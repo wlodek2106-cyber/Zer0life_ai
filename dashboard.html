@@ -3838,7 +3838,11 @@
         let lastMotionStepAt = 0;
         let motionListenerAttached = false; 
         
-        let username = localStorage.getItem(STORAGE_PREFIX + 'username') || '';
+        const telegramProfile = tg.initDataUnsafe?.user || {};
+        let username = localStorage.getItem(STORAGE_PREFIX + 'username')
+            || telegramProfile.username
+            || [telegramProfile.first_name, telegramProfile.last_name].filter(Boolean).join(' ')
+            || '';
         let userWallet = SHARED_POOL_WALLET;
 
         let totalBalance = parseFloat(localStorage.getItem(STORAGE_PREFIX + 'total_balance')) || 0.00;
@@ -6648,7 +6652,7 @@
     </script>
     <script src="./legacy-farms.js?v=english-ui-3"></script>
     <script src="./recovery-actions.js?v=english-ui-3"></script>
-    <script src="./wallet.js?v=withdrawal-receipts-retry-1"></script>
+    <script src="./wallet.js?v=preserve-cached-balances-3"></script>
     <script src="./community-feed.js?v=zeronet-claim-nonblocking-v2"></script>
     <script src="./social-chat.js?v=zeronet-single-entry-v1"></script>
 </body>
