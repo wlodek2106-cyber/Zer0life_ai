@@ -814,7 +814,7 @@ async def cmd_test_zrl_presale(message: types.Message):
         await bot.send_message(
             chat_id=int(ADMIN_TELEGRAM_ID),
             text=(
-                "✅ <b>ZRL Pre-Sale Telegram delivery test</b>\\n\\n"
+                "✅ <b>ZRL Pre-Sale Telegram delivery test</b>\n\n"
                 "Your bot can send direct messages. This is a private test; "
                 "no other subscribers were contacted."
             ),
