@@ -2139,9 +2139,9 @@
             }
         }
 
-        #marathon-admin-panel{position:fixed;left:12px;right:12px;bottom:86px;z-index:1200;background:#11151d;border:1px solid rgba(20,241,149,.45);border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.5);color:#fff;max-height:34vh;overflow:auto;font-family:Manrope,sans-serif}
+        #marathon-admin-panel{position:fixed;left:12px;right:12px;bottom:86px;z-index:2147483000;pointer-events:auto;touch-action:manipulation;background:#11151d;border:1px solid rgba(20,241,149,.45);border-radius:14px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,.5);color:#fff;max-height:34vh;overflow:auto;font-family:Manrope,sans-serif}
         #marathon-admin-panel[hidden]{display:none!important}
-        #marathon-admin-panel button{background:#14f195;color:#07110d;border:0;border-radius:9px;padding:10px 14px;font-weight:800}
+        #marathon-admin-panel button{position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;cursor:pointer;background:#14f195;color:#07110d;border:0;border-radius:9px;padding:10px 14px;font-weight:800}
         #marathon-admin-status{font-size:11px;color:#c5d0dc;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}
         #marathon-admin-data{font:10px/1.45 'DM Mono',monospace;color:#d7e2ec;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px}
         </style>
@@ -3488,7 +3488,11 @@
                     '1st: 500,000 · 2nd: 300,000 · 3rd: 200,000 · ranks 4–25: 10,000 ZRL each\n' +
                     'Sidney bonus: +200,000 ZRL if Sidney is ranked #1.\n\n' + summary +
                     '\n\nThis action changes participant balances and cannot be undone from this screen.';
-                tg.showConfirm(message, async (confirmed) => {
+                const confirmPayout = (callback) => {
+                    if (tg && typeof tg.showConfirm === 'function') tg.showConfirm(message, callback);
+                    else callback(window.confirm(message));
+                };
+                confirmPayout(async (confirmed) => {
                     if (!confirmed) return;
                     payoutButton.disabled = true;
                     previewButton.disabled = true;
