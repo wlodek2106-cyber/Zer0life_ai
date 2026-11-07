@@ -83,6 +83,7 @@ def migrate_legacy_data_file(filename):
 
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 STATS_FILE = os.path.join(DATA_DIR, "leaderboard_stats.json")
+MARATHON_FILE = os.path.join(DATA_DIR, "marathon_state.json")
 launch_reminder_preferences = LaunchReminderPreferences(
     os.path.join(DATA_DIR, "launch_reminder_preferences.json")
 )
@@ -144,6 +145,23 @@ def save_stats_data(stats):
         except OSError:
             pass
         logging.error(f"Error saving stats: {e}")
+
+def load_marathon_state():
+    if os.path.exists(MARATHON_FILE):
+        try:
+            with open(MARATHON_FILE, "r") as f:
+                state = json.load(f)
+                return state if isinstance(state, dict) else {}
+        except Exception:
+            logging.exception("Could not read marathon state")
+    return {}
+
+def save_marathon_state(state):
+    temporary_path = MARATHON_FILE + "." + str(os.getpid()) + ".tmp"
+    with open(temporary_path, "w") as f:
+        json.dump(state, f)
+    os.replace(temporary_path, MARATHON_FILE)
+
 # Marathon progress and leaderboard records must remain persistent across restarts.
 
 bot_loop = asyncio.new_event_loop()
@@ -396,7 +414,7 @@ def update_stats():
                     float(daily_distances.get(today_key, 0.0) or 0.0),
                     incoming_today,
                 )
-            cutoff = (datetime.datetime.now(datetime.timezone.utc).date() - datetime.timedelta(days=35)).isoformat()
+            cutoff = (datetime.datetime.now(datetime.timezone.utc).date() - datetime.timedelta(days=45)).isoformat()
             daily_distances = {
                 day: value for day, value in daily_distances.items()
                 if isinstance(day, str) and day >= cutoff
@@ -413,17 +431,65 @@ def update_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-@api_app.route('/admin/marathon-roster', methods=['POST'])
-def admin_marathon_roster():
-    """Return participant identifiers and retained stats to the verified admin only."""
+@api_app.route('/admin/marathon/start', methods=['POST'])
+def admin_marathon_start():
+    """Start a fresh 30-day competition without modifying existing user balances or stats."""
     try:
         data = request.get_json(silent=True) or {}
         admin = _verify_telegram_init_data(data.get("initData"))
         if admin["id"] != str(ADMIN_TELEGRAM_ID):
             return jsonify({"error": "Administrator access required"}), 403
+        with stats_write_lock:
+            state = load_marathon_state()
+            today = datetime.datetime.now(datetime.timezone.utc).date()
+            existing = state.get("activeCompetition")
+            if isinstance(existing, dict):
+                try:
+                    existing_end = datetime.date.fromisoformat(existing.get("endDate", ""))
+                except ValueError:
+                    existing_end = today - datetime.timedelta(days=1)
+                if today <= existing_end:
+                    return jsonify({"success": True, "alreadyActive": True, "competition": existing})
+            start_day = today
+            end_day = start_day + datetime.timedelta(days=29)
+            competition = {
+                "competitionId": "zer0life-marathon-" + start_day.strftime("%Y%m%d"),
+                "startDate": start_day.isoformat(),
+                "endDate": end_day.isoformat(),
+                "durationDays": 30,
+                "status": "active",
+                "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+            state["activeCompetition"] = competition
+            save_marathon_state(state)
+        return jsonify({"success": True, "alreadyActive": False, "competition": competition})
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 401
+    except Exception:
+        logging.exception("Admin marathon start failed")
+        return jsonify({"error": "Could not start marathon"}), 503
 
+
+@api_app.route('/admin/marathon-roster', methods=['POST'])
+def admin_marathon_roster():
+    """Return competition-only ranking from daily distances to the verified admin."""
+    try:
+        data = request.get_json(silent=True) or {}
+        admin = _verify_telegram_init_data(data.get("initData"))
+        if admin["id"] != str(ADMIN_TELEGRAM_ID):
+            return jsonify({"error": "Administrator access required"}), 403
         with stats_write_lock:
             stats = load_stats()
+            state = load_marathon_state()
+        competition = state.get("activeCompetition")
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        start_date = end_date = None
+        if isinstance(competition, dict):
+            try:
+                start_date = datetime.date.fromisoformat(competition["startDate"])
+                end_date = datetime.date.fromisoformat(competition["endDate"])
+            except (KeyError, TypeError, ValueError):
+                competition = None
         participants = []
         history_days = set()
         for telegram_id, user in stats.items():
@@ -433,11 +499,17 @@ def admin_marathon_roster():
             if not isinstance(daily, dict):
                 daily = {}
             clean_daily = {}
+            competition_distance = 0.0
             for day, value in daily.items():
                 try:
-                    if isinstance(day, str):
-                        clean_daily[day] = max(0.0, float(value or 0.0))
-                        history_days.add(day)
+                    if not isinstance(day, str):
+                        continue
+                    distance = max(0.0, float(value or 0.0))
+                    clean_daily[day] = distance
+                    if start_date and end_date and start_date.isoformat() <= day <= min(end_date, today).isoformat():
+                        competition_distance += distance
+                        if distance > 0:
+                            history_days.add(day)
                 except (TypeError, ValueError):
                     continue
             try:
@@ -448,14 +520,16 @@ def admin_marathon_roster():
                 "telegramId": str(telegram_id),
                 "name": str(user.get("name", "Runner"))[:80],
                 "lifetimeDistanceKm": round(total_distance, 2),
+                "competitionDistanceKm": round(competition_distance, 2),
                 "dailyDistancesKm": clean_daily,
             })
-        participants.sort(
-            key=lambda item: item["lifetimeDistanceKm"], reverse=True
-        )
+        participants.sort(key=lambda p: p["competitionDistanceKm"] if competition else p["lifetimeDistanceKm"], reverse=True)
+        completed = bool(competition and end_date and today > end_date)
         return jsonify({
             "success": True,
-            "historicalCompleteness": "daily history exists only from the daily-tracking deployment onward",
+            "competition": competition,
+            "competitionCompleted": completed,
+            "historicalCompleteness": "daily distance recorded per UTC date during this competition",
             "historyStart": min(history_days) if history_days else None,
             "historyEnd": max(history_days) if history_days else None,
             "participantCount": len(participants),
