@@ -100,11 +100,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(len(state["pendingWithdrawalApprovals"]), 1)
         self.assertEqual(self.chain.sent, [])
 
-    def test_confirmed_address_skips_future_codes_and_new_address_requires_otp(self):
-        state = self.post("/wallet/state").json
-        self.assertEqual(state["withdrawalMode"], "trusted_destination_v2")
-        self.assertIsNone(state["trustedWithdrawalAddress"])
-
+    def test_trusted_address_still_requires_a_fresh_telegram_code(self):
         first = self.request(asset="ZRL", amount="1", event="trusted-address-first")
         self.assertEqual(first.status_code, 200, first.json)
         self.assertEqual(len(self.messages), 1)
@@ -117,22 +113,11 @@ class TelegramWithdrawals(unittest.TestCase):
 
         repeat = self.request(asset="SOL", amount="0.5", event="trusted-address-repeat")
         self.assertEqual(repeat.status_code, 200, repeat.json)
-        self.assertEqual(repeat.json["status"], "submitted")
-        self.assertEqual(len(self.messages), 1)
-        self.assertEqual(len(self.chain.sent), 2)
-
-        replacement = Keypair()
-        changed = self.post("/wallet/withdrawals/request", {
-            "asset": "ZRL", "amount": "1", "address": str(replacement.pubkey()),
-            "requestId": "trusted-address-change",
-        })
-        self.assertEqual(changed.status_code, 200, changed.json)
-        self.assertIn("nonce", changed.json)
-        self.assertNotIn("status", changed.json)
+        self.assertIn("nonce", repeat.json)
+        self.assertNotIn("status", repeat.json)
         self.assertEqual(len(self.messages), 2)
-        self.assertEqual(self.confirm(changed.json["nonce"]).status_code, 200)
-        state = self.post("/wallet/state").json
-        self.assertEqual(state["trustedWithdrawalAddress"], str(replacement.pubkey()))
+        self.assertEqual(self.confirm(repeat.json["nonce"]).status_code, 200)
+        self.assertEqual(len(self.chain.sent), 2)
 
     def test_wrong_codes_count_and_lock_without_debiting(self):
         nonce = self.request().json["nonce"]
@@ -174,6 +159,14 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertTrue(all(r.status_code == 200 for r in results))
         self.assertEqual(len(self.chain.sent), 1)
         self.assertEqual(self.post("/wallet/state").json["gameSolBalance"], 1)
+
+    def test_signed_transaction_signature_is_valid_base58_64_byte_signature(self):
+        nonce = self.request(asset="ZRL", amount="1", event="signature-format-check").json["nonce"]
+        result = self.confirm(nonce)
+        self.assertEqual(result.status_code, 200, result.json)
+        signature = result.json["txHash"]
+        self.assertEqual(len(base58.b58decode(signature)), 64)
+        self.assertEqual(base58.b58encode(base58.b58decode(signature)).decode(), signature)
 
     def test_same_amount_recipient_and_blockhash_have_unique_transfer_signatures(self):
         for index in range(2):
