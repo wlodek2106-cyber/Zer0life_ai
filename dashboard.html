@@ -2161,9 +2161,10 @@
     <section id="marathon-admin-panel" hidden aria-label="Marathon admin tools">
         <div style="font-weight:800;font-size:13px;margin-bottom:8px;">ZER0LIFE · MARATHON ADMIN</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+            <button id="marathon-start" type="button">START NEW 30-DAY MARATHON</button>
             <button id="marathon-roster-load" type="button">Load participant list</button>
-            <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview prize allocation</button>
-            <button id="marathon-payout-send" type="button" style="background:#14f195;opacity:1;display:block;width:100%;margin-top:8px;">DISTRIBUTE ZRL TO PARTICIPANTS</button>
+            <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview ranking</button>
+            <button id="marathon-payout-send" type="button" disabled style="opacity:.45;display:block;width:100%;margin-top:8px;">PAYOUTS LOCKED — VERIFY RESULTS FIRST</button>
         </div>
         <div id="marathon-admin-status">Load the participant list first.</div>
         <pre id="marathon-admin-data"></pre>
@@ -3361,11 +3362,32 @@
             const adminPanel = document.getElementById('marathon-admin-panel');
             const adminStatus = document.getElementById('marathon-admin-status');
             const adminData = document.getElementById('marathon-admin-data');
+            const startButton = document.getElementById('marathon-start');
             const loadButton = document.getElementById('marathon-roster-load');
             const previewButton = document.getElementById('marathon-payout-preview');
             const payoutButton = document.getElementById('marathon-payout-send');
             let rosterResult = null;
             adminPanel.hidden = false;
+            payoutButton.disabled = true;
+
+            startButton.addEventListener('click', async () => {
+                startButton.disabled = true;
+                adminStatus.textContent = 'Starting a new 30-day marathon…';
+                try {
+                    const response = await fetch('https://zer0life-ai-iz5n.onrender.com/admin/marathon/start', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initData: tg.initData })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Could not start marathon');
+                    const c = result.competition;
+                    adminStatus.textContent = (result.alreadyActive ? 'MARATHON ALREADY ACTIVE' : 'MARATHON STARTED') +
+                        '\\nCompetition: ' + c.competitionId + '\\nPeriod: ' + c.startDate + ' — ' + c.endDate + '\\nDuration: 30 days';
+                    loadButton.click();
+                } catch (error) {
+                    adminStatus.textContent = 'Start error: ' + (error.message || 'unknown error');
+                } finally { startButton.disabled = false; }
+            });
 
             loadButton.addEventListener('click', async () => {
                 loadButton.disabled = true;
@@ -3383,14 +3405,18 @@
                     if (!response.ok || !result.success) throw new Error(result.error || 'Roster request failed (' + response.status + ')');
                     rosterResult = result;
                     const participants = Array.isArray(result.participants) ? result.participants : [];
+                    const competition = result.competition;
                     adminStatus.textContent = [
+                        competition ? 'Competition: ' + competition.competitionId : 'No active marathon — start a new one',
+                        competition ? 'Period: ' + competition.startDate + ' — ' + competition.endDate : '',
                         'Participants: ' + participants.length,
-                        'History: ' + (result.historicalCompleteness || 'unavailable'),
-                        'Data period: ' + (result.historyStart || '—') + ' — ' + (result.historyEnd || '—')
-                    ].join(String.fromCharCode(10));
+                        'Daily history: ' + (result.historyStart || 'not recorded yet') + ' — ' + (result.historyEnd || 'not recorded yet'),
+                        'Ranking basis: competition-only daily distance',
+                        'Payouts remain locked until final verification'
+                    ].filter(Boolean).join(String.fromCharCode(10));
                     adminData.textContent = participants.map((p, index) => {
                         const daily = p.dailyDistancesKm && typeof p.dailyDistancesKm === 'object' && Object.keys(p.dailyDistancesKm).length ? JSON.stringify(p.dailyDistancesKm) : 'no daily history';
-                        return (index + 1) + '. ' + String(p.name || 'Runner') + ' | Telegram ID: ' + String(p.telegramId) + ' | Lifetime: ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km | Daily: ' + daily;
+                        return (index + 1) + '. ' + String(p.name || 'Runner') + ' | Telegram ID: ' + String(p.telegramId) + ' | Marathon: ' + Number(p.competitionDistanceKm || 0).toFixed(2) + ' km | Lifetime: ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km | Daily: ' + daily;
                     }).join(String.fromCharCode(10)) || 'No participants found.';
 
                     adminPanel.querySelector('#marathon-roster-export')?.remove();
@@ -3409,10 +3435,10 @@
                         URL.revokeObjectURL(url);
                     });
                     adminPanel.appendChild(exportButton);
-                    previewButton.disabled = false;
-                    previewButton.style.opacity = '1';
-                    payoutButton.disabled = false;
-                    payoutButton.style.opacity = '1';
+                    previewButton.disabled = !competition;
+                    previewButton.style.opacity = competition ? '1' : '.55';
+                    payoutButton.disabled = true;
+                    payoutButton.style.opacity = '.45';
                 } catch (error) {
                     adminStatus.textContent = 'Error: ' + (error.message || 'Could not load participant list');
                 } finally {
@@ -3436,9 +3462,15 @@
                         return;
                     }
                 }
-                const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
-                const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km').join('\\n');
-                const message = 'Confirm real credits by lifetime distance (this is not the historical marathon ranking):\\n' + summary + '\\nTotal participants: ' + ranked.length + '. Ranks 4 and below receive 10,000 ZRL each. Sidney receives an additional 200,000 ZRL if ranked first. Duplicate credits are prevented.';
+                if (!rosterResult.competition) {
+                    adminStatus.textContent = 'Start a new marathon before previewing its ranking.';
+                    return;
+                }
+                const ranked = [...rosterResult.participants].sort((a, b) => Number(b.competitionDistanceKm || 0) - Number(a.competitionDistanceKm || 0));
+                const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.competitionDistanceKm || 0).toFixed(2) + ' km').join('\\n');
+                const message = 'Payouts are locked pending final verification. Competition-only ranking preview:\\n' + summary;
+                adminStatus.textContent = message + '\\nNo tokens have been transferred.';
+                return;
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
                     payoutButton.disabled = true;
@@ -3455,7 +3487,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 initData: tg.initData,
-                                competitionId: 'zer0life-marathon-2026-10',
+                                competitionId: rosterResult.competition.competitionId,
                                 payouts,
                                 dryRun: false
                             })
@@ -3484,18 +3516,15 @@
                 previewButton.disabled = true;
                 adminStatus.textContent = 'Calculating preview without transferring tokens…';
                 try {
-                    const ranked = [...rosterResult.participants].sort((a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0));
-                    const payouts = ranked.map((p, index) => ({
-                        telegramId: String(p.telegramId),
-                        rank: index + 1,
-                        sidneyBonus: index === 0 && String(p.name || '').toLowerCase() === 'sidney'
-                    }));
+                    if (!rosterResult.competition) throw new Error('No active marathon');
+                    const ranked = [...rosterResult.participants].sort((a, b) => Number(b.competitionDistanceKm || 0) - Number(a.competitionDistanceKm || 0));
+                    const payouts = ranked.map((p, index) => ({ telegramId: String(p.telegramId), rank: index + 1, sidneyBonus: false }));
                     const response = await fetch('https://zer0life-ai-iz5n.onrender.com/wallet/admin/marathon-payout', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             initData: tg.initData,
-                            competitionId: 'zer0life-marathon-2026-10',
+                            competitionId: rosterResult.competition.competitionId,
                             payouts,
                             dryRun: true
                         })
