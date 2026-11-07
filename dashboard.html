@@ -2146,7 +2146,10 @@
         #marathon-admin-panel button{position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;cursor:pointer;background:#14f195;color:#07110d;border:0;border-radius:9px;padding:10px 14px;font-weight:800}
         #marathon-admin-status{font-size:11px;color:#c5d0dc;margin-top:9px;white-space:pre-wrap;overflow-wrap:anywhere}
         #marathon-admin-data{font:10px/1.45 'DM Mono',monospace;color:#d7e2ec;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px}
-        </style>
+        
+        /* Keep marathon admin controls out of the user-facing app. */
+        #marathon-admin-panel { display: none !important; }
+</style>
 </head>
 <body>
 
