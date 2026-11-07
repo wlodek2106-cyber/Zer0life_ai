@@ -3470,10 +3470,11 @@
                 const payouts = ranked.map((p, index) => ({
                     telegramId: String(p.telegramId),
                     rank: index + 1,
-                    sidneyBonus: false
+                    sidneyBonus: index === 0 && String(p.name || '').trim().toLowerCase() === 'sidney'
                 }));
                 const plannedTotal = payouts.reduce((sum, p) =>
-                    sum + (p.rank === 1 ? 500000 : p.rank === 2 ? 300000 : p.rank === 3 ? 200000 : 0), 0
+                    sum + (p.rank === 1 ? 500000 : p.rank === 2 ? 300000 : p.rank === 3 ? 200000 : 0) +
+                        (p.sidneyBonus ? 200000 : 0), 0
                 );
                 const summary = ranked.slice(0, 3).map((p, i) =>
                     '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' +
