@@ -696,16 +696,8 @@
         setState: renderWallet,
     };
 
-    if (typeof totalBalance !== 'undefined') {
-        totalBalance = 0;
-        earnedZrlBalance = 0;
-        unclaimedZRL = 0;
-        poolDeposit = 0;
-        solBalance = 0;
-        casinoTotalWon = 0;
-        totalCasinoTurnover = 0;
-        freeSpins = 0;
-    }
+    // Never zero a returning player's cached balances while the server refresh is pending.
+    // The authenticated server snapshot will replace these values only after it loads successfully.
     byId('affiliate-copy-btn')?.addEventListener('click', copyReferralLink);
     ['wallet-btn', 'nav-wallet'].forEach((id) => {
         byId(id)?.addEventListener('click', () => { setTimeout(() => refresh().catch(() => {}), 0); });
