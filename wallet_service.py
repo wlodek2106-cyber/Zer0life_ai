@@ -1007,7 +1007,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
         from solders.pubkey import Pubkey
         from solders.transaction import Transaction
         from solders.system_program import transfer, TransferParams
-        from base58 import b58decode
+        from base58 import b58decode, b58encode
         treasury = Keypair.from_bytes(b58decode(private_key))
         if str(treasury.pubkey()) != SHARED_POOL_WALLET:
             raise RuntimeError("Treasury signer does not match the configured Zer0Life pool wallet")
@@ -1060,7 +1060,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             signing_keypairs=[treasury],
             recent_blockhash=blockhash,
         )
-        signature = str(tx.signatures[0])
+        signature_bytes = bytes(tx.signatures[0])
+        if len(signature_bytes) != 64:
+            raise RuntimeError("Signed transaction produced an invalid signature length")
+        signature = b58encode(signature_bytes).decode("ascii")
+        if len(b58decode(signature)) != 64 or b58decode(signature) != signature_bytes:
+            raise RuntimeError("Signed transaction produced an invalid Base58 signature")
         # Persist the deterministic signature BEFORE broadcast. A network timeout
         # may occur after Solana accepted a transaction: never blindly refund it.
         with _connect(db_path) as db:
