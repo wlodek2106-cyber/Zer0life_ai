@@ -2163,17 +2163,7 @@
         </div>
     </div>
 
-    <section id="marathon-admin-panel" hidden aria-label="Marathon admin tools">
-        <div style="font-weight:800;font-size:13px;margin-bottom:8px;">ZER0LIFE · MARATHON ADMIN</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <button id="marathon-start" type="button">START NEW 30-DAY MARATHON</button>
-            <button id="marathon-roster-load" type="button">Load participant list</button>
-            <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview ranking</button>
-            <button id="marathon-payout-send" type="button" style="opacity:1;display:block;width:100%;margin-top:8px;">DISTRIBUTE MARATHON PRIZES</button>
-        </div>
-        <div id="marathon-admin-status">Load the participant list first.</div>
-        <pre id="marathon-admin-data"></pre>
-    </section>
+on>
 
     <div class="dashboard-container">
         <div class="header">
@@ -3383,7 +3373,7 @@
             throw new Error('Telegram user ID missing; refusing to create a demo account');
         }
         const isMarathonAdmin = String(telegramId) === '428821665';
-        if (isMarathonAdmin) {
+        if (isMarathonAdmin && document.getElementById('marathon-admin-panel')) {
             const adminPanel = document.getElementById('marathon-admin-panel');
             const adminStatus = document.getElementById('marathon-admin-status');
             const adminData = document.getElementById('marathon-admin-data');
