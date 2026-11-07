@@ -3426,7 +3426,7 @@
                 }
             });
 
-            payoutButton.addEventListener('click', () => {
+            payoutButton.addEventListener('click', async () => {
                 if (!rosterResult || !Array.isArray(rosterResult.participants) || !rosterResult.participants.length) {
                     adminStatus.textContent = 'Loading participant list…';
                     try {
