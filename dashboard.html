@@ -2164,7 +2164,7 @@
             <button id="marathon-start" type="button">START NEW 30-DAY MARATHON</button>
             <button id="marathon-roster-load" type="button">Load participant list</button>
             <button id="marathon-payout-preview" type="button" disabled style="background:#d9e7ff;opacity:.55;">Preview ranking</button>
-            <button id="marathon-payout-send" type="button" style="opacity:1;display:block;width:100%;margin-top:8px;">VIEW PAYOUT STATUS — TRANSFERS LOCKED</button>
+            <button id="marathon-payout-send" type="button" style="opacity:1;display:block;width:100%;margin-top:8px;">DISTRIBUTE MARATHON PRIZES</button>
         </div>
         <div id="marathon-admin-status">Load the participant list first.</div>
         <pre id="marathon-admin-data"></pre>
@@ -3438,7 +3438,7 @@
                     previewButton.disabled = !competition;
                     previewButton.style.opacity = competition ? '1' : '.55';
                     payoutButton.disabled = false;
-                    payoutButton.style.opacity = '.45';
+                    payoutButton.style.opacity = '1';
                 } catch (error) {
                     adminStatus.textContent = 'Error: ' + (error.message || 'Could not load participant list');
                 } finally {
@@ -3486,7 +3486,7 @@
                     'Participants: ' + ranked.length + '\n' +
                     'Total: ' + plannedTotal.toLocaleString() + ' ZRL\n' +
                     '1st: 500,000 · 2nd: 300,000 · 3rd: 200,000 · ranks 4–25: 0 ZRL\n' +
-                    'No Sidney bonus.\n\n' + summary +
+                    'Sidney bonus: +200,000 ZRL if Sidney is ranked #1.\n\n' + summary +
                     '\n\nThis action changes participant balances and cannot be undone from this screen.';
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
