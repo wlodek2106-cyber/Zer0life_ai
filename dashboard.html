@@ -3368,7 +3368,7 @@
             const payoutButton = document.getElementById('marathon-payout-send');
             let rosterResult = null;
             adminPanel.hidden = false;
-            payoutButton.disabled = true;
+            payoutButton.disabled = false;
 
             startButton.addEventListener('click', async () => {
                 startButton.disabled = true;
@@ -3437,7 +3437,7 @@
                     adminPanel.appendChild(exportButton);
                     previewButton.disabled = !competition;
                     previewButton.style.opacity = competition ? '1' : '.55';
-                    payoutButton.disabled = true;
+                    payoutButton.disabled = false;
                     payoutButton.style.opacity = '.45';
                 } catch (error) {
                     adminStatus.textContent = 'Error: ' + (error.message || 'Could not load participant list');
@@ -3473,7 +3473,7 @@
                 return;
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
-                    payoutButton.disabled = true;
+                    payoutButton.disabled = false;
                     previewButton.disabled = true;
                     adminStatus.textContent = 'Processing real ZRL credits…';
                     try {
