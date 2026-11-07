@@ -563,12 +563,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     amount = 200_000
                 else:
                     amount = 0
-                bonus = False
+                bonus = 200_000 if item.get("sidneyBonus") is True and rank == 1 else 0
                 prepared.append({
                     "telegramId": telegram_id,
                     "rank": rank,
                     "amount": amount,
-                    "bonus": 0,
+                    "bonus": bonus,
                 })
                 seen_ids.add(telegram_id)
                 seen_ranks.add(rank)
