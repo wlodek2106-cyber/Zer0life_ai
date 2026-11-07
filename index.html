@@ -611,7 +611,8 @@
                     return;
                 }
                 const dashboardUrl = new URL('dashboard.html', window.location.href);
-                dashboardUrl.searchParams.set('build', 'admin-panel-removed-2');
+                dashboardUrl.searchParams.set('build', 'withdrawal-receipts-retry-1');
+                dashboardUrl.searchParams.set('ui', 'admin-panel-removed-2');
                 if (referralMatch) {
                     dashboardUrl.searchParams.set('ref', referralMatch[1].toUpperCase());
                 }
