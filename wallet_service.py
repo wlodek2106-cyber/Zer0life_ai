@@ -562,7 +562,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 elif rank == 3:
                     amount = 200_000
                 else:
-                    amount = 0
+                    amount = 10_000
                 bonus = 200_000 if item.get("sidneyBonus") is True and rank == 1 else 0
                 prepared.append({
                     "telegramId": telegram_id,
