@@ -2153,6 +2153,7 @@
         </div>
     </div>
 
+on>
 
     <div class="dashboard-container">
         <div class="header">
@@ -3341,22 +3342,22 @@
         tg.ready();
 
         const telegramId = tg.initDataUnsafe?.user?.id || 'demo_user_' + Math.floor(Math.random() * 100000);
-        const isMarathonAdmin = String(telegramId) === '428821665';
-        if (isMarathonAdmin) {
-            const adminPanel = document.getElementById('marathon-admin-panel');
-            const adminStatus = document.getElementById('marathon-admin-status');
-            const adminData = document.getElementById('marathon-admin-data');
-            const startButton = document.getElementById('marathon-start');
-            const loadButton = document.getElementById('marathon-roster-load');
-            const previewButton = document.getElementById('marathon-payout-preview');
-            const payoutButton = document.getElementById('marathon-payout-send');
-            let rosterResult = null;
-            adminPanel.hidden = false;
-            payoutButton.disabled = false;
+        const STORAGE_PREFIX = `zrl_user_${telegramId}_`;
+        try {
+            if (!window.legacyRecovery) throw new Error('History module unavailable');
+            window.legacyRecovery.preserve(STORAGE_PREFIX);
+            window.legacyRecovery.render();
+        } catch {
+            console.error('Historical data could not be backed up. Do not clear Telegram storage.');
+            window.legacyRecovery?.setWarning('Could not save the history on this device. Do not clear Telegram data.');
+        }
 
-            startButton.addEventListener('click', async () => {
-                startButton.disabled = tr        // Marathon admin controls are intentionally removed from the user interface.
-24 * 60 * 60 * 1000;
+        const SHARED_POOL_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix";
+        const MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db";
+        const BURN_WALLET_ADDRESS = "CXKWBCBBGcL4hmxoMSPKB3CzGqeZYFT2Ke4hgCJ3wi4Y";
+
+        const MARATHON_START_TIME = new Date('2026-10-07T00:00:00').getTime();
+        const MARATHON_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const MARATHON_END_TIME = MARATHON_START_TIME + MARATHON_DURATION_MS;
 
         function checkAndResetMarathonDistance() {
