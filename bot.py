@@ -236,6 +236,73 @@ async def send_launch_reminder():
         len(opted_out_user_ids),
     )
 
+
+async def send_zrl_presale_reminder():
+    """Send the opt-out-enabled ZRL pre-sale announcement to registered users."""
+    if not bot:
+        return
+
+    try:
+        opted_out_user_ids = launch_reminder_preferences.disabled_user_ids()
+    except Exception as exc:
+        logging.error(
+            "ZRL pre-sale reminder skipped because preferences could not be read: %s",
+            type(exc).__name__,
+        )
+        return
+
+    recipients = {str(user_id) for user_id in load_users()} - opted_out_user_ids
+    if not recipients:
+        logging.info("ZRL pre-sale reminder skipped: no eligible recipients.")
+        return
+
+    message_text = (
+        "🚀 <b>ZRL TOKEN PRE-SALE STARTED — 26/10/2026</b>\\n\\n"
+        "Discover Zer0Life and follow our official updates.\\n"
+        "Get ZRL token here: https://zer0lifelabs.com/#zrl\\n\\n"
+        "To stop promotional reminders, send /stopreminders."
+    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="📺 Vlog / Official channel",
+                url="https://t.me/zer0life_official",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="💎 Buy ZRL token",
+                url="https://zer0lifelabs.com/#zrl",
+            )
+        ],
+    ])
+
+    sent_count = 0
+    failed_count = 0
+    for user_id in recipients:
+        try:
+            await bot.send_message(
+                chat_id=int(user_id),
+                text=message_text,
+                reply_markup=keyboard,
+                parse_mode="HTML",
+            )
+            sent_count += 1
+        except Exception as exc:
+            failed_count += 1
+            logging.warning(
+                "ZRL pre-sale reminder delivery failed (%s).",
+                type(exc).__name__,
+            )
+        await asyncio.sleep(0.05)
+
+    logging.info(
+        "ZRL pre-sale reminder completed: sent=%s failed=%s opted_out=%s",
+        sent_count,
+        failed_count,
+        len(opted_out_user_ids),
+    )
+
 @api_app.route('/broadcast', methods=['POST'])
 def api_broadcast():
     try:
@@ -311,6 +378,7 @@ async def crypto_market_price_alerts():
 
 marathon_scheduler = AsyncIOScheduler(timezone="UTC")
 launch_reminder_scheduler = AsyncIOScheduler(timezone=LAUNCH_REMINDER_TIMEZONE)
+zrl_presale_scheduler = AsyncIOScheduler(timezone=LAUNCH_REMINDER_TIMEZONE)
 
 async def send_marathon_start_push():
     # Announce the event without modifying any participant progress.
@@ -374,6 +442,19 @@ def start_periodic_notifications():
         schedule_launch_reminders(),
         bot_loop,
     )
+    if not zrl_presale_scheduler.running:
+        zrl_presale_scheduler.add_job(
+            send_zrl_presale_reminder,
+            "interval",
+            hours=3,
+            id="zrl_token_presale_every_three_hours",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+            misfire_grace_time=300,
+        )
+        zrl_presale_scheduler.start()
+        logging.info("ZRL pre-sale reminders scheduled every 3 hours (Europe/Warsaw).")
     try:
         launch_reminder_future.result(timeout=10)
     except Exception:
