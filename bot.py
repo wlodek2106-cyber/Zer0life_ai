@@ -257,22 +257,33 @@ async def send_zrl_presale_reminder():
         return
 
     message_text = (
-        "🚀 <b>ZRL TOKEN PRE-SALE STARTED — 26/10/2026</b>\n\n"
-        "Discover Zer0Life and follow our official updates.\n"
-        "Get ZRL token here: https://zer0lifelabs.com/#zrl\n\n"
-        "To stop promotional reminders, send /stopreminders."
+        "🚀 <b>ZRL TOKEN PRE-SALE IS NOW OPEN</b>\n"
+        "<i>Launched October 26, 2026</i>\n\n"
+        "Be part of the Zer0Life ecosystem. Explore our latest updates, "
+        "discover the ZRL token, and check out Zer0Life AI Trader.\n\n"
+        "📺 <b>Official Vlog &amp; Community:</b> https://t.me/zer0life_official\n"
+        "💎 <b>Explore &amp; Buy ZRL:</b> https://zer0lifelabs.com/#zrl\n"
+        "🤖 <b>Zer0Life AI Trader:</b> "
+        "https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb\n\n"
+        "You can stop these promotional updates at any time by sending /stopreminders."
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="📺 Vlog / Official channel",
+                text="📺 Official Vlog & Channel",
                 url="https://t.me/zer0life_official",
             )
         ],
         [
             InlineKeyboardButton(
-                text="💎 Buy ZRL token",
+                text="💎 Explore & Buy ZRL",
                 url="https://zer0lifelabs.com/#zrl",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="🤖 Open Zer0Life AI Trader",
+                url="https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb",
             )
         ],
     ])
