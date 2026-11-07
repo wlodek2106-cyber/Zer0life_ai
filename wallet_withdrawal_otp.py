@@ -97,8 +97,9 @@ class WithdrawalApprovals:
                 "SELECT trusted_withdrawal_address FROM wallet_accounts WHERE telegram_id=?",
                 (user,),
             ).fetchone()
-            auto_approved = bool(account and account["trusted_withdrawal_address"] == address)
-            if not auto_approved and not os.getenv("BOT_TOKEN"):
+            # Every withdrawal requires a fresh Telegram OTP, including trusted addresses.
+            auto_approved = False
+            if not os.getenv("BOT_TOKEN"):
                 raise ApprovalError("Telegram verification is temporarily unavailable.", 503)
             if db.execute("""SELECT COUNT(*) FROM wallet_withdrawal_approvals
                     WHERE telegram_id=? AND created_at>?""", (user, now - 600)).fetchone()[0] >= 3:
