@@ -431,6 +431,38 @@ def update_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+def start_new_marathon():
+    """Create one 30-day marathon with the approved 5,000,000 ZRL prize plan."""
+    with stats_write_lock:
+        state = load_marathon_state()
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        existing = state.get("activeCompetition")
+        if isinstance(existing, dict):
+            try:
+                existing_end = datetime.date.fromisoformat(existing.get("endDate", ""))
+            except (TypeError, ValueError):
+                existing_end = today - datetime.timedelta(days=1)
+            if today <= existing_end:
+                return {"success": True, "alreadyActive": True, "competition": existing}
+        start_day = today
+        end_day = start_day + datetime.timedelta(days=29)
+        competition = {
+            "competitionId": "zer0life-marathon-" + start_day.strftime("%Y%m%d"),
+            "startDate": start_day.isoformat(),
+            "endDate": end_day.isoformat(),
+            "durationDays": 30,
+            "status": "active",
+            "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "prizePoolZrl": 5000000,
+            "topPrizesZrl": {"1": 1000000, "2": 500000, "3": 250000, "4": 200000, "5": 150000},
+            "sharedRemainderZrl": 2900000,
+            "sharedDistribution": "equal_among_all_participants",
+        }
+        state["activeCompetition"] = competition
+        save_marathon_state(state)
+        return {"success": True, "alreadyActive": False, "competition": competition}
+
+
 @api_app.route('/admin/marathon/start', methods=['POST'])
 def admin_marathon_start():
     """Start a fresh 30-day competition without modifying existing user balances or stats."""
@@ -439,30 +471,7 @@ def admin_marathon_start():
         admin = _verify_telegram_init_data(data.get("initData"))
         if admin["id"] != str(ADMIN_TELEGRAM_ID):
             return jsonify({"error": "Administrator access required"}), 403
-        with stats_write_lock:
-            state = load_marathon_state()
-            today = datetime.datetime.now(datetime.timezone.utc).date()
-            existing = state.get("activeCompetition")
-            if isinstance(existing, dict):
-                try:
-                    existing_end = datetime.date.fromisoformat(existing.get("endDate", ""))
-                except ValueError:
-                    existing_end = today - datetime.timedelta(days=1)
-                if today <= existing_end:
-                    return jsonify({"success": True, "alreadyActive": True, "competition": existing})
-            start_day = today
-            end_day = start_day + datetime.timedelta(days=29)
-            competition = {
-                "competitionId": "zer0life-marathon-" + start_day.strftime("%Y%m%d"),
-                "startDate": start_day.isoformat(),
-                "endDate": end_day.isoformat(),
-                "durationDays": 30,
-                "status": "active",
-                "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            }
-            state["activeCompetition"] = competition
-            save_marathon_state(state)
-        return jsonify({"success": True, "alreadyActive": False, "competition": competition})
+        return jsonify(start_new_marathon())
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 401
     except Exception:
@@ -693,6 +702,36 @@ async def cmd_start(message: types.Message):
         reply_markup=keyboard,
         parse_mode="HTML"
     )
+
+@dp.message(Command("startmarathon"))
+async def cmd_start_marathon(message: types.Message):
+    """Admin-only Telegram command to start the approved 30-day marathon."""
+    if message.from_user is None or str(message.from_user.id) != str(ADMIN_TELEGRAM_ID):
+        await message.answer("Administrator access required.")
+        return
+    try:
+        result = await asyncio.to_thread(start_new_marathon)
+        competition = result["competition"]
+        if result.get("alreadyActive"):
+            await message.answer(
+                "A marathon is already active. No second marathon was created.\\n"
+                f"Competition: {competition.get('competitionId')}\\n"
+                f"Ends: {competition.get('endDate')}"
+            )
+            return
+        await message.answer(
+            "🏁 NEW ZER0LIFE MARATHON STARTED\\n"
+            f"Competition: {competition['competitionId']}\\n"
+            f"Period: {competition['startDate']} — {competition['endDate']} (30 days)\\n"
+            "Prize pool: 5,000,000 ZRL\\n"
+            "1st: 1,000,000 | 2nd: 500,000 | 3rd: 250,000 | 4th: 200,000 | 5th: 150,000 ZRL\\n"
+            "Remaining 2,900,000 ZRL is shared equally among all participants.\\n"
+            "No balances have been credited; this records the competition and prize rules."
+        )
+    except Exception:
+        logging.exception("Could not start marathon from Telegram command")
+        await message.answer("Could not start marathon. No changes were confirmed; please retry later.")
+
 
 @dp.message(Command("stopreminders"))
 async def cmd_stop_launch_reminders(message: types.Message):
