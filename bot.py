@@ -257,9 +257,9 @@ async def send_zrl_presale_reminder():
         return
 
     message_text = (
-        "🚀 <b>ZRL TOKEN PRE-SALE STARTED — 26/10/2026</b>\\n\\n"
-        "Discover Zer0Life and follow our official updates.\\n"
-        "Get ZRL token here: https://zer0lifelabs.com/#zrl\\n\\n"
+        "🚀 <b>ZRL TOKEN PRE-SALE STARTED — 26/10/2026</b>\n\n"
+        "Discover Zer0Life and follow our official updates.\n"
+        "Get ZRL token here: https://zer0lifelabs.com/#zrl\n\n"
         "To stop promotional reminders, send /stopreminders."
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
