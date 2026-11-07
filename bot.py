@@ -801,6 +801,30 @@ async def cmd_stop_zrl_updates(message: types.Message):
         logging.exception("Could not unsubscribe user from ZRL updates.")
         await message.answer("Could not update your subscription. Please try again later.")
 
+@dp.message(Command("testzrlpresale"))
+async def cmd_test_zrl_presale(message: types.Message):
+    """Admin-only delivery test; sends only to the administrator, never to subscribers."""
+    if message.from_user is None or str(message.from_user.id) != str(ADMIN_TELEGRAM_ID):
+        await message.answer("Administrator access required.")
+        return
+    if not bot:
+        await message.answer("Bot delivery is unavailable.")
+        return
+    try:
+        await bot.send_message(
+            chat_id=int(ADMIN_TELEGRAM_ID),
+            text=(
+                "✅ <b>ZRL Pre-Sale Telegram delivery test</b>\\n\\n"
+                "Your bot can send direct messages. This is a private test; "
+                "no other subscribers were contacted."
+            ),
+            parse_mode="HTML",
+        )
+        await message.answer("Test message sent privately to the administrator.")
+    except Exception:
+        logging.exception("ZRL pre-sale private delivery test failed.")
+        await message.answer("Test delivery failed. Check the Render application logs.")
+
 @dp.message(Command("sendzrlpresale"))
 async def cmd_send_zrl_presale(message: types.Message):
     if message.from_user is None or str(message.from_user.id) != str(ADMIN_TELEGRAM_ID):
