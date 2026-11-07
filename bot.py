@@ -39,8 +39,6 @@ from launch_reminders import (
 )
 
 api_app = Flask(__name__)
-# Prevent Werkzeug access logs from exposing the secret Telegram webhook URL.
-logging.getLogger("werkzeug").disabled = True
 from security_config import configure_cors
 
 configure_cors(api_app)
