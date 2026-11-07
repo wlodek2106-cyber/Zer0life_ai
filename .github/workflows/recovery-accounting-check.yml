@@ -1,0 +1,30 @@
+name: Offline recovery accounting
+on:
+  pull_request:
+    paths:
+      - 'wallet*.py'
+      - 'wallet.js'
+      - 'legacy*'
+      - 'recovery-actions.js'
+      - 'dashboard.html'
+      - 'tests/**'
+      - '.github/workflows/recovery-accounting-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tests/requirements-recovery.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r tests/requirements-recovery.txt
+      - run: python tests/run_recovery_checks.py
