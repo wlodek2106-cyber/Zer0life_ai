@@ -29,6 +29,7 @@ from spl.token.instructions import transfer_checked, TransferCheckedParams, get_
 
 # Marathon scheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from presale_telegram import PresaleSubscribers
 from launch_reminders import (
     LAUNCH_REMINDER_CHANNEL_URL,
     LAUNCH_REMINDER_TEXT,
@@ -87,6 +88,7 @@ MARATHON_FILE = os.path.join(DATA_DIR, "marathon_state.json")
 launch_reminder_preferences = LaunchReminderPreferences(
     os.path.join(DATA_DIR, "launch_reminder_preferences.json")
 )
+presale_subscribers = PresaleSubscribers(os.path.join(DATA_DIR, "zrl_presale_subscribers.json"))
 migrate_legacy_data_file("users.json")
 migrate_legacy_data_file("leaderboard_stats.json")
 
@@ -238,81 +240,43 @@ async def send_launch_reminder():
 
 
 async def send_zrl_presale_reminder():
-    """Send the opt-out-enabled ZRL pre-sale announcement to registered users."""
+    """Send the ZRL pre-sale announcement only to explicit subscribers."""
     if not bot:
-        return
-
+        return {"sent": 0, "failed": 0}
     try:
-        opted_out_user_ids = launch_reminder_preferences.disabled_user_ids()
-    except Exception as exc:
-        logging.error(
-            "ZRL pre-sale reminder skipped because preferences could not be read: %s",
-            type(exc).__name__,
-        )
-        return
-
-    recipients = {str(user_id) for user_id in load_users()} - opted_out_user_ids
-    if not recipients:
-        logging.info("ZRL pre-sale reminder skipped: no eligible recipients.")
-        return
-
+        recipients = presale_subscribers.list()
+    except Exception:
+        logging.exception("ZRL pre-sale subscribers could not be read; sending nothing.")
+        return {"sent": 0, "failed": 0}
     message_text = (
-        "🚀 <b>ZRL TOKEN PRE-SALE IS NOW OPEN</b>\n"
-        "<i>Launched October 26, 2026</i>\n\n"
+        "🚀 <b>ZRL TOKEN PRE-SALE IS NOW OPEN</b>\\n"
+        "<i>Launched October 26, 2026</i>\\n\\n"
         "Be part of the Zer0Life ecosystem. Explore our latest updates, "
-        "discover the ZRL token, and check out Zer0Life AI Trader.\n\n"
-        "📺 <b>Official Vlog &amp; Community:</b> https://t.me/zer0life_official\n"
-        "💎 <b>Explore &amp; Buy ZRL:</b> https://zer0lifelabs.com/#zrl\n"
+        "discover the ZRL token, and check out Zer0Life AI Trader.\\n\\n"
+        "📺 <b>Official Vlog &amp; Community:</b> https://t.me/zer0life_official\\n"
+        "💎 <b>Explore &amp; Buy ZRL:</b> https://zer0lifelabs.com/#zrl\\n"
         "🤖 <b>Zer0Life AI Trader:</b> "
-        "https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb\n\n"
-        "You can stop these promotional updates at any time by sending /stopreminders."
+        "https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb\\n\\n"
+        "Send /stopzrl to unsubscribe from ZRL pre-sale updates."
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="📺 Official Vlog & Channel",
-                url="https://t.me/zer0life_official",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="💎 Explore & Buy ZRL",
-                url="https://zer0lifelabs.com/#zrl",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="🤖 Open Zer0Life AI Trader",
-                url="https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb",
-            )
-        ],
+        [InlineKeyboardButton(text="📺 Official community", url="https://t.me/zer0life_official")],
+        [InlineKeyboardButton(text="💎 Explore & Buy ZRL", url="https://zer0lifelabs.com/#zrl")],
+        [InlineKeyboardButton(text="🤖 AI Trader", url="https://t.me/Zer0lifeAutopilot_bot?start=ref_gTEnKbXon7Qb")],
     ])
-
-    sent_count = 0
-    failed_count = 0
-    for user_id in recipients:
+    sent = failed = 0
+    for user_id in sorted(recipients):
         try:
-            await bot.send_message(
-                chat_id=int(user_id),
-                text=message_text,
-                reply_markup=keyboard,
-                parse_mode="HTML",
-            )
-            sent_count += 1
+            await bot.send_message(chat_id=int(user_id), text=message_text,
+                                   reply_markup=keyboard, parse_mode="HTML")
+            sent += 1
         except Exception as exc:
-            failed_count += 1
-            logging.warning(
-                "ZRL pre-sale reminder delivery failed (%s).",
-                type(exc).__name__,
-            )
+            failed += 1
+            logging.warning("ZRL pre-sale delivery failed for %s (%s).", user_id, type(exc).__name__)
         await asyncio.sleep(0.05)
-
-    logging.info(
-        "ZRL pre-sale reminder completed: sent=%s failed=%s opted_out=%s",
-        sent_count,
-        failed_count,
-        len(opted_out_user_ids),
-    )
+    logging.info("ZRL pre-sale announcement: sent=%s failed=%s subscribers=%s",
+                 sent, failed, len(recipients))
+    return {"sent": sent, "failed": failed}
 
 @api_app.route('/broadcast', methods=['POST'])
 def api_broadcast():
@@ -453,19 +417,7 @@ def start_periodic_notifications():
         schedule_launch_reminders(),
         bot_loop,
     )
-    if not zrl_presale_scheduler.running:
-        zrl_presale_scheduler.add_job(
-            send_zrl_presale_reminder,
-            "interval",
-            hours=3,
-            id="zrl_token_presale_every_three_hours",
-            replace_existing=True,
-            coalesce=True,
-            max_instances=1,
-            misfire_grace_time=300,
-        )
-        zrl_presale_scheduler.start()
-        logging.info("ZRL pre-sale reminders scheduled every 3 hours (Europe/Warsaw).")
+    # ZRL pre-sale is sent only on explicit admin command, never on a timer.
     try:
         launch_reminder_future.result(timeout=10)
     except Exception:
@@ -824,6 +776,41 @@ async def cmd_start_marathon(message: types.Message):
         logging.exception("Could not start marathon from Telegram command")
         await message.answer("Could not start marathon. No changes were confirmed; please retry later.")
 
+
+
+@dp.message(Command("zrlupdates"))
+async def cmd_zrl_updates(message: types.Message):
+    if message.from_user is None:
+        return
+    try:
+        count = presale_subscribers.set(message.from_user.id, True)
+        save_user(message.from_user.id)
+        await message.answer("🔔 You are subscribed to ZRL Pre-Sale updates. Send /stopzrl to unsubscribe.")
+    except Exception:
+        logging.exception("Could not subscribe user to ZRL updates.")
+        await message.answer("Could not save your subscription. Please try again later.")
+
+@dp.message(Command("stopzrl"))
+async def cmd_stop_zrl_updates(message: types.Message):
+    if message.from_user is None:
+        return
+    try:
+        presale_subscribers.set(message.from_user.id, False)
+        await message.answer("ZRL Pre-Sale updates stopped. Send /zrlupdates to subscribe again.")
+    except Exception:
+        logging.exception("Could not unsubscribe user from ZRL updates.")
+        await message.answer("Could not update your subscription. Please try again later.")
+
+@dp.message(Command("sendzrlpresale"))
+async def cmd_send_zrl_presale(message: types.Message):
+    if message.from_user is None or str(message.from_user.id) != str(ADMIN_TELEGRAM_ID):
+        await message.answer("Administrator access required.")
+        return
+    result = await send_zrl_presale_reminder()
+    await message.answer(
+        "ZRL Pre-Sale announcement finished.\\n"
+        f"Sent: {result['sent']}\\nFailed: {result['failed']}"
+    )
 
 @dp.message(Command("stopreminders"))
 async def cmd_stop_launch_reminders(message: types.Message):
