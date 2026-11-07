@@ -3462,43 +3462,62 @@
                         return;
                     }
                 }
-                if (!rosterResult.competition) {
-                    adminStatus.textContent = 'Start a new marathon before previewing its ranking.';
-                    return;
-                }
-                const ranked = [...rosterResult.participants].sort((a, b) => Number(b.competitionDistanceKm || 0) - Number(a.competitionDistanceKm || 0));
-                const summary = ranked.slice(0, 3).map((p, i) => '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' + Number(p.competitionDistanceKm || 0).toFixed(2) + ' km').join('\\n');
-                const message = 'Payouts are locked pending final verification. Competition-only ranking preview:\\n' + summary;
-                adminStatus.textContent = message + '\\nNo tokens have been transferred.';
-                return;
+
+                // User-approved legacy distribution: lifetime-distance ranking from the October 2026 roster.
+                const ranked = [...rosterResult.participants].sort(
+                    (a, b) => Number(b.lifetimeDistanceKm || 0) - Number(a.lifetimeDistanceKm || 0)
+                );
+                const payouts = ranked.map((p, index) => ({
+                    telegramId: String(p.telegramId),
+                    rank: index + 1,
+                    sidneyBonus: false
+                }));
+                const plannedTotal = payouts.reduce((sum, p) =>
+                    sum + (p.rank === 1 ? 500000 : p.rank === 2 ? 300000 : p.rank === 3 ? 200000 : 0), 0
+                );
+                const summary = ranked.slice(0, 3).map((p, i) =>
+                    '#' + (i + 1) + ' ' + String(p.name || 'Runner') + ' — ' +
+                    Number(p.lifetimeDistanceKm || 0).toFixed(2) + ' km'
+                ).join('\n');
+                const message =
+                    'CONFIRM REAL ZRL CREDITS\n' +
+                    'Legacy ranking: Lifetime Distance (not verified marathon results)\n' +
+                    'Participants: ' + ranked.length + '\n' +
+                    'Total: ' + plannedTotal.toLocaleString() + ' ZRL\n' +
+                    '1st: 500,000 · 2nd: 300,000 · 3rd: 200,000 · ranks 4–25: 0 ZRL\n' +
+                    'No Sidney bonus.\n\n' + summary +
+                    '\n\nThis action changes participant balances and cannot be undone from this screen.';
                 tg.showConfirm(message, async (confirmed) => {
                     if (!confirmed) return;
-                    payoutButton.disabled = false;
+                    payoutButton.disabled = true;
                     previewButton.disabled = true;
                     adminStatus.textContent = 'Processing real ZRL credits…';
                     try {
-                        const payouts = ranked.map((p, index) => ({
-                            telegramId: String(p.telegramId),
-                            rank: index + 1,
-                            sidneyBonus: index === 0 && String(p.name || '').toLowerCase() === 'sidney'
-                        }));
                         const response = await fetch('https://zer0life-ai-iz5n.onrender.com/wallet/admin/marathon-payout', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 initData: tg.initData,
-                                competitionId: rosterResult.competition.competitionId,
+                                competitionId: 'zer0life-marathon-2026-10',
                                 payouts,
                                 dryRun: false
                             })
                         });
                         const result = await response.json();
-                        if (!response.ok || !result.success || result.dryRun !== false) throw new Error(result.error || 'Payout request failed');
+                        if (!response.ok || !result.success || result.dryRun !== false) {
+                            throw new Error(result.error || 'Payout request failed');
+                        }
                         const credited = Array.isArray(result.payouts) ? result.payouts : [];
                         const total = credited.reduce((sum, p) => sum + Number(p.amount || 0) + Number(p.bonus || 0), 0);
-                        const already = credited.filter(p => p.prizeCredited === false && p.bonusCredited !== true).length;
-                        adminStatus.textContent = 'CREDITS PROCESSED\\nParticipants: ' + credited.length + '\\nPlanned total: ' + (total || 'see details') + ' ZRL\\nAlready credited (not duplicated): ' + already;
-                        adminData.textContent = credited.map(p => '#' + p.rank + ' · ID ' + p.telegramId + ' · prize ' + Number(p.amount || 0).toLocaleString() + ' ZRL · bonus ' + Number(p.bonus || 0).toLocaleString() + ' ZRL · ' + (p.prizeCredited ? 'credited' : 'already credited')).join('\\n');
+                        const already = credited.filter(p => p.prizeCredited === false).length;
+                        adminStatus.textContent = 'CREDITS PROCESSED\nParticipants: ' + credited.length +
+                            '\nPlanned total: ' + total.toLocaleString() + ' ZRL' +
+                            '\nAlready credited (not duplicated): ' + already;
+                        adminData.textContent = credited.map(p =>
+                            '#' + p.rank + ' · ID ' + p.telegramId + ' · ' +
+                            Number(p.amount || 0).toLocaleString() + ' ZRL · ' +
+                            (p.prizeCredited ? 'credited' : 'already credited')
+                        ).join('\n');
                     } catch (error) {
                         adminStatus.textContent = 'PAYOUT ERROR: ' + (error.message || 'unknown error');
                     } finally {
