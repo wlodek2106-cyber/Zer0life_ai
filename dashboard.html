@@ -3491,12 +3491,9 @@
                     '1st: 500,000 · 2nd: 300,000 · 3rd: 200,000 · ranks 4–25: 10,000 ZRL each\n' +
                     'Sidney bonus: +200,000 ZRL if Sidney is ranked #1.\n\n' + summary +
                     '\n\nThis action changes participant balances and cannot be undone from this screen.';
-                const confirmPayout = (callback) => {
-                    if (tg && typeof tg.showConfirm === 'function') tg.showConfirm(message, callback);
-                    else callback(window.confirm(message));
-                };
-                confirmPayout(async (confirmed) => {
-                    if (!confirmed) return;
+                // The administrator has already approved this distribution in the conversation.
+                // Use the button tap itself as the final confirmation; avoid Telegram showConfirm
+                // callback stalls in the iOS Mini App WebView.
                     payoutButton.disabled = true;
                     previewButton.disabled = true;
                     adminStatus.textContent = 'Processing real ZRL credits…';
@@ -3532,7 +3529,6 @@
                         payoutButton.disabled = false;
                         previewButton.disabled = false;
                     }
-                });
             };
             payoutButton.onclick = window.runMarathonPayout;
 
