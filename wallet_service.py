@@ -1258,18 +1258,6 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 fee_lamports = 0
                 fee_wallet = None
                 if asset == "ZRL":
-                    approval_fee = db.execute(
-                        "SELECT fee_lamports, fee_wallet FROM wallet_withdrawal_approvals WHERE nonce=? AND telegram_id=?",
-                        (nonce, user["id"]),
-                    ).fetchone()
-                    if not approval_fee:
-                        db.rollback()
-                        return _response_error("Withdrawal fee quote was not found. Create a new request.", 409)
-                    fee_lamports = int(approval_fee["fee_lamports"] or 0)
-                    fee_wallet = approval_fee["fee_wallet"]
-                    if fee_lamports <= 0 or not fee_wallet:
-                        db.rollback()
-                        return _response_error("Withdrawal fee quote is invalid. Create a new request.", 409)
                     if amount_units < 1_000 * ZRL_SCALE:
                         db.rollback()
                         return _response_error("Minimum ZRL withdrawal is 1,000 ZRL", 400)
@@ -1296,6 +1284,18 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     if amount_units > balance:
                         db.rollback()
                         return _response_error("Insufficient available ZRL balance", 402)
+                    approval_fee = db.execute(
+                        "SELECT fee_lamports, fee_wallet FROM wallet_withdrawal_approvals WHERE nonce=? AND telegram_id=?",
+                        (nonce, user["id"]),
+                    ).fetchone()
+                    if not approval_fee:
+                        db.rollback()
+                        return _response_error("ZRL withdrawals require a Telegram-approved fee quote. Use the Wallet withdrawal request.", 409)
+                    fee_lamports = int(approval_fee["fee_lamports"] or 0)
+                    fee_wallet = approval_fee["fee_wallet"]
+                    if fee_lamports <= 0 or not fee_wallet:
+                        db.rollback()
+                        return _response_error("Withdrawal fee quote is invalid. Create a new request.", 409)
                     sol_balance = int(db.execute(
                         "SELECT sol_lamports FROM wallet_accounts WHERE telegram_id=?", (user["id"],)
                     ).fetchone()["sol_lamports"])
