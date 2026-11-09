@@ -110,6 +110,12 @@ class WithdrawalApprovals:
                     AND c.used=0 AND c.expires_at>?""", (user, now)).fetchone():
                 raise ApprovalError("Approve or cancel your previous request in Wallet first.", 409)
             if asset == "ZRL":
+                minimum_units = 1_000 * self.scale
+                maximum_units = 20_000 * self.scale
+                if units < minimum_units:
+                    raise ApprovalError("Minimum ZRL withdrawal is 1,000 ZRL.")
+                if units > maximum_units:
+                    raise ApprovalError("Maximum single ZRL withdrawal is 20,000 ZRL.")
                 available = self.balance(db, user)
                 withdrawn = db.execute("""SELECT COALESCE(SUM(amount_units),0) FROM wallet_withdrawals
                     WHERE telegram_id=? AND asset='ZRL' AND created_at>=?
