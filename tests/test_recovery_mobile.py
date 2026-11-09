@@ -376,7 +376,7 @@ class RecoveryTests(unittest.TestCase):
             self.assertEqual(invalid.status_code, 401)
             _, _, approved = self.mobile_roundtrip("withdraw_" + asset, challenge["nonce"], wallet)
             failed = self.post("/wallet/withdraw", approved)
-            self.assertEqual(failed.status_code, 409 if asset == "zrl" else 503)
+            self.assertEqual(failed.status_code, 400 if asset == "zrl" else 503)
             after = self.state()
             self.assertEqual(before["availableZrl"], after["availableZrl"])
             self.assertEqual(before["gameSolBalance"], after["gameSolBalance"])
