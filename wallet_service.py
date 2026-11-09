@@ -1232,6 +1232,12 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     db.rollback()
                     return _response_error("Invalid withdrawal amount", 400)
                 if asset == "ZRL":
+                    if amount_units < 1_000 * ZRL_SCALE:
+                        db.rollback()
+                        return _response_error("Minimum ZRL withdrawal is 1,000 ZRL", 400)
+                    if amount_units > 20_000 * ZRL_SCALE:
+                        db.rollback()
+                        return _response_error("Maximum single ZRL withdrawal is 20,000 ZRL", 400)
                     day_start = int(datetime.now(timezone.utc).replace(
                         hour=0, minute=0, second=0, microsecond=0
                     ).timestamp())
