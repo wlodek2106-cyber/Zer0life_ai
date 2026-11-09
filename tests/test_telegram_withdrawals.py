@@ -254,7 +254,7 @@ class TelegramWithdrawals(unittest.TestCase):
     def test_finalized_failure_refunds_each_asset_once_but_processed_error_does_not(self):
         for asset in ["SOL", "ZRL"]:
             self.recipient = Keypair()
-            nonce = self.request(asset=asset, event="synthetic-fail-" + asset).json["nonce"]
+            nonce = self.request(asset=asset, amount="1000" if asset == "ZRL" else "1", event="synthetic-fail-" + asset).json["nonce"]
             self.assertEqual(self.confirm(nonce).status_code, 200)
             outcome = {"err": {"InstructionError": [0, "synthetic"]}, "confirmationStatus": "processed"}
             response = NS(raise_for_status=lambda: None, json=lambda: {"result": {"value": [outcome]}})
@@ -353,7 +353,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(result.json["status"], "confirmed")
         # A second user's transfer must not be confirmed from an incomplete RPC reply.
         second = self.post("/wallet/withdrawals/request", {
-            "asset": "ZRL", "amount": "10", "requestId": "status-second-request",
+            "asset": "ZRL", "amount": "1000", "requestId": "status-second-request",
             "address": str(self.recipient.pubkey()),
         }, user="201")
         self.assertEqual(second.status_code, 200, second.json)
