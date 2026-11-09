@@ -294,7 +294,7 @@ class TelegramWithdrawals(unittest.TestCase):
     @patch("withdrawal_errors.time.sleep")
     def test_rate_limited_reads_and_broadcast_do_not_double_pay(self, sleep):
         from unittest.mock import Mock
-        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000").json["nonce"]
         error = RuntimeError("synthetic-sensitive-url")
         error.response = NS(status_code=429, headers={})
         self.chain.get_token_account_balance = Mock(
@@ -313,7 +313,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(len(attempted), 2)
         self.assertEqual(attempted[0], attempted[1])
         self.assertEqual(len(self.chain.sent), 1)
-        self.assertEqual(self.post("/wallet/state").json["availableZrl"], 19990)
+        self.assertEqual(self.post("/wallet/state").json["availableZrl"], 19000)
         self.assertEqual(self.confirm(nonce).json["txHash"], result.json["txHash"])
         self.assertEqual(len(attempted), 2)
 
