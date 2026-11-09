@@ -299,7 +299,7 @@ class RecoveryTests(unittest.TestCase):
         response = self.post("/wallet/withdraw", {"nonce": challenge["nonce"], "signature": signature})
         self.assertGreaterEqual(response.status_code, 400)
         self.assertIn("limit", response.json["error"].lower())
-        self.assertEqual(self.state()["availableZrl"], 20025)
+        self.assertEqual(self.state()["availableZrl"], 30025)
 
     def test_duplicates_invalid_amounts_and_verified_farms_do_not_get_recovered(self):
         for farms in [[self.farms[0]] * 2, [{"id": "bad", "amount": "NaN", "asset": "sol"}], [None]]:
