@@ -176,7 +176,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertNotEqual(self.chain.sent[0], self.chain.sent[1])
 
     def test_balance_and_daily_cap_are_rechecked_at_confirmation(self):
-        nonce = self.request(asset="ZRL", amount="10000").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="20000").json["nonce"]
         self.assertEqual(self.confirm(nonce).status_code, 200)
         self.assertEqual(self.request(asset="ZRL", amount="1", event="synthetic-over-limit").status_code, 429)
         self.recipient = Keypair()
