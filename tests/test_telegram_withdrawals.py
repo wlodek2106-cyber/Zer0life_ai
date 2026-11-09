@@ -33,6 +33,9 @@ class TelegramWithdrawals(unittest.TestCase):
             patch.object(service, "_rpc_client", return_value=self.chain),
             patch.object(service, "_onchain_balances", return_value={}),
             patch.object(otp.requests, "post", side_effect=self.send),
+            patch.object(otp.requests, "get", return_value=NS(
+                raise_for_status=lambda: None, json=lambda: {"solana": {"usd": 100.0}}
+            )),
         ]:
             context.start()
             self.addCleanup(context.stop)
@@ -101,7 +104,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(self.chain.sent, [])
 
     def test_trusted_address_still_requires_a_fresh_telegram_code(self):
-        first = self.request(asset="ZRL", amount="1", event="trusted-address-first")
+        first = self.request(asset="ZRL", amount="1000", event="trusted-address-first")
         self.assertEqual(first.status_code, 200, first.json)
         self.assertEqual(len(self.messages), 1)
         self.assertEqual(self.confirm(first.json["nonce"]).status_code, 200)
@@ -161,7 +164,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(self.post("/wallet/state").json["gameSolBalance"], 1)
 
     def test_signed_transaction_signature_is_valid_base58_64_byte_signature(self):
-        nonce = self.request(asset="ZRL", amount="1", event="signature-format-check").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000", event="signature-format-check").json["nonce"]
         result = self.confirm(nonce)
         self.assertEqual(result.status_code, 200, result.json)
         signature = result.json["txHash"]
@@ -178,7 +181,7 @@ class TelegramWithdrawals(unittest.TestCase):
     def test_balance_and_daily_cap_are_rechecked_at_confirmation(self):
         nonce = self.request(asset="ZRL", amount="20000").json["nonce"]
         self.assertEqual(self.confirm(nonce).status_code, 200)
-        self.assertEqual(self.request(asset="ZRL", amount="1", event="synthetic-over-limit").status_code, 429)
+        self.assertEqual(self.request(asset="ZRL", amount="1000", event="synthetic-over-limit").status_code, 429)
         self.recipient = Keypair()
         nonce = self.request(asset="SOL", event="synthetic-cap-sol").json["nonce"]
         with service._connect(self.path) as db:
@@ -218,7 +221,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(self.chain.sent, [])
 
     def test_unfunded_zrl_treasury_never_broadcasts_or_locks_player_funds(self):
-        nonce = self.request(asset="ZRL").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000").json["nonce"]
         self.chain.get_token_account_balance = lambda *a, **kw: NS(value=NS(amount="0"))
         self.assertEqual(self.confirm(nonce).status_code, 503)
         self.assertEqual(self.post("/wallet/state").json["availableZrl"], 20000)
@@ -266,10 +269,10 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(state["gameSolBalance"], 2)
 
     def test_confirmed_receipt_survives_reload_and_is_owner_scoped(self):
-        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000").json["nonce"]
         result = self.confirm(nonce)
         self.assertEqual(result.json["nonce"], nonce)
-        self.assertEqual(result.json["amount"], 10)
+        self.assertEqual(result.json["amount"], 1000)
         self.assertEqual(result.json["asset"], "ZRL")
         self.assertEqual(result.json["address"], str(self.recipient.pubkey()))
         outcome = {"err": None, "confirmationStatus": "finalized"}
@@ -282,8 +285,8 @@ class TelegramWithdrawals(unittest.TestCase):
             receipt = state["withdrawalHistory"][0]
             self.assertEqual(receipt["status"], "confirmed")
             self.assertEqual(receipt["txHash"], result.json["txHash"])
-            self.assertEqual(receipt["amount"], 10)
-            self.assertEqual(state["availableZrl"], 19990)
+            self.assertEqual(receipt["amount"], 1000)
+            self.assertEqual(state["availableZrl"], 19000)
         self.assertEqual(self.post("/wallet/state", user="201").json["withdrawalHistory"], [])
         self.assertEqual(self.post("/wallet/withdrawals/status", {"nonce": nonce}, user="201").status_code, 404)
         self.assertEqual(len(self.chain.sent), 1)
@@ -319,7 +322,7 @@ class TelegramWithdrawals(unittest.TestCase):
         from unittest.mock import Mock
         for stage in ("read", "broadcast"):
             self.recipient = Keypair()
-            nonce = self.request(asset="ZRL", amount="10", event="rate-limit-" + stage).json["nonce"]
+            nonce = self.request(asset="ZRL", amount="1000", event="rate-limit-" + stage).json["nonce"]
             error = RuntimeError("synthetic-sensitive-url")
             error.response = NS(status_code=429, headers={})
             target = "get_token_account_balance" if stage == "read" else "send_raw_transaction"
@@ -327,7 +330,7 @@ class TelegramWithdrawals(unittest.TestCase):
                 result = self.confirm(nonce)
             self.assertEqual(operation.call_count, 3)
             state = self.post("/wallet/state").json
-            self.assertEqual(state["availableZrl"], 20000 if stage == "read" else 19990)
+            self.assertEqual(state["availableZrl"], 20000 if stage == "read" else 19000)
             self.assertEqual(state["withdrawalHistory"][0]["status"], "failed" if stage == "read" else "processing")
             self.assertEqual(result.status_code, 503 if stage == "read" else 202)
             if stage == "read":
