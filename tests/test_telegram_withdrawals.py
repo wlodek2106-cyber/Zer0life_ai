@@ -228,7 +228,7 @@ class TelegramWithdrawals(unittest.TestCase):
         self.assertEqual(self.chain.sent, [])
 
     def test_blank_rpc_failure_is_explained_and_refunded_only_once(self):
-        nonce = self.request(asset="ZRL").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000").json["nonce"]
         class EmptyRpcError(Exception):
             pass
         def broken(*args, **kwargs):
@@ -341,7 +341,7 @@ class TelegramWithdrawals(unittest.TestCase):
 
     @patch("withdrawal_errors.time.sleep")
     def test_status_429_retries_and_malformed_finalized_reply_never_confirms(self, sleep):
-        nonce = self.request(asset="ZRL", amount="10").json["nonce"]
+        nonce = self.request(asset="ZRL", amount="1000").json["nonce"]
         self.confirm(nonce)
         error = RuntimeError()
         error.response = NS(status_code=429, headers={})
