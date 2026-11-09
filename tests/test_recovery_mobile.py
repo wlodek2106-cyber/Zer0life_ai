@@ -298,7 +298,7 @@ class RecoveryTests(unittest.TestCase):
         signature = base64.b64encode(bytes(wallet.sign_message(challenge["message"].encode()))).decode()
         response = self.post("/wallet/withdraw", {"nonce": challenge["nonce"], "signature": signature})
         self.assertGreaterEqual(response.status_code, 400)
-        self.assertIn("limit", response.json["error"].lower())
+        self.assertIn("maximum single zrl withdrawal", response.json["error"].lower())
         self.assertEqual(self.state()["availableZrl"], 30025)
 
     def test_duplicates_invalid_amounts_and_verified_farms_do_not_get_recovered(self):
@@ -376,7 +376,7 @@ class RecoveryTests(unittest.TestCase):
             self.assertEqual(invalid.status_code, 401)
             _, _, approved = self.mobile_roundtrip("withdraw_" + asset, challenge["nonce"], wallet)
             failed = self.post("/wallet/withdraw", approved)
-            self.assertEqual(failed.status_code, 503)
+            self.assertEqual(failed.status_code, 409 if asset == "zrl" else 503)
             after = self.state()
             self.assertEqual(before["availableZrl"], after["availableZrl"])
             self.assertEqual(before["gameSolBalance"], after["gameSolBalance"])
