@@ -25,8 +25,20 @@ class WithdrawalApprovals:
                 nonce TEXT PRIMARY KEY REFERENCES wallet_challenges(nonce),
                 request_id TEXT UNIQUE NOT NULL, telegram_id TEXT NOT NULL,
                 code_hash TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
-                delivery TEXT NOT NULL DEFAULT 'sending', created_at INTEGER NOT NULL
+                delivery TEXT NOT NULL DEFAULT 'sending', created_at INTEGER NOT NULL,
+                fee_lamports INTEGER NOT NULL DEFAULT 0,
+                fee_usd REAL NOT NULL DEFAULT 0,
+                fee_wallet TEXT
             )""")
+            approval_columns = {row["name"] for row in db.execute(
+                "PRAGMA table_info(wallet_withdrawal_approvals)"
+            ).fetchall()}
+            if "fee_lamports" not in approval_columns:
+                db.execute("ALTER TABLE wallet_withdrawal_approvals ADD COLUMN fee_lamports INTEGER NOT NULL DEFAULT 0")
+            if "fee_usd" not in approval_columns:
+                db.execute("ALTER TABLE wallet_withdrawal_approvals ADD COLUMN fee_usd REAL NOT NULL DEFAULT 0")
+            if "fee_wallet" not in approval_columns:
+                db.execute("ALTER TABLE wallet_withdrawal_approvals ADD COLUMN fee_wallet TEXT")
 
     def _digest(self, nonce, code):
         token = os.getenv("BOT_TOKEN", "")
@@ -36,7 +48,8 @@ class WithdrawalApprovals:
 
     def pending(self, user):
         with self.connect(self.path) as db:
-            rows = db.execute("""SELECT c.* FROM wallet_withdrawal_approvals a
+            rows = db.execute("""SELECT c.*, a.fee_lamports, a.fee_usd, a.fee_wallet
+                FROM wallet_withdrawal_approvals a
                 JOIN wallet_challenges c ON c.nonce=a.nonce
                 WHERE a.telegram_id=? AND a.delivery='sent' AND a.attempts<5
                 AND c.used=0 AND c.expires_at>? ORDER BY a.created_at DESC""",
@@ -45,8 +58,12 @@ class WithdrawalApprovals:
 
     def _public(self, row):
         asset = "SOL" if row["purpose"] == "withdraw_sol" else "ZRL"
+        fee_lamports = int(row["fee_lamports"] or 0) if "fee_lamports" in row.keys() else 0
+        fee_usd = float(row["fee_usd"] or 0) if "fee_usd" in row.keys() else 0
         return {"nonce": row["nonce"], "address": row["address"], "asset": asset,
                 "amount": row["amount_units"] / (10**9 if asset == "SOL" else self.scale),
+                "feeLamports": fee_lamports, "feeSol": fee_lamports / 1_000_000_000,
+                "feeUsd": fee_usd, "feeWallet": row["fee_wallet"] if "fee_wallet" in row.keys() else None,
                 "expiresAt": row["expires_at"]}
 
     def request(self, user, data):
@@ -109,7 +126,19 @@ class WithdrawalApprovals:
                     WHERE a.telegram_id=? AND a.delivery IN ('sending','sent','auto') AND a.attempts<5
                     AND c.used=0 AND c.expires_at>?""", (user, now)).fetchone():
                 raise ApprovalError("Approve or cancel your previous request in Wallet first.", 409)
+            fee_lamports, fee_usd, fee_wallet = 0, 0.0, None
             if asset == "ZRL":
+                fee_wallet = os.getenv("ZRL_WITHDRAWAL_FEE_WALLET", "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db")
+                price_url = os.getenv("SOL_USD_PRICE_URL", "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
+                try:
+                    price_response = requests.get(price_url, timeout=8)
+                    price_response.raise_for_status()
+                    fee_usd = float(price_response.json()["solana"]["usd"])
+                    if not (0.01 <= fee_usd <= 100000):
+                        raise ValueError("invalid SOL/USD quote")
+                    fee_lamports = int((1.0 / fee_usd * 1_000_000_000) + 0.999999)
+                except Exception:
+                    raise ApprovalError("SOL/USD price is unavailable. No withdrawal was created; try again later.", 503)
                 minimum_units = 1_000 * self.scale
                 maximum_units = 20_000 * self.scale
                 if units < minimum_units:
@@ -117,6 +146,9 @@ class WithdrawalApprovals:
                 if units > maximum_units:
                     raise ApprovalError("Maximum single ZRL withdrawal is 20,000 ZRL.")
                 available = self.balance(db, user)
+                sol_account = db.execute("SELECT sol_lamports FROM wallet_accounts WHERE telegram_id=?", (user,)).fetchone()
+                if not sol_account or int(sol_account["sol_lamports"]) < fee_lamports:
+                    raise ApprovalError("Insufficient game SOL balance for the $1 ZRL withdrawal fee.", 402)
                 withdrawn = db.execute("""SELECT COALESCE(SUM(amount_units),0) FROM wallet_withdrawals
                     WHERE telegram_id=? AND asset='ZRL' AND created_at>=?
                     AND status IN ('processing','submitted','confirmed')""",
@@ -131,14 +163,17 @@ class WithdrawalApprovals:
             item = self.challenge(db, user, address, f"withdraw_{asset.lower()}", units)
             code = "" if auto_approved else f"{secrets.randbelow(1_000_000):06d}"
             db.execute("""INSERT INTO wallet_withdrawal_approvals
-                (nonce,request_id,telegram_id,code_hash,delivery,created_at) VALUES(?,?,?,?,?,?)""",
+                (nonce,request_id,telegram_id,code_hash,delivery,created_at,fee_lamports,fee_usd,fee_wallet)
+                VALUES(?,?,?,?,?,?,?,?,?)""",
                 (item["nonce"], request_id, user,
                  "" if auto_approved else self._digest(item["nonce"], code),
-                 "auto" if auto_approved else "sending", now))
+                 "auto" if auto_approved else "sending", now, fee_lamports, fee_usd, fee_wallet))
             db.commit()
             if auto_approved:
                 row = db.execute(
-                    "SELECT * FROM wallet_challenges WHERE nonce=?",
+                    """SELECT c.*, a.fee_lamports, a.fee_usd, a.fee_wallet
+                       FROM wallet_challenges c JOIN wallet_withdrawal_approvals a ON a.nonce=c.nonce
+                       WHERE c.nonce=?""",
                     (item["nonce"],),
                 ).fetchone()
                 return {**self._public(row), "autoApproved": True}
@@ -161,7 +196,9 @@ class WithdrawalApprovals:
             raise ApprovalError("The code could not be delivered. Open a private chat with @Zer0lifelabs_ai_bot and tap Start. No funds were deducted.", 503)
         with self.connect(self.path) as db:
             db.execute("UPDATE wallet_withdrawal_approvals SET delivery='sent' WHERE nonce=?", (item["nonce"],))
-            row = db.execute("SELECT * FROM wallet_challenges WHERE nonce=?", (item["nonce"],)).fetchone()
+            row = db.execute("""SELECT c.*, a.fee_lamports, a.fee_usd, a.fee_wallet
+                FROM wallet_challenges c JOIN wallet_withdrawal_approvals a ON a.nonce=c.nonce
+                WHERE c.nonce=?""", (item["nonce"],)).fetchone()
         return self._public(row)
 
     def verify(self, db, user, nonce, code):
