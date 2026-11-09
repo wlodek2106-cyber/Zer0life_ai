@@ -78,7 +78,7 @@ class TelegramWithdrawals(unittest.TestCase):
     def test_both_assets_are_signed_by_treasury_not_by_a_player_wallet(self):
         for asset in ["SOL", "ZRL"]:
             self.recipient = Keypair()
-            response = self.request(asset=asset, event="synthetic-approval-" + asset)
+            response = self.request(asset=asset, amount="1000" if asset == "ZRL" else "1", event="synthetic-approval-" + asset)
             self.assertEqual(response.status_code, 200, response.json)
             nonce = response.json["nonce"]
             self.assertNotIn(self.code(), str(response.json))
