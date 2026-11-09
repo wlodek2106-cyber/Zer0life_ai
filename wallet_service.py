@@ -157,7 +157,9 @@ def _init_db(db_path):
                 amount_units INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 tx_signature TEXT,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                fee_lamports INTEGER NOT NULL DEFAULT 0,
+                fee_wallet TEXT
             );
             CREATE TABLE IF NOT EXISTS wallet_deposits (
                 signature TEXT PRIMARY KEY,
@@ -215,6 +217,10 @@ def _init_db(db_path):
         }
         if "asset" not in withdrawal_columns:
             db.execute("ALTER TABLE wallet_withdrawals ADD COLUMN asset TEXT NOT NULL DEFAULT 'ZRL'")
+        if "fee_lamports" not in withdrawal_columns:
+            db.execute("ALTER TABLE wallet_withdrawals ADD COLUMN fee_lamports INTEGER NOT NULL DEFAULT 0")
+        if "fee_wallet" not in withdrawal_columns:
+            db.execute("ALTER TABLE wallet_withdrawals ADD COLUMN fee_wallet TEXT")
         account_columns = {
             row["name"] for row in db.execute("PRAGMA table_info(wallet_accounts)").fetchall()
         }
@@ -444,6 +450,9 @@ def _withdrawal_receipt(row):
         "nonce": row["nonce"], "asset": row["asset"],
         "amount": row["amount_units"] / (1_000_000_000 if row["asset"] == "SOL" else ZRL_SCALE),
         "address": row["address"], "txHash": row["tx_signature"],
+        "feeLamports": int(row["fee_lamports"] or 0) if "fee_lamports" in row.keys() else 0,
+        "feeSol": (int(row["fee_lamports"] or 0) / 1_000_000_000) if "fee_lamports" in row.keys() else 0,
+        "feeWallet": row["fee_wallet"] if "fee_wallet" in row.keys() else None,
         "status": row["status"], "createdAt": row["created_at"],
     }
 
@@ -999,7 +1008,7 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
             app.logger.exception("deposit verification failed")
             return _response_error("Deposit could not be verified", 400)
 
-    def send_withdrawal(asset, address, amount_units, nonce):
+    def send_withdrawal(asset, address, amount_units, nonce, fee_lamports=0, fee_wallet=None):
         private_key = os.getenv("PRIVATE_KEY")
         if not private_key:
             raise RuntimeError("Treasury signing is not configured")
@@ -1047,6 +1056,17 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
                 source=source, mint=mint, dest=destination, owner=treasury.pubkey(),
                 amount=int(amount_units), decimals=ZRL_DECIMALS,
+            )))
+        if asset == "ZRL" and int(fee_lamports or 0) > 0:
+            if not fee_wallet:
+                raise RuntimeError("ZRL withdrawal fee destination is not configured")
+            fee_recipient = Pubkey.from_string(fee_wallet)
+            fee_amount = int(fee_lamports)
+            treasury_fee_balance = int(withdrawal_rpc("get_fee_balance", client.get_balance, treasury.pubkey()).value)
+            if treasury_fee_balance < fee_amount + 5000:
+                raise RuntimeError("Treasury SOL balance is insufficient for the withdrawal fee and network fee")
+            instructions.append(transfer(TransferParams(
+                from_pubkey=treasury.pubkey(), to_pubkey=fee_recipient, lamports=fee_amount
             )))
         from solders.instruction import Instruction
         instructions.append(Instruction(
@@ -1111,6 +1131,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                             failed = chain.get("err") is not None
                             if failed and current["asset"] == "ZRL":
                                 _ledger_entry(db, user["id"], "withdrawal_refund", current["amount_units"], f"withdraw-refund:{nonce}")
+                                db.execute(
+                                    "UPDATE wallet_accounts SET sol_lamports=sol_lamports+? WHERE telegram_id=?",
+                                    (int(current["fee_lamports"] or 0), user["id"]),
+                                )
                             elif failed:
                                 db.execute("UPDATE wallet_accounts SET sol_lamports=sol_lamports+? WHERE telegram_id=?",
                                            (current["amount_units"], user["id"]))
@@ -1231,7 +1255,21 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                 if amount_units <= 0:
                     db.rollback()
                     return _response_error("Invalid withdrawal amount", 400)
+                fee_lamports = 0
+                fee_wallet = None
                 if asset == "ZRL":
+                    approval_fee = db.execute(
+                        "SELECT fee_lamports, fee_wallet FROM wallet_withdrawal_approvals WHERE nonce=? AND telegram_id=?",
+                        (nonce, user["id"]),
+                    ).fetchone()
+                    if not approval_fee:
+                        db.rollback()
+                        return _response_error("Withdrawal fee quote was not found. Create a new request.", 409)
+                    fee_lamports = int(approval_fee["fee_lamports"] or 0)
+                    fee_wallet = approval_fee["fee_wallet"]
+                    if fee_lamports <= 0 or not fee_wallet:
+                        db.rollback()
+                        return _response_error("Withdrawal fee quote is invalid. Create a new request.", 409)
                     if amount_units < 1_000 * ZRL_SCALE:
                         db.rollback()
                         return _response_error("Minimum ZRL withdrawal is 1,000 ZRL", 400)
@@ -1258,6 +1296,16 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     if amount_units > balance:
                         db.rollback()
                         return _response_error("Insufficient available ZRL balance", 402)
+                    sol_balance = int(db.execute(
+                        "SELECT sol_lamports FROM wallet_accounts WHERE telegram_id=?", (user["id"],)
+                    ).fetchone()["sol_lamports"])
+                    if sol_balance < fee_lamports:
+                        db.rollback()
+                        return _response_error("Insufficient game SOL balance for the $1 ZRL withdrawal fee", 402)
+                    db.execute(
+                        "UPDATE wallet_accounts SET sol_lamports=sol_lamports-? WHERE telegram_id=?",
+                        (fee_lamports, user["id"]),
+                    )
                     _ledger_entry(db, user["id"], "withdrawal", -amount_units, f"withdraw:{nonce}")
                 else:
                     sol_balance = int(db.execute(
@@ -1273,15 +1321,15 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     )
                 db.execute(
                     """INSERT INTO wallet_withdrawals
-                       (nonce, telegram_id, address, asset, amount_units, status, created_at)
-                       VALUES (?, ?, ?, ?, ?, 'processing', ?)""",
-                    (nonce, user["id"], linked, asset, amount_units, _utc_now()),
+                       (nonce, telegram_id, address, asset, amount_units, status, created_at, fee_lamports, fee_wallet)
+                       VALUES (?, ?, ?, ?, ?, 'processing', ?, ?, ?)""",
+                    (nonce, user["id"], linked, asset, amount_units, _utc_now(), fee_lamports, fee_wallet),
                 )
                 db.execute("UPDATE wallet_challenges SET used = 1 WHERE nonce = ?", (nonce,))
                 db.commit()
 
             try:
-                tx_signature = send_withdrawal(asset, linked, amount_units, nonce)
+                tx_signature = send_withdrawal(asset, linked, amount_units, nonce, fee_lamports, fee_wallet)
             except Exception as exc:
                 failure = describe_failure(exc, nonce)
                 app.logger.warning(
@@ -1298,6 +1346,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                                        message="Broadcast confirmation is uncertain; funds remain reserved until chain verification"), 202
                     if asset == "ZRL":
                         _ledger_entry(db, user["id"], "withdrawal_refund", amount_units, f"withdraw-refund:{nonce}")
+                        db.execute(
+                            "UPDATE wallet_accounts SET sol_lamports=sol_lamports+? WHERE telegram_id=?",
+                            (fee_lamports, user["id"]),
+                        )
                     else:
                         db.execute(
                             "UPDATE wallet_accounts SET sol_lamports = sol_lamports + ? WHERE telegram_id = ?",
