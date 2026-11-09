@@ -293,7 +293,7 @@ class RecoveryTests(unittest.TestCase):
         with service._connect(self.path) as db:
             service._ledger_entry(db, "200", "fixture", 30_000_000_000, "fixture-large-credit")
         challenge = self.post("/wallet/challenge", {
-            "purpose": "withdraw_zrl", "address": str(wallet.pubkey()), "amount": 10001,
+            "purpose": "withdraw_zrl", "address": str(wallet.pubkey()), "amount": 20001,
         }).json
         signature = base64.b64encode(bytes(wallet.sign_message(challenge["message"].encode()))).decode()
         response = self.post("/wallet/withdraw", {"nonce": challenge["nonce"], "signature": signature})
