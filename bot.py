@@ -493,11 +493,7 @@ def update_stats():
                     previous_today = 0.0
                 daily_distances[today_key] = max(previous_today, incoming_today)
 
-            cutoff = (datetime.datetime.now(datetime.timezone.utc).date() - datetime.timedelta(days=45)).isoformat()
-            daily_distances = {
-                day: value for day, value in daily_distances.items()
-                if isinstance(day, str) and day >= cutoff
-            }
+            # Keep the complete daily history; do not expire past leaderboard records.
             try:
                 previous_balance = float(previous_record.get('balance', 0.0) or 0.0)
                 if not math.isfinite(previous_balance) or previous_balance < 0:
