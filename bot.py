@@ -65,6 +65,7 @@ DATA_DIR = RENDER_DISK_DIR if os.path.isdir(RENDER_DISK_DIR) else BASE_DIR
 os.makedirs(DATA_DIR, exist_ok=True)
 
 from wallet_service import register_wallet_routes, _verify_telegram_init_data
+from admin_broadcast import register_admin_broadcast
 register_wallet_routes(api_app, DATA_DIR, admin_telegram_id=ADMIN_TELEGRAM_ID)
 
 def migrate_legacy_data_file(filename):
@@ -303,18 +304,21 @@ async def send_zrl_presale_reminder():
                  sent, failed, len(recipients))
     return {"sent": sent, "failed": failed}
 
-@api_app.route('/broadcast', methods=['POST'])
-def api_broadcast():
+def enqueue_admin_broadcast(text):
+    if not bot or not bot_loop.is_running():
+        raise RuntimeError("Telegram delivery is unavailable")
+    coroutine = send_broadcast_to_all(text)
     try:
-        data = request.json
-        if not data or 'text' not in data:
-            return jsonify({"success": False, "error": "Missing text parameter"}), 400
-        
-        message_text = data['text']
-        asyncio.run_coroutine_threadsafe(send_broadcast_to_all(message_text), bot_loop)
-        return jsonify({"success": True, "recipients": get_total_users()})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+        asyncio.run_coroutine_threadsafe(coroutine, bot_loop)
+    except Exception:
+        coroutine.close()
+        raise
+
+
+register_admin_broadcast(
+    api_app, _verify_telegram_init_data, ADMIN_TELEGRAM_ID,
+    enqueue_admin_broadcast, get_total_users,
+)
 
 # Automatic game event generator
 async def automated_ecosystem_notifications():
