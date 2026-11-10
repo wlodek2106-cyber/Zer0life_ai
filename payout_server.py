@@ -20,7 +20,19 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TARGET_WALLET = "HWkraaCqG3iY7hMbBZMsrYrChmctsvcmPdumGE8RVAix"
 MERCHANT_SOL_WALLET = "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db"
 
-DB_FILE = "database.json"
+# Keep marathon and account data on Render's persistent disk, not the
+# ephemeral application filesystem. Preserve a legacy local DB on first boot.
+PERSISTENT_DATA_DIR = os.getenv("ZEROLIFE_DATA_DIR", "/var/data")
+LEGACY_DB_FILE = "database.json"
+try:
+    os.makedirs(PERSISTENT_DATA_DIR, exist_ok=True)
+    DB_FILE = os.path.join(PERSISTENT_DATA_DIR, "database.json")
+    if not os.path.exists(DB_FILE) and os.path.exists(LEGACY_DB_FILE):
+        import shutil
+        shutil.copy2(LEGACY_DB_FILE, DB_FILE)
+except OSError:
+    # Local development fallback only; Render should have /var/data mounted.
+    DB_FILE = LEGACY_DB_FILE
 
 def load_db():
     default_data = {
@@ -53,8 +65,12 @@ def save_db():
             "CHAT_DB": CHAT_DB,
             "USER_TOTAL_DEPOSITS": USER_TOTAL_DEPOSITS
         }
-        with open(DB_FILE, "w", encoding="utf-8") as f:
+        temp_file = DB_FILE + ".tmp"
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_file, DB_FILE)
     except Exception as e:
         print("Error saving DB:", e)
 
