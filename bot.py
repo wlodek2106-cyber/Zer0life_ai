@@ -16,6 +16,10 @@ import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
+from telegram_webhook import (
+    configure_telegram_webhook, register_telegram_webhook, webhook_secret,
+)
+from telegram_users import TelegramUsers
 
 from flask import Flask, request, jsonify
 from solana.rpc.api import Client
@@ -41,13 +45,15 @@ from launch_reminders import (
 )
 
 api_app = Flask(__name__)
-# Prevent Werkzeug access logs from exposing the secret Telegram webhook URL.
+# Old token-bearing webhook requests may still be retried during migration.
+# Keep their URLs out of access logs even after switching to the header-based route.
 logging.getLogger("werkzeug").disabled = True
 from security_config import configure_cors
 
 configure_cors(api_app)
 
 TOKEN = os.getenv("BOT_TOKEN")
+TELEGRAM_WEBHOOK_SECRET = webhook_secret(TOKEN)
 RENDER_URL = "https://zer0life-ai-iz5n.onrender.com"
 APP_URL = "https://wlodek2106-cyber.github.io/Zer0life_ai/?build=affiliate-v2"
 
@@ -104,23 +110,14 @@ def get_pool_pubkey_str():
         pass
     return ADMIN_POOL_WALLET
 
+telegram_users = TelegramUsers(USERS_FILE)
+
+
 def load_users():
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, "r") as f:
-                return set(json.load(f))
-        except:
-            pass
-    return set()
+    return telegram_users.read()
 
 def save_user(user_id):
-    users = load_users()
-    users.add(str(user_id))
-    try:
-        with open(USERS_FILE, "w") as f:
-            json.dump(list(users), f)
-    except Exception as e:
-        logging.error(f"Error saving user: {e}")
+    return telegram_users.add(user_id)
 
 def get_total_users():
     return len(load_users())
@@ -760,22 +757,38 @@ def withdraw():
         "error": "Legacy withdrawals are disabled. Use /wallet/withdraw with a linked Phantom wallet and signed confirmation.",
     }), 410
 
-@api_app.route(f'/webhook/{TOKEN}', methods=['POST'])
-def telegram_webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_data = request.get_json()
-        try:
-            update = types.Update.model_validate(json_data, context={"bot": bot})
-            asyncio.run_coroutine_threadsafe(dp.feed_update(bot, update), bot_loop)
-        except Exception as e:
-            logging.error(f"Webhook error: {e}")
-        return '', 200
-    return 'Invalid request', 403
+def enqueue_telegram_update(update):
+    if not bot or not bot_loop.is_running():
+        raise RuntimeError("Telegram processing is unavailable")
+    coroutine = dp.feed_update(bot, update)
+    try:
+        return asyncio.run_coroutine_threadsafe(coroutine, bot_loop)
+    except Exception:
+        coroutine.close()
+        raise
+
+
+register_telegram_webhook(
+    api_app, TELEGRAM_WEBHOOK_SECRET,
+    lambda data: types.Update.model_validate(data, context={"bot": bot}),
+    enqueue_telegram_update,
+)
+
+
+async def get_start_runner_count(user_id):
+    try:
+        # A slow/broken recipient file must not block the bot's event loop or
+        # prevent the player from receiving the launch button.
+        return await asyncio.wait_for(asyncio.to_thread(save_user, user_id), timeout=1)
+    except Exception as exc:
+        logging.warning("Start recipient registration/statistics unavailable (%s)",
+                        type(exc).__name__)
+        return None
+
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    save_user(message.from_user.id)
-    total_users = get_total_users()
+    total_users = await get_start_runner_count(message.from_user.id)
     start_args = (message.text or "").split(maxsplit=1)
     referral_match = re.fullmatch(r"ref_([A-Fa-f0-9]{10})", start_args[1].strip()) if len(start_args) > 1 else None
     app_url = APP_URL
@@ -784,9 +797,13 @@ async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏃 Launch Zer0Life Run", web_app=WebAppInfo(url=app_url))]
     ])
+    runner_count_line = (
+        f"👥 Total Runners: <b>{total_users}</b>\n" if total_users is not None
+        else "Runner statistics are temporarily unavailable.\n"
+    )
     await message.answer(
         f"Yo! Welcome to <b>Zer0Life Run</b> ⚡️\n\n"
-        f"👥 Total Runners: <b>{total_users}</b>\n"
+        f"{runner_count_line}"
         f"Train, walk and earn <b>ZRL</b> tokens!\n\n"
         f"Click the button below to open the app:",
         reply_markup=keyboard,
@@ -915,21 +932,26 @@ async def cmd_start_launch_reminders(message: types.Message):
 
 def setup_webhook_sync():
     if bot and RENDER_URL:
+        async def configure():
+            await configure_telegram_webhook(bot, RENDER_URL, TELEGRAM_WEBHOOK_SECRET)
+            # The chat menu is separate from message delivery; its failure must not
+            # undo a successful webhook or claim that registration failed.
+            try:
+                await asyncio.wait_for(bot.set_chat_menu_button(
+                    menu_button=MenuButtonWebApp(
+                        text="🏃 Zer0Life Run", web_app=WebAppInfo(url=APP_URL),
+                    )
+                ), timeout=10)
+            except Exception as exc:
+                logging.warning("Telegram chat menu setup failed (%s)", type(exc).__name__)
+
+        coroutine = configure()
         try:
-            webhook_url = f"{RENDER_URL}/webhook/{TOKEN}"
-            future = asyncio.run_coroutine_threadsafe(bot.set_webhook(webhook_url), bot_loop)
-            future.result(timeout=5)
-            
-            menu_future = asyncio.run_coroutine_threadsafe(bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(
-                    text="🏃 Zer0Life Run",
-                    web_app=WebAppInfo(url=APP_URL)
-                )
-            ), bot_loop)
-            menu_future.result(timeout=5)
-            logging.info("Telegram webhook registered successfully.")
-        except Exception as e:
-            logging.error(f"Webhook setup error: {e}")
+            # Do not hold HTTP startup for a slow Telegram connection.
+            asyncio.run_coroutine_threadsafe(coroutine, bot_loop)
+        except Exception as exc:
+            coroutine.close()
+            logging.error("Could not schedule Telegram setup (%s)", type(exc).__name__)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
