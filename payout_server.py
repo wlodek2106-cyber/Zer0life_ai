@@ -186,10 +186,22 @@ def update_stats():
             existing = USER_STATS.get(telegram_id, {})
             check_and_expire_boosters(existing)
             
+            # Marathon distance is cumulative and must never decrease.
+            # Ignore stale/zero client values instead of overwriting saved progress.
+            try:
+                previous_distance = max(0.0, float(existing.get("distance", 0) or 0))
+            except (TypeError, ValueError):
+                previous_distance = 0.0
+            try:
+                incoming_distance = max(0.0, float(data.get("distance", previous_distance) or 0))
+            except (TypeError, ValueError):
+                incoming_distance = previous_distance
+            cumulative_distance = max(previous_distance, incoming_distance)
+
             USER_STATS[telegram_id] = {
                 "username": username,
                 "walletAddress": data.get('walletAddress', existing.get('walletAddress', TARGET_WALLET)),
-                "distance": data.get('distance', existing.get('distance', 0)),
+                "distance": cumulative_distance,
                 "balance": data.get('balance', existing.get('balance', 0)),
                 "solBalance": existing.get('solBalance', existing.get("solBalance", 1.5)),
                 "avatar": data.get('avatar', existing.get('avatar', '')),
