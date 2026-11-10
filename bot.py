@@ -10,6 +10,7 @@ import traceback
 import random
 import datetime
 import re
+import math
 import aiohttp
 
 from aiogram import Bot, Dispatcher, types
@@ -126,27 +127,51 @@ def get_total_users():
 stats_write_lock = threading.Lock()
 
 def load_stats():
-    if os.path.exists(STATS_FILE):
-        try:
-            with open(STATS_FILE, "r") as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
+    """Load leaderboard data without ever treating corruption as an empty database."""
+    if not os.path.exists(STATS_FILE):
+        return {}
+    try:
+        with open(STATS_FILE, "r", encoding="utf-8") as f:
+            stats = json.load(f)
+    except Exception as exc:
+        logging.exception("Leaderboard database could not be read; refusing writes.")
+        raise RuntimeError("Leaderboard database is unreadable; existing data was preserved.") from exc
+    if not isinstance(stats, dict):
+        logging.error("Leaderboard database has an invalid root type; refusing writes.")
+        raise RuntimeError("Leaderboard database format is invalid; existing data was preserved.")
+    return stats
 
 def save_stats_data(stats):
+    """Atomically save leaderboard data and keep the previous valid file as a backup."""
+    if not isinstance(stats, dict):
+        raise ValueError("Refusing to save invalid leaderboard data.")
     temporary_path = STATS_FILE + "." + str(os.getpid()) + ".tmp"
+    backup_path = STATS_FILE + ".bak"
     try:
-        with open(temporary_path, "w") as f:
-            json.dump(stats, f)
+        if os.path.isfile(STATS_FILE):
+            shutil.copy2(STATS_FILE, backup_path)
+        with open(temporary_path, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, allow_nan=False)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(temporary_path, STATS_FILE)
-    except Exception as e:
+        try:
+            directory_fd = os.open(DATA_DIR, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except OSError:
+            logging.warning("Could not fsync leaderboard data directory.")
+        return True
+    except Exception:
         try:
             if os.path.exists(temporary_path):
                 os.remove(temporary_path)
         except OSError:
             pass
-        logging.error(f"Error saving stats: {e}")
+        logging.exception("Error saving leaderboard data; previous file was preserved where possible.")
+        raise
 
 def load_marathon_state():
     if os.path.exists(MARATHON_FILE):
@@ -435,45 +460,65 @@ def update_stats():
         tg_id = str(data['telegramId'])
         if authenticated["id"] != tg_id:
             return jsonify({"error": "Telegram identity mismatch"}), 403
-        incoming_distance = max(0.0, float(data.get('distance', 0.0)))
+        incoming_distance = float(data.get('distance', 0.0))
+        if not math.isfinite(incoming_distance) or incoming_distance < 0 or incoming_distance > 10000000:
+            return jsonify({"error": "Invalid cumulative distance"}), 400
 
         with stats_write_lock:
             stats = load_stats()
-            previous = stats.get(tg_id, {}) if isinstance(stats, dict) else {}
+            previous = stats.get(tg_id, {})
+            previous_record = previous if isinstance(previous, dict) else {}
             try:
-                previous_distance = max(0.0, float(previous.get('distance', 0.0))) if isinstance(previous, dict) else 0.0
+                previous_distance = float(previous_record.get('distance', 0.0) or 0.0)
+                if not math.isfinite(previous_distance) or previous_distance < 0:
+                    previous_distance = 0.0
             except (TypeError, ValueError):
                 previous_distance = 0.0
-            previous_record = previous if isinstance(previous, dict) else {}
+
             daily_distances = previous_record.get("dailyDistances", {})
-            if not isinstance(daily_distances, dict):
-                daily_distances = {}
+            daily_distances = dict(daily_distances) if isinstance(daily_distances, dict) else {}
             today_key = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
             try:
-                incoming_today = max(0.0, float(data.get("todayDistance", 0.0)))
+                incoming_today = float(data.get("todayDistance", 0.0) or 0.0)
+                if not math.isfinite(incoming_today) or incoming_today < 0 or incoming_today > 1000000:
+                    incoming_today = 0.0
             except (TypeError, ValueError):
                 incoming_today = 0.0
             if incoming_today > 0:
-                daily_distances[today_key] = max(
-                    float(daily_distances.get(today_key, 0.0) or 0.0),
-                    incoming_today,
-                )
+                try:
+                    previous_today = float(daily_distances.get(today_key, 0.0) or 0.0)
+                    if not math.isfinite(previous_today) or previous_today < 0:
+                        previous_today = 0.0
+                except (TypeError, ValueError):
+                    previous_today = 0.0
+                daily_distances[today_key] = max(previous_today, incoming_today)
+
             cutoff = (datetime.datetime.now(datetime.timezone.utc).date() - datetime.timedelta(days=45)).isoformat()
             daily_distances = {
                 day: value for day, value in daily_distances.items()
                 if isinstance(day, str) and day >= cutoff
             }
+            try:
+                previous_balance = float(previous_record.get('balance', 0.0) or 0.0)
+                if not math.isfinite(previous_balance) or previous_balance < 0:
+                    previous_balance = 0.0
+            except (TypeError, ValueError):
+                previous_balance = 0.0
             stats[tg_id] = {
-                "name": data.get('username', 'Runner'),
-                "wallet": data.get('walletAddress', previous_record.get('wallet', '')),
+                "name": str(data.get('username') or previous_record.get('name') or 'Runner')[:80],
+                "wallet": str(data.get('walletAddress') or previous_record.get('wallet') or '')[:128],
                 "distance": max(previous_distance, incoming_distance),
                 "dailyDistances": daily_distances,
-                "balance": float(previous_record.get('balance', 0.0) or 0.0)
+                "balance": previous_balance
             }
             save_stats_data(stats)
         return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        logging.exception("Leaderboard stats sync blocked to protect existing data.")
+        return jsonify({"error": str(e)}), 503
+    except Exception:
+        logging.exception("Leaderboard stats sync failed.")
+        return jsonify({"error": "Could not safely save leaderboard progress"}), 503
 
 def start_new_marathon():
     """Create one 30-day marathon with the approved 5,000,000 ZRL prize plan."""
@@ -641,8 +686,9 @@ def get_leaderboard():
             "leaderboard": leaderboard,
             "myRank": {"rank": 1}
         })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception:
+        logging.exception("Leaderboard request failed.")
+        return jsonify({"success": False, "error": "Leaderboard temporarily unavailable"}), 503
 
 @api_app.route('/check-deposit', methods=['POST'])
 def check_deposit():
