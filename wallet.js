@@ -260,7 +260,7 @@
                 const row = document.createElement('div');
                 const label = document.createElement('p');
                 label.style.cssText = 'font-size:11px;overflow-wrap:anywhere;';
-                label.textContent = `${approval.amount} ${approval.asset} → ${approval.address}${approval.asset === 'ZRL' ? ` · Fee: ${Number(approval.feeSol || 0).toFixed(6)} SOL (${Number(approval.feeUsd || 1).toFixed(2)})` : ''}. Waiting for your Telegram code; funds have not been deducted.`;
+                label.textContent = `${approval.amount} ${approval.asset} → ${approval.address}${approval.asset === 'ZRL' ? ` · Fee: $${Number(approval.feeUsd ?? 0).toFixed(2)} (≈ ${Number(approval.feeSol || 0).toFixed(6)} SOL)` : ''}. Waiting for your Telegram code; funds have not been deducted.`;
                 row.appendChild(label);
                 for (const cancel of [false, true]) {
                     const button = document.createElement('button');
@@ -531,7 +531,7 @@
         const owner = initData();
         const value = await askText(
             'Confirm withdrawal',
-            `${approval.amount} ${approval.asset} → ${approval.address}${approval.asset === 'ZRL' ? `\nWithdrawal fee: ${Number(approval.feeSol || 0).toFixed(6)} SOL (${Number(approval.feeUsd || 1).toFixed(2)}) to the Zer0Life admin wallet.` : ''}\nA code was sent in your private chat with @Zer0lifelabs_ai_bot. It expires in 5 minutes. Cancelling does not deduct funds; you can resume this request in Wallet.`,
+            `${approval.amount} ${approval.asset} → ${approval.address}${approval.asset === 'ZRL' ? `\nWithdrawal fee: $${Number(approval.feeUsd ?? 0).toFixed(2)} (≈ ${Number(approval.feeSol || 0).toFixed(6)} SOL) to the Zer0Life admin wallet.` : ''}\nA code was sent in your private chat with @Zer0lifelabs_ai_bot. It expires in 5 minutes. Cancelling does not deduct funds; you can resume this request in Wallet.`,
             '6-digit Telegram code…',
         );
         assertSession(owner);

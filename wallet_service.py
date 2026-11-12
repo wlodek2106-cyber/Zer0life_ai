@@ -20,7 +20,7 @@ from wallet_recovery import recovery_state, register_recovery_routes
 from wallet_mobile import register_mobile_routes
 from merchant_payments import MerchantPayments, MerchantError, MERCHANT_SOL_WALLET
 from boots_solana_pay import BootsSolanaPay, BootsPayError
-from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError
+from wallet_withdrawal_otp import WithdrawalApprovals, ApprovalError, ZRL_WITHDRAWAL_FEE_USD
 from withdrawal_errors import rpc_call as withdrawal_rpc, describe_failure
 from community_feed import register_community_routes
 from social_chat import register_social_routes
@@ -1301,7 +1301,10 @@ def register_wallet_routes(app, data_dir, admin_telegram_id=None):
                     ).fetchone()["sol_lamports"])
                     if sol_balance < fee_lamports:
                         db.rollback()
-                        return _response_error("Insufficient game SOL balance for the $1 ZRL withdrawal fee", 402)
+                        return _response_error(
+                            f"Insufficient game SOL balance for the ${ZRL_WITHDRAWAL_FEE_USD:.2f} ZRL withdrawal fee",
+                            402,
+                        )
                     db.execute(
                         "UPDATE wallet_accounts SET sol_lamports=sol_lamports-? WHERE telegram_id=?",
                         (fee_lamports, user["id"]),
