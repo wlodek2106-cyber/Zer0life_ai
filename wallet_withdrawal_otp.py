@@ -5,9 +5,12 @@ import os
 import re
 import secrets
 import time
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_CEILING
 
 import requests
+
+
+ZRL_WITHDRAWAL_FEE_USD = Decimal("0.15")
 
 
 class ApprovalError(ValueError):
@@ -59,7 +62,10 @@ class WithdrawalApprovals:
     def _public(self, row):
         asset = "SOL" if row["purpose"] == "withdraw_sol" else "ZRL"
         fee_lamports = int(row["fee_lamports"] or 0) if "fee_lamports" in row.keys() else 0
-        fee_usd = float(row["fee_usd"] or 0) if "fee_usd" in row.keys() else 0
+        # The legacy DB column stores the SOL/USD quote used when the request
+        # was created. Expose the actual fee value, not that spot price.
+        sol_usd_price = float(row["fee_usd"] or 0) if "fee_usd" in row.keys() else 0
+        fee_usd = fee_lamports / 1_000_000_000 * sol_usd_price
         return {"nonce": row["nonce"], "address": row["address"], "asset": asset,
                 "amount": row["amount_units"] / (10**9 if asset == "SOL" else self.scale),
                 "feeLamports": fee_lamports, "feeSol": fee_lamports / 1_000_000_000,
@@ -126,19 +132,24 @@ class WithdrawalApprovals:
                     WHERE a.telegram_id=? AND a.delivery IN ('sending','sent','auto') AND a.attempts<5
                     AND c.used=0 AND c.expires_at>?""", (user, now)).fetchone():
                 raise ApprovalError("Approve or cancel your previous request in Wallet first.", 409)
-            fee_lamports, fee_usd, fee_wallet = 0, 0.0, None
+            fee_lamports, stored_sol_usd_price, fee_wallet = 0, 0.0, None
             if asset == "ZRL":
                 fee_wallet = os.getenv("ZRL_WITHDRAWAL_FEE_WALLET", "57S7TryAMhxRq5sMSyZxTkyCmzT8tPFKfXjzZwvmv5db")
                 price_url = os.getenv("SOL_USD_PRICE_URL", "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
                 try:
                     price_response = requests.get(price_url, timeout=8)
                     price_response.raise_for_status()
-                    fee_usd = float(price_response.json()["solana"]["usd"])
-                    if not (0.01 <= fee_usd <= 100000):
+                    sol_usd_price = Decimal(str(price_response.json()["solana"]["usd"]))
+                    if (not sol_usd_price.is_finite()
+                            or not Decimal("0.01") <= sol_usd_price <= Decimal("100000")):
                         raise ValueError("invalid SOL/USD quote")
-                    fee_lamports = int((1.0 / fee_usd * 1_000_000_000) + 0.999999)
+                    fee_lamports = int(
+                        (ZRL_WITHDRAWAL_FEE_USD / sol_usd_price * Decimal(1_000_000_000))
+                        .to_integral_value(rounding=ROUND_CEILING)
+                    )
                 except Exception:
                     raise ApprovalError("SOL/USD price is unavailable. No withdrawal was created; try again later.", 503)
+                stored_sol_usd_price = float(sol_usd_price)
                 minimum_units = 1_000 * self.scale
                 maximum_units = 20_000 * self.scale
                 if units < minimum_units:
@@ -148,7 +159,8 @@ class WithdrawalApprovals:
                 available = self.balance(db, user)
                 sol_account = db.execute("SELECT sol_lamports FROM wallet_accounts WHERE telegram_id=?", (user,)).fetchone()
                 if not sol_account or int(sol_account["sol_lamports"]) < fee_lamports:
-                    raise ApprovalError("Insufficient game SOL balance for the $1 ZRL withdrawal fee.", 402)
+                    raise ApprovalError(
+                        f"Insufficient game SOL balance for the ${ZRL_WITHDRAWAL_FEE_USD:.2f} ZRL withdrawal fee.", 402)
                 withdrawn = db.execute("""SELECT COALESCE(SUM(amount_units),0) FROM wallet_withdrawals
                     WHERE telegram_id=? AND asset='ZRL' AND created_at>=?
                     AND status IN ('processing','submitted','confirmed')""",
@@ -167,7 +179,7 @@ class WithdrawalApprovals:
                 VALUES(?,?,?,?,?,?,?,?,?)""",
                 (item["nonce"], request_id, user,
                  "" if auto_approved else self._digest(item["nonce"], code),
-                 "auto" if auto_approved else "sending", now, fee_lamports, fee_usd, fee_wallet))
+                 "auto" if auto_approved else "sending", now, fee_lamports, stored_sol_usd_price, fee_wallet))
             db.commit()
             if auto_approved:
                 row = db.execute(

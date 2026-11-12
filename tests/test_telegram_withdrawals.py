@@ -93,6 +93,24 @@ class TelegramWithdrawals(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT address FROM wallet_withdrawals WHERE nonce=?", (nonce,)).fetchone()[0],
                                  str(self.recipient.pubkey()))
 
+    def test_zrl_withdrawal_fee_is_fifteen_cents_and_uses_exact_lamports(self):
+        request = self.request(asset="ZRL", amount="1000", event="synthetic-fee-015")
+        self.assertEqual(request.status_code, 200, request.json)
+        self.assertEqual(request.json["feeUsd"], 0.15)
+        self.assertEqual(request.json["feeLamports"], 1_500_000)
+        self.assertEqual(request.json["feeSol"], 0.0015)
+        self.assertEqual(self.post("/wallet/state").json["gameSolBalance"], 2)
+
+        result = self.confirm(request.json["nonce"])
+        self.assertEqual(result.status_code, 200, result.json)
+        self.assertEqual(self.post("/wallet/state").json["gameSolBalance"], 1.9985)
+        with service._connect(self.path) as db:
+            withdrawal = db.execute(
+                "SELECT fee_lamports FROM wallet_withdrawals WHERE nonce=?",
+                (request.json["nonce"],),
+            ).fetchone()
+        self.assertEqual(withdrawal["fee_lamports"], 1_500_000)
+
     def test_request_does_not_debit_and_same_id_does_not_send_another_code(self):
         first, second = self.request(), self.request()
         self.assertEqual(first.json["nonce"], second.json["nonce"])
